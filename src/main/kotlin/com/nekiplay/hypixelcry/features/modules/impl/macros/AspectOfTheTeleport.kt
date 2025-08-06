@@ -1,6 +1,5 @@
 package com.nekiplay.hypixelcry.features.modules.impl.macros
 
-import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.modules.BindableClientModule
 import com.nekiplay.hypixelcry.sugar.findSlotInHotbarByItemId
 import com.nekiplay.hypixelcry.sugar.silentUse
@@ -19,7 +18,7 @@ object AspectOfTheTeleport : BindableClientModule() {
     private var enabled = false
 
     override fun getKeybind(): Int {
-        return HypixelCry.config.macros.items.aspectOfTheTeleports.keybind
+        return config.macros.items.aspectOfTheTeleports.keybind
     }
 
     override fun init() {
@@ -42,7 +41,7 @@ object AspectOfTheTeleport : BindableClientModule() {
             findWand()?.let { slot ->
                 interaction?.silentUse(slot)
             }
-            timer = HypixelCry.config.macros.items.aspectOfTheTeleports.delay
+            timer = config.macros.items.aspectOfTheTeleports.delay
         } else {
             timer--
         }

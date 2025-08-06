@@ -6,13 +6,13 @@ import com.nekiplay.hypixelcry.sugar.silentUse
 import com.nekiplay.hypixelcry.utils.ItemUtils
 import net.minecraft.component.ComponentHolder
 
-object RogueSword : BindableClientModule() {
+object WitherCloak : BindableClientModule() {
     private val WAND_IDS = setOf(
-        "ROGUE_SWORD"
+        "WITHER_CLOAK"
     )
 
     override fun getKeybind(): Int {
-        return config.macros.items.rogueSword.keybind
+        return config.macros.items.witherCloak.keybind
     }
 
     override fun press() {

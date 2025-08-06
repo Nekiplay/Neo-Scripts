@@ -1,6 +1,5 @@
 package com.nekiplay.hypixelcry.features.modules.impl.macros
 
-import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.modules.BindableClientModule
 import com.nekiplay.hypixelcry.sugar.findSlotInHotbarByItemId
 import com.nekiplay.hypixelcry.sugar.silentUse
@@ -16,7 +15,7 @@ object HealingWands : BindableClientModule() {
     )
 
     override fun getKeybind(): Int {
-        return HypixelCry.config.macros.items.healingWands.keybind
+        return config.macros.items.healingWands.keybind
     }
 
     override fun press() {

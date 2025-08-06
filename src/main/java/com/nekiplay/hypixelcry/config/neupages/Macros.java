@@ -113,6 +113,30 @@ public class Macros {
         }
 
         @Accordion
+        @ConfigOption(name = "Wither Cloak", desc = "")
+        @Expose
+        public Wither_Cloak witherCloak = new Wither_Cloak();
+
+        public static class Wither_Cloak {
+            @ConfigOption(name = "Key binding", desc = "Activation key bind")
+            @ConfigEditorKeybind(defaultKey = GLFW.GLFW_KEY_UNKNOWN)
+            @Expose
+            public int keybind = -1;
+        }
+
+        @Accordion
+        @ConfigOption(name = "Zombie Sword", desc = "")
+        @Expose
+        public Zombie_Sword zombieSword = new Zombie_Sword();
+
+        public static class Zombie_Sword {
+            @ConfigOption(name = "Key binding", desc = "Activation key bind")
+            @ConfigEditorKeybind(defaultKey = GLFW.GLFW_KEY_UNKNOWN)
+            @Expose
+            public int keybind = -1;
+        }
+
+        @Accordion
         @ConfigOption(name = "Rogue Sword", desc = "")
         @Expose
         public Rogue_Sword rogueSword = new Rogue_Sword();

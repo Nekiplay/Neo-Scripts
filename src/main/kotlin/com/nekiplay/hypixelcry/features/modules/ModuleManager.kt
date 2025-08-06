@@ -5,6 +5,8 @@ import com.nekiplay.hypixelcry.events.MouseButtonEvent
 import com.nekiplay.hypixelcry.features.modules.impl.macros.AspectOfTheTeleport
 import com.nekiplay.hypixelcry.features.modules.impl.macros.HealingWands
 import com.nekiplay.hypixelcry.features.modules.impl.macros.RogueSword
+import com.nekiplay.hypixelcry.features.modules.impl.macros.WitherCloak
+import com.nekiplay.hypixelcry.features.modules.impl.macros.ZombieSword
 import com.nekiplay.hypixelcry.utils.misc.input.KeyAction
 import net.minecraft.util.ActionResult
 
@@ -14,7 +16,9 @@ object ModuleManager {
         val modules = arrayOf(
             AspectOfTheTeleport,
             HealingWands,
-            RogueSword
+            RogueSword,
+            WitherCloak,
+            ZombieSword
         )
 
         modules.forEach { module ->

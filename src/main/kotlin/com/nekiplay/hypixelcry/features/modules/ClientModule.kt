@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.features.modules
 
+import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 
 open class ClientModule {
@@ -7,6 +8,7 @@ open class ClientModule {
     val world by lazy { mc.world }
     val screen by lazy { mc.currentScreen }
     val interaction by lazy { mc.interactionManager }
+    val config by lazy { HypixelCry.config }
 
     open fun init() {
 

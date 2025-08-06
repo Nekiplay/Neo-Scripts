@@ -31,7 +31,7 @@ public class Test {
         if (mc.player != null && HypixelCry.config.misc.debug.enabled) {
             String locationf = location.toString();
             if (!locationf.isEmpty()) {
-                mc.player.sendMessage(Text.of("New location: " + location.toString()), false);
+                mc.player.sendMessage(Text.of("New location: " + locationf), false);
             }
         }
     }
