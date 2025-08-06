@@ -30,7 +30,7 @@ object ModuleManager {
     }
 
     private fun registerBindable(module: BindableClientModule) {
-        fun handlePress(bind: Int, action: KeyAction) {
+        fun handlePress(action: KeyAction) {
             when (action) {
                 KeyAction.Press -> {
                     module.press()
@@ -47,7 +47,7 @@ object ModuleManager {
         // Подписка на событие клавиатуры
         KeyEvent.EVENT.register(KeyEvent.KeyCallback { keyEvent ->
             if (keyEvent.key == module.getKeybind()) {
-                handlePress(keyEvent.key, keyEvent.action)
+                handlePress(keyEvent.action)
             }
             ActionResult.PASS
         })
@@ -55,7 +55,7 @@ object ModuleManager {
         // Подписка на событие мыши
         MouseButtonEvent.EVENT.register(MouseButtonEvent.KeyCallback { mouseButtonEvent ->
             if (mouseButtonEvent.button == module.getKeybind()) {
-                handlePress(mouseButtonEvent.button, mouseButtonEvent.action)
+                handlePress(mouseButtonEvent.action)
             }
             ActionResult.PASS
         })
