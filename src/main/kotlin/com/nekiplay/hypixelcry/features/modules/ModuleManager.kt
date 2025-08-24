@@ -2,11 +2,13 @@ package com.nekiplay.hypixelcry.features.modules
 
 import com.nekiplay.hypixelcry.events.KeyEvent
 import com.nekiplay.hypixelcry.events.MouseButtonEvent
+import com.nekiplay.hypixelcry.features.modules.impl.esp.GlaciteMineshaftExitPathFinder
 import com.nekiplay.hypixelcry.features.modules.impl.macros.AspectOfTheTeleport
 import com.nekiplay.hypixelcry.features.modules.impl.macros.HealingWands
 import com.nekiplay.hypixelcry.features.modules.impl.macros.RogueSword
 import com.nekiplay.hypixelcry.features.modules.impl.macros.WitherCloak
 import com.nekiplay.hypixelcry.features.modules.impl.macros.ZombieSword
+import com.nekiplay.hypixelcry.features.modules.impl.misc.LuaEvents
 import com.nekiplay.hypixelcry.utils.misc.input.KeyAction
 import net.minecraft.util.ActionResult
 
@@ -18,7 +20,11 @@ object ModuleManager {
             HealingWands,
             RogueSword,
             WitherCloak,
-            ZombieSword
+            ZombieSword,
+
+            GlaciteMineshaftExitPathFinder,
+
+            LuaEvents
         )
 
         modules.forEach { module ->

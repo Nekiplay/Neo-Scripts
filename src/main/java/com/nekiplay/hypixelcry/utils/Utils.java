@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.utils;
 
 import com.nekiplay.hypixelcry.annotations.Init;
 import com.nekiplay.hypixelcry.events.SkyblockEvents;
+import com.nekiplay.hypixelcry.utils.purse.PurseChangeCause;
 import com.nekiplay.hypixelcry.utils.scheduler.Scheduler;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -32,6 +33,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collections;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.nekiplay.hypixelcry.HypixelCry.LOGGER;
 
@@ -41,6 +44,8 @@ public class Utils {
 
     private static final String ALTERNATE_HYPIXEL_ADDRESS = System.getProperty("skyblocker.alternateHypixelAddress", "");
     private static final String PROFILE_PREFIX = "Profile: ";
+
+    private static final Pattern PURSE = Pattern.compile("(Purse|Piggy): (?<purse>[0-9,.]+)( \\((?<change>[+\\-][0-9,.]+)\\))?");
 
     private static boolean isOnHypixel = false;
     private static boolean isOnSkyblock = false;
@@ -187,13 +192,16 @@ public class Utils {
     @NotNull
     private static String map = "";
     @NotNull
-    public static double purse = 0;
+    private static double purse = 0;
 
     @NotNull
     private static int profileIdRequest = 0;
 
     private static boolean firstProfileUpdate = true;
 
+    public static double getPurse() {
+        return purse;
+    }
 
     @NotNull
     public static Area getArea() {
@@ -263,13 +271,29 @@ public class Utils {
             TEXT_SCOREBOARD.addAll(textLines);
             STRING_SCOREBOARD.addAll(stringLines);
             if (isOnSkyblock) {
-                //Utils.updatePurse();
-                //SlayerManager.getSlayerBossInfo(true);
+                Utils.updatePurse();
                 updateArea();
             }
         } catch (NullPointerException e) {
             //Do nothing
         }
+    }
+
+    private static void updatePurse() {
+        STRING_SCOREBOARD.stream().filter(s -> s.contains("Piggy:") || s.contains("Purse:")).findFirst().ifPresent(purseString -> {
+            Matcher matcher = PURSE.matcher(purseString);
+            if (matcher.find()) {
+                try {
+                    double newPurse = Double.parseDouble(matcher.group("purse").replaceAll(",", ""));
+                    double changeSinceLast = newPurse - Utils.purse;
+                    if (changeSinceLast == 0) return;
+                    SkyblockEvents.PURSE_CHANGE.invoker().onPurseChange(changeSinceLast, PurseChangeCause.getCause(changeSinceLast));
+                    Utils.purse = newPurse;
+                } catch (NumberFormatException e) {
+                    LOGGER.error("[Skyblocker] Failed to parse purse string. Input: '{}'", purseString, e);
+                }
+            }
+        });
     }
 
     private static void updateFromPlayerList(MinecraftClient client) {

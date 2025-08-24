@@ -4,10 +4,13 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.nekiplay.hypixelcry.annotations.Init;
 import com.nekiplay.hypixelcry.config.NEUConfig;
+import com.nekiplay.hypixelcry.features.commands.impl.LuaClearCommand;
+import com.nekiplay.hypixelcry.features.commands.impl.LuaFileCommand;
 import com.nekiplay.hypixelcry.features.modules.ModuleManager;
 import com.nekiplay.hypixelcry.utils.ConfigUtil;
 import com.nekiplay.hypixelcry.utils.Utils;
 import com.nekiplay.hypixelcry.utils.scheduler.Scheduler;
+import com.nekiplay.hypixelcry.features.lua.LuaManager;
 import io.github.notenoughupdates.moulconfig.common.IMinecraft;
 import io.github.notenoughupdates.moulconfig.gui.MoulConfigEditor;
 import io.github.notenoughupdates.moulconfig.observer.PropertyTypeAdapterFactory;
@@ -25,10 +28,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 
 public class HypixelCry implements ClientModInitializer {
     public static final String MOD_ID = "hypixelcry";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    public static LuaManager LUA_MANAGER;
 
     public static final String PREFIX = Formatting.GRAY + "[" + Formatting.GOLD + "Hypixel Cry" + Formatting.GRAY + "] " + Formatting.RESET;
 
@@ -75,6 +81,11 @@ public class HypixelCry implements ClientModInitializer {
             saveConfig();
         }
 
+        File scriptsDir = new File(neuDir, "scripts");
+        if (!scriptsDir.exists()) {
+            scriptsDir.mkdir();
+        }
+
         processor = new MoulConfigProcessor<>(config);
         BuiltinMoulConfigGuis.addProcessors(processor);
         ConfigProcessorDriver driver = new ConfigProcessorDriver(processor);
@@ -82,6 +93,7 @@ public class HypixelCry implements ClientModInitializer {
         driver.warnForPrivateFields = false;
         driver.processConfig(config);
 
+        LUA_MANAGER = new LuaManager(neuDir);
 
         Runtime.getRuntime().addShutdownHook(new Thread(HypixelCry::saveConfig));
 
@@ -97,12 +109,30 @@ public class HypixelCry implements ClientModInitializer {
                     })
             );
         });
+        ClientCommandRegistrationCallback.EVENT.register(LuaFileCommand.INSTANCE::register);
+        ClientCommandRegistrationCallback.EVENT.register(LuaClearCommand.INSTANCE::register);
 
         init();
 
         ModuleManager.INSTANCE.registerInbuilt();
 
         Scheduler.INSTANCE.scheduleCyclic(Utils::update, 20);
+        loadStartupScripts();
+    }
+
+    private void loadStartupScripts() {
+        // Автозагрузка скриптов при старте
+        File autoLoadScript = new File("config/hypixelcry/scripts/autoload.lua");
+        if (autoLoadScript.exists()) {
+            try {
+                String scriptContent = Files.readString(autoLoadScript.toPath(), StandardCharsets.UTF_8);
+                LUA_MANAGER.executeScript(scriptContent);
+                System.out.println("Autoload script executed successfully");
+            } catch (Exception e) {
+                System.out.println("Error executing autoload script: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
     }
 
     /**

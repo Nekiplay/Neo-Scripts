@@ -29,6 +29,7 @@ repositories {
     maven {
         url = uri("https://maven.azureaaron.net/releases")
     }
+    maven { url = uri("https://repo1.maven.org/maven2/") }
 }
 
 java {
@@ -53,6 +54,10 @@ val shadowModImpl by configurations.creating {
 dependencies {
     minecraft("com.mojang:minecraft:${property("minecraft_version")}")
     mappings("net.fabricmc:yarn:${property("yarn_mappings")}:v2")
+
+    implementation("org.luaj:luaj-jse:3.0.1")
+    include("org.luaj:luaj-jse:3.0.1")
+    shadowModImpl("org.luaj:luaj-jse:3.0.1")
 
     modImplementation("net.fabricmc:fabric-loader:${property("loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_version")}")

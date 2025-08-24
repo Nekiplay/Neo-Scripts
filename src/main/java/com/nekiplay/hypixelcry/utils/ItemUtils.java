@@ -2,10 +2,15 @@ package com.nekiplay.hypixelcry.utils;
 
 import net.minecraft.component.ComponentHolder;
 import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.AttributeModifierSlot;
 import net.minecraft.component.type.NbtComponent;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.Optional;
 
 public class ItemUtils {
@@ -32,4 +37,10 @@ public class ItemUtils {
         return stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).getNbt();
     }
 
+    public static List<ItemStack> getArmor(LivingEntity entity) {
+        return AttributeModifierSlot.ARMOR.getSlots().stream()
+                .filter(es -> es.getType() == EquipmentSlot.Type.HUMANOID_ARMOR)
+                .map(entity::getEquippedStack)
+                .toList();
+    }
 }

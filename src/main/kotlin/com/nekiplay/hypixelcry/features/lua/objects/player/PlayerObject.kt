@@ -1,0 +1,219 @@
+package com.nekiplay.hypixelcry.features.lua.objects.player
+
+import com.nekiplay.hypixelcry.utils.StatusBarTracker
+import com.nekiplay.hypixelcry.utils.Utils
+import net.minecraft.client.MinecraftClient
+import net.minecraft.text.Text
+import org.luaj.vm2.LuaString
+import org.luaj.vm2.LuaValue
+import org.luaj.vm2.lib.OneArgFunction
+import org.luaj.vm2.lib.TwoArgFunction
+import org.luaj.vm2.lib.ZeroArgFunction
+
+class PlayerObject : LuaValue() {
+    private val client: MinecraftClient = MinecraftClient.getInstance()
+
+    override fun call(): LuaValue {
+        return this
+    }
+
+    override fun get(key: LuaValue): LuaValue {
+        return when (key.tojstring()) {
+            // Objects
+            "input" -> InputObject()
+
+            // Functions
+            "addMessage" -> AddChatMessageFunction()
+            "sendMessage" -> SendChatMessageFunction()
+            "sendCommand" -> SendChatMessageFunction()
+            "getPos" -> GetPlayerPosFunction()
+            "getDirection" -> GetPlayerEyeFunction()
+            "setDirection" -> SetPlayerEyeFunction()
+            "getName" -> GetPlayerNameFunction()
+            "getLocation" -> GetPlayerLocationFunction()
+            "getPurse" -> GetPlayerPurseFunction()
+            "getHealth" -> GetPlayerHealthFunction()
+            "getMana" -> GetPlayerManaFunction()
+            "getDefence" -> GetPlayerDefenceFunction()
+            "getSpeed" -> GetPlayerSpeedFunction()
+            "isSneaking" -> IsPlayerSneakingFunction()
+            "isSprinting" -> IsPlayerSprintingFunction()
+            "isOnGround" -> IsPlayerOnGroundFunction()
+            "isOnSkyBlock" -> IsPlayerOnSkyBlockFunction()
+            else -> LuaValue.NIL
+        } as LuaValue
+    }
+
+    private inner class AddChatMessageFunction : OneArgFunction() {
+        override fun call(message: LuaValue): LuaValue {
+            if (message.isstring()) {
+                client.player?.sendMessage(Text.of(message.tojstring()), false)
+            }
+            return NIL
+        }
+    }
+
+    private inner class SendChatMessageFunction : OneArgFunction() {
+        override fun call(message: LuaValue): LuaValue {
+            if (message.isstring()) {
+                client.networkHandler?.sendChatMessage(message.tojstring())
+            }
+            return NIL
+        }
+    }
+
+    private inner class SendChatCommandFunction : OneArgFunction() {
+        override fun call(message: LuaValue): LuaValue {
+            if (message.isstring()) {
+                client.networkHandler?.sendChatCommand(message.tojstring())
+            }
+            return NIL
+        }
+    }
+
+    private inner class SetPlayerEyeFunction : TwoArgFunction() {
+        override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
+            if (arg1.isnumber() && arg2.isnumber()) {
+                val player = client.player
+                if (player != null) {
+                    // Ограничиваем yaw в диапазоне -180° до 180°
+                    var yaw = arg1.tofloat()
+                    yaw = yaw % 360f
+                    if (yaw > 180f) yaw -= 360f
+                    if (yaw < -180f) yaw += 360f
+
+                    // Ограничиваем pitch в диапазоне -90° до 90° (стандартные ограничения Minecraft)
+                    var pitch = arg2.tofloat()
+                    pitch = pitch.coerceIn(-90f, 90f)
+
+                    player.yaw = yaw
+                    player.pitch = pitch
+                }
+            }
+            return LuaValue.NIL
+        }
+    }
+
+    private inner class GetPlayerEyeFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val player = client.player;
+            return if (player != null) {
+                val table = LuaValue.tableOf()
+                table.set("yaw", LuaValue.valueOf(player.yaw.toDouble()))
+                table.set("pitch", LuaValue.valueOf(player.pitch.toDouble()))
+                table
+            } else {
+                NIL
+            }
+        }
+    }
+
+    private inner class GetPlayerPosFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val player = client.player
+            return if (player != null) {
+                val table = LuaValue.tableOf()
+                table.set("x", LuaValue.valueOf(player.x))
+                table.set("y", LuaValue.valueOf(player.y))
+                table.set("z", LuaValue.valueOf(player.z))
+                table
+            } else {
+                NIL
+            }
+        }
+    }
+
+    private inner class GetPlayerNameFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return LuaString.valueOf(client.player?.name?.string ?: "Unknown")
+        }
+    }
+
+    private inner class GetPlayerLocationFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return LuaString.valueOf(Utils.getLocation().name)
+        }
+    }
+
+    private inner class GetPlayerPurseFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return if (Utils.isOnSkyblock()) {
+                LuaValue.valueOf(Utils.getPurse())
+            } else {
+                LuaValue.valueOf(0.0)
+            }
+        }
+    }
+
+    private inner class GetPlayerHealthFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return if (Utils.isOnSkyblock()) {
+                LuaValue.valueOf(StatusBarTracker.getHealth().value())
+            } else {
+                LuaValue.valueOf((client.player?.health)?.toDouble() ?: 0.0)
+            }
+        }
+    }
+
+    private inner class GetPlayerDefenceFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return if (Utils.isOnSkyblock()) {
+                LuaValue.valueOf(StatusBarTracker.getDefense())
+            } else {
+                LuaValue.valueOf(0)
+            }
+        }
+    }
+
+    private inner class GetPlayerSpeedFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return if (Utils.isOnSkyblock()) {
+                LuaValue.valueOf(StatusBarTracker.getSpeed().value())
+            } else {
+                LuaValue.valueOf(0)
+            }
+        }
+    }
+
+    private inner class GetPlayerManaFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return if (Utils.isOnSkyblock()) {
+                LuaValue.valueOf(StatusBarTracker.getMana().value())
+            } else {
+                LuaValue.valueOf(0)
+            }
+        }
+    }
+
+    private inner class IsPlayerSneakingFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return LuaValue.valueOf(client.player?.isSneaking ?: false)
+        }
+    }
+
+    private inner class IsPlayerSprintingFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return LuaValue.valueOf(client.player?.isSprinting ?: false)
+        }
+    }
+
+    private inner class IsPlayerOnGroundFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return LuaValue.valueOf(client.player?.isOnGround ?: false)
+        }
+    }
+
+    private inner class IsPlayerOnSkyBlockFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return LuaValue.valueOf(Utils.isOnSkyblock())
+        }
+    }
+
+    // Переопределяем необходимые методы LuaValue
+    override fun typename(): String = "player"
+    override fun tojstring(): String = "PlayerObject"
+    override fun isnil(): Boolean = false
+    override fun type(): Int {
+        return LuaValue.TUSERDATA
+    }
+}

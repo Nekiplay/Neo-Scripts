@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.events;
 
 import com.nekiplay.hypixelcry.utils.Area;
 import com.nekiplay.hypixelcry.utils.Location;
+import com.nekiplay.hypixelcry.utils.purse.PurseChangeCause;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.event.Event;
@@ -18,6 +19,12 @@ public final class SkyblockEvents {
     public static final Event<SkyblockLeave> LEAVE = EventFactory.createArrayBacked(SkyblockLeave.class, callbacks -> () -> {
         for (SkyblockLeave callback : callbacks) {
             callback.onSkyblockLeave();
+        }
+    });
+
+    public static final Event<PurseChange> PURSE_CHANGE = EventFactory.createArrayBacked(PurseChange.class, callbacks -> (diff, cause) -> {
+        for (PurseChange callback : callbacks) {
+            callback.onPurseChange(diff, cause);
         }
     });
 
@@ -90,5 +97,11 @@ public final class SkyblockEvents {
     @FunctionalInterface
     public interface ProfileInit {
         void onSkyblockProfileInit(String profileId);
+    }
+
+    @Environment(EnvType.CLIENT)
+    @FunctionalInterface
+    public interface PurseChange {
+        void onPurseChange(double diff, PurseChangeCause cause);
     }
 }
