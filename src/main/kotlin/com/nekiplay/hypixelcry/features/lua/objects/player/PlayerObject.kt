@@ -27,8 +27,8 @@ class PlayerObject : LuaValue() {
             "sendMessage" -> SendChatMessageFunction()
             "sendCommand" -> SendChatMessageFunction()
             "getPos" -> GetPlayerPosFunction()
-            "getDirection" -> GetPlayerEyeFunction()
-            "setDirection" -> SetPlayerEyeFunction()
+            "getRotation" -> GetPlayerRotationFunction()
+            "setRotation" -> SetPlayerRotationFunction()
             "getName" -> GetPlayerNameFunction()
             "getLocation" -> GetPlayerLocationFunction()
             "getPurse" -> GetPlayerPurseFunction()
@@ -71,7 +71,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class SetPlayerEyeFunction : TwoArgFunction() {
+    private inner class SetPlayerRotationFunction : TwoArgFunction() {
         override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
             if (arg1.isnumber() && arg2.isnumber()) {
                 val player = client.player
@@ -94,7 +94,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class GetPlayerEyeFunction : ZeroArgFunction() {
+    private inner class GetPlayerRotationFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val player = client.player;
             return if (player != null) {
