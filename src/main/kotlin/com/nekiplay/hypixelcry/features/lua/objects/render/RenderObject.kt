@@ -93,6 +93,8 @@ class RenderObject(private val context: WorldRenderContext?): LuaValue() {
                 val text = if (table.get("text").isstring()) table.get("text").tostring() else ""
                 val scale = if (table.get("scale").isnumber()) table.get("scale").tofloat() else 1f
 
+                val color = if (table.get("color").isnumber()) table.get("color").toint() else 0
+
                 val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
                 val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
                 val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
@@ -106,8 +108,29 @@ class RenderObject(private val context: WorldRenderContext?): LuaValue() {
                     blue.toFloat() / 255.0f,
                 )
 
-
-                RenderHelper.renderText(context, Text.of(text.toString()).asOrderedText(), Vec3d(x, y, z), alpha.toFloat() / 255.0f, colorComponents, scale, 0f, throughWalls)
+                if (color != 0) {
+                    RenderHelper.renderText(
+                        context,
+                        Text.of(text.toString()).asOrderedText(),
+                        Vec3d(x, y, z),
+                        color,
+                        scale,
+                        0f,
+                        throughWalls
+                    )
+                }
+                else {
+                    RenderHelper.renderText(
+                        context,
+                        Text.of(text.toString()).asOrderedText(),
+                        Vec3d(x, y, z),
+                        alpha.toFloat() / 255.0f,
+                        colorComponents,
+                        scale,
+                        0f,
+                        throughWalls
+                    )
+                }
                 return LuaValue.valueOf(true)
             }
             return NIL

@@ -3,9 +3,35 @@ package com.nekiplay.hypixelcry.features.lua.utils.block
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import net.minecraft.client.network.ClientPlayerEntity
 import net.minecraft.entity.Entity
+import net.minecraft.entity.EquipmentSlot
+import net.minecraft.entity.LivingEntity
 import org.luaj.vm2.LuaValue
 
 object EntityUtils {
+    // Функция для получения всех сущностей в мире
+    public fun GetAllEntities(): LuaValue {
+        val entitiesTable = LuaValue.tableOf()
+
+        mc.world?.entities?.forEachIndexed { index, entity ->
+            entitiesTable.set(index + 1, ToLua(entity) ?: LuaValue.NIL)
+        }
+
+        return entitiesTable
+    }
+
+    // Функция для получения всех живых сущностей в мире
+    public fun GetAllLivingEntities(): LuaValue {
+        val entitiesTable = LuaValue.tableOf()
+
+        mc.world?.entities?.forEachIndexed { index, entity ->
+            if (entity is LivingEntity) {
+                entitiesTable.set(index + 1, ToLua(entity) ?: LuaValue.NIL)
+            }
+        }
+
+        return entitiesTable
+    }
+
     // Функция для преобразования Entity в Lua таблицу
     public fun ToLua(entity: Entity?): LuaValue? {
         if (entity != null) {
@@ -44,6 +70,26 @@ object EntityUtils {
             // Дополнительные свойства
             table.set("age", LuaValue.valueOf(entity.age))
             table.set("distance_to_player", LuaValue.valueOf(entity.distanceTo(mc.player).toDouble()))
+
+            if (entity is LivingEntity) {
+                val mainHandStack = entity.mainHandStack
+                val offHandStack = entity.offHandStack
+
+                table.set("main_hand", ItemStackUtils.ToLua(mainHandStack) ?: LuaValue.NIL)
+                table.set("off_hand", ItemStackUtils.ToLua(offHandStack) ?: LuaValue.NIL)
+
+                val head = entity.getEquippedStack(EquipmentSlot.HEAD)
+                table.set("head", ItemStackUtils.ToLua(head) ?: LuaValue.NIL)
+
+                val chest = entity.getEquippedStack(EquipmentSlot.CHEST)
+                table.set("chest", ItemStackUtils.ToLua(chest) ?: LuaValue.NIL)
+
+                val legs = entity.getEquippedStack(EquipmentSlot.LEGS)
+                table.set("legs", ItemStackUtils.ToLua(legs) ?: LuaValue.NIL)
+
+                val feet = entity.getEquippedStack(EquipmentSlot.FEET)
+                table.set("feet", ItemStackUtils.ToLua(feet) ?: LuaValue.NIL)
+            }
 
             return table
         } else {

@@ -5,6 +5,7 @@ import com.nekiplay.hypixelcry.features.lua.utils.block.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.StatusBarTracker
 import com.nekiplay.hypixelcry.utils.Utils
+import com.nekiplay.hypixelcry.utils.trackers.ColdTracker
 import net.minecraft.client.MinecraftClient
 import net.minecraft.text.Text
 import net.minecraft.util.hit.BlockHitResult
@@ -46,6 +47,7 @@ class PlayerObject : LuaValue() {
             "getMana" -> GetPlayerManaFunction()
             "getDefence" -> GetPlayerDefenceFunction()
             "getSpeed" -> GetPlayerSpeedFunction()
+            "getCold" -> GetPlayerColdFunction()
             "isSneaking" -> IsPlayerSneakingFunction()
             "isSprinting" -> IsPlayerSprintingFunction()
             "isOnGround" -> IsPlayerOnGroundFunction()
@@ -217,6 +219,16 @@ class PlayerObject : LuaValue() {
         override fun call(): LuaValue {
             return if (Utils.isOnSkyblock()) {
                 LuaValue.valueOf(StatusBarTracker.getMana().value())
+            } else {
+                LuaValue.valueOf(0)
+            }
+        }
+    }
+
+    private inner class GetPlayerColdFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return if (Utils.isOnSkyblock()) {
+                LuaValue.valueOf(ColdTracker.getCold())
             } else {
                 LuaValue.valueOf(0)
             }
