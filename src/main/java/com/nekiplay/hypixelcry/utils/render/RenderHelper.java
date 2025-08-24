@@ -307,6 +307,29 @@ public class RenderHelper {
         consumers.draw();
     }
 
+    public static void renderText(WorldRenderContext context, OrderedText text, Vec3d pos, float alpha, float[] shaderColor, float scale, float yOffset, boolean throughWalls) {
+        Matrix4f positionMatrix = new Matrix4f();
+        Camera camera = context.camera();
+        Vec3d cameraPos = camera.getPos();
+        TextRenderer textRenderer = CLIENT.textRenderer;
+
+        scale *= 0.025f;
+
+        int color = ColorHelper.fromFloats(alpha, shaderColor[0], shaderColor[1], shaderColor[2]);
+
+        positionMatrix
+                .translate((float) (pos.getX() - cameraPos.getX()), (float) (pos.getY() - cameraPos.getY()), (float) (pos.getZ() - cameraPos.getZ()))
+                .rotate(camera.getRotation())
+                .scale(scale, -scale, scale);
+
+        float xOffset = -textRenderer.getWidth(text) / 2f;
+
+        VertexConsumerProvider.Immediate consumers = VertexConsumerProvider.immediate(ALLOCATOR);
+
+        textRenderer.draw(text, xOffset, yOffset, color, false, positionMatrix, consumers, throughWalls ? TextRenderer.TextLayerType.SEE_THROUGH : TextRenderer.TextLayerType.NORMAL, 0, LightmapTextureManager.MAX_LIGHT_COORDINATE);
+        consumers.draw();
+    }
+
     /**
      * Renders text in the world space.
      *
