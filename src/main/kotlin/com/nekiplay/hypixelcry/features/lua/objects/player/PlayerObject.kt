@@ -1,9 +1,16 @@
 package com.nekiplay.hypixelcry.features.lua.objects.player
 
+import com.nekiplay.hypixelcry.features.lua.utils.block.BlockUtil
+import com.nekiplay.hypixelcry.features.lua.utils.block.EntityUtils
+import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.StatusBarTracker
 import com.nekiplay.hypixelcry.utils.Utils
 import net.minecraft.client.MinecraftClient
 import net.minecraft.text.Text
+import net.minecraft.util.hit.BlockHitResult
+import net.minecraft.util.hit.EntityHitResult
+import net.minecraft.util.hit.HitResult
+import net.minecraft.util.math.BlockPos
 import org.luaj.vm2.LuaString
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
@@ -21,6 +28,9 @@ class PlayerObject : LuaValue() {
         return when (key.tojstring()) {
             // Objects
             "input" -> InputObject()
+
+            // Variables
+            "entity" -> EntityUtils.ToLua(mc.player)
 
             // Functions
             "addMessage" -> AddChatMessageFunction()
@@ -40,8 +50,36 @@ class PlayerObject : LuaValue() {
             "isSprinting" -> IsPlayerSprintingFunction()
             "isOnGround" -> IsPlayerOnGroundFunction()
             "isOnSkyBlock" -> IsPlayerOnSkyBlockFunction()
+
+            "raycast" -> RayCastFunction()
             else -> LuaValue.NIL
         } as LuaValue
+    }
+
+    private inner class RayCastFunction : OneArgFunction() {
+        override fun call(
+            arg1: LuaValue?
+        ): LuaValue? {
+            if (arg1?.isnumber() == true) {
+                val raycast = mc.player?.raycast(arg1.todouble(), 1f, false)
+                if (raycast?.type == HitResult.Type.BLOCK && raycast is BlockHitResult) {
+                    val table = LuaValue.tableOf()
+                    val blockPos = BlockPos(raycast.blockPos.x, raycast.blockPos.y, raycast.blockPos.z)
+                    val state = mc.world?.getBlockState(blockPos)
+                    table.set("type", "block")
+                    table.set("data", BlockUtil.ToLua(blockPos, state))
+                    return table
+                }
+                else if (raycast?.type == HitResult.Type.ENTITY && raycast is EntityHitResult) {
+                    val table = LuaValue.tableOf()
+                    table.set("type", "entity")
+                    table.set("data", EntityUtils.ToLua(raycast.entity))
+                    return table
+                }
+            }
+
+            return LuaValue.NIL
+        }
     }
 
     private inner class AddChatMessageFunction : OneArgFunction() {

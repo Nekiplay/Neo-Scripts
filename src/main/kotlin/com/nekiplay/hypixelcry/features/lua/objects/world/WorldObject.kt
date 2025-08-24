@@ -1,11 +1,14 @@
 package com.nekiplay.hypixelcry.features.lua.objects.world
 
+import com.nekiplay.hypixelcry.HypixelCry
+import com.nekiplay.hypixelcry.features.lua.customArgs.FourArgFunction
+import com.nekiplay.hypixelcry.features.lua.utils.block.BlockUtil
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.Rotations
 import net.minecraft.block.Block
+import net.minecraft.block.Blocks
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
-import net.minecraft.util.shape.VoxelShapes
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.ThreeArgFunction
 
@@ -20,6 +23,7 @@ class WorldObject : LuaValue() {
             // Functions
             "getRotation" -> GetRotationFunction()
             "getBlock" -> GetBlockFunction()
+            "setBlock" -> SetBlockFunction()
             else -> LuaValue.NIL
         } as LuaValue
     }
@@ -48,6 +52,33 @@ class WorldObject : LuaValue() {
 
     }
 
+    private inner class SetBlockFunction : FourArgFunction() {
+        override fun invoke(
+            arg1: LuaValue?,
+            arg2: LuaValue?,
+            arg3: LuaValue?,
+            arg4: LuaValue?
+        ): LuaValue? {
+            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isnumber() == true) {
+                val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
+                val blockId = arg4.toint()
+                val blockState = Block.getStateFromRawId(blockId)
+
+                mc.world?.setBlockState(blockPos, blockState)
+
+                mc.worldRenderer.updateBlock(
+                    HypixelCry.mc.world,
+                    blockPos,
+                    HypixelCry.mc.world?.getBlockState(blockPos),
+                    blockState,
+                    0
+                )
+                mc.world?.updateNeighbors(blockPos, blockState.block)
+            }
+            return LuaValue.NIL
+        }
+    }
+
     private inner class GetBlockFunction : ThreeArgFunction() {
         override fun call(
             arg1: LuaValue?,
@@ -57,36 +88,7 @@ class WorldObject : LuaValue() {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
                 val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
                 val state = mc.world?.getBlockState(blockPos)
-
-                if (state != null) {
-                    val block = state.block
-                    val table = LuaValue.tableOf()
-
-                    // Основная информация о блоке
-                    table.set("id", LuaValue.valueOf(Block.getRawIdFromState(state)))
-                    table.set("name", LuaValue.valueOf(block.translationKey))
-                    table.set("type", LuaValue.valueOf(state.toString()))
-
-                    // Позиция блока
-                    table.set("x", LuaValue.valueOf(blockPos.x))
-                    table.set("y", LuaValue.valueOf(blockPos.y))
-                    table.set("z", LuaValue.valueOf(blockPos.z))
-
-                    // Свойства блока
-                    table.set("hardness", LuaValue.valueOf(block.hardness.toDouble()))
-                    table.set("blast_resistance", LuaValue.valueOf(block.blastResistance.toDouble()))
-
-                    // Информация о материале
-                    table.set("is_solid", LuaValue.valueOf(state.isSolid))
-                    table.set("is_liquid", LuaValue.valueOf(state.isLiquid))
-
-                    // Дополнительные свойства
-                    table.set("has_collision", LuaValue.valueOf(block.defaultState.getCollisionShape(mc.world, blockPos) != VoxelShapes.empty()))
-                    table.set("is_air", LuaValue.valueOf(state.isAir))
-                    return table
-                } else {
-                    return LuaValue.NIL
-                }
+                return BlockUtil.ToLua(blockPos, state);
             }
 
             return LuaValue.NIL
