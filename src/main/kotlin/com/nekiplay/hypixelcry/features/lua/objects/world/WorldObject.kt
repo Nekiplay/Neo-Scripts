@@ -1,8 +1,10 @@
 package com.nekiplay.hypixelcry.features.lua.objects.world
 
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
+import com.nekiplay.hypixelcry.utils.Rotations
 import net.minecraft.block.Block
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Vec3d
 import net.minecraft.util.shape.VoxelShapes
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.ThreeArgFunction
@@ -16,9 +18,34 @@ class WorldObject : LuaValue() {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             // Functions
+            "getRotation" -> GetRotationFunction()
             "getBlock" -> GetBlockFunction()
             else -> LuaValue.NIL
         } as LuaValue
+    }
+
+    private inner class GetRotationFunction : ThreeArgFunction() {
+        override fun call(
+            arg1: LuaValue?,
+            arg2: LuaValue?,
+            arg3: LuaValue?
+        ): LuaValue? {
+            return if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
+
+                val yaw = Rotations.getYaw(Vec3d(arg1.todouble(), arg2.todouble(), arg3.todouble()))
+                val pitch = Rotations.getPitch(Vec3d(arg1.todouble(), arg2.todouble(), arg3.todouble()))
+
+                val table = LuaValue.tableOf()
+                table.set("yaw", LuaValue.valueOf(yaw))
+                table.set("pitch", LuaValue.valueOf(pitch))
+                table
+            }
+            else {
+                NIL
+            }
+        }
+
+
     }
 
     private inner class GetBlockFunction : ThreeArgFunction() {
