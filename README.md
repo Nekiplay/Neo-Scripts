@@ -15,9 +15,15 @@
 ### Macros:
 - Auto right click (Chests, Leavers, Skulls)
 - Auto close chests in dungeons
+- Silent use Healing Wands
+- Silent use Aspect Of The End
+- Silent use Rogue Sword
+- Silent use Wither Cloak
+- Silent use Zombie Sword
 
 ### ESP:
 - Dark Monolith in Dwarden Mines
-- Glowing Mushroom
-- Treasure Hunter
+
+### Misc:
+- Lua API
 

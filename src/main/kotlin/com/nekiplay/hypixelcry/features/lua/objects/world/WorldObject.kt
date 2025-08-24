@@ -6,7 +6,6 @@ import com.nekiplay.hypixelcry.features.lua.utils.block.BlockUtil
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.Rotations
 import net.minecraft.block.Block
-import net.minecraft.block.Blocks
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
 import org.luaj.vm2.LuaValue
