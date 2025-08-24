@@ -104,7 +104,7 @@ class LuaManager(configDir: File) {
         }
     }
 
-    public fun convertToLuaValue(value: Any?): LuaValue {
+    fun convertToLuaValue(value: Any?): LuaValue {
         return when (value) {
             null -> LuaValue.NIL
             is String -> LuaValue.valueOf(value)
