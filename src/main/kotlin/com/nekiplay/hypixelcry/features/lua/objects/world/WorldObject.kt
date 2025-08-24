@@ -46,8 +46,8 @@ class WorldObject : LuaValue() {
                     table.set("z", LuaValue.valueOf(blockPos.z))
 
                     // Свойства блока
-                    table.set("hardness", LuaValue.valueOf(block.getHardness().toDouble()))
-                    table.set("blast_resistance", LuaValue.valueOf(block.getBlastResistance().toDouble()))
+                    table.set("hardness", LuaValue.valueOf(block.hardness.toDouble()))
+                    table.set("blast_resistance", LuaValue.valueOf(block.blastResistance.toDouble()))
 
                     // Информация о материале
                     table.set("is_solid", LuaValue.valueOf(state.isSolid))
