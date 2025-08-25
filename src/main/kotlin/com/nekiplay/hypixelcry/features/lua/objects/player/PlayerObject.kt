@@ -76,7 +76,6 @@ class PlayerObject : LuaValue() {
                     table.set("x", blockPos.getX())
                     table.set("y", blockPos.getY())
                     table.set("z", blockPos.getZ()))
-                    table.set("data", BlockUtil.ToLua(blockPos, state))
                     return table
                 }
                 else if (raycast?.type == HitResult.Type.ENTITY && raycast is EntityHitResult) {
