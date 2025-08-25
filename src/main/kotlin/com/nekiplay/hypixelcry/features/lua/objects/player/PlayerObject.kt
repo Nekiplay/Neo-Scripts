@@ -3,6 +3,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.player
 import com.nekiplay.hypixelcry.features.lua.utils.block.BlockUtil
 import com.nekiplay.hypixelcry.features.lua.utils.block.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
+import com.nekiplay.hypixelcry.utils.PlayerUtils
 import com.nekiplay.hypixelcry.utils.StatusBarTracker
 import com.nekiplay.hypixelcry.utils.Utils
 import com.nekiplay.hypixelcry.utils.trackers.ColdTracker
@@ -12,6 +13,7 @@ import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.hit.EntityHitResult
 import net.minecraft.util.hit.HitResult
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Vec3d
 import org.luaj.vm2.LuaString
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
@@ -52,6 +54,9 @@ class PlayerObject : LuaValue() {
             "isSprinting" -> IsPlayerSprintingFunction()
             "isOnGround" -> IsPlayerOnGroundFunction()
             "isOnSkyBlock" -> IsPlayerOnSkyBlockFunction()
+
+            "getEyePosition" -> GetEyePositionFunction()
+            "getLookEndPos" -> GetLookEndPosFunction()
 
             "raycast" -> RayCastFunction()
             else -> LuaValue.NIL
@@ -256,6 +261,50 @@ class PlayerObject : LuaValue() {
     private inner class IsPlayerOnSkyBlockFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             return LuaValue.valueOf(Utils.isOnSkyblock())
+        }
+    }
+
+    private inner class GetEyePositionFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val eyePos = PlayerUtils.getEyePosition()
+            val table = LuaValue.tableOf()
+            table.set("x", LuaValue.valueOf(eyePos.x))
+            table.set("y", LuaValue.valueOf(eyePos.y))
+            table.set("z", LuaValue.valueOf(eyePos.z))
+            return table
+        }
+    }
+
+    private inner class GetLookEndPosFunction : TwoArgFunction() {
+        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
+            return if (arg1?.istable() == true && arg2?.isnumber() == true) {
+                // Если передан target и distance
+                val targetX = arg1.get("x").optdouble(0.0)
+                val targetY = arg1.get("y").optdouble(0.0)
+                val targetZ = arg1.get("z").optdouble(0.0)
+                val distance = arg2.todouble()
+
+                val target = Vec3d(targetX, targetY, targetZ)
+                val endPos = PlayerUtils.getLookEndPos(target, distance.toFloat())
+
+                val table = LuaValue.tableOf()
+                table.set("x", LuaValue.valueOf(endPos.x))
+                table.set("y", LuaValue.valueOf(endPos.y))
+                table.set("z", LuaValue.valueOf(endPos.z))
+                table
+            } else if (arg1?.isnumber() == true) {
+                // Если передан только distance (от текущего взгляда)
+                val distance = arg1.todouble()
+                val endPos = PlayerUtils.getLookEndPos(distance.toFloat())
+
+                val table = LuaValue.tableOf()
+                table.set("x", LuaValue.valueOf(endPos.x))
+                table.set("y", LuaValue.valueOf(endPos.y))
+                table.set("z", LuaValue.valueOf(endPos.z))
+                table
+            } else {
+                LuaValue.NIL
+            }
         }
     }
 
