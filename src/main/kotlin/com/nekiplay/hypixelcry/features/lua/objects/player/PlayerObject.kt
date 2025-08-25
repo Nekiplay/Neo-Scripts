@@ -75,7 +75,7 @@ class PlayerObject : LuaValue() {
                     table.set("type", "block")
                     table.set("x", blockPos.getX())
                     table.set("y", blockPos.getY())
-                    table.set("z", blockPos.getZ()))
+                    table.set("z", blockPos.getZ())
                     return table
                 }
                 else if (raycast?.type == HitResult.Type.ENTITY && raycast is EntityHitResult) {
