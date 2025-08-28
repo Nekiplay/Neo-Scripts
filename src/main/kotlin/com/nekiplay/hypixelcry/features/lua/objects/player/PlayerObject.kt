@@ -72,9 +72,10 @@ class PlayerObject : LuaValue() {
                 if (raycast?.type == HitResult.Type.BLOCK && raycast is BlockHitResult) {
                     val table = LuaValue.tableOf()
                     val blockPos = BlockPos(raycast.blockPos.x, raycast.blockPos.y, raycast.blockPos.z)
-                    val state = mc.world?.getBlockState(blockPos)
                     table.set("type", "block")
-                    table.set("data", BlockUtil.ToLua(blockPos, state))
+                    table.set("x", blockPos.getX())
+                    table.set("y", blockPos.getY())
+                    table.set("z", blockPos.getZ())
                     return table
                 }
                 else if (raycast?.type == HitResult.Type.ENTITY && raycast is EntityHitResult) {
