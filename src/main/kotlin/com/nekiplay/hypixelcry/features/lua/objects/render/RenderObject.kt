@@ -95,18 +95,13 @@ class RenderObject(private val context: WorldRenderContext?): LuaValue() {
 
                 val color = if (table.get("color").isnumber()) table.get("color").toint() else 0
 
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
                 val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
                 val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
                 val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
 
                 val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
 
-                val colorComponents = floatArrayOf(
-                    red.toFloat() / 255.0f,
-                    green.toFloat() / 255.0f,
-                    blue.toFloat() / 255.0f,
-                )
+                val hexColor = (red shl 16) or (green shl 8) or blue
 
                 if (color != 0) {
                     RenderHelper.renderText(
@@ -124,8 +119,7 @@ class RenderObject(private val context: WorldRenderContext?): LuaValue() {
                         context,
                         Text.of(text.toString()).asOrderedText(),
                         Vec3d(x, y, z),
-                        alpha.toFloat() / 255.0f,
-                        colorComponents,
+                        hexColor,
                         scale,
                         0f,
                         throughWalls
