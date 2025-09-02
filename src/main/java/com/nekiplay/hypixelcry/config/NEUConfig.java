@@ -10,16 +10,16 @@ import io.github.notenoughupdates.moulconfig.Config;
 import io.github.notenoughupdates.moulconfig.Social;
 import io.github.notenoughupdates.moulconfig.annotations.Category;
 import io.github.notenoughupdates.moulconfig.common.MyResourceLocation;
+import io.github.notenoughupdates.moulconfig.common.text.StructuredText;
 
 import java.util.Arrays;
 import java.util.List;
 
 public class NEUConfig extends Config {
     @Override
-    public String getTitle() {
-        return "§6Hypixel Cry §7v" + "1.1.1";
+    public StructuredText getTitle() {
+        return StructuredText.of("§6Hypixel Cry §7v" + "1.1.1");
     }
-
 
     @Override
     public void saveNow() {
@@ -34,8 +34,8 @@ public class NEUConfig extends Config {
             }
 
             @Override
-            public List<String> getTooltip() {
-                return Arrays.asList(name, "§7Open " + link);
+            public List<StructuredText> getTooltip() {
+                return List.of(StructuredText.of("§7Open " + link));
             }
 
             @Override
