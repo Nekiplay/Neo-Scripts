@@ -6,6 +6,7 @@ import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
 import com.nekiplay.hypixelcry.features.lua.objects.modules.PathFinderRendererObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.features.lua.objects.world.WorldObject
+import com.nekiplay.hypixelcry.utils.misc.input.KeyAction
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaValue
@@ -22,6 +23,7 @@ class LuaManager() {
 
     private val clientTickCallbacks = CopyOnWriteArrayList<LuaValue>()
     private val renderWorldCallbacks = CopyOnWriteArrayList<LuaValue>()
+    private val keyEvetCallbacks = CopyOnWriteArrayList<LuaValue>()
 
     init {
         registerCustomFunctions()
@@ -59,7 +61,7 @@ class LuaManager() {
         })
     }
 
-    // Методы добавления callback'ов
+    // Methods for adding callbacks
     fun addClientTickCallback(callback: LuaValue): Boolean {
         if (callback.isfunction()) {
             clientTickCallbacks.add(callback)
@@ -76,7 +78,15 @@ class LuaManager() {
         return false
     }
 
-    // Методы удаления callback'ов
+    fun addKeyEventCallback(callback: LuaValue): Boolean {
+        if (callback.isfunction()) {
+            keyEvetCallbacks.add(callback)
+            return true
+        }
+        return false
+    }
+
+    // Methods for removing callbacks
     fun removeClientTickCallback(callback: LuaValue): Boolean {
         return clientTickCallbacks.remove(callback)
     }
@@ -84,21 +94,26 @@ class LuaManager() {
         return renderWorldCallbacks.remove(callback)
     }
 
-    // Методы очистки всех callback'ов
+    fun removeKeyEventCallback(callback: LuaValue): Boolean {
+        return keyEvetCallbacks.remove(callback)
+    }
+
+    // Methods to clear all callbacks
     fun clearAllCallbacks() {
         clientTickCallbacks.clear()
         renderWorldCallbacks.clear()
+        keyEvetCallbacks.clear()
     }
 
     private fun registerGlobalObjects() {
-        // Регистрируем глобальные объекты
+        // Register global objects
         globals.set("player", PlayerObject())
         globals.set("world", WorldObject())
         globals.set("modules", ModulesObject())
     }
 
-    // Callback методы
-    // Callback методы для множественных обработчиков
+    // Callback methods
+    // for multiple handlers
     fun onClientTick() {
         clientTickCallbacks.forEach { callback ->
             try {
@@ -116,6 +131,16 @@ class LuaManager() {
                 callback.call(renderContext)
             } catch (e: Exception) {
                 println("Error in world render callback: ${e.message}")
+            }
+        }
+    }
+
+    fun onKeyEvent(key: Int, type: KeyAction) {
+        keyEvetCallbacks.forEach { callback ->
+            try {
+                callback.call(LuaValue.valueOf(key), LuaValue.valueOf(type.name))
+            } catch (e: Exception) {
+                println("Error in key callback: ${e.message}")
             }
         }
     }
