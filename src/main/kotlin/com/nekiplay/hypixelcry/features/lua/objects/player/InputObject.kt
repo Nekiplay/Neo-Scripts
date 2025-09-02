@@ -55,7 +55,7 @@ class InputObject: LuaValue() {
             return if (arg != null && arg.isboolean()) {
                 val sprintKey: KeyBinding = client.options.sprintKey
                 sprintKey.isPressed = arg.toboolean()
-                LuaValue.NIL
+                valueOf(true)
             }
             else {
                 LuaValue.NIL
@@ -68,7 +68,7 @@ class InputObject: LuaValue() {
             return if (arg != null && arg.isboolean()) {
                 val sprintKey: KeyBinding = client.options.forwardKey
                 sprintKey.isPressed = arg.toboolean()
-                LuaValue.NIL
+                valueOf(true)
             }
             else {
                 LuaValue.NIL
@@ -81,7 +81,7 @@ class InputObject: LuaValue() {
             return if (arg != null && arg.isboolean()) {
                 val sprintKey: KeyBinding = client.options.backKey
                 sprintKey.isPressed = arg.toboolean()
-                LuaValue.NIL
+                valueOf(true)
             }
             else {
                 LuaValue.NIL
@@ -94,7 +94,7 @@ class InputObject: LuaValue() {
             return if (arg != null && arg.isboolean()) {
                 val sprintKey: KeyBinding = client.options.leftKey
                 sprintKey.isPressed = arg.toboolean()
-                LuaValue.NIL
+                valueOf(true)
             }
             else {
                 LuaValue.NIL
@@ -107,7 +107,7 @@ class InputObject: LuaValue() {
             return if (arg != null && arg.isboolean()) {
                 val sprintKey: KeyBinding = client.options.rightKey
                 sprintKey.isPressed = arg.toboolean()
-                LuaValue.NIL
+                valueOf(true)
             }
             else {
                 LuaValue.NIL
@@ -120,7 +120,7 @@ class InputObject: LuaValue() {
             return if (arg != null && arg.isboolean()) {
                 val sprintKey: KeyBinding = client.options.jumpKey
                 sprintKey.isPressed = arg.toboolean()
-                LuaValue.NIL
+                valueOf(true)
             }
             else {
                 LuaValue.NIL
@@ -133,7 +133,7 @@ class InputObject: LuaValue() {
             return if (arg != null && arg.isboolean()) {
                 val sprintKey: KeyBinding = client.options.sneakKey
                 sprintKey.isPressed = arg.toboolean()
-                LuaValue.NIL
+                valueOf(true)
             }
             else {
                 LuaValue.NIL
@@ -146,7 +146,7 @@ class InputObject: LuaValue() {
             return if (arg != null && arg.isboolean()) {
                 val sprintKey: KeyBinding = client.options.attackKey
                 sprintKey.isPressed = arg.toboolean()
-                LuaValue.NIL
+                valueOf(true)
             }
             else {
                 LuaValue.NIL
@@ -159,7 +159,7 @@ class InputObject: LuaValue() {
             return if (arg != null && arg.isboolean()) {
                 val sprintKey: KeyBinding = client.options.useKey
                 sprintKey.isPressed = arg.toboolean()
-                LuaValue.NIL
+                valueOf(true)
             }
             else {
                 LuaValue.NIL
@@ -171,14 +171,14 @@ class InputObject: LuaValue() {
     private inner class IsPressedSprintingFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val sprintKey: KeyBinding = client.options.sprintKey
-            return LuaValue.valueOf(sprintKey.isPressed)
+            return valueOf(sprintKey.isPressed)
         }
     }
 
     private inner class IsPressedForwardFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val sprintKey: KeyBinding = client.options.forwardKey
-            return LuaValue.valueOf(sprintKey.isPressed)
+            return valueOf(sprintKey.isPressed)
         }
     }
 
@@ -192,42 +192,42 @@ class InputObject: LuaValue() {
     private inner class IsPressedLeftFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val sprintKey: KeyBinding = client.options.leftKey
-            return LuaValue.valueOf(sprintKey.isPressed)
+            return valueOf(sprintKey.isPressed)
         }
     }
 
     private inner class IsPressedRightFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val sprintKey: KeyBinding = client.options.rightKey
-            return LuaValue.valueOf(sprintKey.isPressed)
+            return valueOf(sprintKey.isPressed)
         }
     }
 
     private inner class IsPressedJumpFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val sprintKey: KeyBinding = client.options.jumpKey
-            return LuaValue.valueOf(sprintKey.isPressed)
+            return valueOf(sprintKey.isPressed)
         }
     }
 
     private inner class IsPressedSneakFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val sprintKey: KeyBinding = client.options.sneakKey
-            return LuaValue.valueOf(sprintKey.isPressed)
+            return valueOf(sprintKey.isPressed)
         }
     }
 
     private inner class IsPressedAttackFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val sprintKey: KeyBinding = client.options.attackKey
-            return LuaValue.valueOf(sprintKey.isPressed)
+            return valueOf(sprintKey.isPressed)
         }
     }
 
     private inner class IsPressedUseFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val sprintKey: KeyBinding = client.options.useKey
-            return LuaValue.valueOf(sprintKey.isPressed)
+            return valueOf(sprintKey.isPressed)
         }
     }
 

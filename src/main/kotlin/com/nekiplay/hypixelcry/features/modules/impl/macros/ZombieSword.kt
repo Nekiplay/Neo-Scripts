@@ -11,6 +11,10 @@ object ZombieSword : BindableClientModule() {
         "ZOMBIE_SWORD"
     )
 
+    override fun get_name(): String {
+        return "Zombie_Sword";
+    }
+
     override fun getKeybind(): Int {
         return config.macros.items.zombieSword.keybind
     }

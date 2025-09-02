@@ -11,6 +11,7 @@
 ### Commands:
 - /cry - Open settings menu
 - /path - Set pathfinder
+- /lua - Lua API control
 
 ### Macros:
 - Auto right click (Chests, Leavers, Skulls)
@@ -23,6 +24,7 @@
 
 ### ESP:
 - Dark Monolith in Dwarden Mines
+- Frozen Courpes (include PathFinder) in Glacite Mineshafts
 
 ### Misc:
 - Lua API

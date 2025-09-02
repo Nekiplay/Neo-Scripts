@@ -1,11 +1,12 @@
-package com.nekiplay.hypixelcry.features.lua.utils.block
+package com.nekiplay.hypixelcry.features.lua.utils
 
+import com.nekiplay.hypixelcry.utils.ItemUtils
 import net.minecraft.item.ItemStack
 import org.luaj.vm2.LuaValue
 
 object ItemStackUtils {
     // Функция для преобразования ItemStack в Lua таблицу
-    public fun ToLua(itemStack: ItemStack?): LuaValue? {
+    fun ToLua(itemStack: ItemStack?): LuaValue? {
         if (itemStack == null || itemStack.isEmpty) {
             return LuaValue.NIL
         }
@@ -17,6 +18,7 @@ object ItemStackUtils {
         table.set("count", LuaValue.valueOf(itemStack.count.toDouble()))
         table.set("max_count", LuaValue.valueOf(itemStack.maxCount.toDouble()))
         table.set("name", LuaValue.valueOf(itemStack.item.name.string))
+        table.set("skyblock_id", LuaValue.valueOf(ItemUtils.getItemId(itemStack)))
 
         // Дополнительные свойства
         table.set("is_damageable", LuaValue.valueOf(itemStack.isDamageable))

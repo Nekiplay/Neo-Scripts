@@ -13,4 +13,8 @@ open class ClientModule {
     open fun init() {
 
     }
+
+    open fun get_name(): String {
+        return "";
+    }
 }

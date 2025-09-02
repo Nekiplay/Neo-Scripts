@@ -114,14 +114,6 @@ public class ESP {
             @ConfigEditorBoolean
             @Expose
             public Property<Boolean> enabledPathFinder = Property.of(true);
-
-            @ConfigOption(
-                    name = "Enable Exit PathFinder",
-                    desc = "Enable Exit PathFinder?"
-            )
-            @ConfigEditorBoolean
-            @Expose
-            public Property<Boolean> enabledExitPathFinder = Property.of(true);
         }
     }
 
@@ -148,6 +140,6 @@ public class ESP {
         )
         @ConfigEditorBoolean
         @Expose
-        public boolean enableSubPoints = false;
+        public boolean enableSubPoints = true;
     }
 }

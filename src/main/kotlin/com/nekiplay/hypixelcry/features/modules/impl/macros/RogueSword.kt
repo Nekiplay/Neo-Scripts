@@ -11,6 +11,10 @@ object RogueSword : BindableClientModule() {
         "ROGUE_SWORD"
     )
 
+    override fun get_name(): String {
+        return "Rogue_Sword";
+    }
+
     override fun getKeybind(): Int {
         return config.macros.items.rogueSword.keybind
     }

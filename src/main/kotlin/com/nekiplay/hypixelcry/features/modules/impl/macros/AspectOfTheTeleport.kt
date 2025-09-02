@@ -14,6 +14,10 @@ object AspectOfTheTeleport : BindableClientModule() {
         "ASPECT_OF_THE_END"
     )
 
+    override fun get_name(): String {
+        return "Aspect_Of_The_Teleports";
+    }
+
     private var timer = 0
     private var enabled = false
 

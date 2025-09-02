@@ -14,6 +14,10 @@ object HealingWands : BindableClientModule() {
         "WAND_OF_HEALING"
     )
 
+    override fun get_name(): String {
+        return "Healing_Wands";
+    }
+
     override fun getKeybind(): Int {
         return config.macros.items.healingWands.keybind
     }

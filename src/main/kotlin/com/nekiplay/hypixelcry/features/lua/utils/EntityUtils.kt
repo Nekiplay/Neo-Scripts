@@ -1,4 +1,4 @@
-package com.nekiplay.hypixelcry.features.lua.utils.block
+package com.nekiplay.hypixelcry.features.lua.utils
 
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import net.minecraft.client.network.ClientPlayerEntity

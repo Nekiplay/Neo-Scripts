@@ -2,13 +2,12 @@ package com.nekiplay.hypixelcry.features.lua.objects.world
 
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.customArgs.FourArgFunction
-import com.nekiplay.hypixelcry.features.lua.utils.block.BlockUtil
-import com.nekiplay.hypixelcry.features.lua.utils.block.EntityUtils
+import com.nekiplay.hypixelcry.features.lua.utils.BlockUtil
+import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.RaycastUtils
 import com.nekiplay.hypixelcry.utils.Rotations
 import net.minecraft.block.Block
-import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.hit.EntityHitResult
 import net.minecraft.util.hit.HitResult
 import net.minecraft.util.math.BlockPos

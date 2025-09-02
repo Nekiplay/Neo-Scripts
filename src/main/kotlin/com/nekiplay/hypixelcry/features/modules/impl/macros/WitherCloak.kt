@@ -11,6 +11,10 @@ object WitherCloak : BindableClientModule() {
         "WITHER_CLOAK"
     )
 
+    override fun get_name(): String {
+        return "Wither_Cloak";
+    }
+
     override fun getKeybind(): Int {
         return config.macros.items.witherCloak.keybind
     }

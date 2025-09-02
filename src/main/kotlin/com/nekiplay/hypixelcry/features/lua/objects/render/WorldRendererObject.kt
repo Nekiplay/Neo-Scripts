@@ -8,7 +8,7 @@ import net.minecraft.util.math.Vec3d
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 
-class RenderObject(private val context: WorldRenderContext?): LuaValue() {
+class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() {
     override fun call(): LuaValue {
         return this
     }
@@ -93,8 +93,6 @@ class RenderObject(private val context: WorldRenderContext?): LuaValue() {
                 val text = if (table.get("text").isstring()) table.get("text").tostring() else ""
                 val scale = if (table.get("scale").isnumber()) table.get("scale").tofloat() else 1f
 
-                val color = if (table.get("color").isnumber()) table.get("color").toint() else 0
-
                 val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
                 val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
                 val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
@@ -103,28 +101,15 @@ class RenderObject(private val context: WorldRenderContext?): LuaValue() {
 
                 val hexColor = (red shl 16) or (green shl 8) or blue
 
-                if (color != 0) {
-                    RenderHelper.renderText(
-                        context,
-                        Text.of(text.toString()).asOrderedText(),
-                        Vec3d(x, y, z),
-                        color,
-                        scale,
-                        0f,
-                        throughWalls
-                    )
-                }
-                else {
-                    RenderHelper.renderText(
-                        context,
-                        Text.of(text.toString()).asOrderedText(),
-                        Vec3d(x, y, z),
-                        hexColor,
-                        scale,
-                        0f,
-                        throughWalls
-                    )
-                }
+                RenderHelper.renderText(
+                    context,
+                    Text.of(text.toString()).asOrderedText(),
+                    Vec3d(x, y, z),
+                    hexColor,
+                    scale,
+                    0f,
+                    throughWalls
+                )
                 return LuaValue.valueOf(true)
             }
             return NIL
@@ -195,8 +180,8 @@ class RenderObject(private val context: WorldRenderContext?): LuaValue() {
         }
     }
 
-    override fun typename(): String = "render"
-    override fun tojstring(): String = "RenderObject"
+    override fun typename(): String = "world_renderer"
+    override fun tojstring(): String = "WorldRenderObject"
     override fun isnil(): Boolean = false
     override fun type(): Int {
         return LuaValue.TUSERDATA

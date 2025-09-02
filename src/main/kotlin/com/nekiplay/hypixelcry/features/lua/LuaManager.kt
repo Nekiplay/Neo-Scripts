@@ -1,8 +1,10 @@
 package com.nekiplay.hypixelcry.features.lua
 
 import com.nekiplay.hypixelcry.HypixelCry
+import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesObject
 import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
-import com.nekiplay.hypixelcry.features.lua.objects.render.RenderObject
+import com.nekiplay.hypixelcry.features.lua.objects.modules.PathFinderRendererObject
+import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.features.lua.objects.world.WorldObject
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
 import org.luaj.vm2.Globals
@@ -14,8 +16,7 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
-class LuaManager(configDir: File) {
-    private val client: MinecraftClient = MinecraftClient.getInstance()
+class LuaManager() {
     private val globals: Globals = JsePlatform.standardGlobals()
     private val persistentGlobals = ConcurrentHashMap<String, LuaValue>()
 
@@ -93,6 +94,7 @@ class LuaManager(configDir: File) {
         // Регистрируем глобальные объекты
         globals.set("player", PlayerObject())
         globals.set("world", WorldObject())
+        globals.set("modules", ModulesObject())
     }
 
     // Callback методы
@@ -109,7 +111,7 @@ class LuaManager(configDir: File) {
 
     fun onRenderTick(context: WorldRenderContext?) {
         renderWorldCallbacks.forEach { callback ->
-            val renderContext = RenderObject(context)
+            val renderContext = WorldRendererObject(context)
             try {
                 callback.call(renderContext)
             } catch (e: Exception) {
@@ -118,16 +120,11 @@ class LuaManager(configDir: File) {
         }
     }
 
-    fun executeScript(script: String): Any? {
-        return try {
-            val chunk = globals.load(script)
-            val result = chunk.call()
-            restoreGlobals()
-            result
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
+    fun executeScript(script: String): Any {
+        val chunk = globals.load(script)
+        val result = chunk.call()
+        restoreGlobals()
+        return result
     }
 
     private fun restoreGlobals() {

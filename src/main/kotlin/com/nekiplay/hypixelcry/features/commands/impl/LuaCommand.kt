@@ -9,27 +9,33 @@ import net.minecraft.command.CommandRegistryAccess
 import net.minecraft.text.Text
 import java.io.File
 
-object LuaFileCommand {
+object LuaCommand {
     fun register(dispatcher: CommandDispatcher<FabricClientCommandSource>, registryAccess: CommandRegistryAccess) {
-        // Используем CommandManager.literal() без типа, так как он будет inferred
-        val luaFileCommand = ClientCommandManager.literal("luaFile")
-            .then(ClientCommandManager.argument("filename", StringArgumentType.string())
+        val luaCommand = ClientCommandManager.literal("lua")
+            .then(ClientCommandManager.literal("clear")
                 .executes { context ->
-                    val filename = StringArgumentType.getString(context, "filename")
-                    executeLuaFile(filename, context.source)
+                    HypixelCry.LUA_MANAGER.clearAllCallbacks()
+                    context.source.sendFeedback(Text.literal("§aAll Lua callback's cleared"))
+                    1
+                }
+            )
+            .then(ClientCommandManager.literal("file")
+                .then(ClientCommandManager.argument("filename", StringArgumentType.string())
+                    .executes { context ->
+                        val filename = StringArgumentType.getString(context, "filename")
+                        executeLuaFile(filename, context.source)
+                        1
+                    }
+                )
+            )
+            .then(ClientCommandManager.literal("list")
+                .executes { context ->
+                    listLuaFiles(context.source)
                     1
                 }
             )
 
-        val luaListCommand = ClientCommandManager.literal("luaList")
-            .executes { context ->
-                listLuaFiles(context.source)
-                1
-            }
-
-        // Регистрируем команды
-        dispatcher.register(luaFileCommand)
-        dispatcher.register(luaListCommand)
+        dispatcher.register(luaCommand)
     }
 
     private fun executeLuaFile(filename: String, source: FabricClientCommandSource) {
@@ -38,27 +44,23 @@ object LuaFileCommand {
 
         if (!scriptsDir.exists()) {
             scriptsDir.mkdirs()
-            source.sendFeedback(Text.literal("§cДиректория скриптов создана: ${scriptsDir.path}"))
+            source.sendFeedback(Text.literal("§cDirectory for scripts: ${scriptsDir.path}"))
             return
         }
 
         val scriptFile = File(scriptsDir, if (filename.endsWith(".lua")) filename else "$filename.lua")
 
         if (!scriptFile.exists()) {
-            source.sendFeedback(Text.literal("§cФайл скрипта не найден: ${scriptFile.name}"))
+            source.sendFeedback(Text.literal("§cScript ${scriptFile.name} not found"))
             return
         }
 
         try {
             val scriptContent = scriptFile.readText()
             val result = luaManager.executeScript(scriptContent)
-
-            source.sendFeedback(Text.literal("§aСкрипт '${scriptFile.name}' выполнен успешно!"))
-            if (result != null) {
-                source.sendFeedback(Text.literal("§7Результат: $result"))
-            }
+            source.sendFeedback(Text.literal("§aScript '${scriptFile.name}' executed successfully, result: '${result}'"))
         } catch (e: Exception) {
-            source.sendFeedback(Text.literal("§cОшибка выполнения скрипта: ${e.message}"))
+            source.sendFeedback(Text.literal("§cScript execution error: ${e.message}"))
             e.printStackTrace()
         }
     }
@@ -67,7 +69,7 @@ object LuaFileCommand {
         val scriptsDir = File("config/hypixelcry/scripts")
 
         if (!scriptsDir.exists() || scriptsDir.listFiles()?.isEmpty() != false) {
-            source.sendFeedback(Text.literal("§7Нет доступных скриптов. Создайте файлы в: ${scriptsDir.path}"))
+            source.sendFeedback(Text.literal("§7No scripts available. Create files in: ${scriptsDir.path}"))
             return
         }
 
@@ -76,11 +78,11 @@ object LuaFileCommand {
         }?.sortedBy { it.name }
 
         if (luaFiles.isNullOrEmpty()) {
-            source.sendFeedback(Text.literal("§7Нет .lua файлов в директории скриптов"))
+            source.sendFeedback(Text.literal("§7No .lua files in scripts directory"))
             return
         }
 
-        source.sendFeedback(Text.literal("§6Доступные скрипты:"))
+        source.sendFeedback(Text.literal("§6Available scripts:"))
         luaFiles.forEach { file ->
             source.sendFeedback(Text.literal("§7- §e${file.name} §7(${file.length()} bytes)"))
         }

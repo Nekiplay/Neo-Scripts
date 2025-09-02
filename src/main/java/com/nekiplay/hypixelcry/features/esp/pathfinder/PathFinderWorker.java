@@ -26,7 +26,7 @@ import java.util.stream.IntStream;
 
 import static com.nekiplay.hypixelcry.HypixelCry.mc;
 
-public class PathFinderRenderer {
+public class PathFinderWorker {
     private static final ExecutorService PATH_FINDER_EXECUTOR = Executors.newFixedThreadPool(12);
     private static final Map<String, PathData> PATHS = new ConcurrentHashMap<>();
     private static final Queue<PathResult> PATH_RESULTS = new ConcurrentLinkedQueue<>();
@@ -60,9 +60,9 @@ public class PathFinderRenderer {
 
     @Init
     public static void init() {
-        WorldRenderEvents.AFTER_TRANSLUCENT.register(PathFinderRenderer::onRenderWorldLast);
-        Scheduler.INSTANCE.scheduleCyclic(PathFinderRenderer::onClientTick, 1);
-        ClientChunkLoadEvent.EVENT.register(PathFinderRenderer::chunkLoad);
+        WorldRenderEvents.AFTER_TRANSLUCENT.register(PathFinderWorker::onRenderWorldLast);
+        Scheduler.INSTANCE.scheduleCyclic(PathFinderWorker::onClientTick, 1);
+        ClientChunkLoadEvent.EVENT.register(PathFinderWorker::chunkLoad);
     }
 
     private static void chunkLoad(ClientWorld clientWorld, Chunk chunk) {
@@ -300,14 +300,14 @@ public class PathFinderRenderer {
         RenderHelper.renderFilled(context, startPos, pathData.color, pathData.color[3], true);
         RenderHelper.renderOutline(context, startPos, pathData.color, 4f, true);
 
-        int r = (int) (pathData.color[0] * 255);
-        int g = (int) (pathData.color[1] * 255);
-        int b = (int) (pathData.color[2] * 255);
+        //int r = (int) (pathData.color[0] * 255);
+        //int g = (int) (pathData.color[1] * 255);
+        //int b = (int) (pathData.color[2] * 255);
 
-        int color = (255 << 24) | (r << 16) | (g << 8) | b;
+        //int color = (255 << 24) | (r << 16) | (g << 8) | b;
 
-        RenderHelper.renderText(context, Text.of(pathData.endText).asOrderedText(), startPos.toCenterPos().add(0, 1, 0), color, 1, 0.5f, true);
-        RenderHelper.renderText(context, Text.of("Start").asOrderedText(), startPos.toCenterPos().add(0, 1.2, 0), color, 1, 1.5f, true);
+        //RenderHelper.renderText(context, Text.of(pathData.endText).asOrderedText(), startPos.toCenterPos().add(0, 1, 0), color, 1, 0.5f, true);
+        //RenderHelper.renderText(context, Text.of("Start").asOrderedText(), startPos.toCenterPos().add(0, 1.2, 0), color, 1, 1.5f, true);
     }
 
     private static void renderEndPoint(PathData pathData, BlockPos endPos, WorldRenderContext context) {
@@ -321,7 +321,6 @@ public class PathFinderRenderer {
         int color = (255 << 24) | (r << 16) | (g << 8) | b;
 
         RenderHelper.renderText(context, Text.of(pathData.endText).asOrderedText(), endPos.toCenterPos().add(0, 1, 0), color, 1, 0.5f, true);
-        RenderHelper.renderText(context, Text.of("End").asOrderedText(), endPos.toCenterPos().add(0, 1.2, 0), color, 1, 1.5f, true);
     }
 
     // API methods

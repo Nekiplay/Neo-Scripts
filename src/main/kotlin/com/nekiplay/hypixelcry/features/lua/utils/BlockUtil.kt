@@ -1,4 +1,4 @@
-package com.nekiplay.hypixelcry.features.lua.utils.block
+package com.nekiplay.hypixelcry.features.lua.utils
 
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import net.minecraft.block.Block
@@ -9,7 +9,7 @@ import org.luaj.vm2.LuaValue
 
 object BlockUtil {
 
-    public fun ToLua(blockPos: BlockPos, state: BlockState?): LuaValue? {
+    fun ToLua(blockPos: BlockPos, state: BlockState?): LuaValue? {
         if (state != null) {
             val block = state.block
             val table = LuaValue.tableOf()

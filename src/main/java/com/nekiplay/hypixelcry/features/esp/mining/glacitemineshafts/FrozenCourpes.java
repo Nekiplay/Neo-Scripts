@@ -4,7 +4,7 @@ import com.nekiplay.hypixelcry.HypixelCry;
 import com.nekiplay.hypixelcry.annotations.Init;
 import com.nekiplay.hypixelcry.config.enums.ESPFeatures;
 import com.nekiplay.hypixelcry.events.SkyblockEvents;
-import com.nekiplay.hypixelcry.features.esp.pathfinder.PathFinderRenderer;
+import com.nekiplay.hypixelcry.features.esp.pathfinder.PathFinderWorker;
 import com.nekiplay.hypixelcry.utils.ItemUtils;
 import com.nekiplay.hypixelcry.utils.Location;
 import com.nekiplay.hypixelcry.utils.SpecialColor;
@@ -34,8 +34,6 @@ public class FrozenCourpes {
     private static boolean isLocationCorrect = false;
 
     private static final Pattern CORPSE_FOUND_PATTERN = Pattern.compile("([A-Z]+) CORPSE LOOT!");
-    private static final Pattern COORDS_PATTERN = Pattern.compile("x: (?<x>-?\\d+), y: (?<y>\\d+), z: (?<z>-?\\d+)");
-
     private static final Map<CorpseType, List<Corpse>> corpsesByType = new EnumMap<>(CorpseType.class);
 
     @Init
@@ -60,8 +58,8 @@ public class FrozenCourpes {
     private static void clearPathFinder() {
         for (List<Corpse> corpses : corpsesByType.values()) {
             for (Corpse corpse : corpses) {
-                if (PathFinderRenderer.hasPath(Integer.toString(corpse.entity.getId()))) {
-                    PathFinderRenderer.removePath(Integer.toString(corpse.entity.getId()));
+                if (PathFinderWorker.hasPath(Integer.toString(corpse.entity.getId()))) {
+                    PathFinderWorker.removePath(Integer.toString(corpse.entity.getId()));
                 }
             }
         }
@@ -97,8 +95,8 @@ public class FrozenCourpes {
                 .min(Comparator.comparingDouble(corpse -> corpse.entity.squaredDistanceTo(MinecraftClient.getInstance().player)))
                 .ifPresentOrElse(
                         corpse -> {
-                            if (PathFinderRenderer.hasPath(Integer.toString(corpse.entity.getId()))) {
-                                PathFinderRenderer.removePath(Integer.toString(corpse.entity.getId()));
+                            if (PathFinderWorker.hasPath(Integer.toString(corpse.entity.getId()))) {
+                                PathFinderWorker.removePath(Integer.toString(corpse.entity.getId()));
                             }
                             LOGGER.info(PREFIX + "Found corpse, marking as found! {}: {}", corpse.entity.getType(), corpse.entity.getBlockPos().toShortString());
                             corpse.found = true;
@@ -129,7 +127,7 @@ public class FrozenCourpes {
             corpses.add(newCorpse);
             if (config.esp.glaciteMineshafts.frozenCourpes.enabledPathFinder.get()) {
                 float[] colorComponents = SpecialColor.toSpecialColorFloatArray(newCorpse.corpseType.color);
-                PathFinderRenderer.addOrUpdatePath(Integer.toString(armorStand.getId()), armorStand.getBlockPos().up(),
+                PathFinderWorker.addOrUpdatePath(Integer.toString(armorStand.getId()), armorStand.getBlockPos().up(),
                     colorComponents, newCorpse.corpseType.name());
             }
         }

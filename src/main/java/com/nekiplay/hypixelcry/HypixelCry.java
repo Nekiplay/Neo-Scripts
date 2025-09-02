@@ -4,8 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.nekiplay.hypixelcry.annotations.Init;
 import com.nekiplay.hypixelcry.config.NEUConfig;
-import com.nekiplay.hypixelcry.features.commands.impl.LuaClearCommand;
-import com.nekiplay.hypixelcry.features.commands.impl.LuaFileCommand;
+import com.nekiplay.hypixelcry.features.commands.impl.LuaCommand;
 import com.nekiplay.hypixelcry.features.modules.ModuleManager;
 import com.nekiplay.hypixelcry.utils.ConfigUtil;
 import com.nekiplay.hypixelcry.utils.Utils;
@@ -93,7 +92,7 @@ public class HypixelCry implements ClientModInitializer {
         driver.warnForPrivateFields = false;
         driver.processConfig(config);
 
-        LUA_MANAGER = new LuaManager(neuDir);
+        LUA_MANAGER = new LuaManager();
 
         Runtime.getRuntime().addShutdownHook(new Thread(HypixelCry::saveConfig));
 
@@ -109,8 +108,7 @@ public class HypixelCry implements ClientModInitializer {
                     })
             );
         });
-        ClientCommandRegistrationCallback.EVENT.register(LuaFileCommand.INSTANCE::register);
-        ClientCommandRegistrationCallback.EVENT.register(LuaClearCommand.INSTANCE::register);
+        ClientCommandRegistrationCallback.EVENT.register(LuaCommand.INSTANCE::register);
 
         init();
 

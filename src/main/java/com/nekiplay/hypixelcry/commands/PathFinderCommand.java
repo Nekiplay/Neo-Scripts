@@ -5,7 +5,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.nekiplay.hypixelcry.HypixelCry;
 import com.nekiplay.hypixelcry.annotations.Init;
-import com.nekiplay.hypixelcry.features.esp.pathfinder.PathFinderRenderer;
+import com.nekiplay.hypixelcry.features.esp.pathfinder.PathFinderWorker;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
@@ -32,7 +32,7 @@ public class PathFinderCommand {
                                                 .then(ClientCommandManager.argument("z", IntegerArgumentType.integer())
                                                         .executes(context -> {
                                                             BlockPos targetPos = getBlockPosFromContext(context);
-                                                            PathFinderRenderer.addOrUpdatePath(CUSTOM_PATH_ID, targetPos, DEFAULT_COLOR, CUSTOM_PATH_ID);
+                                                            PathFinderWorker.addOrUpdatePath(CUSTOM_PATH_ID, targetPos, DEFAULT_COLOR, CUSTOM_PATH_ID);
                                                             sendFeedback(context, HypixelCry.PREFIX + "§aSet path to position: " + targetPos.toShortString());
                                                             return 1;
                                                         })
@@ -42,8 +42,8 @@ public class PathFinderCommand {
                         )
                         .then(ClientCommandManager.literal("clear")
                                 .executes(context -> {
-                                    if (PathFinderRenderer.hasPath(CUSTOM_PATH_ID)) {
-                                        PathFinderRenderer.removePath(CUSTOM_PATH_ID);
+                                    if (PathFinderWorker.hasPath(CUSTOM_PATH_ID)) {
+                                        PathFinderWorker.removePath(CUSTOM_PATH_ID);
                                         sendFeedback(context, HypixelCry.PREFIX + "§aCleared custom path");
                                     } else {
                                         sendFeedback(context, HypixelCry.PREFIX + "§cNo custom path to clear");

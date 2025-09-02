@@ -1,7 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.objects.player
 
-import com.nekiplay.hypixelcry.features.lua.utils.block.BlockUtil
-import com.nekiplay.hypixelcry.features.lua.utils.block.EntityUtils
+import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.PlayerUtils
 import com.nekiplay.hypixelcry.utils.StatusBarTracker
@@ -94,6 +93,7 @@ class PlayerObject : LuaValue() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
                 client.player?.sendMessage(Text.of(message.tojstring()), false)
+                return valueOf(true)
             }
             return NIL
         }
@@ -103,6 +103,7 @@ class PlayerObject : LuaValue() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
                 client.networkHandler?.sendChatMessage(message.tojstring())
+                return valueOf(true)
             }
             return NIL
         }
@@ -112,6 +113,7 @@ class PlayerObject : LuaValue() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
                 client.networkHandler?.sendChatCommand(message.tojstring())
+                return valueOf(true)
             }
             return NIL
         }
@@ -134,6 +136,7 @@ class PlayerObject : LuaValue() {
 
                     player.yaw = yaw
                     player.pitch = pitch
+                    return valueOf(true)
                 }
             }
             return LuaValue.NIL

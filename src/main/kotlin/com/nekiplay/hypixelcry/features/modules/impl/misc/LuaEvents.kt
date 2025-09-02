@@ -18,4 +18,8 @@ object LuaEvents: ClientModule() {
             LUA_MANAGER.onRenderTick(context)
         })
     }
+
+    override fun get_name(): String {
+        return "Lua_Events";
+    }
 }
