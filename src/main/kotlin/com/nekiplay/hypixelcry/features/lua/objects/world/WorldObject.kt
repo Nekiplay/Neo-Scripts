@@ -230,10 +230,10 @@ class WorldObject : LuaValue() {
                         if (distance <= radius * radius) {
                             val state = mc.world?.getBlockState(blockPos)
                             val blockTable = BlockUtil.ToLua(state)
-                            blockTable.set("x", blockPos.x)
-                            blockTable.set("y", blockPos.y)
-                            blockTable.set("z", blockPos.z)
                             if (blockTable != null && !blockTable.isnil()) {
+                                blockTable.set("x", blockPos.x)
+                                blockTable.set("y", blockPos.y)
+                                blockTable.set("z", blockPos.z)
                                 resultTable.set(index++, blockTable)
                             }
                         }
