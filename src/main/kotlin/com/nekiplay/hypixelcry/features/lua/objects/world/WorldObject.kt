@@ -184,7 +184,7 @@ class WorldObject : LuaValue() {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
                 val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
                 val state = mc.world?.getBlockState(blockPos)
-                return BlockUtil.ToLua(blockPos, state);
+                return BlockUtil.ToLua(state);
             }
 
             return LuaValue.NIL
