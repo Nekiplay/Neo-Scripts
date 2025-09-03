@@ -13,14 +13,14 @@
 - /path - Set pathfinder
 - /lua - Lua API control
 
-### Macros:
+### Helpers:
 - Auto right click (Chests, Leavers, Skulls)
 - Auto close chests in dungeons
-- Silent use Healing Wands
-- Silent use Aspect Of The End
-- Silent use Rogue Sword
-- Silent use Wither Cloak
-- Silent use Zombie Sword
+- Bindable use Healing Wands
+- Bindable use Aspect Of The End
+- Bindable use Rogue Sword
+- Bindable use Wither Cloak
+- Bindable use Zombie Sword
 
 ### ESP:
 - Dark Monolith in Dwarden Mines
