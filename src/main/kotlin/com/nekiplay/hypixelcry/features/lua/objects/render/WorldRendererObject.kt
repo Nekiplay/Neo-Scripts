@@ -93,9 +93,9 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                 val text = if (table.get("text").isstring()) table.get("text").tostring() else ""
                 val scale = if (table.get("scale").isnumber()) table.get("scale").tofloat() else 1f
 
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
+                val red = if (table.get("red").isnumber()) table.get("red").toint() else -1
+                val green = if (table.get("green").isnumber()) table.get("green").toint() else -1
+                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else -1
 
                 val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
 
