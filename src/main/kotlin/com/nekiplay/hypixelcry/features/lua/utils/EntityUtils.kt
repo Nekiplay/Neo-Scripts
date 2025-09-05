@@ -9,7 +9,7 @@ import org.luaj.vm2.LuaValue
 
 object EntityUtils {
     // Функция для получения всех сущностей в мире
-    public fun GetAllEntities(): LuaValue {
+    fun GetAllEntities(): LuaValue {
         val entitiesTable = LuaValue.tableOf()
 
         mc.world?.entities?.forEachIndexed { index, entity ->
@@ -20,7 +20,7 @@ object EntityUtils {
     }
 
     // Функция для получения всех живых сущностей в мире
-    public fun GetAllLivingEntities(): LuaValue {
+     fun GetAllLivingEntities(): LuaValue {
         val entitiesTable = LuaValue.tableOf()
 
         mc.world?.entities?.forEachIndexed { index, entity ->

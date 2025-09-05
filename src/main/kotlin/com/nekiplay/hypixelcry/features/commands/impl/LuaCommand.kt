@@ -19,7 +19,7 @@ object LuaCommand {
                     1
                 }
             )
-            .then(ClientCommandManager.literal("file")
+            .then(ClientCommandManager.literal("load")
                 .then(ClientCommandManager.argument("filename", StringArgumentType.string())
                     .executes { context ->
                         val filename = StringArgumentType.getString(context, "filename")
@@ -28,9 +28,24 @@ object LuaCommand {
                     }
                 )
             )
+            .then(ClientCommandManager.literal("unload")
+                .then(ClientCommandManager.argument("filename", StringArgumentType.string())
+                    .executes { context ->
+                        val filename = StringArgumentType.getString(context, "filename")
+                        unloadLuaScript(filename, context.source)
+                        1
+                    }
+                )
+            )
             .then(ClientCommandManager.literal("list")
                 .executes { context ->
                     listLuaFiles(context.source)
+                    1
+                }
+            )
+            .then(ClientCommandManager.literal("loaded")
+                .executes { context ->
+                    listLoadedScripts(context.source)
                     1
                 }
             )
@@ -57,11 +72,22 @@ object LuaCommand {
 
         try {
             val scriptContent = scriptFile.readText()
-            val result = luaManager.executeScript(scriptContent)
+            val result = luaManager.executeScript(scriptContent, scriptFile.nameWithoutExtension)
             source.sendFeedback(Text.literal("§aScript '${scriptFile.name}' executed successfully, result: '${result}'"))
         } catch (e: Exception) {
             source.sendFeedback(Text.literal("§cScript execution error: ${e.message}"))
             e.printStackTrace()
+        }
+    }
+
+    private fun unloadLuaScript(filename: String, source: FabricClientCommandSource) {
+        val luaManager = HypixelCry.LUA_MANAGER
+        val scriptName = if (filename.endsWith(".lua")) filename.removeSuffix(".lua") else filename
+
+        if (luaManager.unloadScript(scriptName)) {
+            source.sendFeedback(Text.literal("§aScript '$scriptName' unloaded successfully"))
+        } else {
+            source.sendFeedback(Text.literal("§cScript '$scriptName' is not loaded or not found"))
         }
     }
 
@@ -84,7 +110,22 @@ object LuaCommand {
 
         source.sendFeedback(Text.literal("§6Available scripts:"))
         luaFiles.forEach { file ->
-            source.sendFeedback(Text.literal("§7- §e${file.name} §7(${file.length()} bytes)"))
+            source.sendFeedback(Text.literal("§7- §e${file.nameWithoutExtension} §7(${file.length()} bytes)"))
+        }
+    }
+
+    private fun listLoadedScripts(source: FabricClientCommandSource) {
+        val luaManager = HypixelCry.LUA_MANAGER
+        val loadedScripts = luaManager.getLoadedScripts()
+
+        if (loadedScripts.isEmpty()) {
+            source.sendFeedback(Text.literal("§7No scripts currently loaded"))
+            return
+        }
+
+        source.sendFeedback(Text.literal("§6Loaded scripts:"))
+        loadedScripts.forEach { scriptName ->
+            source.sendFeedback(Text.literal("§7- §a$scriptName"))
         }
     }
 }

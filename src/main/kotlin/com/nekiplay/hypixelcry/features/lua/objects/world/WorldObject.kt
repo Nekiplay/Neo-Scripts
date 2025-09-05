@@ -1,6 +1,5 @@
 package com.nekiplay.hypixelcry.features.lua.objects.world
 
-import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.customArgs.FourArgFunction
 import com.nekiplay.hypixelcry.features.lua.utils.BlockUtil
 import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
@@ -163,13 +162,35 @@ class WorldObject : LuaValue() {
                 mc.world?.setBlockState(blockPos, blockState)
 
                 mc.worldRenderer.updateBlock(
-                    HypixelCry.mc.world,
+                    mc.world,
                     blockPos,
-                    HypixelCry.mc.world?.getBlockState(blockPos),
+                    mc.world?.getBlockState(blockPos),
                     blockState,
                     0
                 )
                 mc.world?.updateNeighbors(blockPos, blockState.block)
+                return LuaValue.TRUE
+            }
+            else if (arg1?.istable() ?: false) {
+                val x: Int = if (arg1.get("x").isnumber()) arg1.get("x").toint() else 0
+                val y: Int = if (arg1.get("y").isnumber()) arg1.get("y").toint() else 0
+                val z: Int = if (arg1.get("z").isnumber()) arg1.get("z").toint() else 0
+                val id: Int = if (arg1.get("id").isnumber()) arg1.get("id").toint() else 0
+
+                val blockPos = BlockPos(x, y, z)
+                val blockState = Block.getStateFromRawId(id)
+
+                mc.world?.setBlockState(blockPos, blockState)
+
+                mc.worldRenderer.updateBlock(
+                    mc.world,
+                    blockPos,
+                    mc.world?.getBlockState(blockPos),
+                    blockState,
+                    0
+                )
+                mc.world?.updateNeighbors(blockPos, blockState.block)
+                return LuaValue.TRUE
             }
             return LuaValue.NIL
         }
@@ -186,7 +207,14 @@ class WorldObject : LuaValue() {
                 val state = mc.world?.getBlockState(blockPos)
                 return BlockUtil.ToLua(state);
             }
-
+            else if (arg1?.istable() == true) {
+                val x: Int = if (arg1.get("x").isnumber()) arg1.get("x").toint() else 0
+                val y: Int = if (arg1.get("y").isnumber()) arg1.get("y").toint() else 0
+                val z: Int = if (arg1.get("z").isnumber()) arg1.get("z").toint() else 0
+                val blockPos = BlockPos(x, y, z)
+                val state = mc.world?.getBlockState(blockPos)
+                return BlockUtil.ToLua(state);
+            }
             return LuaValue.NIL
         }
     }

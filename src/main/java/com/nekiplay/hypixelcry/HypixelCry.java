@@ -47,6 +47,7 @@ public class HypixelCry implements ClientModInitializer {
     public static MinecraftClient mc = MinecraftClient.getInstance();
     private static HypixelCry INSTANCE;
 
+
     /**
      * Do not instantiate this class. Use {@link #getInstance()} instead.
      */
@@ -84,7 +85,10 @@ public class HypixelCry implements ClientModInitializer {
         if (!scriptsDir.exists()) {
             scriptsDir.mkdir();
         }
-
+        File libsDir = new File(scriptsDir, "libs");
+        if (!libsDir.exists()) {
+            libsDir.mkdir();
+        }
         processor = new MoulConfigProcessor<>(config);
         BuiltinMoulConfigGuis.addProcessors(processor);
         ConfigProcessorDriver driver = new ConfigProcessorDriver(processor);
@@ -124,7 +128,7 @@ public class HypixelCry implements ClientModInitializer {
         if (autoLoadScript.exists()) {
             try {
                 String scriptContent = Files.readString(autoLoadScript.toPath(), StandardCharsets.UTF_8);
-                LUA_MANAGER.executeScript(scriptContent);
+                LUA_MANAGER.executeScript(scriptContent, "autoload");
                 System.out.println("Autoload script executed successfully");
             } catch (Exception e) {
                 System.out.println("Error executing autoload script: " + e.getMessage());
