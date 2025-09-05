@@ -1,6 +1,7 @@
 package com.nekiplay.hypixelcry.features.lua
 
 import com.nekiplay.hypixelcry.HypixelCry
+import com.nekiplay.hypixelcry.features.lua.objects.misc.JsonLib
 import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesObject
 import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
 import com.nekiplay.hypixelcry.features.lua.objects.modules.PathFinderRendererObject
@@ -86,6 +87,8 @@ class LuaManager() {
                 return requireModule(moduleName)
             }
         })
+
+        globals.load(JsonLib());
     }
 
     private fun requireModule(moduleName: String, callingScript: String? = null): LuaValue {
