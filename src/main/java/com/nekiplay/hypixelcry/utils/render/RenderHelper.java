@@ -288,27 +288,6 @@ public class RenderHelper {
         ((VertexConsumerProvider.Immediate) context.consumers()).draw();
     }
 
-    public static void renderText(WorldRenderContext context, OrderedText text, Vec3d pos, float alpha, float[] shaderColor, float scale, float yOffset, boolean throughWalls) {
-        Matrix4f positionMatrix = new Matrix4f();
-        Camera camera = context.camera();
-        Vec3d cameraPos = camera.getPos();
-        TextRenderer textRenderer = CLIENT.textRenderer;
-
-        scale *= 0.025f;
-
-        positionMatrix
-                .translate((float) (pos.getX() - cameraPos.getX()), (float) (pos.getY() - cameraPos.getY()), (float) (pos.getZ() - cameraPos.getZ()))
-                .rotate(camera.getRotation())
-                .scale(scale, -scale, scale);
-
-        float xOffset = -textRenderer.getWidth(text) / 2f;
-
-        int color = ColorHelper.fromFloats(alpha, shaderColor[0], shaderColor[1], shaderColor[2]);
-
-        textRenderer.draw(text, xOffset, yOffset, color, false, positionMatrix, context.consumers(), throughWalls ? TextRenderer.TextLayerType.SEE_THROUGH : TextRenderer.TextLayerType.NORMAL, 0, LightmapTextureManager.MAX_LIGHT_COORDINATE);
-        ((VertexConsumerProvider.Immediate) context.consumers()).draw();
-    }
-
     public static void renderText(WorldRenderContext context, OrderedText text, Vec3d pos, int color, float scale, float yOffset, boolean throughWalls) {
         Matrix4f positionMatrix = new Matrix4f();
         Camera camera = context.camera();

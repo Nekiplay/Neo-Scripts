@@ -19,6 +19,7 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
             "renderOutline" -> RenderOutlineFunction()
             "renderText" -> RenderTextFunction()
             "renderLinesFromPoints" -> RenderLinesFromPointsFunction()
+            "renderLineFromCursor" -> RenderLineFromCursorFunction()
             else -> LuaValue.NIL
         } as LuaValue
     }
@@ -90,26 +91,22 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                 val y: Double = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
                 val z: Double = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
 
-                val text = if (table.get("text").isstring()) table.get("text").tostring() else ""
+                val text = if (table.get("text").isstring()) table.get("text").tojstring() else ""
                 val scale = if (table.get("scale").isnumber()) table.get("scale").tofloat() else 1f
 
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else -1
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else -1
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else -1
+                val color = if (table.get("color").isnumber()) table.get("color").toint() else 0
 
                 val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
+                val pos = Vec3d(x, y, z)
 
-                val hexColor = (red shl 16) or (green shl 8) or blue
-
-                RenderHelper.renderText(
-                    context,
-                    Text.of(text.toString()).asOrderedText(),
-                    Vec3d(x, y, z),
-                    hexColor,
+                RenderHelper.renderText(context,
+                    Text.of(text).asOrderedText(),
+                    pos,
+                    color,
                     scale,
                     0f,
                     throughWalls
-                )
+                );
                 return LuaValue.valueOf(true)
             }
             return NIL
@@ -175,6 +172,42 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                         return LuaValue.valueOf(true)
                     }
                 }
+            }
+            return NIL
+        }
+    }
+
+    private inner class RenderLineFromCursorFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable() && context != null) {
+                val x: Double = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
+                val y: Double = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
+                val z: Double = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
+
+                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
+                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
+                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
+                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
+
+                val lineWidth = if (table.get("line_width").isnumber()) table.get("line_width").tofloat() else 1.0f
+
+                val colorComponents = floatArrayOf(
+                    red.toFloat() / 255.0f,
+                    green.toFloat() / 255.0f,
+                    blue.toFloat() / 255.0f,
+                )
+                val alphah: Float =  alpha.toFloat() / 255.0f
+
+                val pos = Vec3d(x, y, z)
+
+                RenderHelper.renderLineFromCursor(
+                    context,
+                    pos,
+                    colorComponents,
+                    alphah,
+                    lineWidth,
+                );
+                return LuaValue.valueOf(true)
             }
             return NIL
         }
