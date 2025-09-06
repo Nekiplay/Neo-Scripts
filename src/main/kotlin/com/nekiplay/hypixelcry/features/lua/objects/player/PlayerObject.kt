@@ -20,8 +20,6 @@ import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 
 class PlayerObject : LuaValue() {
-    private val client: MinecraftClient = MinecraftClient.getInstance()
-
     override fun call(): LuaValue {
         return this
     }
@@ -92,7 +90,7 @@ class PlayerObject : LuaValue() {
     private inner class AddChatMessageFunction : OneArgFunction() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
-                client.player?.sendMessage(Text.of(message.tojstring()), false)
+                mc.player?.sendMessage(Text.of(message.tojstring()), false)
                 return valueOf(true)
             }
             return NIL
@@ -102,7 +100,7 @@ class PlayerObject : LuaValue() {
     private inner class SendChatMessageFunction : OneArgFunction() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
-                client.networkHandler?.sendChatMessage(message.tojstring())
+                mc.networkHandler?.sendChatMessage(message.tojstring())
                 return valueOf(true)
             }
             return NIL
@@ -112,7 +110,7 @@ class PlayerObject : LuaValue() {
     private inner class SendChatCommandFunction : OneArgFunction() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
-                client.networkHandler?.sendChatCommand(message.tojstring())
+                mc.networkHandler?.sendChatCommand(message.tojstring())
                 return valueOf(true)
             }
             return NIL
@@ -122,7 +120,7 @@ class PlayerObject : LuaValue() {
     private inner class SetPlayerRotationFunction : TwoArgFunction() {
         override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
             if (arg1.isnumber() && arg2.isnumber()) {
-                val player = client.player
+                val player = mc.player
                 if (player != null) {
                     // Ограничиваем yaw в диапазоне -180° до 180°
                     var yaw = arg1.tofloat()
@@ -136,8 +134,9 @@ class PlayerObject : LuaValue() {
 
                     player.yaw = yaw
                     player.pitch = pitch
-                    return valueOf(true)
+                    return TRUE
                 }
+                return FALSE
             }
             return LuaValue.NIL
         }
@@ -145,7 +144,7 @@ class PlayerObject : LuaValue() {
 
     private inner class GetPlayerRotationFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val player = client.player;
+            val player = mc.player;
             return if (player != null) {
                 val table = LuaValue.tableOf()
                 table.set("yaw", LuaValue.valueOf(player.yaw.toDouble()))
@@ -159,7 +158,7 @@ class PlayerObject : LuaValue() {
 
     private inner class GetPlayerPosFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val player = client.player
+            val player = mc.player
             return if (player != null) {
                 val table = LuaValue.tableOf()
                 table.set("x", LuaValue.valueOf(player.x))
@@ -174,7 +173,7 @@ class PlayerObject : LuaValue() {
 
     private inner class GetPlayerNameFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return LuaString.valueOf(client.player?.name?.string ?: "Unknown")
+            return LuaString.valueOf(mc.player?.name?.string ?: "Unknown")
         }
     }
 
@@ -199,7 +198,7 @@ class PlayerObject : LuaValue() {
             return if (Utils.isOnSkyblock()) {
                 LuaValue.valueOf(StatusBarTracker.getHealth().value())
             } else {
-                LuaValue.valueOf((client.player?.health)?.toDouble() ?: 0.0)
+                LuaValue.valueOf((mc.player?.health)?.toDouble() ?: 0.0)
             }
         }
     }
@@ -246,19 +245,19 @@ class PlayerObject : LuaValue() {
 
     private inner class IsPlayerSneakingFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return LuaValue.valueOf(client.player?.isSneaking ?: false)
+            return LuaValue.valueOf(mc.player?.isSneaking ?: false)
         }
     }
 
     private inner class IsPlayerSprintingFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return LuaValue.valueOf(client.player?.isSprinting ?: false)
+            return LuaValue.valueOf(mc.player?.isSprinting ?: false)
         }
     }
 
     private inner class IsPlayerOnGroundFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return LuaValue.valueOf(client.player?.isOnGround ?: false)
+            return LuaValue.valueOf(mc.player?.isOnGround ?: false)
         }
     }
 

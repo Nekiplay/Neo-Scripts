@@ -35,6 +35,8 @@ class InputObject: LuaValue() {
             "setPressedUse" -> SetPressedUseFunction()
 
             // Getters
+            "getSelectedSlot" -> GetSelectedSlotFunction()
+
             // KeyBoard
             "isPressedSprinting" -> IsPressedSprintingFunction()
             "isPressedJump" -> IsPressedJumpFunction()
@@ -219,6 +221,13 @@ class InputObject: LuaValue() {
     }
 
     // Getters
+    private inner class GetSelectedSlotFunction : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            return valueOf(mc.player?.inventory?.selectedSlot ?: 0)
+        }
+    }
+
+
     private inner class IsPressedSprintingFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val sprintKey: KeyBinding = client.options.sprintKey
