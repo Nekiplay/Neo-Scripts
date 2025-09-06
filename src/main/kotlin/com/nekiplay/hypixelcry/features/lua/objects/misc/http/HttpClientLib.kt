@@ -10,6 +10,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.luaj.vm2.lib.OneArgFunction
+import org.luaj.vm2.lib.ThreeArgFunction
+import org.luaj.vm2.lib.ZeroArgFunction
 import java.net.URI
 
 class HttpClientLib : TwoArgFunction() {
@@ -28,6 +31,7 @@ class HttpClientLib : TwoArgFunction() {
         http.set("get_async", getAsyncFunction())
         http.set("get_async_with_headers", getAsyncWithHeadersFunction())
         http.set("get_async_callback", getAsyncCallbackFunction())
+        http.set("get_async_with_headers_callback", getAsyncWithHeadersCallbackFunction())
 
         env.set("http", http)
         return http
@@ -129,14 +133,42 @@ class HttpClientLib : TwoArgFunction() {
                             val response = withContext(Dispatchers.IO) {
                                 executeGetRequest(url.checkjstring(), 5000, emptyMap())
                             }
-                            callback.call(LuaValue.valueOf(response))
+                            // Вызываем callback с результатом (первый аргумент) и nil вместо ошибки (второй аргумент)
+                            callback.call(LuaValue.valueOf(response), LuaValue.NIL)
                         } catch (e: Exception) {
+                            // Вызываем callback с nil вместо результата и ошибкой
                             callback.call(LuaValue.NIL, LuaValue.valueOf("Error: ${e.message}"))
                         }
                     }
                     LuaValue.TRUE
                 } else {
                     throw LuaError("Second argument must be a function for callback")
+                }
+            }
+        }
+    }
+
+    // Асинхронный GET с заголовками и callback-функцией
+    private fun getAsyncWithHeadersCallbackFunction(): LuaValue {
+        return object : ThreeArgFunction() {
+            override fun call(url: LuaValue, headersTable: LuaValue, callback: LuaValue): LuaValue {
+                return if (callback.isfunction()) {
+                    coroutineScope.launch {
+                        try {
+                            val headers = parseHeaders(headersTable)
+                            val response = withContext(Dispatchers.IO) {
+                                executeGetRequest(url.checkjstring(), 5000, headers)
+                            }
+                            // Вызываем callback с результатом и nil вместо ошибки
+                            callback.call(LuaValue.valueOf(response), LuaValue.NIL)
+                        } catch (e: Exception) {
+                            // Вызываем callback с nil вместо результата и ошибкой
+                            callback.call(LuaValue.NIL, LuaValue.valueOf("Error: ${e.message}"))
+                        }
+                    }
+                    LuaValue.TRUE
+                } else {
+                    throw LuaError("Third argument must be a function for callback")
                 }
             }
         }
@@ -177,5 +209,66 @@ class HttpClientLib : TwoArgFunction() {
             }
         }
         return headers
+    }
+}
+
+// Класс для асинхронных результатов
+class AsyncResult(private val executor: (AsyncCallback) -> Unit) {
+    fun asLuaValue(): LuaValue {
+        val resultTable = LuaValue.tableOf()
+        resultTable.set("await", awaitFunction())
+        resultTable.set("then", thenFunction())
+        return resultTable
+    }
+
+    private fun awaitFunction(): LuaValue {
+        return object : ZeroArgFunction() {
+            override fun call(): LuaValue {
+                var result: LuaValue? = null
+                var error: LuaValue? = null
+                val latch = java.util.concurrent.CountDownLatch(1)
+
+                executor(object : AsyncCallback {
+                    override fun onSuccess(value: LuaValue) {
+                        result = value
+                        latch.countDown()
+                    }
+
+                    override fun onError(errorValue: LuaValue) {
+                        error = errorValue
+                        latch.countDown()
+                    }
+                })
+
+                latch.await()
+
+                return if (error != null) {
+                    throw LuaError(error!!.tojstring())
+                } else {
+                    result ?: LuaValue.NIL
+                }
+            }
+        }
+    }
+
+    private fun thenFunction(): LuaValue {
+        return object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                if (callback.isfunction()) {
+                    executor(object : AsyncCallback {
+                        override fun onSuccess(value: LuaValue) {
+                            // Вызываем callback с результатом и nil вместо ошибки
+                            callback.call(value, LuaValue.NIL)
+                        }
+
+                        override fun onError(errorValue: LuaValue) {
+                            // Вызываем callback с nil вместо результата и ошибкой
+                            callback.call(LuaValue.NIL, errorValue)
+                        }
+                    })
+                }
+                return LuaValue.NIL
+            }
+        }
     }
 }
