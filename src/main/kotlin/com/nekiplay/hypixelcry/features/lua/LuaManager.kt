@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.features.lua
 
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.misc.JsonLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
 import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesObject
 import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
 import com.nekiplay.hypixelcry.features.lua.objects.modules.PathFinderRendererObject
@@ -69,6 +70,11 @@ class LuaManager() {
                 return LuaValue.valueOf(addWorldRendererCallback(callback))
             }
         })
+        globals.set("registerKeyEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(addKeyEventCallback(callback))
+            }
+        })
 
         globals.set("unregisterClientTick", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
@@ -80,6 +86,11 @@ class LuaManager() {
                 return LuaValue.valueOf(removeWorldRendererCallback(callback))
             }
         })
+        globals.set("unregisterKeyEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(removeKeyEventCallback(callback))
+            }
+        })
 
         globals.set("require", object : OneArgFunction() {
             override fun call(modname: LuaValue): LuaValue {
@@ -88,7 +99,8 @@ class LuaManager() {
             }
         })
 
-        globals.load(JsonLib());
+        globals.load(JsonLib())
+        globals.load(HttpClientLib())
     }
 
     private fun requireModule(moduleName: String, callingScript: String? = null): LuaValue {
