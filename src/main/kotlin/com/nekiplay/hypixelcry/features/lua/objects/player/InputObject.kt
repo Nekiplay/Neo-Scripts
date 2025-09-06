@@ -18,6 +18,8 @@ class InputObject: LuaValue() {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             // Setters
+            "setSelectedSlot" -> SetSelectedSlotFunction()
+
             // KeyBoard
             "setPressedSprinting" -> SetPressedSprintingFunction()
             "setPressedJump" -> SetPressedJumpFunction()
@@ -51,6 +53,27 @@ class InputObject: LuaValue() {
     }
 
     // Setters
+    private inner class SetSelectedSlotFunction : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue? {
+            return if (arg != null && arg.isnumber()) {
+                val slot = arg.toint()
+                // Проверяем, что слот в пределах хотбара (0-8)
+                if (slot in 0..8) {
+                    if (mc.currentScreen == null) {
+                        mc.player?.inventory?.selectedSlot = slot
+                        return TRUE
+                    }
+                    FALSE
+                } else {
+                    // Возвращаем FALSE если слот вне диапазона
+                    FALSE
+                }
+            } else {
+                LuaValue.NIL
+            }
+        }
+    }
+
     private inner class SetPressedSprintingFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
             return if (arg != null && arg.isboolean()) {
