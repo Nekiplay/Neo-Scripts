@@ -49,10 +49,12 @@ class AsyncResult(private val executor: (AsyncCallback) -> Unit) {
                 if (callback.isfunction()) {
                     executor(object : AsyncCallback {
                         override fun onSuccess(value: LuaValue) {
-                            callback.call(value)
+                            // Вызываем callback с результатом и nil вместо ошибки
+                            callback.call(value, LuaValue.NIL)
                         }
 
                         override fun onError(errorValue: LuaValue) {
+                            // Вызываем callback с nil вместо результата и ошибкой
                             callback.call(LuaValue.NIL, errorValue)
                         }
                     })
