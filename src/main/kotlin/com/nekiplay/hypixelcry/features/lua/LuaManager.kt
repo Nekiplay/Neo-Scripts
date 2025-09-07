@@ -1,12 +1,10 @@
 package com.nekiplay.hypixelcry.features.lua
 
 import com.nekiplay.hypixelcry.HypixelCry
-import com.nekiplay.hypixelcry.features.lua.objects.misc.FileSystemLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.JsonLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
 import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesObject
 import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
-import com.nekiplay.hypixelcry.features.lua.objects.modules.PathFinderRendererObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.features.lua.objects.world.WorldObject
 import com.nekiplay.hypixelcry.utils.misc.input.KeyAction
@@ -16,10 +14,10 @@ import net.fabricmc.loader.api.FabricLoader
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.jse.JsePlatform
-import net.minecraft.client.MinecraftClient
 import org.luaj.vm2.LuaError
 import org.luaj.vm2.lib.OneArgFunction
 import java.io.File
+import java.io.StringReader
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -45,8 +43,6 @@ class LuaManager() {
         add(configDir.resolve("hypixelcry/scripts/lib/").toString() + "/")
     }
 
-    private val fileSystemLib = FileSystemLib()
-
     private val scriptCallbacks = ConcurrentHashMap<String, MutableList<LuaValue>>()
     private val scriptPersistentGlobals = ConcurrentHashMap<String, ConcurrentHashMap<String, LuaValue>>()
 
@@ -60,7 +56,6 @@ class LuaManager() {
         // Регистрируем библиотеки
         globals.load(JsonLib())
         globals.load(HttpClientLib())
-        fileSystemLib.call(LuaValue.NIL, globals) // Регистрируем filesystem библиотеку
     }
 
     private fun registerCustomFunctions(globals: Globals) {
@@ -128,7 +123,16 @@ class LuaManager() {
         try {
             // Загружаем и выполняем модуль
             val inputStream = moduleFile.inputStream()
-            val chunk = globals.load(inputStream, moduleName, "t", globals)
+
+            // Определяем тип файла по расширению
+            val isCompiled = moduleFile.extension.equals("luac", ignoreCase = true)
+
+            val chunk = if (isCompiled) {
+                globals.load(inputStream, moduleName, "b", globals) // 'b' для бинарных файлов
+            } else {
+                globals.load(inputStream, moduleName, "t", globals) // 't' для текстовых файлов
+            }
+
             val result = chunk.call()
 
             // Сохраняем результат модуля
@@ -150,18 +154,32 @@ class LuaManager() {
     }
 
     private fun findModuleFile(moduleName: String): File? {
-        val fileName = if (moduleName.endsWith(".lua")) moduleName else "$moduleName.lua"
+        // Сначала проверяем .lua файлы
+        val luaFileName = if (moduleName.endsWith(".lua")) moduleName else "$moduleName.lua"
+        val luacFileName = if (moduleName.endsWith(".luac")) moduleName else "$moduleName.luac"
 
         for (path in moduleSearchPaths) {
-            val file = File(path + fileName)
-            if (file.exists() && file.isFile) {
-                return file
+            // Проверяем .lua файл
+            val luaFile = File(path + luaFileName)
+            if (luaFile.exists() && luaFile.isFile) {
+                return luaFile
             }
 
-            // Также проверяем с путем вида moduleName/init.lua
-            val initFile = File("$path$moduleName/init.lua")
-            if (initFile.exists() && initFile.isFile) {
-                return initFile
+            // Проверяем .luac файл
+            val luacFile = File(path + luacFileName)
+            if (luacFile.exists() && luacFile.isFile) {
+                return luacFile
+            }
+
+            // Также проверяем с путем вида moduleName/init.lua и moduleName/init.luac
+            val initLuaFile = File("$path$moduleName/init.lua")
+            if (initLuaFile.exists() && initLuaFile.isFile) {
+                return initLuaFile
+            }
+
+            val initLuacFile = File("$path$moduleName/init.luac")
+            if (initLuacFile.exists() && initLuacFile.isFile) {
+                return initLuacFile
             }
         }
         return null
@@ -265,8 +283,30 @@ class LuaManager() {
         return moduleSearchPaths.toList()
     }
 
-    fun executeScript(script: String, scriptName: String = "anonymous", scriptPath: String? = null): Any {
+    fun executeScriptFile(file: File): Any {
+        if (!file.exists() || !file.isFile) {
+            throw FileNotFoundException("Script file not found: ${file.path}")
+        }
+
+        val scriptContent = if (file.extension.equals("luac", ignoreCase = true)) {
+            // Для скомпилированных файлов читаем как байты
+            file.readBytes().toString(Charsets.ISO_8859_1) // Сохраняем бинарные данные как строку
+        } else {
+            // Для текстовых файлов читаем как строку
+            file.readText()
+        }
+
+        return executeScript(scriptContent, file.nameWithoutExtension)
+    }
+
+    fun executeScript(file: File): Any {
+        if (!file.exists() || !file.isFile) {
+            throw FileNotFoundException("Script file not found: ${file.path}")
+        }
+
         saveCurrentGlobals()
+
+        val scriptName = file.nameWithoutExtension
 
         // Временно сохраняем имя текущего скрипта для отслеживания зависимостей
         val originalRequire = globals.get("require")
@@ -277,13 +317,24 @@ class LuaManager() {
             }
         })
 
-        scriptPath?.let { path ->
-            val scriptDir = File(path).parent ?: ""
-            fileSystemLib.setScriptDirectory(scriptName, scriptDir)
-        }
+        // Устанавливаем путь к скрипту для filesystem lib
+        val scriptDir = file.parent ?: ""
 
         try {
-            val chunk = globals.load(script, scriptName)
+            // Определяем тип скрипта по имени файла
+            val isCompiled = file.name.endsWith(".luac", ignoreCase = true)
+            val mode = if (isCompiled) "b" else "t"
+
+            val chunk = if (isCompiled) {
+                // Для скомпилированных скриптов используем InputStream
+                val inputStream = file.inputStream()
+                globals.load(inputStream, scriptName, mode, globals)
+            } else {
+                // Для текстовых скриптов читаем содержимое и загружаем через StringReader
+                val scriptContent = file.readText()
+                globals.load(StringReader(scriptContent), scriptName)
+            }
+
             val result = chunk.call()
 
             // Сохраняем callbacks для этого скрипта
@@ -333,9 +384,6 @@ class LuaManager() {
             }
             scriptDependencies.remove(scriptName)
         }
-
-        // Удаляем путь к скрипту из filesystem lib
-        fileSystemLib.removeScriptDirectory(scriptName)
 
         // Удаляем persistent globals этого скрипта
         scriptPersistentGlobals.remove(scriptName)
