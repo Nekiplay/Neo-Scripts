@@ -283,22 +283,6 @@ class LuaManager() {
         return moduleSearchPaths.toList()
     }
 
-    fun executeScriptFile(file: File): Any {
-        if (!file.exists() || !file.isFile) {
-            throw FileNotFoundException("Script file not found: ${file.path}")
-        }
-
-        val scriptContent = if (file.extension.equals("luac", ignoreCase = true)) {
-            // Для скомпилированных файлов читаем как байты
-            file.readBytes().toString(Charsets.ISO_8859_1) // Сохраняем бинарные данные как строку
-        } else {
-            // Для текстовых файлов читаем как строку
-            file.readText()
-        }
-
-        return executeScript(scriptContent, file.nameWithoutExtension)
-    }
-
     fun executeScript(file: File): Any {
         if (!file.exists() || !file.isFile) {
             throw FileNotFoundException("Script file not found: ${file.path}")
