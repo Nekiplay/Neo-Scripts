@@ -27,5 +27,5 @@
 - Frozen Courpes (include PathFinder) in Glacite Mineshafts
 
 ### Misc:
-- Lua API
+- [Lua API](https://skillshop.gitbook.io/hypixelcry/)
 
