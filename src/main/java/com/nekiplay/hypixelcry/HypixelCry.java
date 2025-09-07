@@ -127,8 +127,7 @@ public class HypixelCry implements ClientModInitializer {
         File autoLoadScript = new File(dir, "autoload.lua");
         if (autoLoadScript.exists()) {
             try {
-                String scriptContent = Files.readString(autoLoadScript.toPath(), StandardCharsets.UTF_8);
-                LUA_MANAGER.executeScript(scriptContent);
+                LUA_MANAGER.executeScript(autoLoadScript);
                 System.out.println("Autoload script executed successfully");
             } catch (Exception e) {
                 System.out.println("Error executing autoload script: " + e.getMessage());
