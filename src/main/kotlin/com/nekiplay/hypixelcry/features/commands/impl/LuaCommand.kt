@@ -79,8 +79,22 @@ object LuaCommand {
         }
 
         try {
+            val scriptFile = when {
+                filename.endsWith(".lua") || filename.endsWith(".luac") -> File(scriptsDir, filename)
+                else -> {
+                    // Try both extensions, preferring .lua first
+                    val luaFile = File(scriptsDir, "$filename.lua")
+                    if (luaFile.exists()) luaFile else File(scriptsDir, "$filename.luac")
+                }
+            }
+            val loaded = luaManager.unloadScript(scriptFile.nameWithoutExtension)
             val result = luaManager.executeScript(scriptFile)
-            source.sendFeedback(Text.literal("§aScript '${scriptFile.name}' executed successfully, result: '${result}'"))
+            if (!loaded) {
+                source.sendFeedback(Text.literal("§aScript '${scriptFile.name}' executed successfully, result: '${result}'"))
+            }
+            else {
+                source.sendFeedback(Text.literal("§aScript '${scriptFile.name}' restarted successfully, result: '${result}'"))
+            }
         } catch (e: Exception) {
             source.sendFeedback(Text.literal("§cScript execution error: ${e.message}"))
             e.printStackTrace()
@@ -91,8 +105,8 @@ object LuaCommand {
         val luaManager = HypixelCry.LUA_MANAGER
         // Remove either .lua or .luac extension for script name
         val scriptName = when {
-            filename.endsWith(".lua") -> filename.removeSuffix(".lua")
             filename.endsWith(".luac") -> filename.removeSuffix(".luac")
+            filename.endsWith(".lua") -> filename.removeSuffix(".lua")
             else -> filename
         }
 
