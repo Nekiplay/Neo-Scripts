@@ -128,9 +128,23 @@ class LuaManager() {
             val isCompiled = moduleFile.extension.equals("luac", ignoreCase = true)
 
             val chunk = if (isCompiled) {
-                globals.load(inputStream, moduleName, "b", globals) // 'b' для бинарных файлов
+                try {
+                    // Пытаемся загрузить как скомпилированный Lua
+                    globals.load(inputStream, moduleName, "b", globals)
+                } catch (e: Exception) {
+                    // Если не удалось загрузить как скомпилированный, пробуем как текстовый
+                    // (некоторые .luac файлы могут быть просто переименованными .lua)
+                    try {
+                        val content = moduleFile.readText()
+                        globals.load(StringReader(content), moduleName)
+                    } catch (e2: Exception) {
+                        throw LuaError("Failed to load compiled module '$moduleName': ${e.message}. Also failed as text: ${e2.message}")
+                    }
+                }
             } else {
-                globals.load(inputStream, moduleName, "t", globals) // 't' для текстовых файлов
+                // Загружаем как текстовый файл
+                val content = moduleFile.readText()
+                globals.load(StringReader(content), moduleName)
             }
 
             val result = chunk.call()
@@ -301,18 +315,24 @@ class LuaManager() {
             }
         })
 
-        // Устанавливаем путь к скрипту для filesystem lib
-        val scriptDir = file.parent ?: ""
-
         try {
             // Определяем тип скрипта по имени файла
             val isCompiled = file.name.endsWith(".luac", ignoreCase = true)
-            val mode = if (isCompiled) "b" else "t"
 
             val chunk = if (isCompiled) {
-                // Для скомпилированных скриптов используем InputStream
-                val inputStream = file.inputStream()
-                globals.load(inputStream, scriptName, mode, globals)
+                try {
+                    // Пытаемся загрузить как скомпилированный Lua
+                    val inputStream = file.inputStream()
+                    globals.load(inputStream, scriptName, "b", globals)
+                } catch (e: Exception) {
+                    // Если не удалось загрузить как скомпилированный, пробуем как текстовый
+                    try {
+                        val scriptContent = file.readText()
+                        globals.load(StringReader(scriptContent), scriptName)
+                    } catch (e2: Exception) {
+                        throw LuaError("Failed to load compiled script '${file.name}': ${e.message}. Also failed as text: ${e2.message}")
+                    }
+                }
             } else {
                 // Для текстовых скриптов читаем содержимое и загружаем через StringReader
                 val scriptContent = file.readText()
