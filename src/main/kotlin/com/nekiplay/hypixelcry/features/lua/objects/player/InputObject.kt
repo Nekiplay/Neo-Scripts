@@ -50,7 +50,7 @@ class InputObject: LuaValue() {
             // Mouse
             "isPressedAttack" -> IsPressedAttackFunction()
             "isPressedUse" -> IsPressedUseFunction()
-            else -> LuaValue.NIL
+            else -> NIL
         } as LuaValue
     }
 
@@ -67,11 +67,10 @@ class InputObject: LuaValue() {
                     }
                     FALSE
                 } else {
-                    // Возвращаем FALSE если слот вне диапазона
                     FALSE
                 }
             } else {
-                LuaValue.NIL
+                NIL
             }
         }
     }
@@ -87,7 +86,7 @@ class InputObject: LuaValue() {
                 FALSE
             }
             else {
-                LuaValue.NIL
+                NIL
             }
         }
     }
@@ -103,7 +102,7 @@ class InputObject: LuaValue() {
                 FALSE
             }
             else {
-                LuaValue.NIL
+                NIL
             }
         }
     }
@@ -119,7 +118,7 @@ class InputObject: LuaValue() {
                 FALSE
             }
             else {
-                LuaValue.NIL
+                NIL
             }
         }
     }
@@ -135,7 +134,7 @@ class InputObject: LuaValue() {
                 FALSE
             }
             else {
-                LuaValue.NIL
+                NIL
             }
         }
     }
@@ -151,7 +150,7 @@ class InputObject: LuaValue() {
                 FALSE
             }
             else {
-                LuaValue.NIL
+                NIL
             }
         }
     }
@@ -167,7 +166,7 @@ class InputObject: LuaValue() {
                 FALSE
             }
             else {
-                LuaValue.NIL
+                NIL
             }
         }
     }
@@ -183,7 +182,7 @@ class InputObject: LuaValue() {
                 FALSE
             }
             else {
-                LuaValue.NIL
+                NIL
             }
         }
     }
@@ -199,7 +198,7 @@ class InputObject: LuaValue() {
                 FALSE
             }
             else {
-                LuaValue.NIL
+                NIL
             }
         }
     }
@@ -215,7 +214,7 @@ class InputObject: LuaValue() {
                 FALSE
             }
             else {
-                LuaValue.NIL
+                NIL
             }
         }
     }
@@ -245,7 +244,7 @@ class InputObject: LuaValue() {
     private inner class IsPressedBackFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val sprintKey: KeyBinding = client.options.backKey
-            return LuaValue.valueOf(sprintKey.isPressed)
+            return valueOf(sprintKey.isPressed)
         }
     }
 
@@ -296,6 +295,6 @@ class InputObject: LuaValue() {
     override fun tojstring(): String = "InputObject"
     override fun isnil(): Boolean = false
     override fun type(): Int {
-        return LuaValue.TUSERDATA
+        return TUSERDATA
     }
 }

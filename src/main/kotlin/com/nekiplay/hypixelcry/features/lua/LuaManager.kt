@@ -1,6 +1,7 @@
 package com.nekiplay.hypixelcry.features.lua
 
 import com.nekiplay.hypixelcry.HypixelCry
+import com.nekiplay.hypixelcry.features.lua.objects.misc.FileSystemLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.JsonLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
 import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesObject
@@ -44,12 +45,22 @@ class LuaManager() {
         add(configDir.resolve("hypixelcry/scripts/lib/").toString() + "/")
     }
 
+    private val fileSystemLib = FileSystemLib()
+
     private val scriptCallbacks = ConcurrentHashMap<String, MutableList<LuaValue>>()
     private val scriptPersistentGlobals = ConcurrentHashMap<String, ConcurrentHashMap<String, LuaValue>>()
 
     init {
         registerCustomFunctions(globals)
         registerGlobalObjects(globals)
+        registerLibraries(globals)
+    }
+
+    private fun registerLibraries(globals: Globals) {
+        // Регистрируем библиотеки
+        globals.load(JsonLib())
+        globals.load(HttpClientLib())
+        fileSystemLib.call(LuaValue.NIL, globals) // Регистрируем filesystem библиотеку
     }
 
     private fun registerCustomFunctions(globals: Globals) {
@@ -98,9 +109,6 @@ class LuaManager() {
                 return requireModule(moduleName)
             }
         })
-
-        globals.load(JsonLib())
-        globals.load(HttpClientLib())
     }
 
     private fun requireModule(moduleName: String, callingScript: String? = null): LuaValue {
@@ -257,7 +265,7 @@ class LuaManager() {
         return moduleSearchPaths.toList()
     }
 
-    fun executeScript(script: String, scriptName: String = "anonymous"): Any {
+    fun executeScript(script: String, scriptName: String = "anonymous", scriptPath: String? = null): Any {
         saveCurrentGlobals()
 
         // Временно сохраняем имя текущего скрипта для отслеживания зависимостей
@@ -268,6 +276,11 @@ class LuaManager() {
                 return requireModule(moduleName, scriptName) // Передаем имя скрипта
             }
         })
+
+        scriptPath?.let { path ->
+            val scriptDir = File(path).parent ?: ""
+            fileSystemLib.setScriptDirectory(scriptName, scriptDir)
+        }
 
         try {
             val chunk = globals.load(script, scriptName)
@@ -320,6 +333,9 @@ class LuaManager() {
             }
             scriptDependencies.remove(scriptName)
         }
+
+        // Удаляем путь к скрипту из filesystem lib
+        fileSystemLib.removeScriptDirectory(scriptName)
 
         // Удаляем persistent globals этого скрипта
         scriptPersistentGlobals.remove(scriptName)

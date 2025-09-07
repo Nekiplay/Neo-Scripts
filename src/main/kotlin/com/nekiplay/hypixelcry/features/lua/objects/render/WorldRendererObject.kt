@@ -20,7 +20,7 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
             "renderText" -> RenderTextFunction()
             "renderLinesFromPoints" -> RenderLinesFromPointsFunction()
             "renderLineFromCursor" -> RenderLineFromCursorFunction()
-            else -> LuaValue.NIL
+            else -> NIL
         } as LuaValue
     }
 
@@ -47,7 +47,7 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                 val alphaComponent = alpha.toFloat() / 255.0f
 
                 RenderHelper.renderFilled(context, BlockPos(x, y, z), colorComponents, alphaComponent, throughWalls)
-                return LuaValue.valueOf(true)
+                return TRUE
             }
             return NIL
         }
@@ -78,7 +78,7 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
 
 
                 RenderHelper.renderOutline(context, BlockPos(x, y, z), colorComponents, lineWidth, throughWalls)
-                return LuaValue.valueOf(true)
+                return TRUE
             }
             return NIL
         }
@@ -107,7 +107,7 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                     0f,
                     throughWalls
                 );
-                return LuaValue.valueOf(true)
+                return TRUE
             }
             return NIL
         }
@@ -169,7 +169,7 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                             lineWidth,
                             throughWalls
                         )
-                        return LuaValue.valueOf(true)
+                        return TRUE
                     }
                 }
             }
@@ -207,7 +207,7 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                     alphah,
                     lineWidth,
                 );
-                return LuaValue.valueOf(true)
+                return TRUE
             }
             return NIL
         }

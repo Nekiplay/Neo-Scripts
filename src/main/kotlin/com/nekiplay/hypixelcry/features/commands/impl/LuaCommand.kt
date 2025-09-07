@@ -72,7 +72,7 @@ object LuaCommand {
 
         try {
             val scriptContent = scriptFile.readText()
-            val result = luaManager.executeScript(scriptContent, scriptFile.nameWithoutExtension)
+            val result = luaManager.executeScript(scriptContent, scriptFile.nameWithoutExtension, scriptsDir.path)
             source.sendFeedback(Text.literal("§aScript '${scriptFile.name}' executed successfully, result: '${result}'"))
         } catch (e: Exception) {
             source.sendFeedback(Text.literal("§cScript execution error: ${e.message}"))
