@@ -119,16 +119,16 @@ public class HypixelCry implements ClientModInitializer {
         ModuleManager.INSTANCE.registerInbuilt();
 
         Scheduler.INSTANCE.scheduleCyclic(Utils::update, 20);
-        loadStartupScripts();
+        loadStartupScripts(scriptsDir);
     }
 
-    private void loadStartupScripts() {
+    private void loadStartupScripts(File dir) {
         // Автозагрузка скриптов при старте
-        File autoLoadScript = new File("config/hypixelcry/scripts/autoload.lua");
+        File autoLoadScript = new File(dir, "autoload.lua");
         if (autoLoadScript.exists()) {
             try {
                 String scriptContent = Files.readString(autoLoadScript.toPath(), StandardCharsets.UTF_8);
-                LUA_MANAGER.executeScript(scriptContent, "autoload");
+                LUA_MANAGER.executeScript(scriptContent, "autoload", dir.getPath());
                 System.out.println("Autoload script executed successfully");
             } catch (Exception e) {
                 System.out.println("Error executing autoload script: " + e.getMessage());
