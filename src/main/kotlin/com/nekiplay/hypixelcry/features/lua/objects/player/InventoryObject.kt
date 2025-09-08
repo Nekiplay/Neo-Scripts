@@ -17,6 +17,7 @@ class InventoryObject: LuaValue() {
         return when (key.tojstring()) {
             "isChestOpened" -> IsChestOpenedFunction()
             "isDoubleChestOpened" -> IsDoubleChestOpenedFunction()
+            "getChestTitle" -> GetChestTitleFunction()
 
             "getStack" -> GetStackFunction()
 
@@ -24,6 +25,17 @@ class InventoryObject: LuaValue() {
             "rightClick" -> RightClickFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetChestTitleFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val screen = mc.currentScreen
+            return if (screen is GenericContainerScreen) {
+                valueOf(screen.title.string)
+            } else {
+                NIL
+            }
+        }
     }
 
     private inner class LeftClickFunction : OneArgFunction() {
