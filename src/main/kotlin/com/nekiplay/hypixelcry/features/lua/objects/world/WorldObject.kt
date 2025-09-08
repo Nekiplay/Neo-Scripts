@@ -18,7 +18,6 @@ import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 
 class WorldObject : LuaValue() {
-
     override fun call(): LuaValue {
         return this
     }

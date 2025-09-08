@@ -28,6 +28,7 @@ class PlayerObject : LuaValue() {
         return when (key.tojstring()) {
             // Objects
             "input" -> InputObject()
+            "inventory" -> InventoryObject()
 
             // Variables
             "entity" -> EntityUtils.ToLua(mc.player)

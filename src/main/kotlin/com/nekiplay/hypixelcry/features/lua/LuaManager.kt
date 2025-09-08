@@ -25,23 +25,47 @@ class LuaManager() {
     private val globals: Globals = JsePlatform.standardGlobals()
     private val persistentGlobals = ConcurrentHashMap<String, LuaValue>()
 
-    private val clientTickCallbacks = CopyOnWriteArrayList<LuaValue>()
-    private val renderWorldCallbacks = CopyOnWriteArrayList<LuaValue>()
-    private val keyEvetCallbacks = CopyOnWriteArrayList<LuaValue>()
-
+    private val loadedModules = ConcurrentHashMap<String, LuaValue>()
     private val scriptDependencies = ConcurrentHashMap<String, MutableSet<String>>()
     private val moduleDependents = ConcurrentHashMap<String, MutableSet<String>>()
 
-    private val loadedModules = ConcurrentHashMap<String, LuaValue>()
-    private val moduleSearchPaths = CopyOnWriteArrayList<String>().apply {
-        add("libs/")     // дополнительный путь
-        add("lib/")     // дополнительный путь
+    // Use more efficient collections
+    private val clientTickCallbacks = ArrayList<LuaValue>()
+    private val renderWorldCallbacks = ArrayList<LuaValue>()
+    private val keyEventCallbacks = ArrayList<LuaValue>()
 
-        // Добавляем пути из конфигурационной директории
-        val configDir = FabricLoader.getInstance().configDir
-        add(configDir.resolve("hypixelcry/scripts/libs/").toString() + "/")
-        add(configDir.resolve("hypixelcry/scripts/lib/").toString() + "/")
+    // Synchronize only when needed
+    @Volatile private var callbacksLock = Any()
+
+    // Precompute system globals
+    private val systemGlobals = setOf(
+        "print", "require", "registerClientTick", "registerWorldRenderer",
+        "unregisterClientTick", "unregisterWorldRenderer", "player", "world", "modules"
+    )
+
+    // Cache module file extensions
+    private val luaExtensions = arrayOf(".lua", ".luac")
+
+    // Precompute config paths
+    private val configDir = FabricLoader.getInstance().configDir
+    private val baseModuleSearchPaths = arrayOf(
+        "libs/",
+        "lib/",
+        configDir.resolve("hypixelcry/scripts/libs/").toString() + "/",
+        configDir.resolve("hypixelcry/scripts/lib/").toString() + "/"
+    )
+
+    private val moduleSearchPaths = CopyOnWriteArrayList<String>().apply {
+        addAll(baseModuleSearchPaths)
     }
+
+    // Initialize objects once
+    private val playerObj = PlayerObject()
+    private val worldObj = WorldObject()
+    private val modulesObj = ModulesObject()
+
+    private val jsonLib = JsonLib()
+    private val httpLib = HttpClientLib()
 
     private val scriptCallbacks = ConcurrentHashMap<String, MutableList<LuaValue>>()
     private val scriptPersistentGlobals = ConcurrentHashMap<String, ConcurrentHashMap<String, LuaValue>>()
@@ -54,8 +78,8 @@ class LuaManager() {
 
     private fun registerLibraries(globals: Globals) {
         // Регистрируем библиотеки
-        globals.load(JsonLib())
-        globals.load(HttpClientLib())
+        globals.load(jsonLib)
+        globals.load(httpLib)
     }
 
     private fun registerCustomFunctions(globals: Globals) {
@@ -106,94 +130,92 @@ class LuaManager() {
         })
     }
 
+    private fun registerGlobalObjects(global: Globals) {
+        // Register global objects
+        globals.set("player", playerObj)
+        globals.set("world", worldObj)
+        globals.set("modules", modulesObj)
+    }
+
     private fun requireModule(moduleName: String, callingScript: String? = null): LuaValue {
-        // Проверяем, не загружен ли уже модуль
-        loadedModules[moduleName]?.let {
-            // Если модуль уже загружен, добавляем зависимость
+        // Double-checked locking for module loading
+        loadedModules[moduleName]?.let { cachedModule ->
             callingScript?.let { scriptName ->
-                scriptDependencies.getOrPut(scriptName) { mutableSetOf() }.add(moduleName)
-                moduleDependents.getOrPut(moduleName) { mutableSetOf() }.add(scriptName)
+                updateDependencies(scriptName, moduleName)
             }
-            return it
+            return cachedModule
         }
 
-        // Ищем файл модуля
-        val moduleFile = findModuleFile(moduleName) ?: throw LuaError("module '$moduleName' not found")
-
-        try {
-            // Загружаем и выполняем модуль
-            val inputStream = moduleFile.inputStream()
-
-            // Определяем тип файла по расширению
-            val isCompiled = moduleFile.extension.equals("luac", ignoreCase = true)
-
-            val chunk = if (isCompiled) {
-                try {
-                    // Пытаемся загрузить как скомпилированный Lua
-                    globals.load(inputStream, moduleName, "b", globals)
-                } catch (e: Exception) {
-                    // Если не удалось загрузить как скомпилированный, пробуем как текстовый
-                    // (некоторые .luac файлы могут быть просто переименованными .lua)
-                    try {
-                        val content = moduleFile.readText()
-                        globals.load(StringReader(content), moduleName)
-                    } catch (e2: Exception) {
-                        throw LuaError("Failed to load compiled module '$moduleName': ${e.message}. Also failed as text: ${e2.message}")
-                    }
+        return synchronized(loadedModules) {
+            // Check again after synchronization
+            loadedModules[moduleName]?.let { cachedModule ->
+                callingScript?.let { scriptName ->
+                    updateDependencies(scriptName, moduleName)
                 }
-            } else {
-                // Загружаем как текстовый файл
-                val content = moduleFile.readText()
-                globals.load(StringReader(content), moduleName)
+                return@synchronized cachedModule
             }
 
-            val result = chunk.call()
+            val moduleFile = findModuleFile(moduleName) ?: throw LuaError("module '$moduleName' not found")
 
-            // Сохраняем результат модуля
-            loadedModules[moduleName] = result
+            try {
+                val chunk = loadChunk(moduleFile, moduleName)
+                val result = chunk.call()
 
-            // Добавляем зависимость
-            callingScript?.let { scriptName ->
-                scriptDependencies.getOrPut(scriptName) { mutableSetOf() }.add(moduleName)
-                moduleDependents.getOrPut(moduleName) { mutableSetOf() }.add(scriptName)
+                loadedModules[moduleName] = result
+                callingScript?.let { scriptName ->
+                    updateDependencies(scriptName, moduleName)
+                }
+
+                result
+            } catch (e: FileNotFoundException) {
+                throw LuaError("module '$moduleName' not found: ${e.message}")
+            } catch (e: Exception) {
+                throw LuaError("error loading module '$moduleName': ${e.message}")
             }
-
-            return result
-
-        } catch (e: FileNotFoundException) {
-            throw LuaError("module '$moduleName' not found: ${e.message}")
-        } catch (e: Exception) {
-            throw LuaError("error loading module '$moduleName': ${e.message}")
         }
     }
 
+    private fun loadChunk(file: File, name: String): LuaValue {
+        return if (file.extension.equals("luac", ignoreCase = true)) {
+            file.inputStream().use { stream ->
+                globals.load(stream, name, "b", globals)
+            }
+        } else {
+            globals.load(StringReader(file.readText()), name)
+        }
+    }
+
+    private fun updateDependencies(scriptName: String, moduleName: String) {
+        scriptDependencies.getOrPut(scriptName) { mutableSetOf() }.add(moduleName)
+        moduleDependents.getOrPut(moduleName) { mutableSetOf() }.add(scriptName)
+    }
+
+    // Optimized module file finding
     private fun findModuleFile(moduleName: String): File? {
-        // Сначала проверяем .lua файлы
-        val luaFileName = if (moduleName.endsWith(".lua")) moduleName else "$moduleName.lua"
-        val luacFileName = if (moduleName.endsWith(".luac")) moduleName else "$moduleName.luac"
+        val baseName = if (moduleName.endsWith(".lua") || moduleName.endsWith(".luac")) {
+            moduleName.substringBeforeLast('.')
+        } else {
+            moduleName
+        }
 
         for (path in moduleSearchPaths) {
-            // Проверяем .lua файл
-            val luaFile = File(path + luaFileName)
-            if (luaFile.exists() && luaFile.isFile) {
-                return luaFile
+            // Check direct files
+            for (ext in luaExtensions) {
+                val file = File("$path$baseName$ext")
+                if (file.exists() && file.isFile) {
+                    return file
+                }
             }
 
-            // Проверяем .luac файл
-            val luacFile = File(path + luacFileName)
-            if (luacFile.exists() && luacFile.isFile) {
-                return luacFile
-            }
-
-            // Также проверяем с путем вида moduleName/init.lua и moduleName/init.luac
-            val initLuaFile = File("$path$moduleName/init.lua")
-            if (initLuaFile.exists() && initLuaFile.isFile) {
-                return initLuaFile
-            }
-
-            val initLuacFile = File("$path$moduleName/init.luac")
-            if (initLuacFile.exists() && initLuacFile.isFile) {
-                return initLuacFile
+            // Check module/init.* structure
+            val moduleDir = File("$path$baseName/")
+            if (moduleDir.exists() && moduleDir.isDirectory) {
+                for (ext in luaExtensions) {
+                    val initFile = File(moduleDir, "init$ext")
+                    if (initFile.exists() && initFile.isFile) {
+                        return initFile
+                    }
+                }
             }
         }
         return null
@@ -201,84 +223,90 @@ class LuaManager() {
 
     // Methods for adding callbacks
     fun addClientTickCallback(callback: LuaValue): Boolean {
-        if (callback.isfunction()) {
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
             clientTickCallbacks.add(callback)
-            return true
         }
-        return false
+        return true
     }
 
     fun addWorldRendererCallback(callback: LuaValue): Boolean {
-        if (callback.isfunction()) {
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
             renderWorldCallbacks.add(callback)
-            return true
         }
         return false
     }
 
     fun addKeyEventCallback(callback: LuaValue): Boolean {
-        if (callback.isfunction()) {
-            keyEvetCallbacks.add(callback)
-            return true
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
+            return keyEventCallbacks.add(callback)
         }
-        return false
     }
 
     // Methods for removing callbacks
     fun removeClientTickCallback(callback: LuaValue): Boolean {
-        return clientTickCallbacks.remove(callback)
+        synchronized(callbacksLock) {
+            return clientTickCallbacks.remove(callback)
+        }
     }
     fun removeWorldRendererCallback(callback: LuaValue): Boolean {
         return renderWorldCallbacks.remove(callback)
     }
 
     fun removeKeyEventCallback(callback: LuaValue): Boolean {
-        return keyEvetCallbacks.remove(callback)
+        return keyEventCallbacks.remove(callback)
     }
 
     // Methods to clear all callbacks
     fun clearAllCallbacks() {
         clientTickCallbacks.clear()
         renderWorldCallbacks.clear()
-        keyEvetCallbacks.clear()
-    }
-
-    private fun registerGlobalObjects(global: Globals) {
-        // Register global objects
-        globals.set("player", PlayerObject())
-        globals.set("world", WorldObject())
-        globals.set("modules", ModulesObject())
+        keyEventCallbacks.clear()
     }
 
     // Callback methods
     // for multiple handlers
     fun onClientTick() {
-        clientTickCallbacks.forEach { callback ->
+        val callbacks = synchronized(callbacksLock) {
+            clientTickCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
             try {
                 callback.call()
             } catch (e: Exception) {
-                println("Error in client tick callback: ${e.message}")
+                HypixelCry.LOGGER.error("Error in client tick callback", e)
             }
         }
     }
 
     fun onRenderTick(context: WorldRenderContext?) {
-        renderWorldCallbacks.forEach { callback ->
-            val renderContext = WorldRendererObject(context)
+        val callbacks = synchronized(callbacksLock) {
+            renderWorldCallbacks.toTypedArray()
+        }
+
+        val renderContext = WorldRendererObject(context)
+        for (callback in callbacks) {
             try {
                 callback.call(renderContext)
             } catch (e: Exception) {
-                println("Error in world render callback: ${e.message}")
+                HypixelCry.LOGGER.error("Error in world render callback: ${e.message}")
             }
         }
     }
 
     fun onKeyEvent(key: Int, type: KeyAction) {
-        keyEvetCallbacks.forEach { callback ->
+        val callbacks = synchronized(callbacksLock) {
+            keyEventCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
             try {
                 callback.call(LuaValue.valueOf(key), LuaValue.valueOf(type.name))
             } catch (e: Exception) {
-                println("Error in key callback: ${e.message}")
+                HypixelCry.LOGGER.error("Error in key callback: ${e.message}")
             }
         }
     }
@@ -302,53 +330,33 @@ class LuaManager() {
             throw FileNotFoundException("Script file not found: ${file.path}")
         }
 
-        saveCurrentGlobals()
-
         val scriptName = file.nameWithoutExtension
-
-        // Временно сохраняем имя текущего скрипта для отслеживания зависимостей
         val originalRequire = globals.get("require")
-        globals.set("require", object : OneArgFunction() {
-            override fun call(modname: LuaValue): LuaValue {
-                val moduleName = modname.checkjstring()
-                return requireModule(moduleName, scriptName) // Передаем имя скрипта
-            }
-        })
 
         try {
-            // Определяем тип скрипта по имени файла
-            val isCompiled = file.name.endsWith(".luac", ignoreCase = true)
+            // Set up script-specific require
+            globals.set("require", createScriptRequireFunction(scriptName))
 
-            val chunk = if (isCompiled) {
-                try {
-                    // Пытаемся загрузить как скомпилированный Lua
-                    val inputStream = file.inputStream()
-                    globals.load(inputStream, scriptName, "b", globals)
-                } catch (e: Exception) {
-                    // Если не удалось загрузить как скомпилированный, пробуем как текстовый
-                    try {
-                        val scriptContent = file.readText()
-                        globals.load(StringReader(scriptContent), scriptName)
-                    } catch (e2: Exception) {
-                        throw LuaError("Failed to load compiled script '${file.name}': ${e.message}. Also failed as text: ${e2.message}")
-                    }
-                }
-            } else {
-                // Для текстовых скриптов читаем содержимое и загружаем через StringReader
-                val scriptContent = file.readText()
-                globals.load(StringReader(scriptContent), scriptName)
-            }
+            saveCurrentGlobals()
 
+            val chunk = loadChunk(file, scriptName)
             val result = chunk.call()
 
-            // Сохраняем callbacks для этого скрипта
             saveScriptCallbacks(scriptName)
 
             return result
         } finally {
-            // Восстанавливаем оригинальный require
             globals.set("require", originalRequire)
             restoreGlobals()
+        }
+    }
+
+    private fun createScriptRequireFunction(scriptName: String): OneArgFunction {
+        return object : OneArgFunction() {
+            override fun call(modname: LuaValue): LuaValue {
+                val moduleName = modname.checkjstring()
+                return requireModule(moduleName, scriptName)
+            }
         }
     }
 
@@ -356,7 +364,7 @@ class LuaManager() {
         val scriptCallbacksList = mutableListOf<LuaValue>().apply {
             addAll(clientTickCallbacks)
             addAll(renderWorldCallbacks)
-            addAll(keyEvetCallbacks)
+            addAll(keyEventCallbacks)
         }
         scriptCallbacks[scriptName] = scriptCallbacksList
 
@@ -365,23 +373,21 @@ class LuaManager() {
     }
 
     fun unloadScript(scriptName: String): Boolean {
-        // Удаляем callbacks этого скрипта
         val callbacksToRemove = scriptCallbacks[scriptName] ?: return false
 
-        clientTickCallbacks.removeAll(callbacksToRemove)
-        renderWorldCallbacks.removeAll(callbacksToRemove)
-        keyEvetCallbacks.removeAll(callbacksToRemove)
+        synchronized(callbacksLock) {
+            clientTickCallbacks.removeAll(callbacksToRemove)
+            renderWorldCallbacks.removeAll(callbacksToRemove)
+            keyEventCallbacks.removeAll(callbacksToRemove)
+        }
 
-        // Удаляем зависимости скрипта и выгружаем неиспользуемые модули
-        val dependencies = scriptDependencies[scriptName]
-        if (dependencies != null) {
+        // Clean up dependencies
+        scriptDependencies[scriptName]?.let { dependencies ->
             for (moduleName in dependencies) {
-                // Удаляем скрипт из списка зависимых для модуля
-                val dependents = moduleDependents[moduleName]
-                dependents?.remove(scriptName)
+                moduleDependents[moduleName]?.remove(scriptName)
 
-                // Если у модуля больше нет зависимых скриптов, выгружаем его
-                if (dependents.isNullOrEmpty()) {
+                // Unload unused modules
+                if (moduleDependents[moduleName].isNullOrEmpty()) {
                     loadedModules.remove(moduleName)
                     moduleDependents.remove(moduleName)
                 }
@@ -389,11 +395,21 @@ class LuaManager() {
             scriptDependencies.remove(scriptName)
         }
 
-        // Удаляем persistent globals этого скрипта
+        // Clean up stored data
         scriptPersistentGlobals.remove(scriptName)
         scriptCallbacks.remove(scriptName)
 
         return true
+    }
+
+    // Optimized globals management
+    private fun saveCurrentGlobals() {
+        globals.keys().forEach { key ->
+            val name = key.tojstring()
+            if (!name.startsWith("_") && !systemGlobals.contains(name)) {
+                persistentGlobals[name] = globals.get(key)
+            }
+        }
     }
 
     fun getLoadedScripts(): List<String> {
@@ -403,17 +419,6 @@ class LuaManager() {
     public fun restoreGlobals() {
         persistentGlobals.forEach { (name, value) ->
             globals.set(name, value)
-        }
-    }
-
-
-    private fun saveCurrentGlobals() {
-        // Сохраняем только пользовательские переменные, не системные
-        globals.keys().forEach { key ->
-            val name = key.tojstring()
-            if (!name.startsWith("_") && !isSystemGlobal(name)) {
-                persistentGlobals[name] = globals.get(key)
-            }
         }
     }
 
