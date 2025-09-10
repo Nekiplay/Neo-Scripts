@@ -2,14 +2,28 @@ package com.nekiplay.hypixelcry.features.commands.impl
 
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.StringArgumentType
+import com.mojang.brigadier.suggestion.SuggestionProvider
+import com.mojang.brigadier.suggestion.Suggestions
+import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import com.nekiplay.hypixelcry.HypixelCry
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.command.CommandRegistryAccess
 import net.minecraft.text.Text
 import java.io.File
+import java.util.concurrent.CompletableFuture
 
 object LuaCommand {
+    // Провайдер для предложений скриптов
+    private val SCRIPT_SUGGESTION_PROVIDER = SuggestionProvider<FabricClientCommandSource> { context, builder ->
+        suggestScriptFiles(builder)
+    }
+    
+    // Провайдер для предложений загруженных скриптов
+    private val LOADED_SCRIPT_SUGGESTION_PROVIDER = SuggestionProvider<FabricClientCommandSource> { context, builder ->
+        suggestLoadedScripts(builder)
+    }
+
     fun register(dispatcher: CommandDispatcher<FabricClientCommandSource>, registryAccess: CommandRegistryAccess) {
         val luaCommand = ClientCommandManager.literal("lua")
             .then(ClientCommandManager.literal("clear")
@@ -21,6 +35,7 @@ object LuaCommand {
             )
             .then(ClientCommandManager.literal("load")
                 .then(ClientCommandManager.argument("filename", StringArgumentType.string())
+                    .suggests(SCRIPT_SUGGESTION_PROVIDER) // Добавляем авто-дополнение
                     .executes { context ->
                         val filename = StringArgumentType.getString(context, "filename")
                         executeLuaFile(filename, context.source)
@@ -30,6 +45,7 @@ object LuaCommand {
             )
             .then(ClientCommandManager.literal("unload")
                 .then(ClientCommandManager.argument("filename", StringArgumentType.string())
+                    .suggests(LOADED_SCRIPT_SUGGESTION_PROVIDER) // Добавляем авто-дополнение для загруженных скриптов
                     .executes { context ->
                         val filename = StringArgumentType.getString(context, "filename")
                         unloadLuaScript(filename, context.source)
@@ -51,6 +67,44 @@ object LuaCommand {
             )
 
         dispatcher.register(luaCommand)
+    }
+
+    // Функция для предложения файлов скриптов
+    private fun suggestScriptFiles(builder: SuggestionsBuilder): CompletableFuture<Suggestions> {
+        val scriptsDir = File("config/hypixelcry/scripts")
+        
+        if (!scriptsDir.exists()) {
+            return builder.buildFuture()
+        }
+        
+        val input = builder.remainingLowerCase
+        val scriptFiles = scriptsDir.listFiles { file ->
+            file.isFile && (file.name.endsWith(".lua") || file.name.endsWith(".luac"))
+        } ?: emptyArray()
+        
+        scriptFiles.forEach { file ->
+            val fileNameWithoutExtension = file.nameWithoutExtension
+            if (fileNameWithoutExtension.lowercase().startsWith(input)) {
+                builder.suggest(fileNameWithoutExtension)
+            }
+        }
+        
+        return builder.buildFuture()
+    }
+    
+    // Функция для предложения загруженных скриптов
+    private fun suggestLoadedScripts(builder: SuggestionsBuilder): CompletableFuture<Suggestions> {
+        val luaManager = HypixelCry.LUA_MANAGER
+        val loadedScripts = luaManager.getLoadedScripts()
+        val input = builder.remainingLowerCase
+        
+        loadedScripts.forEach { scriptName ->
+            if (scriptName.lowercase().startsWith(input)) {
+                builder.suggest(scriptName)
+            }
+        }
+        
+        return builder.buildFuture()
     }
 
     private fun executeLuaFile(filename: String, source: FabricClientCommandSource) {
