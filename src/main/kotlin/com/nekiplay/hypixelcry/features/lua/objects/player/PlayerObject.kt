@@ -3,6 +3,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.player
 import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.PlayerUtils
+import com.nekiplay.hypixelcry.utils.Rotations
 import com.nekiplay.hypixelcry.utils.StatusBarTracker
 import com.nekiplay.hypixelcry.utils.Utils
 import com.nekiplay.hypixelcry.utils.trackers.ColdTracker
@@ -55,10 +56,25 @@ class PlayerObject : LuaValue() {
 
             "getEyePosition" -> GetEyePositionFunction()
             "getLookEndPos" -> GetLookEndPosFunction()
+            "getDirectionFromYawPitch" -> GetDirectionFromYawPitch()
 
             "raycast" -> RayCastFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetDirectionFromYawPitch : TwoArgFunction() {
+        override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue? {
+            if (arg1.isnumber() && arg2.isnumber()) {
+                val table = tableOf()
+                val rotations = Rotations.getDirectionFromYawPitch(arg1.tofloat(), arg2.tofloat())
+                table.set("x", valueOf(rotations.x))
+                table.set("y", valueOf(rotations.y))
+                table.set("z", valueOf(rotations.z))
+                return table
+            }
+            return NIL
+        }
     }
 
     private inner class RayCastFunction : OneArgFunction() {
@@ -71,15 +87,20 @@ class PlayerObject : LuaValue() {
                     val table = tableOf()
                     val blockPos = BlockPos(raycast.blockPos.x, raycast.blockPos.y, raycast.blockPos.z)
                     table.set("type", "block")
-                    table.set("x", blockPos.getX())
-                    table.set("y", blockPos.getY())
-                    table.set("z", blockPos.getZ())
+                    table.set("x", blockPos.x)
+                    table.set("y", blockPos.y)
+                    table.set("z", blockPos.z)
                     return table
                 }
                 else if (raycast?.type == HitResult.Type.ENTITY && raycast is EntityHitResult) {
                     val table = tableOf()
                     table.set("type", "entity")
                     table.set("data", EntityUtils.ToLua(raycast.entity))
+                    return table
+                }
+                else if (raycast?.type == HitResult.Type.MISS) {
+                    val table = tableOf()
+                    table.set("type", "miss")
                     return table
                 }
             }

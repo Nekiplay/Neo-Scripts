@@ -1,13 +1,7 @@
 package com.nekiplay.hypixelcry.utils;
 
-import com.nekiplay.hypixelcry.annotations.Init;
-import com.nekiplay.hypixelcry.events.SendMovementPacketsEvent;
 import com.nekiplay.hypixelcry.utils.helper.*;
-import com.nekiplay.hypixelcry.utils.misc.Pool;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
-import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
@@ -17,141 +11,6 @@ import java.util.*;
 import static com.nekiplay.hypixelcry.HypixelCry.mc;
 
 public class Rotations {
-    private static final Pool<Rotation> rotationPool = new Pool<>(Rotation::new);
-    private static final List<Rotation> rotations = new ArrayList<>();
-    public static float serverYaw;
-    public static float serverPitch;
-    public static int rotationTimer;
-    private static float preYaw, prePitch;
-    private static int i = 0;
-
-    private static Rotation lastRotation;
-    private static int lastRotationTimer;
-    private static boolean sentLastRotation;
-    public static boolean rotating = false;
-
-    @Init
-    public static void init() {
-        SendMovementPacketsEvent.PRE.register(Rotations::onSendMovementPacketsPre);
-        SendMovementPacketsEvent.POST.register(Rotations::onSendMovementPacketsPost);
-        ClientTickEvents.END_CLIENT_TICK.register(Rotations::onTick);
-    }
-
-    public static void rotate(double yaw, double pitch, int priority, boolean clientSide, Runnable callback) {
-        Rotation rotation = rotationPool.get();
-        rotation.set(yaw, pitch, priority, clientSide, callback);
-
-        int i = 0;
-        for (; i < rotations.size(); i++) {
-            if (priority > rotations.get(i).priority) break;
-        }
-
-        rotations.add(i, rotation);
-    }
-
-    public static void rotate(double yaw, double pitch, int priority, Runnable callback) {
-        rotate(yaw, pitch, priority, false, callback);
-    }
-
-    public static void rotate(double yaw, double pitch, Runnable callback) {
-        rotate(yaw, pitch, 0, callback);
-    }
-
-    public static void rotate(double yaw, double pitch, int priority) {
-        rotate(yaw, pitch, priority, null);
-    }
-
-    public static void rotate(double yaw, double pitch) {
-        rotate(yaw, pitch, 0, null);
-    }
-
-    private static void resetLastRotation() {
-        if (lastRotation != null) {
-            rotationPool.free(lastRotation);
-
-            lastRotation = null;
-            lastRotationTimer = 0;
-        }
-    }
-
-    private static void onSendMovementPacketsPre() {
-        if (mc.cameraEntity != mc.player) return;
-        sentLastRotation = false;
-
-        if (!rotations.isEmpty()) {
-            rotating = true;
-            resetLastRotation();
-
-            Rotation rotation = rotations.get(i);
-            setupMovementPacketRotation(rotation);
-
-            if (rotations.size() > 1) rotationPool.free(rotation);
-
-            i++;
-        } else if (lastRotation != null) {
-            if (lastRotationTimer >= 1) {
-                resetLastRotation();
-                rotating = false;
-            } else {
-                setupMovementPacketRotation(lastRotation);
-                sentLastRotation = true;
-
-                lastRotationTimer++;
-            }
-        }
-    }
-
-    private static void setupMovementPacketRotation(Rotation rotation) {
-        setClientRotation(rotation);
-        setCamRotation(rotation.yaw, rotation.pitch);
-    }
-
-    private static void setClientRotation(Rotation rotation) {
-        preYaw = mc.player.getYaw();
-        prePitch = mc.player.getPitch();
-
-        mc.player.setYaw((float) rotation.yaw);
-        mc.player.setPitch((float) rotation.pitch);
-    }
-
-    private static void onSendMovementPacketsPost() {
-        if (!rotations.isEmpty()) {
-            if (mc.cameraEntity == mc.player) {
-                rotations.get(i - 1).runCallback();
-
-                if (rotations.size() == 1) lastRotation = rotations.get(i - 1);
-
-                resetPreRotation();
-            }
-
-            for (; i < rotations.size(); i++) {
-                Rotation rotation = rotations.get(i);
-
-                setCamRotation(rotation.yaw, rotation.pitch);
-                if (rotation.clientSide) setClientRotation(rotation);
-                rotation.sendPacket();
-                if (rotation.clientSide) resetPreRotation();
-
-                if (i == rotations.size() - 1) lastRotation = rotation;
-                else rotationPool.free(rotation);
-            }
-
-            rotations.clear();
-            i = 0;
-        } else if (sentLastRotation) {
-            resetPreRotation();
-        }
-    }
-
-    private static void resetPreRotation() {
-        mc.player.setYaw(preYaw);
-        mc.player.setPitch(prePitch);
-    }
-
-    private static void onTick(MinecraftClient client) {
-        rotationTimer++;
-    }
-
     public static double getYaw(Entity entity) {
         return mc.player.getYaw() + MathHelper.wrapDegrees((float) Math.toDegrees(Math.atan2(entity.getZ() - mc.player.getZ(), entity.getX() - mc.player.getX())) - 90f - mc.player.getYaw());
     }
@@ -196,33 +55,16 @@ public class Rotations {
         return mc.player.getPitch() + MathHelper.wrapDegrees((float) -Math.toDegrees(Math.atan2(diffY, diffXZ)) - mc.player.getPitch());
     }
 
-    public static void setCamRotation(double yaw, double pitch) {
-        serverYaw = (float) yaw;
-        serverPitch = (float) pitch;
-        rotationTimer = 0;
-    }
+    public static Vec3d getDirectionFromYawPitch(float yaw, float pitch) {
+        // Конвертируем градусы в радианы
+        float yawRad = (float) Math.toRadians(yaw);
+        float pitchRad = (float) Math.toRadians(pitch);
 
-    private static class Rotation {
-        public double yaw, pitch;
-        public int priority;
-        public boolean clientSide;
-        public Runnable callback;
+        // Вычисляем компоненты вектора
+        double x = -MathHelper.sin(yawRad) * MathHelper.cos(pitchRad);
+        double y = -MathHelper.sin(pitchRad);
+        double z = MathHelper.cos(yawRad) * MathHelper.cos(pitchRad);
 
-        public void set(double yaw, double pitch, int priority, boolean clientSide, Runnable callback) {
-            this.yaw = yaw;
-            this.pitch = pitch;
-            this.priority = priority;
-            this.clientSide = clientSide;
-            this.callback = callback;
-        }
-
-        public void sendPacket() {
-            mc.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.LookAndOnGround((float) yaw, (float) pitch, mc.player.isOnGround(), mc.player.horizontalCollision));
-            runCallback();
-        }
-
-        public void runCallback() {
-            if (callback != null) callback.run();
-        }
+        return new Vec3d(x, y, z).normalize();
     }
 }

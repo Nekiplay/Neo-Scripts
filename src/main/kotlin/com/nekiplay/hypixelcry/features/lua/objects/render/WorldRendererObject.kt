@@ -131,7 +131,6 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                     );
                     return TRUE
                 }
-                return FALSE
             }
             return NIL
         }

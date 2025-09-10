@@ -14,12 +14,4 @@ import static com.nekiplay.hypixelcry.HypixelCry.mc;
 @Mixin(PlayerEntityRenderer.class)
 public abstract class PlayerEntityRendererMixin {
     // Rotations
-
-    @Inject(method = "updateRenderState(Lnet/minecraft/client/network/AbstractClientPlayerEntity;Lnet/minecraft/client/render/entity/state/PlayerEntityRenderState;F)V", at = @At("RETURN"))
-    private void updateRenderState$rotations(AbstractClientPlayerEntity abstractClientPlayerEntity, PlayerEntityRenderState playerEntityRenderState, float f, CallbackInfo ci) {
-        if (Rotations.rotating && abstractClientPlayerEntity == mc.player) {
-            playerEntityRenderState.bodyYaw = Rotations.serverYaw;
-            playerEntityRenderState.pitch = Rotations.serverPitch;
-        }
-    }
 }

@@ -11,6 +11,7 @@ import net.minecraft.util.hit.EntityHitResult
 import net.minecraft.util.hit.HitResult
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
+import net.minecraft.world.RaycastContext
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
@@ -55,7 +56,9 @@ class WorldObject : LuaValue() {
                 val startVec = Vec3d(startX, startY, startZ)
                 val endVec = Vec3d(endX, endY, endZ)
 
-                val hitResult = RaycastUtils.rayTraceToBlocks(startVec, endVec, emptyList())
+                val context = RaycastContext(startVec, endVec, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, mc.player)
+
+                val hitResult = mc.world?.raycast(context)
 
                 processHitResult(hitResult)
             } else {
@@ -117,6 +120,11 @@ class WorldObject : LuaValue() {
                     table.set("type", "entity")
                     table.set("data", EntityUtils.ToLua(hitResult.entity))
                 }
+                table
+            }
+            HitResult.Type.MISS -> {
+                val table = tableOf()
+                table.set("type", "miss")
                 table
             }
             else -> NIL
