@@ -37,7 +37,7 @@ public class GhostBlocks {
     }
 
     private static void handleGhostBlocks() {
-        if (mc.player == null || mc.world == null) return;
+        if (mc.player == null || mc.world == null || mc.currentScreen != null) return;
 
         HitResult mouseOver = mc.player.raycast(HypixelCry.config.macros.ghostBlocks.range, 1, false);
         if (mouseOver instanceof BlockHitResult blockHitResult) {

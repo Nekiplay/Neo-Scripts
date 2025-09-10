@@ -20,6 +20,7 @@ object ZombieSword : BindableClientModule() {
     }
 
     override fun press() {
+        if (screen != null) return
         findWand()?.let { slot ->
             interaction?.silentUse(slot)
         }

@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.objects.render
 
+import com.nekiplay.hypixelcry.utils.SpecialColor.toSpecialColorIntNoAlpha
 import com.nekiplay.hypixelcry.utils.render.RenderHelper
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
 import net.minecraft.text.Text
@@ -7,6 +8,10 @@ import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
+import java.awt.Color
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.component3
 
 class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() {
     override fun call(): LuaValue {
@@ -91,23 +96,42 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                 val y: Double = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
                 val z: Double = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
 
-                val text = if (table.get("text").isstring()) table.get("text").tojstring() else ""
+                val text = if (table.get("text").isstring()) table.get("text").tojstring() else "Empty"
                 val scale = if (table.get("scale").isnumber()) table.get("scale").tofloat() else 1f
 
-                val color = if (table.get("color").isnumber()) table.get("color").toint() else 0
+                val red = if (table.get("red").isnumber()) table.get("red").toint() else -0x1
+                val green = if (table.get("green").isnumber()) table.get("green").toint() else -0x1
+                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else -0x1
 
                 val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
                 val pos = Vec3d(x, y, z)
 
-                RenderHelper.renderText(context,
-                    Text.of(text).asOrderedText(),
-                    pos,
-                    color,
-                    scale,
-                    0f,
-                    throughWalls
-                );
-                return TRUE
+                if (red != -0x1 && green != -0x1 && blue != -0x1) {
+                    val (hue, sat, bri) = Color.RGBtoHSB(red, green, blue, null)
+                    RenderHelper.renderText(
+                        context,
+                        Text.of(text).asOrderedText(),
+                        pos,
+                        Color.HSBtoRGB(hue, sat, bri),
+                        scale,
+                        0.5f,
+                        throughWalls
+                    );
+                    return TRUE
+                }
+                else {
+                    RenderHelper.renderText(
+                        context,
+                        Text.of(text).asOrderedText(),
+                        pos,
+                        -0x1,
+                        scale,
+                        0.5f,
+                        throughWalls
+                    );
+                    return TRUE
+                }
+                return FALSE
             }
             return NIL
         }
