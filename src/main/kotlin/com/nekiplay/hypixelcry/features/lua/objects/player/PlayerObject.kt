@@ -58,7 +58,7 @@ class PlayerObject : LuaValue() {
             "getLookEndPos" -> GetLookEndPosFunction()
             "getDirectionFromYawPitch" -> GetDirectionFromYawPitch()
 
-            "getScoreboardLines" -> GetScoreboardLinesFunction()
+            "getScoreBoardLines" -> GetScoreboardLinesFunction()
 
             "raycast" -> RayCastFunction()
             else -> NIL
