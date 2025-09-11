@@ -2,7 +2,7 @@ name: Development Build
 on: push
 
 env:
-  APP_VERSION: "1.1.1"
+  APP_VERSION: "1.1.2"
   MC: "1.21.8"
 
 jobs:

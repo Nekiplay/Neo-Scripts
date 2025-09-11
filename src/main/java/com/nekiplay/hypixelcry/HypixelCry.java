@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
 
 public class HypixelCry implements ClientModInitializer {
     public static final String MOD_ID = "hypixelcry";
@@ -122,16 +123,24 @@ public class HypixelCry implements ClientModInitializer {
         loadStartupScripts(scriptsDir);
     }
 
+    private ArrayList<String> startUpScriptNames = new ArrayList<String>() {{
+        add("autoload.lua");
+        add("startup.lua");
+        add("init.lua");
+    }};
+
     private void loadStartupScripts(File dir) {
         // Автозагрузка скриптов при старте
-        File autoLoadScript = new File(dir, "autoload.lua");
-        if (autoLoadScript.exists()) {
-            try {
-                LUA_MANAGER.executeScript(autoLoadScript);
-                System.out.println("Autoload script executed successfully");
-            } catch (Exception e) {
-                System.out.println("Error executing autoload script: " + e.getMessage());
-                e.printStackTrace();
+        for (String name : startUpScriptNames) {
+            File autoLoadScript = new File(dir, name);
+            if (autoLoadScript.exists()) {
+                try {
+                    LUA_MANAGER.executeScript(autoLoadScript);
+                    System.out.println("Autoload script executed successfully");
+                } catch (Exception e) {
+                    System.out.println("Error executing autoload script: " + e.getMessage());
+                    e.printStackTrace();
+                }
             }
         }
     }

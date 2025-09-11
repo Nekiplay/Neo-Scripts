@@ -52,7 +52,8 @@ class LuaManager() {
         "libs/",
         "lib/",
         configDir.resolve("hypixelcry/scripts/libs/").toString() + "/",
-        configDir.resolve("hypixelcry/scripts/lib/").toString() + "/"
+        configDir.resolve("hypixelcry/scripts/lib/").toString() + "/",
+        configDir.resolve("hypixelcry/scripts/").toString() + "/"
     )
 
     private val moduleSearchPaths = CopyOnWriteArrayList<String>().apply {
@@ -206,17 +207,6 @@ class LuaManager() {
                     return file
                 }
             }
-
-            // Check module/init.* structure
-            val moduleDir = File("$path$baseName/")
-            if (moduleDir.exists() && moduleDir.isDirectory) {
-                for (ext in luaExtensions) {
-                    val initFile = File(moduleDir, "init$ext")
-                    if (initFile.exists() && initFile.isFile) {
-                        return initFile
-                    }
-                }
-            }
         }
         return null
     }
@@ -225,17 +215,15 @@ class LuaManager() {
     fun addClientTickCallback(callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
-            clientTickCallbacks.add(callback)
+            return clientTickCallbacks.add(callback)
         }
-        return true
     }
 
     fun addWorldRendererCallback(callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
-            renderWorldCallbacks.add(callback)
+            return renderWorldCallbacks.add(callback)
         }
-        return false
     }
 
     fun addKeyEventCallback(callback: LuaValue): Boolean {
@@ -252,18 +240,24 @@ class LuaManager() {
         }
     }
     fun removeWorldRendererCallback(callback: LuaValue): Boolean {
-        return renderWorldCallbacks.remove(callback)
+        synchronized(callbacksLock) {
+            return renderWorldCallbacks.remove(callback)
+        }
     }
 
     fun removeKeyEventCallback(callback: LuaValue): Boolean {
-        return keyEventCallbacks.remove(callback)
+        synchronized(callbacksLock) {
+            return keyEventCallbacks.remove(callback)
+        }
     }
 
     // Methods to clear all callbacks
     fun clearAllCallbacks() {
-        clientTickCallbacks.clear()
-        renderWorldCallbacks.clear()
-        keyEventCallbacks.clear()
+        synchronized(callbacksLock) {
+            clientTickCallbacks.clear()
+            renderWorldCallbacks.clear()
+            keyEventCallbacks.clear()
+        }
     }
 
     // Callback methods
@@ -309,20 +303,6 @@ class LuaManager() {
                 HypixelCry.LOGGER.error("Error in key callback: ${e.message}")
             }
         }
-    }
-
-    fun addModuleSearchPath(path: String) {
-        val normalizedPath = if (path.endsWith("/")) path else "$path/"
-        moduleSearchPaths.add(normalizedPath)
-    }
-
-    fun removeModuleSearchPath(path: String) {
-        val normalizedPath = if (path.endsWith("/")) path else "$path/"
-        moduleSearchPaths.remove(normalizedPath)
-    }
-
-    fun getModuleSearchPaths(): List<String> {
-        return moduleSearchPaths.toList()
     }
 
     fun executeScript(file: File): Any {
@@ -416,7 +396,7 @@ class LuaManager() {
         return scriptCallbacks.keys.toList()
     }
 
-    public fun restoreGlobals() {
+    fun restoreGlobals() {
         persistentGlobals.forEach { (name, value) ->
             globals.set(name, value)
         }
