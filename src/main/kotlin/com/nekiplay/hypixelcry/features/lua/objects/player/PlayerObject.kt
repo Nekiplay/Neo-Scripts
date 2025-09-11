@@ -58,9 +58,21 @@ class PlayerObject : LuaValue() {
             "getLookEndPos" -> GetLookEndPosFunction()
             "getDirectionFromYawPitch" -> GetDirectionFromYawPitch()
 
+            "getScoreboardLines" -> GetScoreboardLinesFunction()
+
             "raycast" -> RayCastFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetScoreboardLinesFunction : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            val table = tableOf()
+            Utils.STRING_SCOREBOARD.forEachIndexed { index, line ->
+                table.set(index + 1, line)
+            }
+            return table
+        }
     }
 
     private inner class GetDirectionFromYawPitch : TwoArgFunction() {
