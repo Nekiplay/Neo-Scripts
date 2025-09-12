@@ -1,9 +1,21 @@
-name: Development Build
+name: Release
 on: push
 
+on: 
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.1.3)'
+        required: true
+        default: '1.1.3'
+      mc_version:
+        description: 'Minecraft number (e.g., 1.21.8)'
+        required: true
+        default: '1.21.8'
+
 env:
-  APP_VERSION: "1.1.2"
-  MC: "1.21.8"
+  APP_VERSION: ${{ github.event.inputs.version }}
+  MC: ${{ github.event.inputs.mc_version }}
 
 jobs:
   build:
