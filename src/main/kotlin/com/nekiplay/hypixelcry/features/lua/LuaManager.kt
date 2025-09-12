@@ -5,12 +5,14 @@ import com.nekiplay.hypixelcry.features.lua.objects.misc.JsonLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
 import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesObject
 import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
+import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.features.lua.objects.world.WorldObject
 import com.nekiplay.hypixelcry.utils.misc.input.KeyAction
 import kotlinx.io.files.FileNotFoundException
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
 import net.fabricmc.loader.api.FabricLoader
+import net.minecraft.client.gui.DrawContext
 import net.minecraft.network.message.SignedMessage
 import net.minecraft.text.Text
 import org.luaj.vm2.Globals
@@ -34,6 +36,7 @@ class LuaManager() {
     // Use more efficient collections
     private val clientTickCallbacks = ArrayList<LuaValue>()
     private val renderWorldCallbacks = ArrayList<LuaValue>()
+    private val render2DCallbacks = ArrayList<LuaValue>()
     private val keyEventCallbacks = ArrayList<LuaValue>()
     private val messageEventCallbacks = ArrayList<LuaValue>()
 
@@ -104,6 +107,11 @@ class LuaManager() {
                 return LuaValue.valueOf(addWorldRendererCallback(callback))
             }
         })
+        globals.set("register2DRenderer", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(add2DRendererCallback(callback))
+            }
+        })
         globals.set("registerKeyEvent", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(addKeyEventCallback(callback))
@@ -124,6 +132,11 @@ class LuaManager() {
         globals.set("unregisterWorldRenderer", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(removeWorldRendererCallback(callback))
+            }
+        })
+        globals.set("unregister2DRenderer", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(remove2DRendererCallback(callback))
             }
         })
         globals.set("unregisterKeyEvent", object : OneArgFunction() {
@@ -241,6 +254,13 @@ class LuaManager() {
         }
     }
 
+    fun add2DRendererCallback(callback: LuaValue): Boolean {
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
+            return render2DCallbacks.add(callback)
+        }
+    }
+
     fun addKeyEventCallback(callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
@@ -266,6 +286,11 @@ class LuaManager() {
             return renderWorldCallbacks.remove(callback)
         }
     }
+    fun remove2DRendererCallback(callback: LuaValue): Boolean {
+        synchronized(callbacksLock) {
+            return render2DCallbacks.remove(callback)
+        }
+    }
 
     fun removeKeyEventCallback(callback: LuaValue): Boolean {
         synchronized(callbacksLock) {
@@ -284,6 +309,7 @@ class LuaManager() {
         synchronized(callbacksLock) {
             clientTickCallbacks.clear()
             renderWorldCallbacks.clear()
+            render2DCallbacks.clear()
             keyEventCallbacks.clear()
             messageEventCallbacks.clear()
         }
@@ -311,6 +337,21 @@ class LuaManager() {
         }
 
         val renderContext = WorldRendererObject(context)
+        for (callback in callbacks) {
+            try {
+                callback.call(renderContext)
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error("Error in world render callback: ${e.message}")
+            }
+        }
+    }
+
+    fun on2DRenderTick(context: DrawContext?) {
+        val callbacks = synchronized(callbacksLock) {
+            render2DCallbacks.toTypedArray()
+        }
+
+        val renderContext = TwoRenderObject(context)
         for (callback in callbacks) {
             try {
                 callback.call(renderContext)
@@ -387,6 +428,7 @@ class LuaManager() {
         val scriptCallbacksList = mutableListOf<LuaValue>().apply {
             addAll(clientTickCallbacks)
             addAll(renderWorldCallbacks)
+            addAll(render2DCallbacks)
             addAll(keyEventCallbacks)
             addAll(messageEventCallbacks)
         }
@@ -402,6 +444,7 @@ class LuaManager() {
         synchronized(callbacksLock) {
             clientTickCallbacks.removeAll(callbacksToRemove)
             renderWorldCallbacks.removeAll(callbacksToRemove)
+            render2DCallbacks.removeAll(callbacksToRemove)
             keyEventCallbacks.removeAll(callbacksToRemove)
             messageEventCallbacks.removeAll(callbacksToRemove)
         }

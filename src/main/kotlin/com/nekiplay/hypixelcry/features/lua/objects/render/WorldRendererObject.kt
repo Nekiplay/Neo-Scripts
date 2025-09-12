@@ -1,6 +1,5 @@
 package com.nekiplay.hypixelcry.features.lua.objects.render
 
-import com.nekiplay.hypixelcry.utils.SpecialColor.toSpecialColorIntNoAlpha
 import com.nekiplay.hypixelcry.utils.render.RenderHelper
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
 import net.minecraft.text.Text

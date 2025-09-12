@@ -22,8 +22,7 @@ class InventoryObject: LuaValue() {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "isSignOpened" -> IsSignOpenedFunction()
-            "isChestOpened" -> IsChestOpenedFunction()
-            "isDoubleChestOpened" -> IsDoubleChestOpenedFunction()
+            "getContainerSlots" -> GetContainerSlotsFunction()
             "getChestTitle" -> GetChestTitleFunction()
 
             "getStackFromContainer" -> GetStackFromContainerFunction()
@@ -90,7 +89,7 @@ class InventoryObject: LuaValue() {
 
     private inner class GetChestTitleFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc.currentScreen
+            val screen = mc.player?.currentScreenHandler
             return if (screen is GenericContainerScreen) {
                 valueOf(screen.title.string)
             } else {
@@ -120,39 +119,16 @@ class InventoryObject: LuaValue() {
             }
         }
     }
-
-    private inner class IsDoubleChestOpenedFunction : ZeroArgFunction() {
+    private inner class GetContainerSlotsFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc.currentScreen
+            val screen = mc.player?.currentScreenHandler
             if (screen is GenericContainerScreen) {
                 val container = screen.screenHandler
                 val slots = container.slots.size
-                val chestType = when (slots) {
-                    53 -> TRUE
-                    else -> FALSE
-                }
-                return chestType
+                return valueOf(slots)
             }
             else {
-                return FALSE
-            }
-        }
-    }
-
-    private inner class IsChestOpenedFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            val screen = mc.currentScreen
-            if (screen is GenericContainerScreen) {
-                val container = screen.screenHandler
-                val slots = container.slots.size
-                val chestType = when (slots) {
-                    26 -> TRUE
-                    else -> FALSE
-                }
-                return chestType
-            }
-            else {
-                return FALSE
+                return NIL
             }
         }
     }
