@@ -23,9 +23,3 @@ jobs:
           name: binaries
           path: |
             ./build/libs/*.jar
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: mod
-          path: |
-            ./build/libs/*.jar
