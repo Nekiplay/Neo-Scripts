@@ -30,12 +30,16 @@ class HealingWands : BindableClientModule() {
     }
 
     private fun findWand(): Int? {
-        return WAND_IDS.firstNotNullOfOrNull { id ->
-            player?.inventory?.findSlotInHotbarByItemId(id)?.takeIf { slot ->
+        for (id in WAND_IDS) {
+            val slot = player?.inventory?.findSlotInHotbarByItemId(id)
+            if (slot != null && slot != -1) {
                 val stack = player?.inventory?.getStack(slot)
-                stack != null && !stack.isEmpty && ItemUtils.getItemId(stack as ComponentHolder)
-                    .equals(id, ignoreCase = true)
+                if (stack != null && !stack.isEmpty && ItemUtils.getItemId(stack as ComponentHolder)
+                        .equals(id, ignoreCase = true)) {
+                    return slot
+                }
             }
         }
+        return null
     }
 }
