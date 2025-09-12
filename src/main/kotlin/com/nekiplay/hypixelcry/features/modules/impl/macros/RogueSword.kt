@@ -6,7 +6,7 @@ import com.nekiplay.hypixelcry.sugar.silentUse
 import com.nekiplay.hypixelcry.utils.ItemUtils
 import net.minecraft.component.ComponentHolder
 
-object RogueSword : BindableClientModule() {
+class RogueSword : BindableClientModule() {
     private val WAND_IDS = setOf(
         "ROGUE_SWORD"
     )

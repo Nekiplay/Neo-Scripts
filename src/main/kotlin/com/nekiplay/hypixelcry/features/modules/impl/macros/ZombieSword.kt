@@ -6,7 +6,7 @@ import com.nekiplay.hypixelcry.sugar.silentUse
 import com.nekiplay.hypixelcry.utils.ItemUtils
 import net.minecraft.component.ComponentHolder
 
-object ZombieSword : BindableClientModule() {
+class ZombieSword : BindableClientModule() {
     private val WAND_IDS = setOf(
         "ZOMBIE_SWORD"
     )

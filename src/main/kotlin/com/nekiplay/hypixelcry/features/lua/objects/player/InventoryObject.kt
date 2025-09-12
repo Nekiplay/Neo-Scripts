@@ -1,11 +1,15 @@
 package com.nekiplay.hypixelcry.features.lua.objects.player
 
+import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.utils.ItemStackUtils
+import com.nekiplay.hypixelcry.mixins.gui.AbstractSignEditScreenAccessor
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.InventoryUtils
 import net.minecraft.client.gui.screen.ingame.GenericContainerScreen
+import net.minecraft.client.gui.screen.ingame.SignEditScreen
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
+import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 
 class InventoryObject: LuaValue() {
@@ -15,16 +19,70 @@ class InventoryObject: LuaValue() {
 
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
+            "isSignOpened" -> IsSignOpenedFunction()
             "isChestOpened" -> IsChestOpenedFunction()
             "isDoubleChestOpened" -> IsDoubleChestOpenedFunction()
             "getChestTitle" -> GetChestTitleFunction()
 
             "getStack" -> GetStackFunction()
+            "getSignText" -> GetSignTextFunction()
+            "setSignText" -> SetSignTextFunction()
 
             "leftClick" -> LeftClickFunction()
             "rightClick" -> RightClickFunction()
+
+            "closeScreen" -> CloseScreenFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class SetSignTextFunction : TwoArgFunction() {
+        override fun call(arg: LuaValue, arg2: LuaValue): LuaValue {
+            if (arg.isnumber() && arg2.isstring()) {
+                val screen = mc.currentScreen
+                if (screen is SignEditScreen) {
+                    val sign = screen as AbstractSignEditScreenAccessor
+                    sign.messages[arg.toint()] = arg2.tojstring()
+                    return TRUE
+                } else {
+                    return FALSE
+                }
+            }
+            return NIL
+        }
+    }
+
+    private inner class GetSignTextFunction : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            if (arg.isnumber()) {
+                val screen = mc.currentScreen
+                if (screen is SignEditScreen) {
+                    val sign = screen as AbstractSignEditScreenAccessor
+                    return valueOf(sign.messages[arg.toint()])
+                } else {
+                    return FALSE
+                }
+            }
+            return NIL
+        }
+    }
+
+    private inner class CloseScreenFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            mc.player?.closeHandledScreen()
+            return TRUE
+        }
+    }
+
+    private inner class IsSignOpenedFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val screen = mc.currentScreen
+            return if (screen is SignEditScreen) {
+                TRUE
+            } else {
+                FALSE
+            }
+        }
     }
 
     private inner class GetChestTitleFunction : ZeroArgFunction() {

@@ -11,6 +11,8 @@ import com.nekiplay.hypixelcry.utils.misc.input.KeyAction
 import kotlinx.io.files.FileNotFoundException
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
 import net.fabricmc.loader.api.FabricLoader
+import net.minecraft.network.message.SignedMessage
+import net.minecraft.text.Text
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.jse.JsePlatform
@@ -33,6 +35,7 @@ class LuaManager() {
     private val clientTickCallbacks = ArrayList<LuaValue>()
     private val renderWorldCallbacks = ArrayList<LuaValue>()
     private val keyEventCallbacks = ArrayList<LuaValue>()
+    private val messageEventCallbacks = ArrayList<LuaValue>()
 
     // Synchronize only when needed
     @Volatile private var callbacksLock = Any()
@@ -107,6 +110,12 @@ class LuaManager() {
             }
         })
 
+        globals.set("registerMessageEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(addMessageCallback(callback))
+            }
+        })
+
         globals.set("unregisterClientTick", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(removeClientTickCallback(callback))
@@ -120,6 +129,12 @@ class LuaManager() {
         globals.set("unregisterKeyEvent", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(removeKeyEventCallback(callback))
+            }
+        })
+
+        globals.set("unregisterMessageEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(removeMessageEventCallback(callback))
             }
         })
 
@@ -233,6 +248,13 @@ class LuaManager() {
         }
     }
 
+    fun addMessageCallback(callback: LuaValue): Boolean {
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
+            return messageEventCallbacks.add(callback)
+        }
+    }
+
     // Methods for removing callbacks
     fun removeClientTickCallback(callback: LuaValue): Boolean {
         synchronized(callbacksLock) {
@@ -251,12 +273,19 @@ class LuaManager() {
         }
     }
 
+    fun removeMessageEventCallback(callback: LuaValue): Boolean {
+        synchronized(callbacksLock) {
+            return messageEventCallbacks.remove(callback)
+        }
+    }
+
     // Methods to clear all callbacks
     fun clearAllCallbacks() {
         synchronized(callbacksLock) {
             clientTickCallbacks.clear()
             renderWorldCallbacks.clear()
             keyEventCallbacks.clear()
+            messageEventCallbacks.clear()
         }
     }
 
@@ -301,6 +330,20 @@ class LuaManager() {
                 callback.call(LuaValue.valueOf(key), LuaValue.valueOf(type.name))
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("Error in key callback: ${e.message}")
+            }
+        }
+    }
+
+    fun onChatMessageEvent(text: Text, message: SignedMessage?) {
+        val callbacks = synchronized(callbacksLock) {
+            messageEventCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                callback.call(LuaValue.valueOf(text.string), LuaValue.valueOf(message?.content?.string))
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error("Error in message callback: ${e.message}")
             }
         }
     }

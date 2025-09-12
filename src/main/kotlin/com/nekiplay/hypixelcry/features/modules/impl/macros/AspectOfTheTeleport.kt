@@ -8,7 +8,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.MinecraftClient
 import net.minecraft.component.ComponentHolder
 
-object AspectOfTheTeleport : BindableClientModule() {
+class AspectOfTheTeleport : BindableClientModule() {
     private val WAND_IDS = setOf(
         "ASPECT_OF_THE_VOID",
         "ASPECT_OF_THE_END"
