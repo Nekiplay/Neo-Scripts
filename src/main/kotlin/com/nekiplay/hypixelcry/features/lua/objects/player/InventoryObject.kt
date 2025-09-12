@@ -1,16 +1,18 @@
 package com.nekiplay.hypixelcry.features.lua.objects.player
 
-import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.utils.ItemStackUtils
 import com.nekiplay.hypixelcry.mixins.gui.AbstractSignEditScreenAccessor
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.InventoryUtils
 import net.minecraft.client.gui.screen.ingame.GenericContainerScreen
 import net.minecraft.client.gui.screen.ingame.SignEditScreen
+import net.minecraft.screen.GenericContainerScreenHandler
+import net.minecraft.screen.ScreenHandler
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
+
 
 class InventoryObject: LuaValue() {
     override fun call(): LuaValue {
@@ -24,6 +26,7 @@ class InventoryObject: LuaValue() {
             "isDoubleChestOpened" -> IsDoubleChestOpenedFunction()
             "getChestTitle" -> GetChestTitleFunction()
 
+            "getStackFromContainer" -> GetStackFromContainerFunction()
             "getStack" -> GetStackFunction()
             "getSignText" -> GetSignTextFunction()
             "setSignText" -> SetSignTextFunction()
@@ -125,7 +128,7 @@ class InventoryObject: LuaValue() {
                 val container = screen.screenHandler
                 val slots = container.slots.size
                 val chestType = when (slots) {
-                    54 -> TRUE
+                    53 -> TRUE
                     else -> FALSE
                 }
                 return chestType
@@ -143,7 +146,7 @@ class InventoryObject: LuaValue() {
                 val container = screen.screenHandler
                 val slots = container.slots.size
                 val chestType = when (slots) {
-                    27 -> TRUE
+                    26 -> TRUE
                     else -> FALSE
                 }
                 return chestType
@@ -158,6 +161,27 @@ class InventoryObject: LuaValue() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
                 return ItemStackUtils.ToLua(mc.player?.inventory?.getStack(arg.toint())) ?: NIL
+            } else {
+                NIL
+            }
+        }
+    }
+
+    private inner class GetStackFromContainerFunction : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue {
+            return if (arg?.isnumber() == true) {
+                if (mc.player != null) {
+                    val screenHandler: ScreenHandler? = mc.player!!.currentScreenHandler
+                    if (screenHandler is GenericContainerScreenHandler) {
+                        return ItemStackUtils.ToLua(screenHandler.getSlot(arg.toint()).stack) ?: NIL
+                    }
+                    else {
+                        NIL
+                    }
+                }
+                else {
+                    NIL
+                }
             } else {
                 NIL
             }
