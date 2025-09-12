@@ -1,5 +1,6 @@
 <div align="center">
     <a href="https://modrinth.com/mod/hypixel-cry"><img src="https://img.shields.io/modrinth/dt/s423R7PC" alt="Downloads"/></a>
+	<a href="https://modrinth.com/mod/hypixel-cry"><img src="https://img.shields.io/modrinth/game-versions/s423R7PC" alt="Versions"/></a>
 	<a href="https://GitHub.com/Nekiplay/Hypixel-Cry/issues/"><img src="https://img.shields.io/github/issues/Nekiplay/Hypixel-Cry" alt="GitHub issues"/></a>
 	<a href="https://github.com/Nekiplay/Hypixel-Cry/stargazers"><img src="https://badgen.net/github/stars/Nekiplay/Hypixel-Cry" alt="GitHub stars"/></a><br/>
 	<a href="https://www.guilded.gg/Monolith-Development"><img src="https://img.shields.io/badge/support/help/issues-guilded-orange" alt="Guilded"/></a>
