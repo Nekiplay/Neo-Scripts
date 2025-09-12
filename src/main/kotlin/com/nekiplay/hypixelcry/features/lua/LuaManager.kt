@@ -24,6 +24,7 @@ import java.io.File
 import java.io.StringReader
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicReference
 
 class LuaManager() {
     private val globals: Globals = JsePlatform.standardGlobals()
@@ -76,6 +77,9 @@ class LuaManager() {
 
     private val scriptCallbacks = ConcurrentHashMap<String, MutableList<LuaValue>>()
     private val scriptPersistentGlobals = ConcurrentHashMap<String, ConcurrentHashMap<String, LuaValue>>()
+
+    // Текущий исполняемый скрипт (для определения контекста рендерера)
+    private val currentExecutingScript = AtomicReference<String?>()
 
     init {
         registerCustomFunctions(globals)
@@ -351,12 +355,15 @@ class LuaManager() {
             render2DCallbacks.toTypedArray()
         }
 
-        val renderContext = TwoRenderObject(context)
+        // Используем текущий исполняемый скрипт для создания контекста рендерера
+        val currentScript = currentExecutingScript.get()
+        val renderContext = TwoRenderObject(context, currentScript)
+
         for (callback in callbacks) {
             try {
                 callback.call(renderContext)
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in world render callback: ${e.message}")
+                HypixelCry.LOGGER.error("Error in 2D render callback: ${e.message}")
             }
         }
     }
@@ -398,6 +405,9 @@ class LuaManager() {
         val originalRequire = globals.get("require")
 
         try {
+            // Устанавливаем текущий исполняемый скрипт
+            currentExecutingScript.set(scriptName)
+
             // Set up script-specific require
             globals.set("require", createScriptRequireFunction(scriptName))
 
@@ -410,6 +420,8 @@ class LuaManager() {
 
             return result
         } finally {
+            // Сбрасываем текущий исполняемый скрипт
+            currentExecutingScript.set(null)
             globals.set("require", originalRequire)
             restoreGlobals()
         }
@@ -467,6 +479,9 @@ class LuaManager() {
         scriptPersistentGlobals.remove(scriptName)
         scriptCallbacks.remove(scriptName)
 
+        // Очищаем кэш текстур для этого скрипта
+        TwoRenderObject.clearScriptCache(scriptName)
+
         return true
     }
 
@@ -495,5 +510,10 @@ class LuaManager() {
             "registerWorldRenderer", "unregisterClientTick",
             "unregisterWorldRenderer", "player", "world", "modules")
         return systemGlobals.contains(name)
+    }
+
+    // Метод для полной очистки всех кэшей
+    fun clearAllScriptCaches() {
+        TwoRenderObject.clearAllCaches()
     }
 }
