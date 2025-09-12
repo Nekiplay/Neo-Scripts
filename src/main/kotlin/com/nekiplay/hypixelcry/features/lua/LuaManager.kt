@@ -388,6 +388,7 @@ class LuaManager() {
             addAll(clientTickCallbacks)
             addAll(renderWorldCallbacks)
             addAll(keyEventCallbacks)
+            addAll(messageEventCallbacks)
         }
         scriptCallbacks[scriptName] = scriptCallbacksList
 
@@ -402,6 +403,7 @@ class LuaManager() {
             clientTickCallbacks.removeAll(callbacksToRemove)
             renderWorldCallbacks.removeAll(callbacksToRemove)
             keyEventCallbacks.removeAll(callbacksToRemove)
+            messageEventCallbacks.removeAll(callbacksToRemove)
         }
 
         // Clean up dependencies
