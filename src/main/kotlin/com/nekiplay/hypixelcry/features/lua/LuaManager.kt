@@ -247,35 +247,65 @@ class LuaManager() {
     fun addClientTickCallback(callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
-            return clientTickCallbacks.add(callback)
+            val result = clientTickCallbacks.add(callback)
+            if (result) {
+                currentExecutingScript.get()?.let { scriptName ->
+                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+                }
+            }
+            return result
         }
     }
 
     fun addWorldRendererCallback(callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
-            return renderWorldCallbacks.add(callback)
+            val result = renderWorldCallbacks.add(callback)
+            if (result) {
+                currentExecutingScript.get()?.let { scriptName ->
+                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+                }
+            }
+            return result
         }
     }
 
     fun add2DRendererCallback(callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
-            return render2DCallbacks.add(callback)
+            val result = render2DCallbacks.add(callback)
+            if (result) {
+                currentExecutingScript.get()?.let { scriptName ->
+                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+                }
+            }
+            return result
         }
     }
 
     fun addKeyEventCallback(callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
-            return keyEventCallbacks.add(callback)
+            val result = keyEventCallbacks.add(callback)
+            if (result) {
+                currentExecutingScript.get()?.let { scriptName ->
+                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+                }
+            }
+            return result
         }
     }
 
     fun addMessageCallback(callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
-            return messageEventCallbacks.add(callback)
+            val result = messageEventCallbacks.add(callback)
+            if (result) {
+                currentExecutingScript.get()?.let { scriptName ->
+                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+                }
+            }
+            return result
         }
     }
 
@@ -415,9 +445,7 @@ class LuaManager() {
 
             val chunk = loadChunk(file, scriptName)
             val result = chunk.call()
-
-            saveScriptCallbacks(scriptName)
-
+            // saveScriptCallbacks(scriptName)
             return result
         } finally {
             // Сбрасываем текущий исполняемый скрипт
@@ -437,13 +465,8 @@ class LuaManager() {
     }
 
     private fun saveScriptCallbacks(scriptName: String) {
-        val scriptCallbacksList = mutableListOf<LuaValue>().apply {
-            addAll(clientTickCallbacks)
-            addAll(renderWorldCallbacks)
-            addAll(render2DCallbacks)
-            addAll(keyEventCallbacks)
-            addAll(messageEventCallbacks)
-        }
+        // Сохраняем все колбэки, которые были добавлены во время выполнения этого скрипта
+        val scriptCallbacksList = mutableListOf<LuaValue>()
         scriptCallbacks[scriptName] = scriptCallbacksList
 
         // Сохраняем persistent globals для этого скрипта
@@ -454,11 +477,11 @@ class LuaManager() {
         val callbacksToRemove = scriptCallbacks[scriptName] ?: return false
 
         synchronized(callbacksLock) {
-            clientTickCallbacks.removeAll(callbacksToRemove)
-            renderWorldCallbacks.removeAll(callbacksToRemove)
-            render2DCallbacks.removeAll(callbacksToRemove)
-            keyEventCallbacks.removeAll(callbacksToRemove)
-            messageEventCallbacks.removeAll(callbacksToRemove)
+            clientTickCallbacks.removeAll(callbacksToRemove.toSet())
+            renderWorldCallbacks.removeAll(callbacksToRemove.toSet())
+            render2DCallbacks.removeAll(callbacksToRemove.toSet())
+            keyEventCallbacks.removeAll(callbacksToRemove.toSet())
+            messageEventCallbacks.removeAll(callbacksToRemove.toSet())
         }
 
         // Clean up dependencies
