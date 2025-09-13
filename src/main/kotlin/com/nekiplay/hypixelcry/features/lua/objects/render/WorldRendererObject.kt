@@ -2,6 +2,8 @@ package com.nekiplay.hypixelcry.features.lua.objects.render
 
 import com.nekiplay.hypixelcry.utils.render.RenderHelper
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
+import net.minecraft.client.gui.DrawContext
+import net.minecraft.client.render.Tessellator
 import net.minecraft.text.Text
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
@@ -234,6 +236,7 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
             return NIL
         }
     }
+
 
     override fun typename(): String = "world_renderer"
     override fun tojstring(): String = "WorldRenderObject"
