@@ -196,11 +196,26 @@ public class Rotations {
         return mc.player.getPitch() + MathHelper.wrapDegrees((float) -Math.toDegrees(Math.atan2(diffY, diffXZ)) - mc.player.getPitch());
     }
 
+    public static Vec3d getDirectionFromYawPitch(float yaw, float pitch) {
+        // Конвертируем градусы в радианы
+        float yawRad = (float) Math.toRadians(yaw);
+        float pitchRad = (float) Math.toRadians(pitch);
+
+        // Вычисляем компоненты вектора
+        double x = -MathHelper.sin(yawRad) * MathHelper.cos(pitchRad);
+        double y = -MathHelper.sin(pitchRad);
+        double z = MathHelper.cos(yawRad) * MathHelper.cos(pitchRad);
+
+        return new Vec3d(x, y, z).normalize();
+    }
+
     public static void setCamRotation(double yaw, double pitch) {
         serverYaw = (float) yaw;
         serverPitch = (float) pitch;
         rotationTimer = 0;
     }
+
+
 
     private static class Rotation {
         public double yaw, pitch;

@@ -1,6 +1,5 @@
 package com.nekiplay.hypixelcry.features.lua.objects.world
 
-import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.customArgs.FourArgFunction
 import com.nekiplay.hypixelcry.features.lua.utils.BlockUtil
 import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
@@ -12,6 +11,7 @@ import net.minecraft.util.hit.EntityHitResult
 import net.minecraft.util.hit.HitResult
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
+import net.minecraft.world.RaycastContext
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
@@ -19,7 +19,6 @@ import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 
 class WorldObject : LuaValue() {
-
     override fun call(): LuaValue {
         return this
     }
@@ -31,6 +30,7 @@ class WorldObject : LuaValue() {
             "getBlock" -> GetBlockFunction()
             "setBlock" -> SetBlockFunction()
             "getBlocksInRadius" -> GetBlocksInRadiusFunction()
+            "isBlockLoaded" -> IsBlockLoadedFunction()
 
             "getEntities" -> GetEntitiesFunction()
             "getLivingEntities" -> GetLivingEntitiesFunction()
@@ -39,7 +39,7 @@ class WorldObject : LuaValue() {
 
             "raycast" -> RaycastFunction()
             "raycastToBlocks" -> RaycastToBlocksFunction()
-            else -> LuaValue.NIL
+            else -> NIL
         } as LuaValue
     }
 
@@ -56,11 +56,13 @@ class WorldObject : LuaValue() {
                 val startVec = Vec3d(startX, startY, startZ)
                 val endVec = Vec3d(endX, endY, endZ)
 
-                val hitResult = RaycastUtils.rayTraceToBlocks(startVec, endVec, emptyList())
+                val context = RaycastContext(startVec, endVec, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, mc.player)
+
+                val hitResult = mc.world?.raycast(context)
 
                 processHitResult(hitResult)
             } else {
-                LuaValue.NIL
+                NIL
             }
         }
     }
@@ -97,7 +99,7 @@ class WorldObject : LuaValue() {
 
                 processHitResult(hitResult)
             } else {
-                LuaValue.NIL
+                NIL
             }
         }
     }
@@ -105,22 +107,27 @@ class WorldObject : LuaValue() {
     private fun processHitResult(hitResult: HitResult?): LuaValue {
         return when (hitResult?.type) {
             HitResult.Type.BLOCK -> {
-                val table = LuaValue.tableOf()
+                val table = tableOf()
                 table.set("type", "block")
-                table.set("x", LuaValue.valueOf(hitResult.pos.x))
-                table.set("y", LuaValue.valueOf(hitResult.pos.y))
-                table.set("z", LuaValue.valueOf(hitResult.pos.z))
+                table.set("x", valueOf(hitResult.pos.x))
+                table.set("y", valueOf(hitResult.pos.y))
+                table.set("z", valueOf(hitResult.pos.z))
                 table
             }
             HitResult.Type.ENTITY -> {
-                val table = LuaValue.tableOf()
+                val table = tableOf()
                 if (hitResult is EntityHitResult) {
                     table.set("type", "entity")
                     table.set("data", EntityUtils.ToLua(hitResult.entity))
                 }
                 table
             }
-            else -> LuaValue.NIL
+            HitResult.Type.MISS -> {
+                val table = tableOf()
+                table.set("type", "miss")
+                table
+            }
+            else -> NIL
         }
     }
 
@@ -135,9 +142,9 @@ class WorldObject : LuaValue() {
                 val yaw = Rotations.getYaw(Vec3d(arg1.todouble(), arg2.todouble(), arg3.todouble()))
                 val pitch = Rotations.getPitch(Vec3d(arg1.todouble(), arg2.todouble(), arg3.todouble()))
 
-                val table = LuaValue.tableOf()
-                table.set("yaw", LuaValue.valueOf(yaw))
-                table.set("pitch", LuaValue.valueOf(pitch))
+                val table = tableOf()
+                table.set("yaw", valueOf(yaw))
+                table.set("pitch", valueOf(pitch))
                 table
             }
             else {
@@ -163,15 +170,37 @@ class WorldObject : LuaValue() {
                 mc.world?.setBlockState(blockPos, blockState)
 
                 mc.worldRenderer.updateBlock(
-                    HypixelCry.mc.world,
+                    mc.world,
                     blockPos,
-                    HypixelCry.mc.world?.getBlockState(blockPos),
+                    mc.world?.getBlockState(blockPos),
                     blockState,
                     0
                 )
                 mc.world?.updateNeighbors(blockPos, blockState.block)
+                return TRUE
             }
-            return LuaValue.NIL
+            else if (arg1?.istable() ?: false) {
+                val x: Int = if (arg1.get("x").isnumber()) arg1.get("x").toint() else 0
+                val y: Int = if (arg1.get("y").isnumber()) arg1.get("y").toint() else 0
+                val z: Int = if (arg1.get("z").isnumber()) arg1.get("z").toint() else 0
+                val id: Int = if (arg1.get("id").isnumber()) arg1.get("id").toint() else 0
+
+                val blockPos = BlockPos(x, y, z)
+                val blockState = Block.getStateFromRawId(id)
+
+                mc.world?.setBlockState(blockPos, blockState)
+
+                mc.worldRenderer.updateBlock(
+                    mc.world,
+                    blockPos,
+                    mc.world?.getBlockState(blockPos),
+                    blockState,
+                    0
+                )
+                mc.world?.updateNeighbors(blockPos, blockState.block)
+                return TRUE
+            }
+            return NIL
         }
     }
 
@@ -184,10 +213,17 @@ class WorldObject : LuaValue() {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
                 val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
                 val state = mc.world?.getBlockState(blockPos)
-                return BlockUtil.ToLua(blockPos, state);
+                return BlockUtil.ToLua(state);
             }
-
-            return LuaValue.NIL
+            else if (arg1?.istable() == true) {
+                val x: Int = if (arg1.get("x").isnumber()) arg1.get("x").toint() else 0
+                val y: Int = if (arg1.get("y").isnumber()) arg1.get("y").toint() else 0
+                val z: Int = if (arg1.get("z").isnumber()) arg1.get("z").toint() else 0
+                val blockPos = BlockPos(x, y, z)
+                val state = mc.world?.getBlockState(blockPos)
+                return BlockUtil.ToLua(state);
+            }
+            return NIL
         }
     }
 
@@ -215,7 +251,7 @@ class WorldObject : LuaValue() {
                 centerZ = mc.player?.blockPos?.z ?: 0
             }
 
-            val resultTable = LuaValue.tableOf()
+            val resultTable = tableOf()
             var index = 1
 
             val centerPos = BlockPos(centerX, centerY, centerZ)
@@ -229,8 +265,11 @@ class WorldObject : LuaValue() {
 
                         if (distance <= radius * radius) {
                             val state = mc.world?.getBlockState(blockPos)
-                            val blockTable = BlockUtil.ToLua(blockPos, state)
+                            val blockTable = BlockUtil.ToLua(state)
                             if (blockTable != null && !blockTable.isnil()) {
+                                blockTable.set("x", blockPos.x)
+                                blockTable.set("y", blockPos.y)
+                                blockTable.set("z", blockPos.z)
                                 resultTable.set(index++, blockTable)
                             }
                         }
@@ -239,6 +278,27 @@ class WorldObject : LuaValue() {
             }
 
             return resultTable
+        }
+    }
+
+    private inner class IsBlockLoadedFunction : ThreeArgFunction() {
+        override fun call(
+            arg1: LuaValue?,
+            arg2: LuaValue?,
+            arg3: LuaValue?
+        ): LuaValue? {
+            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
+                val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
+                return valueOf(mc.world?.isPosLoaded(blockPos) ?: false);
+            }
+            else if (arg1?.istable() == true) {
+                val x: Int = if (arg1.get("x").isnumber()) arg1.get("x").toint() else 0
+                val y: Int = if (arg1.get("y").isnumber()) arg1.get("y").toint() else 0
+                val z: Int = if (arg1.get("z").isnumber()) arg1.get("z").toint() else 0
+                val blockPos = BlockPos(x, y, z)
+                return valueOf(mc.world?.isPosLoaded(blockPos) ?: false);
+            }
+            return NIL
         }
     }
 
@@ -259,9 +319,9 @@ class WorldObject : LuaValue() {
             return if (arg?.isnumber() == true) {
                 val entityId = arg.toint()
                 val entity = mc.world?.getEntityById(entityId)
-                EntityUtils.ToLua(entity) ?: LuaValue.NIL
+                EntityUtils.ToLua(entity) ?: NIL
             } else {
-                LuaValue.NIL
+                NIL
             }
         }
     }
@@ -308,6 +368,6 @@ class WorldObject : LuaValue() {
     override fun tojstring(): String = "WorldObject"
     override fun isnil(): Boolean = false
     override fun type(): Int {
-        return LuaValue.TUSERDATA
+        return TUSERDATA
     }
 }

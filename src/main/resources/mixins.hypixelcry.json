@@ -10,7 +10,9 @@
     "MixinClientLoginNetworkHandlerMixin",
     "MouseMixin",
     "entity.ClientPlayerEntityMixin",
-    "entity.PlayerEntityRendererMixin"
+    "entity.PlayerEntityRendererMixin",
+    "MinecraftClientAccessor",
+    "gui.AbstractSignEditScreenAccessor"
   ],
   "client": [
     "BeaconBlockEntityRendererInvoker",

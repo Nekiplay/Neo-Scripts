@@ -2,11 +2,17 @@ package com.nekiplay.hypixelcry.features.lua.objects.render
 
 import com.nekiplay.hypixelcry.utils.render.RenderHelper
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
+import net.minecraft.client.gui.DrawContext
+import net.minecraft.client.render.Tessellator
 import net.minecraft.text.Text
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
+import java.awt.Color
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.component3
 
 class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() {
     override fun call(): LuaValue {
@@ -19,7 +25,8 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
             "renderOutline" -> RenderOutlineFunction()
             "renderText" -> RenderTextFunction()
             "renderLinesFromPoints" -> RenderLinesFromPointsFunction()
-            else -> LuaValue.NIL
+            "renderLineFromCursor" -> RenderLineFromCursorFunction()
+            else -> NIL
         } as LuaValue
     }
 
@@ -46,7 +53,7 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                 val alphaComponent = alpha.toFloat() / 255.0f
 
                 RenderHelper.renderFilled(context, BlockPos(x, y, z), colorComponents, alphaComponent, throughWalls)
-                return LuaValue.valueOf(true)
+                return TRUE
             }
             return NIL
         }
@@ -77,7 +84,7 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
 
 
                 RenderHelper.renderOutline(context, BlockPos(x, y, z), colorComponents, lineWidth, throughWalls)
-                return LuaValue.valueOf(true)
+                return TRUE
             }
             return NIL
         }
@@ -90,27 +97,41 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                 val y: Double = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
                 val z: Double = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
 
-                val text = if (table.get("text").isstring()) table.get("text").tostring() else ""
+                val text = if (table.get("text").isstring()) table.get("text").tojstring() else "Empty"
                 val scale = if (table.get("scale").isnumber()) table.get("scale").tofloat() else 1f
 
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
+                val red = if (table.get("red").isnumber()) table.get("red").toint() else -0x1
+                val green = if (table.get("green").isnumber()) table.get("green").toint() else -0x1
+                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else -0x1
 
                 val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
+                val pos = Vec3d(x, y, z)
 
-                val hexColor = (red shl 16) or (green shl 8) or blue
-
-                RenderHelper.renderText(
-                    context,
-                    Text.of(text.toString()).asOrderedText(),
-                    Vec3d(x, y, z),
-                    hexColor,
-                    scale,
-                    0f,
-                    throughWalls
-                )
-                return LuaValue.valueOf(true)
+                if (red != -0x1 && green != -0x1 && blue != -0x1) {
+                    val (hue, sat, bri) = Color.RGBtoHSB(red, green, blue, null)
+                    RenderHelper.renderText(
+                        context,
+                        Text.of(text).asOrderedText(),
+                        pos,
+                        Color.HSBtoRGB(hue, sat, bri),
+                        scale,
+                        0.5f,
+                        throughWalls
+                    );
+                    return TRUE
+                }
+                else {
+                    RenderHelper.renderText(
+                        context,
+                        Text.of(text).asOrderedText(),
+                        pos,
+                        -0x1,
+                        scale,
+                        0.5f,
+                        throughWalls
+                    );
+                    return TRUE
+                }
             }
             return NIL
         }
@@ -172,13 +193,50 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                             lineWidth,
                             throughWalls
                         )
-                        return LuaValue.valueOf(true)
+                        return TRUE
                     }
                 }
             }
             return NIL
         }
     }
+
+    private inner class RenderLineFromCursorFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable() && context != null) {
+                val x: Double = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
+                val y: Double = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
+                val z: Double = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
+
+                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
+                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
+                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
+                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
+
+                val lineWidth = if (table.get("line_width").isnumber()) table.get("line_width").tofloat() else 1.0f
+
+                val colorComponents = floatArrayOf(
+                    red.toFloat() / 255.0f,
+                    green.toFloat() / 255.0f,
+                    blue.toFloat() / 255.0f,
+                )
+                val alphah: Float =  alpha.toFloat() / 255.0f
+
+                val pos = Vec3d(x, y, z)
+
+                RenderHelper.renderLineFromCursor(
+                    context,
+                    pos,
+                    colorComponents,
+                    alphah,
+                    lineWidth,
+                );
+                return TRUE
+            }
+            return NIL
+        }
+    }
+
 
     override fun typename(): String = "world_renderer"
     override fun tojstring(): String = "WorldRenderObject"

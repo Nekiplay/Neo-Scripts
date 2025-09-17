@@ -2,14 +2,28 @@ package com.nekiplay.hypixelcry.features.commands.impl
 
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.StringArgumentType
+import com.mojang.brigadier.suggestion.SuggestionProvider
+import com.mojang.brigadier.suggestion.Suggestions
+import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import com.nekiplay.hypixelcry.HypixelCry
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.command.CommandRegistryAccess
 import net.minecraft.text.Text
 import java.io.File
+import java.util.concurrent.CompletableFuture
 
 object LuaCommand {
+    // Провайдер для предложений скриптов
+    private val SCRIPT_SUGGESTION_PROVIDER = SuggestionProvider<FabricClientCommandSource> { context, builder ->
+        suggestScriptFiles(builder)
+    }
+    
+    // Провайдер для предложений загруженных скриптов
+    private val LOADED_SCRIPT_SUGGESTION_PROVIDER = SuggestionProvider<FabricClientCommandSource> { context, builder ->
+        suggestLoadedScripts(builder)
+    }
+
     fun register(dispatcher: CommandDispatcher<FabricClientCommandSource>, registryAccess: CommandRegistryAccess) {
         val luaCommand = ClientCommandManager.literal("lua")
             .then(ClientCommandManager.literal("clear")
@@ -19,11 +33,22 @@ object LuaCommand {
                     1
                 }
             )
-            .then(ClientCommandManager.literal("file")
+            .then(ClientCommandManager.literal("load")
                 .then(ClientCommandManager.argument("filename", StringArgumentType.string())
+                    .suggests(SCRIPT_SUGGESTION_PROVIDER) // Добавляем авто-дополнение
                     .executes { context ->
                         val filename = StringArgumentType.getString(context, "filename")
                         executeLuaFile(filename, context.source)
+                        1
+                    }
+                )
+            )
+            .then(ClientCommandManager.literal("unload")
+                .then(ClientCommandManager.argument("filename", StringArgumentType.string())
+                    .suggests(LOADED_SCRIPT_SUGGESTION_PROVIDER) // Добавляем авто-дополнение для загруженных скриптов
+                    .executes { context ->
+                        val filename = StringArgumentType.getString(context, "filename")
+                        unloadLuaScript(filename, context.source)
                         1
                     }
                 )
@@ -34,8 +59,52 @@ object LuaCommand {
                     1
                 }
             )
+            .then(ClientCommandManager.literal("loaded")
+                .executes { context ->
+                    listLoadedScripts(context.source)
+                    1
+                }
+            )
 
         dispatcher.register(luaCommand)
+    }
+
+    // Функция для предложения файлов скриптов
+    private fun suggestScriptFiles(builder: SuggestionsBuilder): CompletableFuture<Suggestions> {
+        val scriptsDir = File("config/hypixelcry/scripts")
+        
+        if (!scriptsDir.exists()) {
+            return builder.buildFuture()
+        }
+        
+        val input = builder.remainingLowerCase
+        val scriptFiles = scriptsDir.listFiles { file ->
+            file.isFile && (file.name.endsWith(".lua") || file.name.endsWith(".luac"))
+        } ?: emptyArray()
+        
+        scriptFiles.forEach { file ->
+            val fileNameWithoutExtension = file.nameWithoutExtension
+            if (fileNameWithoutExtension.lowercase().startsWith(input)) {
+                builder.suggest(fileNameWithoutExtension)
+            }
+        }
+        
+        return builder.buildFuture()
+    }
+    
+    // Функция для предложения загруженных скриптов
+    private fun suggestLoadedScripts(builder: SuggestionsBuilder): CompletableFuture<Suggestions> {
+        val luaManager = HypixelCry.LUA_MANAGER
+        val loadedScripts = luaManager.getLoadedScripts()
+        val input = builder.remainingLowerCase
+        
+        loadedScripts.forEach { scriptName ->
+            if (scriptName.lowercase().startsWith(input)) {
+                builder.suggest(scriptName)
+            }
+        }
+        
+        return builder.buildFuture()
     }
 
     private fun executeLuaFile(filename: String, source: FabricClientCommandSource) {
@@ -48,7 +117,15 @@ object LuaCommand {
             return
         }
 
-        val scriptFile = File(scriptsDir, if (filename.endsWith(".lua")) filename else "$filename.lua")
+        // Check for both .lua and .luac extensions
+        val scriptFile = when {
+            filename.endsWith(".lua") || filename.endsWith(".luac") -> File(scriptsDir, filename)
+            else -> {
+                // Try both extensions, preferring .lua first
+                val luaFile = File(scriptsDir, "$filename.lua")
+                if (luaFile.exists()) luaFile else File(scriptsDir, "$filename.luac")
+            }
+        }
 
         if (!scriptFile.exists()) {
             source.sendFeedback(Text.literal("§cScript ${scriptFile.name} not found"))
@@ -56,12 +133,41 @@ object LuaCommand {
         }
 
         try {
-            val scriptContent = scriptFile.readText()
-            val result = luaManager.executeScript(scriptContent)
-            source.sendFeedback(Text.literal("§aScript '${scriptFile.name}' executed successfully, result: '${result}'"))
+            val scriptFile = when {
+                filename.endsWith(".lua") || filename.endsWith(".luac") -> File(scriptsDir, filename)
+                else -> {
+                    // Try both extensions, preferring .lua first
+                    val luaFile = File(scriptsDir, "$filename.lua")
+                    if (luaFile.exists()) luaFile else File(scriptsDir, "$filename.luac")
+                }
+            }
+            val loaded = luaManager.unloadScript(scriptFile.nameWithoutExtension)
+            val result = luaManager.executeScript(scriptFile)
+            if (!loaded) {
+                source.sendFeedback(Text.literal("§aScript '${scriptFile.nameWithoutExtension}' executed successfully, result: '${result}'"))
+            }
+            else {
+                source.sendFeedback(Text.literal("§aScript '${scriptFile.nameWithoutExtension}' restarted successfully, result: '${result}'"))
+            }
         } catch (e: Exception) {
             source.sendFeedback(Text.literal("§cScript execution error: ${e.message}"))
             e.printStackTrace()
+        }
+    }
+
+    private fun unloadLuaScript(filename: String, source: FabricClientCommandSource) {
+        val luaManager = HypixelCry.LUA_MANAGER
+        // Remove either .lua or .luac extension for script name
+        val scriptName = when {
+            filename.endsWith(".lua") -> filename.removeSuffix(".lua")
+            filename.endsWith(".luac") -> filename.removeSuffix(".luac")
+            else -> filename
+        }
+
+        if (luaManager.unloadScript(scriptName)) {
+            source.sendFeedback(Text.literal("§aScript '$scriptName' unloaded successfully"))
+        } else {
+            source.sendFeedback(Text.literal("§cScript '$scriptName' is not loaded or not found"))
         }
     }
 
@@ -73,18 +179,34 @@ object LuaCommand {
             return
         }
 
-        val luaFiles = scriptsDir.listFiles { file ->
-            file.isFile && file.name.endsWith(".lua")
+        val scriptFiles = scriptsDir.listFiles { file ->
+            file.isFile && (file.name.endsWith(".lua") || file.name.endsWith(".luac"))
         }?.sortedBy { it.name }
 
-        if (luaFiles.isNullOrEmpty()) {
-            source.sendFeedback(Text.literal("§7No .lua files in scripts directory"))
+        if (scriptFiles.isNullOrEmpty()) {
+            source.sendFeedback(Text.literal("§7No .lua or .luac files in scripts directory"))
             return
         }
 
         source.sendFeedback(Text.literal("§6Available scripts:"))
-        luaFiles.forEach { file ->
-            source.sendFeedback(Text.literal("§7- §e${file.name} §7(${file.length()} bytes)"))
+        scriptFiles.forEach { file ->
+            val fileType = if (file.name.endsWith(".luac")) "§9[compiled]§7" else "§a[source]§7"
+            source.sendFeedback(Text.literal("§7- §e${file.nameWithoutExtension} §7(${file.length()} bytes) $fileType"))
+        }
+    }
+
+    private fun listLoadedScripts(source: FabricClientCommandSource) {
+        val luaManager = HypixelCry.LUA_MANAGER
+        val loadedScripts = luaManager.getLoadedScripts()
+
+        if (loadedScripts.isEmpty()) {
+            source.sendFeedback(Text.literal("§7No scripts currently loaded"))
+            return
+        }
+
+        source.sendFeedback(Text.literal("§6Loaded scripts:"))
+        loadedScripts.forEach { scriptName ->
+            source.sendFeedback(Text.literal("§7- §a$scriptName"))
         }
     }
 }
