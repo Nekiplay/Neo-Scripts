@@ -7,6 +7,7 @@ import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.RaycastUtils
 import com.nekiplay.hypixelcry.utils.Rotations
 import net.minecraft.block.Block
+import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.hit.EntityHitResult
 import net.minecraft.util.hit.HitResult
 import net.minecraft.util.math.BlockPos
@@ -112,6 +113,14 @@ class WorldObject : LuaValue() {
                 table.set("x", valueOf(hitResult.pos.x))
                 table.set("y", valueOf(hitResult.pos.y))
                 table.set("z", valueOf(hitResult.pos.z))
+
+                if (hitResult is BlockHitResult) {
+                    val blockPos = tableOf()
+                    blockPos.set("x", valueOf(hitResult.blockPos.x))
+                    blockPos.set("y", valueOf(hitResult.blockPos.y))
+                    blockPos.set("z", valueOf(hitResult.blockPos.y))
+                    table.set("blockPos", blockPos)
+                }
                 table
             }
             HitResult.Type.ENTITY -> {
