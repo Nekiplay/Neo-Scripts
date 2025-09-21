@@ -33,6 +33,7 @@ class PlayerObject : LuaValue() {
 
             // Variables
             "entity" -> EntityUtils.ToLua(mc.player)
+            "fishHook" -> EntityUtils.ToLua(mc.player?.fishHook)
 
             // Functions
             "addMessage" -> AddChatMessageFunction()
