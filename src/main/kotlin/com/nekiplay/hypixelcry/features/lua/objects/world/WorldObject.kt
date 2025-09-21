@@ -105,7 +105,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private fun processHitResult(hitResult: HitResult?): LuaValue {
+    public fun processHitResult(hitResult: HitResult?): LuaValue {
         return when (hitResult?.type) {
             HitResult.Type.BLOCK -> {
                 val table = tableOf()
