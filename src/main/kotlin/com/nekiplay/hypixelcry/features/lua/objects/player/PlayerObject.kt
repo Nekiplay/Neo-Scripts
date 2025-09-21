@@ -95,29 +95,40 @@ class PlayerObject : LuaValue() {
             arg1: LuaValue?
         ): LuaValue? {
             if (arg1?.isnumber() == true) {
-                val raycast = mc.player?.raycast(arg1.todouble(), 1f, false)
-                if (raycast?.type == HitResult.Type.BLOCK && raycast is BlockHitResult) {
-                    val table = tableOf()
-                    val blockPos = BlockPos(raycast.blockPos.x, raycast.blockPos.y, raycast.blockPos.z)
-                    table.set("type", "block")
-                    table.set("x", blockPos.x)
-                    table.set("y", blockPos.y)
-                    table.set("z", blockPos.z)
-                    return table
-                }
-                else if (raycast?.type == HitResult.Type.ENTITY && raycast is EntityHitResult) {
-                    val table = tableOf()
-                    table.set("type", "entity")
-                    table.set("data", EntityUtils.ToLua(raycast.entity))
-                    return table
-                }
-                else if (raycast?.type == HitResult.Type.MISS) {
-                    val table = tableOf()
-                    table.set("type", "miss")
-                    return table
+                val hitResult = mc.player?.raycast(arg1.todouble(), 1f, false)
+                return when (hitResult?.type) {
+                    HitResult.Type.BLOCK -> {
+                        val table = tableOf()
+                        table.set("type", "block")
+                        table.set("x", valueOf(hitResult.pos.x))
+                        table.set("y", valueOf(hitResult.pos.y))
+                        table.set("z", valueOf(hitResult.pos.z))
+
+                        if (hitResult is BlockHitResult) {
+                            val blockPos = tableOf()
+                            blockPos.set("x", valueOf(hitResult.blockPos.x))
+                            blockPos.set("y", valueOf(hitResult.blockPos.y))
+                            blockPos.set("z", valueOf(hitResult.blockPos.y))
+                            table.set("blockPos", blockPos)
+                        }
+                        table
+                    }
+                    HitResult.Type.ENTITY -> {
+                        val table = tableOf()
+                        if (hitResult is EntityHitResult) {
+                            table.set("type", "entity")
+                            table.set("data", EntityUtils.ToLua(hitResult.entity))
+                        }
+                        table
+                    }
+                    HitResult.Type.MISS -> {
+                        val table = tableOf()
+                        table.set("type", "miss")
+                        table
+                    }
+                    else -> NIL
                 }
             }
-
             return NIL
         }
     }
