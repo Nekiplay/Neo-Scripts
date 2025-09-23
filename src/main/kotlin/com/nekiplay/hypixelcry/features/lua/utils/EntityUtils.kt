@@ -1,7 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.utils
 
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
-import net.minecraft.client.network.ClientPlayerEntity
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EquipmentSlot
 import net.minecraft.entity.LivingEntity
@@ -41,6 +40,7 @@ object EntityUtils {
             table.set("id", LuaValue.valueOf(entity.id))
             table.set("uuid", LuaValue.valueOf(entity.uuidAsString))
             table.set("name", LuaValue.valueOf(entity.name.string))
+            table.set("display_name", LuaValue.valueOf(entity.displayName?.string))
             table.set("type", LuaValue.valueOf(entity.type.toString()))
 
             // Позиция и движение
@@ -69,9 +69,15 @@ object EntityUtils {
 
             // Дополнительные свойства
             table.set("age", LuaValue.valueOf(entity.age))
-            table.set("distance_to_player", LuaValue.valueOf(entity.distanceTo(mc.player).toDouble()))
+            table.set("distance_to_player", LuaValue.valueOf(entity.squaredDistanceTo(mc.player)))
 
             if (entity is LivingEntity) {
+                table.set("health", LuaValue.valueOf(entity.health.toDouble()) ?: LuaValue.NIL)
+                table.set("max_health", LuaValue.valueOf(entity.maxHealth.toDouble()))
+
+                table.set("is_alive", LuaValue.valueOf(entity.isAlive))
+                table.set("is_child", LuaValue.valueOf(entity.isBaby))
+
                 val mainHandStack = entity.mainHandStack
                 val offHandStack = entity.offHandStack
 
@@ -89,43 +95,21 @@ object EntityUtils {
 
                 val feet = entity.getEquippedStack(EquipmentSlot.FEET)
                 table.set("feet", ItemStackUtils.ToLua(feet) ?: LuaValue.NIL)
-            }
 
+                val effectsTable = LuaValue.tableOf()
+                var effectIndex = 1
+                entity.activeStatusEffects.forEach { (effect, instance) ->
+                    val effectTable = LuaValue.tableOf()
+                    effectTable.set("type", LuaValue.valueOf(effect.type.name))
+                    effectTable.set("duration", LuaValue.valueOf(instance.duration))
+                    effectTable.set("amplifier", LuaValue.valueOf(instance.amplifier))
+                    effectsTable.set(effectIndex++, effectTable)
+                }
+                table.set("active_effects", effectsTable)
+            }
             return table
         } else {
             return LuaValue.NIL
-        }
-    }
-
-    // Функция для преобразования LivingEntity в Lua таблицу
-    public fun ToLua(livingEntity: ClientPlayerEntity?): LuaValue? {
-        if (livingEntity != null) {
-            // Сначала получаем базовые данные Entity
-            val table = ToLua(livingEntity as Entity) ?: LuaValue.tableOf()
-
-            // Добавляем специфичные для LivingEntity свойства
-            table.set("health", LuaValue.valueOf(livingEntity.health.toDouble()))
-            table.set("max_health", LuaValue.valueOf(livingEntity.maxHealth.toDouble()))
-            table.set("is_alive", LuaValue.valueOf(livingEntity.isAlive))
-            // Информация об экипировке и состоянии
-            table.set("is_child", LuaValue.valueOf(livingEntity.isBaby))
-
-            // Активные эффекты
-            val effectsTable = LuaValue.tableOf()
-            var effectIndex = 1
-            livingEntity.activeStatusEffects.forEach { (effect, instance) ->
-                val effectTable = LuaValue.tableOf()
-                effectTable.set("type", LuaValue.valueOf(effect.type.name))
-                effectTable.set("duration", LuaValue.valueOf(instance.duration))
-                effectTable.set("amplifier", LuaValue.valueOf(instance.amplifier))
-                effectsTable.set(effectIndex++, effectTable)
-            }
-            table.set("active_effects", effectsTable)
-
-            return table
-        } else {
-            return LuaValue.NIL
-
         }
     }
 }

@@ -16,10 +16,10 @@ import net.minecraft.client.gui.DrawContext
 import net.minecraft.network.message.SignedMessage
 import net.minecraft.text.Text
 import org.luaj.vm2.Globals
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.jse.JsePlatform
 import org.luaj.vm2.LuaError
+import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
+import org.luaj.vm2.lib.jse.JsePlatform
 import java.io.File
 import java.io.StringReader
 import java.util.concurrent.ConcurrentHashMap

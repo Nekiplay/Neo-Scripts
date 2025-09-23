@@ -4,9 +4,9 @@
   "package": "com.nekiplay.hypixelcry.mixins",
   "mixins": [
     "ClientChunkManagerMixin",
+    "ClientPlayerInteractionManagerAccessor",
     "KeyboardMixin",
     "MinecraftClientAccessor",
-    "ClientPlayerInteractionManagerAccessor",
     "MixinClientLoginNetworkHandlerMixin",
     "MouseMixin",
     "entity.ClientPlayerEntityMixin",
