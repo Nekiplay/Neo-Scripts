@@ -30,6 +30,7 @@ class PlayerObject : LuaValue() {
             // Objects
             "input" -> InputObject()
             "inventory" -> InventoryObject()
+            "network" -> NetworkObject()
 
             // Variables
             "entity" -> EntityUtils.ToLua(mc.player)

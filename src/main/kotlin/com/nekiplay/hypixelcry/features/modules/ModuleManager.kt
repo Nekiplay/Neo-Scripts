@@ -18,11 +18,11 @@ object ModuleManager {
     fun registerInbuilt() {
         val modules = arrayOf(
             /* Macros */
-            AspectOfTheTeleport,
-            HealingWands,
-            RogueSword,
-            WitherCloak,
-            ZombieSword,
+            AspectOfTheTeleport(),
+            HealingWands(),
+            RogueSword(),
+            WitherCloak(),
+            ZombieSword(),
 
             /* Misc */
             LuaEvents
