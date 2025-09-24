@@ -16,7 +16,9 @@ class NetworkObject : LuaValue() {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "getPlayersList" -> GetPlayerList()
+            
             "sendStartDestroyBlockPacket" -> SendStartDestroyBlockPacket()
+            "sendStopDestroyBlockPacket" -> SendStartDestroyBlockPacket()
             "sendAbortDestroyBlockPacket" -> SendAbortDestroyBlockPacket()
             else -> NIL
         } as LuaValue
@@ -53,6 +55,28 @@ class NetworkObject : LuaValue() {
                 mc.networkHandler?.sendPacket(
                     PlayerActionC2SPacket(
                         PlayerActionC2SPacket.Action.START_DESTROY_BLOCK,
+                        BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
+                        Direction.valueOf(arg4.tojstring())
+                    )
+                )
+                return TRUE
+            }
+            return FALSE
+        }
+    }
+
+    private inner class SendStopDestroyBlockPacket : FourArgFunction() {
+        override fun invoke(
+            arg1: LuaValue?,
+            arg2: LuaValue?,
+            arg3: LuaValue?,
+            arg4: LuaValue?
+        ): LuaValue? {
+            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isstring() == true) {
+                BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
+                mc.networkHandler?.sendPacket(
+                    PlayerActionC2SPacket(
+                        PlayerActionC2SPacket.Action.STOP_DESTROY_BLOCK,
                         BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
                         Direction.valueOf(arg4.tojstring())
                     )
