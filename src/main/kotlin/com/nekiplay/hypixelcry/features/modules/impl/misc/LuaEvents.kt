@@ -18,6 +18,10 @@ object LuaEvents: ClientModule() {
             LUA_MANAGER.onClientTick()
         }
 
+        ClientTickEvents.START_CLIENT_TICK.register { _ ->
+            LUA_MANAGER.onClientTickPre()
+        }
+
         WorldRenderEvents.AFTER_TRANSLUCENT.register(AfterTranslucent { context: WorldRenderContext? ->
             LUA_MANAGER.onRenderTick(context)
         })

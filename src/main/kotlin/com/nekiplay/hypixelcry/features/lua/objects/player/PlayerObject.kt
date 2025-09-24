@@ -9,6 +9,7 @@ import com.nekiplay.hypixelcry.utils.Utils
 import com.nekiplay.hypixelcry.utils.trackers.ColdTracker
 import net.minecraft.client.MinecraftClient
 import net.minecraft.text.Text
+import net.minecraft.util.Hand
 import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.hit.EntityHitResult
 import net.minecraft.util.hit.HitResult
@@ -56,6 +57,8 @@ class PlayerObject : LuaValue() {
             "isOnGround" -> IsPlayerOnGroundFunction()
             "isOnSkyBlock" -> IsPlayerOnSkyBlockFunction()
 
+            "swingHand" -> SwingHandFunction()
+
             "getEyePosition" -> GetEyePositionFunction()
             "getLookEndPos" -> GetLookEndPosFunction()
             "getDirectionFromYawPitch" -> GetDirectionFromYawPitch()
@@ -65,6 +68,23 @@ class PlayerObject : LuaValue() {
             "raycast" -> RayCastFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class SwingHandFunction : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue? {
+            if (arg?.isboolean() == true) {
+                if (arg.toboolean()) {
+                    mc.player?.swingHand(Hand.OFF_HAND)
+                }
+                else {
+                    mc.player?.swingHand(Hand.MAIN_HAND)
+                }
+            }
+            else {
+                mc.player?.swingHand(Hand.MAIN_HAND)
+            }
+            return TRUE
+        }
     }
 
     private inner class GetScoreboardLinesFunction : ZeroArgFunction() {
