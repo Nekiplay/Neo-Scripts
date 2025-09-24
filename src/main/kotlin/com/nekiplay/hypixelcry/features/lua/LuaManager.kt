@@ -16,10 +16,10 @@ import net.minecraft.client.gui.DrawContext
 import net.minecraft.network.message.SignedMessage
 import net.minecraft.text.Text
 import org.luaj.vm2.Globals
-import org.luaj.vm2.LuaError
 import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.jse.JsePlatform
+import org.luaj.vm2.LuaError
+import org.luaj.vm2.lib.OneArgFunction
 import java.io.File
 import java.io.StringReader
 import java.util.concurrent.ConcurrentHashMap
@@ -36,6 +36,7 @@ class LuaManager() {
 
     // Use more efficient collections
     private val clientTickCallbacks = ArrayList<LuaValue>()
+    private val clientPreTickCallbacks = ArrayList<LuaValue>()
     private val renderWorldCallbacks = ArrayList<LuaValue>()
     private val render2DCallbacks = ArrayList<LuaValue>()
     private val keyEventCallbacks = ArrayList<LuaValue>()
@@ -106,6 +107,16 @@ class LuaManager() {
                 return LuaValue.valueOf(addClientTickCallback(callback))
             }
         })
+        globals.set("registerClientTickPost", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(addClientTickCallback(callback))
+            }
+        })
+        globals.set("registerClientTickPre", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(addPreClientTickCallback(callback))
+            }
+        })
         globals.set("registerWorldRenderer", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(addWorldRendererCallback(callback))
@@ -133,6 +144,19 @@ class LuaManager() {
                 return LuaValue.valueOf(removeClientTickCallback(callback))
             }
         })
+
+        globals.set("unregisterClientTickPost", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(removeClientTickCallback(callback))
+            }
+        })
+
+        globals.set("unregisterClientTickPost", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(removeClientPreTickCallback(callback))
+            }
+        })
+
         globals.set("unregisterWorldRenderer", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(removeWorldRendererCallback(callback))
@@ -257,6 +281,19 @@ class LuaManager() {
         }
     }
 
+    fun addPreClientTickCallback(callback: LuaValue): Boolean {
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
+            val result = clientPreTickCallbacks.add(callback)
+            if (result) {
+                currentExecutingScript.get()?.let { scriptName ->
+                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+                }
+            }
+            return result
+        }
+    }
+
     fun addWorldRendererCallback(callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
@@ -315,6 +352,11 @@ class LuaManager() {
             return clientTickCallbacks.remove(callback)
         }
     }
+    fun removeClientPreTickCallback(callback: LuaValue): Boolean {
+        synchronized(callbacksLock) {
+            return clientPreTickCallbacks.remove(callback)
+        }
+    }
     fun removeWorldRendererCallback(callback: LuaValue): Boolean {
         synchronized(callbacksLock) {
             return renderWorldCallbacks.remove(callback)
@@ -354,6 +396,20 @@ class LuaManager() {
     fun onClientTick() {
         val callbacks = synchronized(callbacksLock) {
             clientTickCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                callback.call()
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error("Error in client tick callback", e)
+            }
+        }
+    }
+
+    fun onClientTickPre() {
+        val callbacks = synchronized(callbacksLock) {
+            clientPreTickCallbacks.toTypedArray()
         }
 
         for (callback in callbacks) {
