@@ -1,9 +1,9 @@
 name: Artifacts
+on: push
 
-on:
-  workflow_dispatch:
-    push:
-    pull_request:
+env:
+  APP_VERSION: "1.1.1"
+  MC: "1.21.8"
 
 jobs:
   build:
