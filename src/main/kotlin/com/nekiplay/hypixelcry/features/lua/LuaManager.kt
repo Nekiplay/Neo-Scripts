@@ -388,6 +388,7 @@ class LuaManager() {
             render2DCallbacks.clear()
             keyEventCallbacks.clear()
             messageEventCallbacks.clear()
+            clientPreTickCallbacks.clear()
         }
     }
 
@@ -468,18 +469,19 @@ class LuaManager() {
         }
     }
 
-    fun onChatMessageEvent(text: Text, message: SignedMessage?) {
+    fun onChatMessageEvent(text: Text, b: Boolean): Boolean {
         val callbacks = synchronized(callbacksLock) {
             messageEventCallbacks.toTypedArray()
         }
 
         for (callback in callbacks) {
             try {
-                callback.call(LuaValue.valueOf(text.string), LuaValue.valueOf(message?.content?.string))
+                callback.call(LuaValue.valueOf(text.string), LuaValue.valueOf(b))
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("Error in message callback: ${e.message}")
             }
         }
+        return true
     }
 
     fun executeScript(file: File): Any {
@@ -538,6 +540,7 @@ class LuaManager() {
             render2DCallbacks.removeAll(callbacksToRemove.toSet())
             keyEventCallbacks.removeAll(callbacksToRemove.toSet())
             messageEventCallbacks.removeAll(callbacksToRemove.toSet())
+            clientPreTickCallbacks.removeAll(callbacksToRemove.toSet())
         }
 
         // Clean up dependencies
