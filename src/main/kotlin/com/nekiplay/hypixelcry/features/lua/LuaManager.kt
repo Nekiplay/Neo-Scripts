@@ -469,7 +469,7 @@ class LuaManager() {
         }
     }
 
-    fun onChatMessageEvent(text: Text, b: Boolean) {
+    fun onChatMessageEvent(text: Text, b: Boolean): Boolean {
         val callbacks = synchronized(callbacksLock) {
             messageEventCallbacks.toTypedArray()
         }
@@ -481,6 +481,7 @@ class LuaManager() {
                 HypixelCry.LOGGER.error("Error in message callback: ${e.message}")
             }
         }
+        return true
     }
 
     fun executeScript(file: File): Any {
