@@ -36,8 +36,8 @@ object LuaEvents: ClientModule() {
             ActionResult.PASS
         })
 
-        ClientReceiveMessageEvents.CHAT.register(ClientReceiveMessageEvents.Chat { text, message, profile, parameters, instant ->
-            LUA_MANAGER.onChatMessageEvent(text, message)
+        ClientReceiveMessageEvents.ALLOW_GAME.register(ClientReceiveMessageEvents.AllowGame { text, b ->
+            LUA_MANAGER.onChatMessageEvent(text, b)
         })
 
         HudRenderCallback.EVENT.register(HudRenderCallback { context, tickdelta ->
