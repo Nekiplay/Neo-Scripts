@@ -7,15 +7,12 @@ import com.nekiplay.hypixelcry.utils.Rotations
 import com.nekiplay.hypixelcry.utils.StatusBarTracker
 import com.nekiplay.hypixelcry.utils.Utils
 import com.nekiplay.hypixelcry.utils.trackers.ColdTracker
-import net.minecraft.client.MinecraftClient
 import net.minecraft.text.Text
 import net.minecraft.util.Hand
 import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.hit.EntityHitResult
 import net.minecraft.util.hit.HitResult
-import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
-import org.luaj.vm2.LuaString
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
@@ -66,8 +63,22 @@ class PlayerObject : LuaValue() {
             "getScoreBoardLines" -> GetScoreboardLinesFunction()
 
             "raycast" -> RayCastFunction()
+
+            "showNotification" -> ShowNotificatioFucntion()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class ShowNotificatioFucntion : TwoArgFunction() {
+        override fun call(arg: LuaValue?, arg2: LuaValue?): LuaValue? {
+            if (arg?.isstring() == true && arg2?.isstring() == true) {
+                try { Utils.showNotification(arg.tojstring(), arg2.tojstring()) }
+                catch (ignored: Exception) { return FALSE }
+
+               return TRUE
+            }
+            return FALSE
+        }
     }
 
     private inner class SwingHandFunction : OneArgFunction() {
@@ -129,7 +140,7 @@ class PlayerObject : LuaValue() {
                             val blockPos = tableOf()
                             blockPos.set("x", valueOf(hitResult.blockPos.x))
                             blockPos.set("y", valueOf(hitResult.blockPos.y))
-                            blockPos.set("z", valueOf(hitResult.blockPos.y))
+                            blockPos.set("z", valueOf(hitResult.blockPos.z))
                             table.set("blockPos", blockPos)
                         }
                         table

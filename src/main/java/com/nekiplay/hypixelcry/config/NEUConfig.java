@@ -18,7 +18,7 @@ import java.util.List;
 public class NEUConfig extends Config {
     @Override
     public StructuredText getTitle() {
-        return StructuredText.of("§6Hypixel Cry §7v" + "1.1.3");
+        return StructuredText.of("§6Hypixel Cry");
     }
 
     @Override

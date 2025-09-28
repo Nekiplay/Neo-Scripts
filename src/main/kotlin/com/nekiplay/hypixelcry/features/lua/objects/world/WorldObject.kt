@@ -118,7 +118,7 @@ class WorldObject : LuaValue() {
                     val blockPos = tableOf()
                     blockPos.set("x", valueOf(hitResult.blockPos.x))
                     blockPos.set("y", valueOf(hitResult.blockPos.y))
-                    blockPos.set("z", valueOf(hitResult.blockPos.y))
+                    blockPos.set("z", valueOf(hitResult.blockPos.z))
                     table.set("blockPos", blockPos)
                 }
                 table

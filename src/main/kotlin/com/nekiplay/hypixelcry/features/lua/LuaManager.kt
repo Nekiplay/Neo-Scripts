@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua
 
+import com.nekiplay.hypixelcry.utils.Location
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.misc.JsonLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
@@ -13,7 +14,6 @@ import kotlinx.io.files.FileNotFoundException
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.gui.DrawContext
-import net.minecraft.network.message.SignedMessage
 import net.minecraft.text.Text
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaValue
@@ -41,6 +41,7 @@ class LuaManager() {
     private val render2DCallbacks = ArrayList<LuaValue>()
     private val keyEventCallbacks = ArrayList<LuaValue>()
     private val messageEventCallbacks = ArrayList<LuaValue>()
+    private val locationChangeCallbacks = ArrayList<LuaValue>()
 
     // Synchronize only when needed
     @Volatile private var callbacksLock = Any()
@@ -79,7 +80,6 @@ class LuaManager() {
     private val scriptCallbacks = ConcurrentHashMap<String, MutableList<LuaValue>>()
     private val scriptPersistentGlobals = ConcurrentHashMap<String, ConcurrentHashMap<String, LuaValue>>()
 
-    // Текущий исполняемый скрипт (для определения контекста рендерера)
     private val currentExecutingScript = AtomicReference<String?>()
 
     init {
@@ -97,7 +97,7 @@ class LuaManager() {
     private fun registerCustomFunctions(globals: Globals) {
         globals.set("print", object : OneArgFunction() {
             override fun call(message: LuaValue): LuaValue {
-                HypixelCry.LOGGER.info(message.tojstring());
+                HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + message.tojstring());
                 return NIL
             }
         })
@@ -139,6 +139,12 @@ class LuaManager() {
             }
         })
 
+        globals.set("registerLocationChangeEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(addLocationChangeCallback(callback))
+            }
+        })
+
         globals.set("unregisterClientTick", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(removeClientTickCallback(callback))
@@ -176,6 +182,12 @@ class LuaManager() {
         globals.set("unregisterMessageEvent", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(removeMessageEventCallback(callback))
+            }
+        })
+
+        globals.set("unregisterLocationChangeEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(removeLocationChangeEventCallback(callback))
             }
         })
 
@@ -346,6 +358,19 @@ class LuaManager() {
         }
     }
 
+    fun addLocationChangeCallback(callback: LuaValue): Boolean {
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
+            val result = locationChangeCallbacks    .add(callback)
+            if (result) {
+                currentExecutingScript.get()?.let { scriptName ->
+                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+                }
+            }
+            return result
+        }
+    }
+
     // Methods for removing callbacks
     fun removeClientTickCallback(callback: LuaValue): Boolean {
         synchronized(callbacksLock) {
@@ -380,6 +405,12 @@ class LuaManager() {
         }
     }
 
+    fun removeLocationChangeEventCallback(callback: LuaValue): Boolean {
+        synchronized(callbacksLock) {
+            return locationChangeCallbacks.remove(callback)
+        }
+    }
+
     // Methods to clear all callbacks
     fun clearAllCallbacks() {
         synchronized(callbacksLock) {
@@ -389,6 +420,7 @@ class LuaManager() {
             keyEventCallbacks.clear()
             messageEventCallbacks.clear()
             clientPreTickCallbacks.clear()
+            locationChangeCallbacks.clear()
         }
     }
 
@@ -403,7 +435,7 @@ class LuaManager() {
             try {
                 callback.call()
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in client tick callback", e)
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in client tick callback", e)
             }
         }
     }
@@ -417,7 +449,7 @@ class LuaManager() {
             try {
                 callback.call()
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in client tick callback", e)
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in client tick callback", e)
             }
         }
     }
@@ -432,7 +464,7 @@ class LuaManager() {
             try {
                 callback.call(renderContext)
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in world render callback: ${e.message}")
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in world render callback: ${e.message}")
             }
         }
     }
@@ -450,7 +482,7 @@ class LuaManager() {
             try {
                 callback.call(renderContext)
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in 2D render callback: ${e.message}")
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in 2D render callback: ${e.message}")
             }
         }
     }
@@ -464,21 +496,36 @@ class LuaManager() {
             try {
                 callback.call(LuaValue.valueOf(key), LuaValue.valueOf(type.name))
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in key callback: ${e.message}")
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in key callback: ${e.message}")
             }
         }
     }
 
-    fun onChatMessageEvent(text: Text, b: Boolean): Boolean {
+    fun onChatMessageEvent(text: Text, overlay: Boolean): Boolean {
         val callbacks = synchronized(callbacksLock) {
             messageEventCallbacks.toTypedArray()
         }
 
         for (callback in callbacks) {
             try {
-                callback.call(LuaValue.valueOf(text.string), LuaValue.valueOf(b))
+                callback.call(LuaValue.valueOf(text.string), LuaValue.valueOf(overlay))
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in message callback: ${e.message}")
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in message callback: ${e.message}")
+            }
+        }
+        return true
+    }
+
+    fun onLocationChangeEvent(location: Location): Boolean {
+        val callbacks = synchronized(callbacksLock) {
+            locationChangeCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                callback.call(LuaValue.valueOf(location.toString()))
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in locatiob change callback: ${e.message}")
             }
         }
         return true
@@ -541,6 +588,7 @@ class LuaManager() {
             keyEventCallbacks.removeAll(callbacksToRemove.toSet())
             messageEventCallbacks.removeAll(callbacksToRemove.toSet())
             clientPreTickCallbacks.removeAll(callbacksToRemove.toSet())
+            locationChangeCallbacks.removeAll(callbacksToRemove.toSet())
         }
 
         // Clean up dependencies
@@ -585,13 +633,6 @@ class LuaManager() {
         persistentGlobals.forEach { (name, value) ->
             globals.set(name, value)
         }
-    }
-
-    private fun isSystemGlobal(name: String): Boolean {
-        val systemGlobals = listOf("print", "require", "registerClientTick",
-            "registerWorldRenderer", "unregisterClientTick",
-            "unregisterWorldRenderer", "player", "world", "modules")
-        return systemGlobals.contains(name)
     }
 
     // Метод для полной очистки всех кэшей

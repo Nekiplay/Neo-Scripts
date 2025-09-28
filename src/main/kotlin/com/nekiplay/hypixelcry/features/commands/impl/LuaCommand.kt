@@ -29,7 +29,7 @@ object LuaCommand {
             .then(ClientCommandManager.literal("clear")
                 .executes { context ->
                     HypixelCry.LUA_MANAGER.clearAllCallbacks()
-                    context.source.sendFeedback(Text.literal("§aAll Lua callback's cleared"))
+                    context.source.sendFeedback(Text.literal(HypixelCry.PREFIX + "§aAll Lua callback's cleared"))
                     1
                 }
             )
@@ -113,7 +113,7 @@ object LuaCommand {
 
         if (!scriptsDir.exists()) {
             scriptsDir.mkdirs()
-            source.sendFeedback(Text.literal("§cDirectory for scripts: ${scriptsDir.path}"))
+            source.sendFeedback(Text.literal(HypixelCry.PREFIX + "§cDirectory for scripts: ${scriptsDir.path}"))
             return
         }
 
@@ -128,7 +128,7 @@ object LuaCommand {
         }
 
         if (!scriptFile.exists()) {
-            source.sendFeedback(Text.literal("§cScript ${scriptFile.name} not found"))
+            source.sendFeedback(Text.literal(HypixelCry.PREFIX + "§cScript ${scriptFile.name} not found"))
             return
         }
 
@@ -144,13 +144,13 @@ object LuaCommand {
             val loaded = luaManager.unloadScript(scriptFile.nameWithoutExtension)
             val result = luaManager.executeScript(scriptFile)
             if (!loaded) {
-                source.sendFeedback(Text.literal("§aScript '${scriptFile.nameWithoutExtension}' executed successfully, result: '${result}'"))
+                source.sendFeedback(Text.literal(HypixelCry.PREFIX + "§aScript '${scriptFile.nameWithoutExtension}' executed successfully, result: '${result}'"))
             }
             else {
-                source.sendFeedback(Text.literal("§aScript '${scriptFile.nameWithoutExtension}' restarted successfully, result: '${result}'"))
+                source.sendFeedback(Text.literal(HypixelCry.PREFIX + "§aScript '${scriptFile.nameWithoutExtension}' restarted successfully, result: '${result}'"))
             }
         } catch (e: Exception) {
-            source.sendFeedback(Text.literal("§cScript execution error: ${e.message}"))
+            source.sendFeedback(Text.literal(HypixelCry.PREFIX + "§cScript execution error: ${e.message}"))
             e.printStackTrace()
         }
     }
@@ -165,9 +165,9 @@ object LuaCommand {
         }
 
         if (luaManager.unloadScript(scriptName)) {
-            source.sendFeedback(Text.literal("§aScript '$scriptName' unloaded successfully"))
+            source.sendFeedback(Text.literal(HypixelCry.PREFIX + "§aScript '$scriptName' unloaded successfully"))
         } else {
-            source.sendFeedback(Text.literal("§cScript '$scriptName' is not loaded or not found"))
+            source.sendFeedback(Text.literal(HypixelCry.PREFIX + "§cScript '$scriptName' is not loaded or not found"))
         }
     }
 
@@ -175,7 +175,7 @@ object LuaCommand {
         val scriptsDir = File("config/hypixelcry/scripts")
 
         if (!scriptsDir.exists() || scriptsDir.listFiles()?.isEmpty() != false) {
-            source.sendFeedback(Text.literal("§7No scripts available. Create files in: ${scriptsDir.path}"))
+            source.sendFeedback(Text.literal(HypixelCry.PREFIX + "§7No scripts available. Create files in: ${scriptsDir.path}"))
             return
         }
 
@@ -184,11 +184,11 @@ object LuaCommand {
         }?.sortedBy { it.name }
 
         if (scriptFiles.isNullOrEmpty()) {
-            source.sendFeedback(Text.literal("§7No .lua or .luac files in scripts directory"))
+            source.sendFeedback(Text.literal(HypixelCry.PREFIX + "§7No .lua or .luac files in scripts directory"))
             return
         }
 
-        source.sendFeedback(Text.literal("§6Available scripts:"))
+        source.sendFeedback(Text.literal(HypixelCry.PREFIX + "§6Available scripts:"))
         scriptFiles.forEach { file ->
             val fileType = if (file.name.endsWith(".luac")) "§9[compiled]§7" else "§a[source]§7"
             source.sendFeedback(Text.literal("§7- §e${file.nameWithoutExtension} §7(${file.length()} bytes) $fileType"))
@@ -200,11 +200,11 @@ object LuaCommand {
         val loadedScripts = luaManager.getLoadedScripts()
 
         if (loadedScripts.isEmpty()) {
-            source.sendFeedback(Text.literal("§7No scripts currently loaded"))
+            source.sendFeedback(Text.literal(HypixelCry.PREFIX + "§7No scripts currently loaded"))
             return
         }
 
-        source.sendFeedback(Text.literal("§6Loaded scripts:"))
+        source.sendFeedback(Text.literal(HypixelCry.PREFIX + "§6Loaded scripts:"))
         loadedScripts.forEach { scriptName ->
             source.sendFeedback(Text.literal("§7- §a$scriptName"))
         }

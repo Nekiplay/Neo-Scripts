@@ -37,6 +37,7 @@ public class HypixelCry implements ClientModInitializer {
     public static LuaManager LUA_MANAGER;
 
     public static final String PREFIX = Formatting.GRAY + "[" + Formatting.GOLD + "Hypixel Cry" + Formatting.GRAY + "] " + Formatting.RESET;
+    public static final String LOG_PREFIX = "[Hypixel Cry] ";
 
     public static NEUConfig config;
     private static File configFile;
