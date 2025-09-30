@@ -22,8 +22,11 @@ import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.jse.JsePlatform
 import org.luaj.vm2.LuaError
 import org.luaj.vm2.lib.OneArgFunction
+import java.io.BufferedReader
 import java.io.File
 import java.io.StringReader
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.concurrent.Callable
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
@@ -99,6 +102,57 @@ class LuaManager() {
         // Регистрируем библиотеки
         globals.load(jsonLib)
         globals.load(httpLib)
+    }
+
+    private fun registerRequire() {
+        globals.set("require", object : OneArgFunction() {
+            override fun call(arg: LuaValue): LuaValue {
+                val moduleName = arg.checkjstring()
+                loadedModules[moduleName]?.let { return it }
+
+                val code: String? = when {
+                    moduleName.startsWith("http://") || moduleName.startsWith("https://") -> {
+                        loadCodeFromUrl(moduleName)
+                            ?: throw LuaError("Failed to load module from URL: $moduleName")
+                    }
+                    moduleName.startsWith("code://") -> {
+                        moduleName.removePrefix("code://")
+                    }
+                    else -> null
+                }
+
+                val result = if (code != null) {
+                    val chunk = globals.load(code, moduleName)
+                    chunk.call()
+                } else {
+                    val file = findModuleFile(moduleName)
+                        ?: throw LuaError("Module file not found: $moduleName")
+                    val chunk = loadChunk(file, moduleName)
+                    chunk.call()
+                }
+
+                loadedModules[moduleName] = result
+                return result
+            }
+        })
+    }
+
+    private fun loadCodeFromUrl(urlString: String): String? {
+        return try {
+            val url = URL(urlString)
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
+
+            if (conn.responseCode != HttpURLConnection.HTTP_OK) {
+                null
+            } else {
+                conn.inputStream.bufferedReader().use(BufferedReader::readText)
+            }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     private fun registerCustomFunctions(globals: Globals) {
@@ -198,12 +252,7 @@ class LuaManager() {
             }
         })
 
-        globals.set("require", object : OneArgFunction() {
-            override fun call(modname: LuaValue): LuaValue {
-                val moduleName = modname.checkjstring()
-                return requireModule(moduleName)
-            }
-        })
+        registerRequire()
     }
 
     private fun registerGlobalObjects(global: Globals) {
@@ -578,7 +627,24 @@ class LuaManager() {
         return object : OneArgFunction() {
             override fun call(modname: LuaValue): LuaValue {
                 val moduleName = modname.checkjstring()
-                return requireModule(moduleName, scriptName)
+
+                val code: String? = when {
+                    moduleName.startsWith("http://") || moduleName.startsWith("https://") -> {
+                        loadCodeFromUrl(moduleName)
+                            ?: throw LuaError("Failed to load module from URL: $moduleName")
+                    }
+                    moduleName.startsWith("code://") -> {
+                        moduleName.removePrefix("code://")
+                    }
+                    else -> null
+                }
+
+                return if (code != null) {
+                    val chunk = globals.load(code, moduleName)
+                    chunk.call()
+                } else {
+                    requireModule(moduleName, scriptName)
+                }
             }
         }
     }

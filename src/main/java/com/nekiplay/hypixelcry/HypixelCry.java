@@ -124,8 +124,6 @@ public class HypixelCry implements ClientModInitializer {
 
         Scheduler.INSTANCE.scheduleCyclic(Utils::update, 20);
         loadStartupScripts(scriptsDir);
-
-        NotificationUtils.getInstance().sendNotification("Hypixel Cry", "Loaded");
     }
 
     private ArrayList<String> startUpScriptNames = new ArrayList<String>() {{

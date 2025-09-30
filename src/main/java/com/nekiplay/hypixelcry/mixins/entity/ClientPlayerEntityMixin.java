@@ -25,14 +25,8 @@ public abstract class ClientPlayerEntityMixin extends AbstractClientPlayerEntity
 
     @Inject(method = "sendMovementPackets", at = @At("HEAD"))
     private void onSendMovementPacketsHead(CallbackInfo ci) {
-        SendMovementPacketsEvent.PRE.invoker().onSendMovementPacketsPre();
+        SendMovementPacketsEvent.PRE.invoker().onSendMovementPacketsPre(getYaw(), getPitch());
     }
-
-    @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/network/ClientPlayNetworkHandler;sendPacket(Lnet/minecraft/network/packet/Packet;)V", ordinal = 1))
-    private void onTickHasVehicleBeforeSendPackets(CallbackInfo info) {
-        SendMovementPacketsEvent.PRE.invoker().onSendMovementPacketsPre();
-    }
-
     @Inject(method = "sendMovementPackets", at = @At("TAIL"))
     private void onSendMovementPacketsTail(CallbackInfo info) {
         SendMovementPacketsEvent.POST.invoker().onSendMovementPacketsPost();

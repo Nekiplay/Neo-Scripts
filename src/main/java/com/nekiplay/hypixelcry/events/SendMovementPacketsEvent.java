@@ -5,9 +5,9 @@ import net.fabricmc.fabric.api.event.EventFactory;
 
 public class SendMovementPacketsEvent {
     public static final Event<Pre> PRE = EventFactory.createArrayBacked(Pre.class,
-            (listeners) -> () -> {
+            (listeners) -> (yaw, pitch) -> {
                 for (Pre listener : listeners) {
-                    listener.onSendMovementPacketsPre();
+                    listener.onSendMovementPacketsPre(yaw, pitch);
                 }
             }
     );
@@ -22,7 +22,7 @@ public class SendMovementPacketsEvent {
 
     @FunctionalInterface
     public interface Pre {
-        void onSendMovementPacketsPre();
+        void onSendMovementPacketsPre(float yaw, float pitch);
     }
 
     @FunctionalInterface

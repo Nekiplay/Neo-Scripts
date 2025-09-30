@@ -54,7 +54,6 @@ class NetworkObject : LuaValue() {
         ): LuaValue? {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isstring() == true) {
                 mc.interactionManager?.sendSequencedPacket { sequence ->
-
                     PlayerActionC2SPacket(
                         PlayerActionC2SPacket.Action.START_DESTROY_BLOCK,
                         BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
@@ -76,7 +75,6 @@ class NetworkObject : LuaValue() {
         ): LuaValue? {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isstring() == true) {
                 mc.interactionManager?.sendSequencedPacket { sequence ->
-
                     PlayerActionC2SPacket(
                         PlayerActionC2SPacket.Action.STOP_DESTROY_BLOCK,
                         BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
@@ -98,7 +96,6 @@ class NetworkObject : LuaValue() {
         ): LuaValue? {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isstring() == true) {
                 mc.interactionManager?.sendSequencedPacket { sequence ->
-
                     PlayerActionC2SPacket(
                         PlayerActionC2SPacket.Action.ABORT_DESTROY_BLOCK,
                         BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
