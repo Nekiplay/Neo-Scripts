@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.player
 
 import com.nekiplay.hypixelcry.features.lua.customArgs.FourArgFunction
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
+import com.nekiplay.hypixelcry.sugar.sendSequencedPacket
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Direction
@@ -52,13 +53,14 @@ class NetworkObject : LuaValue() {
             arg4: LuaValue?
         ): LuaValue? {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isstring() == true) {
-                mc.networkHandler?.sendPacket(
+                mc.interactionManager?.sendSequencedPacket { sequence ->
+
                     PlayerActionC2SPacket(
                         PlayerActionC2SPacket.Action.START_DESTROY_BLOCK,
                         BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
-                        Direction.valueOf(arg4.tojstring())
+                        Direction.valueOf(arg4.tojstring()), sequence
                     )
-                )
+                }
                 return TRUE
             }
             return FALSE
@@ -73,13 +75,14 @@ class NetworkObject : LuaValue() {
             arg4: LuaValue?
         ): LuaValue? {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isstring() == true) {
-                mc.networkHandler?.sendPacket(
+                mc.interactionManager?.sendSequencedPacket { sequence ->
+
                     PlayerActionC2SPacket(
                         PlayerActionC2SPacket.Action.STOP_DESTROY_BLOCK,
                         BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
-                        Direction.valueOf(arg4.tojstring())
+                        Direction.valueOf(arg4.tojstring()), sequence
                     )
-                )
+                }
                 return TRUE
             }
             return FALSE
@@ -94,13 +97,14 @@ class NetworkObject : LuaValue() {
             arg4: LuaValue?
         ): LuaValue? {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isstring() == true) {
-                mc.networkHandler?.sendPacket(
+                mc.interactionManager?.sendSequencedPacket { sequence ->
+
                     PlayerActionC2SPacket(
                         PlayerActionC2SPacket.Action.ABORT_DESTROY_BLOCK,
                         BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
-                        Direction.valueOf(arg4.tojstring())
+                        Direction.valueOf(arg4.tojstring()), sequence
                     )
-                )
+                }
                 return TRUE
             }
             return FALSE

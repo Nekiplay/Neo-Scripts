@@ -3,6 +3,7 @@ package com.nekiplay.hypixelcry.features.lua
 import com.nekiplay.hypixelcry.utils.Location
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.misc.JsonLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.ThreadLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
 import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesObject
 import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
@@ -80,6 +81,8 @@ class LuaManager() {
 
     private val jsonLib = JsonLib()
     private val httpLib = HttpClientLib()
+
+    private val threadLibs = ConcurrentHashMap<String, ThreadLib>()
 
     private val scriptCallbacks = ConcurrentHashMap<String, MutableList<LuaValue>>()
     private val scriptPersistentGlobals = ConcurrentHashMap<String, ConcurrentHashMap<String, LuaValue>>()
@@ -535,6 +538,8 @@ class LuaManager() {
         return true
     }
 
+
+
     fun executeScript(file: File): Any {
         if (!file.exists() || !file.isFile) {
             throw FileNotFoundException("Script file not found: ${file.path}")
@@ -551,6 +556,12 @@ class LuaManager() {
             globals.set("require", createScriptRequireFunction(scriptName))
 
             saveCurrentGlobals()
+
+            val threadLib = ThreadLib(scriptName)
+
+            threadLibs[scriptName] = threadLib
+
+            globals.load(threadLib)
 
             val chunk = loadChunk(file, scriptName)
             val result = chunk.call()
@@ -607,6 +618,9 @@ class LuaManager() {
             }
             scriptDependencies.remove(scriptName)
         }
+
+        threadLibs[scriptName]?.stopThreads(scriptName)
+        threadLibs.remove(scriptName)
 
         // Clean up stored data
         scriptPersistentGlobals.remove(scriptName)

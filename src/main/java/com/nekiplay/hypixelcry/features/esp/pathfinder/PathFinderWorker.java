@@ -47,6 +47,8 @@ public class PathFinderWorker {
         public int lastChunkZ = Integer.MIN_VALUE;
         public boolean chunksUpdated = false;
         public boolean endpointChunksUpdated = false;
+        public boolean smoothes = true;
+        public boolean allow_update = true;
 
         public PathData(BlockPos end, float[] color, String endText) {
             this.end = end;
@@ -84,7 +86,11 @@ public class PathFinderWorker {
         processPathResults();
 
         if (HypixelCry.config.misc.pathFinderESP.enabled) {
-            PATHS.values().forEach(pathData -> updatePath(currentPos, pathData));
+            PATHS.values().forEach(pathData -> {
+                if (pathData.allow_update) {
+                    updatePath(currentPos, pathData);
+                }
+            });
         }
     }
 
@@ -134,8 +140,8 @@ public class PathFinderWorker {
                     ctx
             );
 
-            Optional.ofNullable(finder.calculatePath())
-                    .map(Path::getSmoothedPath)
+            Optional<Path> calculatedPath = Optional.ofNullable(finder.calculatePath());
+            calculatedPath.map(path -> pathData.smoothes ? path.getSmoothedPath() : path.getPath())
                     .ifPresent(path -> {
                         pathData.remainingPath = path;
                         PATH_RESULTS.add(new PathResult(getPathId(pathData), path));
@@ -324,11 +330,13 @@ public class PathFinderWorker {
     }
 
     // API methods
-    public static void addOrUpdatePath(String id, BlockPos end, float[] color, String endText) {
+    public static void addOrUpdatePath(String id, BlockPos end, float[] color, String endText, boolean smooth, boolean allow_update) {
         PathData newData = new PathData(end, color, endText);
         if (!end.equals(Optional.ofNullable(PATHS.get(id)).map(data -> data.end).orElse(null))) {
             newData.needsUpdate = true;
         }
+        newData.smoothes = smooth;
+        newData.allow_update = allow_update;
         PATHS.put(id, newData);
     }
 

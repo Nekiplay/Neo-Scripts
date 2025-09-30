@@ -1,8 +1,10 @@
 package com.nekiplay.hypixelcry.sugar
 
+import com.nekiplay.hypixelcry.HypixelCry.mc
 import com.nekiplay.hypixelcry.mixins.ClientPlayerInteractionManagerAccessor
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.network.ClientPlayerInteractionManager
+import net.minecraft.client.network.SequencedPacketCreator
 import net.minecraft.util.ActionResult
 import net.minecraft.util.Hand
 
@@ -25,4 +27,8 @@ fun ClientPlayerInteractionManager.silentUse(useSlot: Int) {
 
 fun ClientPlayerInteractionManager.syncSelectedSlot() {
     (this as ClientPlayerInteractionManagerAccessor).syncSelectedSlot()
+}
+
+fun ClientPlayerInteractionManager.sendSequencedPacket(packetCreator: SequencedPacketCreator) {
+    (this as ClientPlayerInteractionManagerAccessor).sendSequencedPacket(mc.world, packetCreator)
 }

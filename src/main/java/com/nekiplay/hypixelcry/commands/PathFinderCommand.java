@@ -32,7 +32,7 @@ public class PathFinderCommand {
                                                 .then(ClientCommandManager.argument("z", IntegerArgumentType.integer())
                                                         .executes(context -> {
                                                             BlockPos targetPos = getBlockPosFromContext(context);
-                                                            PathFinderWorker.addOrUpdatePath(CUSTOM_PATH_ID, targetPos, DEFAULT_COLOR, CUSTOM_PATH_ID);
+                                                            PathFinderWorker.addOrUpdatePath(CUSTOM_PATH_ID, targetPos, DEFAULT_COLOR, CUSTOM_PATH_ID, true, true);
                                                             sendFeedback(context, HypixelCry.PREFIX + "§aSet path to position: " + targetPos.toShortString());
                                                             return 1;
                                                         })

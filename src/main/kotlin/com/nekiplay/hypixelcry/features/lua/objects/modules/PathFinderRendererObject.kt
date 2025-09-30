@@ -76,6 +76,9 @@ class PathFinderRendererObject: LuaValue() {
                 val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
                 val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
 
+                val smooth = if (table.get("smooth").isboolean()) table.get("smooth").toboolean() else false
+                val updater = if (table.get("updater").isboolean()) table.get("updater").toboolean() else true
+
                 val colorComponents = floatArrayOf(
                     red.toFloat() / 255.0f,
                     green.toFloat() / 255.0f,
@@ -88,7 +91,9 @@ class PathFinderRendererObject: LuaValue() {
                 PathFinderWorker.addOrUpdatePath(
                     id, BlockPos(x, y, z),
                     colorComponents,
-                    endText
+                    endText,
+                    smooth,
+                    updater
                 )
                 return valueOf(true);
             }
