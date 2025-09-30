@@ -7,6 +7,7 @@ import com.nekiplay.hypixelcry.config.NEUConfig;
 import com.nekiplay.hypixelcry.features.commands.impl.LuaCommand;
 import com.nekiplay.hypixelcry.features.modules.ModuleManager;
 import com.nekiplay.hypixelcry.utils.ConfigUtil;
+import com.nekiplay.hypixelcry.utils.NotificationUtils;
 import com.nekiplay.hypixelcry.utils.Utils;
 import com.nekiplay.hypixelcry.utils.scheduler.Scheduler;
 import com.nekiplay.hypixelcry.features.lua.LuaManager;
@@ -26,6 +27,7 @@ import net.minecraft.util.Formatting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -122,6 +124,8 @@ public class HypixelCry implements ClientModInitializer {
 
         Scheduler.INSTANCE.scheduleCyclic(Utils::update, 20);
         loadStartupScripts(scriptsDir);
+
+        NotificationUtils.getInstance().sendNotification("Hypixel Cry", "Loaded");
     }
 
     private ArrayList<String> startUpScriptNames = new ArrayList<String>() {{

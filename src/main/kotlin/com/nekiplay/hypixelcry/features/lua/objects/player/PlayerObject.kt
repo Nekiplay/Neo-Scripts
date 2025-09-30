@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.player
 
 import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
+import com.nekiplay.hypixelcry.utils.NotificationUtils
 import com.nekiplay.hypixelcry.utils.PlayerUtils
 import com.nekiplay.hypixelcry.utils.Rotations
 import com.nekiplay.hypixelcry.utils.StatusBarTracker
@@ -15,8 +16,10 @@ import net.minecraft.util.hit.HitResult
 import net.minecraft.util.math.Vec3d
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
+import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
+import java.awt.TrayIcon
 
 class PlayerObject : LuaValue() {
     override fun call(): LuaValue {
@@ -45,7 +48,9 @@ class PlayerObject : LuaValue() {
             "getLocation" -> GetPlayerLocationFunction()
             "getPurse" -> GetPlayerPurseFunction()
             "getHealth" -> GetPlayerHealthFunction()
+            "getMaxHealth" -> GetPlayerMaxHealthFunction()
             "getMana" -> GetPlayerManaFunction()
+            "getMaxMana" -> GetPlayerMaxManaFunction()
             "getDefence" -> GetPlayerDefenceFunction()
             "getSpeed" -> GetPlayerSpeedFunction()
             "getCold" -> GetPlayerColdFunction()
@@ -72,8 +77,8 @@ class PlayerObject : LuaValue() {
     private inner class ShowNotificatioFucntion : TwoArgFunction() {
         override fun call(arg: LuaValue?, arg2: LuaValue?): LuaValue? {
             if (arg?.isstring() == true && arg2?.isstring() == true) {
-                try { Utils.showNotification(arg.tojstring(), arg2.tojstring()) }
-                catch (ignored: Exception) { return FALSE }
+                NotificationUtils.getInstance()
+                    .sendNotification(arg.tojstring(), arg2.tojstring())
 
                return TRUE
             }
@@ -271,6 +276,16 @@ class PlayerObject : LuaValue() {
         }
     }
 
+    private inner class GetPlayerMaxHealthFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return if (Utils.isOnSkyblock()) {
+                valueOf(StatusBarTracker.getHealth().max())
+            } else {
+                valueOf((mc.player?.health)?.toDouble() ?: 0.0)
+            }
+        }
+    }
+
     private inner class GetPlayerHealthFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             return if (Utils.isOnSkyblock()) {
@@ -295,6 +310,16 @@ class PlayerObject : LuaValue() {
         override fun call(): LuaValue {
             return if (Utils.isOnSkyblock()) {
                 valueOf(StatusBarTracker.getSpeed().value())
+            } else {
+                valueOf(0)
+            }
+        }
+    }
+
+    private inner class GetPlayerMaxManaFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return if (Utils.isOnSkyblock()) {
+                valueOf(StatusBarTracker.getMana().max())
             } else {
                 valueOf(0)
             }

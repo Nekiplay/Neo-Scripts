@@ -6,3 +6,6 @@ import net.minecraft.client.MinecraftClient
 fun MinecraftClient.rightClick() {
     (this as MinecraftClientAccessor).doItemUse()
 }
+fun MinecraftClient.leftClick(): Boolean {
+    return (this as MinecraftClientAccessor).doAttack()
+}

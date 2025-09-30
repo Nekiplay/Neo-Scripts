@@ -8,4 +8,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 public interface MinecraftClientAccessor {
     @Invoker("doItemUse")
     void doItemUse();
+
+    @Invoker(value = "doAttack")
+    boolean doAttack();
 }

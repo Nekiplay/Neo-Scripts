@@ -1,6 +1,7 @@
 package com.nekiplay.hypixelcry.features.lua.objects.player
 
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
+import com.nekiplay.hypixelcry.sugar.leftClick
 import com.nekiplay.hypixelcry.sugar.rightClick
 import com.nekiplay.hypixelcry.sugar.silentUse
 import net.minecraft.client.MinecraftClient
@@ -19,6 +20,7 @@ class InputObject: LuaValue() {
         return when (key.tojstring()) {
             "silentUse" -> SilentUseFunction()
 
+            "leftClick" -> LeftClickFunction()
             "rightClick" -> RightClickFunction()
             // Setters
             "setSelectedSlot" -> SetSelectedSlotFunction()
@@ -55,6 +57,12 @@ class InputObject: LuaValue() {
             "isPressedUse" -> IsPressedUseFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class LeftClickFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return valueOf(mc.leftClick())
+        }
     }
 
     private inner class RightClickFunction : ZeroArgFunction() {

@@ -27,10 +27,14 @@ import net.minecraft.util.Util;
 import org.jetbrains.annotations.NotNull;
 
 import javax.imageio.ImageIO;
+import javax.swing.*;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collections;
@@ -383,30 +387,4 @@ public class Utils {
         }
     }
 
-    public static void showNotification(String title, String message) throws IOException, AWTException {
-        Image image = ImageIO.read(Objects.requireNonNull(Utils.class.getResource("assets/hypixelcry/logo.png")));
-
-        String os = System.getProperty("os.name");
-        if (os.contains("Linux")) {
-            ProcessBuilder builder = new ProcessBuilder(
-                    "zenity",
-                    "--notification",
-                    "--text=" + title + "\\n" + message);
-            builder.inheritIO().start();
-        } else if (os.contains("Mac")) {
-            ProcessBuilder builder = new ProcessBuilder(
-                    "osascript", "-e",
-                    "display notification \"" + message + "\""
-                            + " with title \"" + title + "\"");
-            builder.inheritIO().start();
-        } else if (SystemTray.isSupported()) {
-            SystemTray tray = SystemTray.getSystemTray();
-
-            TrayIcon trayIcon = new TrayIcon(image, "Hypixel Cry");
-            trayIcon.setImageAutoSize(true);
-            tray.add(trayIcon);
-
-            trayIcon.displayMessage(title, message, TrayIcon.MessageType.INFO);
-        }
-    }
 }

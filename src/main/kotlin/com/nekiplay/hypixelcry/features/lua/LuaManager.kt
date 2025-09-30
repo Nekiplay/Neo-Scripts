@@ -9,6 +9,7 @@ import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.features.lua.objects.world.WorldObject
+import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.utils.misc.input.KeyAction
 import kotlinx.io.files.FileNotFoundException
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
@@ -22,8 +23,11 @@ import org.luaj.vm2.LuaError
 import org.luaj.vm2.lib.OneArgFunction
 import java.io.File
 import java.io.StringReader
+import java.util.concurrent.Callable
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 class LuaManager() {
@@ -508,7 +512,7 @@ class LuaManager() {
 
         for (callback in callbacks) {
             try {
-                callback.call(LuaValue.valueOf(text.string), LuaValue.valueOf(overlay))
+                callback.call(LuaValue.valueOf(text.getFormattedString()), LuaValue.valueOf(overlay))
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in message callback: ${e.message}")
             }
@@ -550,7 +554,6 @@ class LuaManager() {
 
             val chunk = loadChunk(file, scriptName)
             val result = chunk.call()
-            // saveScriptCallbacks(scriptName)
             return result
         } finally {
             // Сбрасываем текущий исполняемый скрипт

@@ -18,7 +18,7 @@ class NetworkObject : LuaValue() {
             "getPlayersList" -> GetPlayerList()
             
             "sendStartDestroyBlockPacket" -> SendStartDestroyBlockPacket()
-            "sendStopDestroyBlockPacket" -> SendStartDestroyBlockPacket()
+            "sendStopDestroyBlockPacket" -> SendStopDestroyBlockPacket()
             "sendAbortDestroyBlockPacket" -> SendAbortDestroyBlockPacket()
             else -> NIL
         } as LuaValue
@@ -38,6 +38,7 @@ class NetworkObject : LuaValue() {
                 table_player.set("gamemode", valueOf(player.gameMode.toString()))
                 table_player.set("skin_texture", valueOf(player.skinTextures.texture.toString()))
                 table.set(index, table_player)
+                index++;
             }
             return table
         }
@@ -51,7 +52,13 @@ class NetworkObject : LuaValue() {
             arg4: LuaValue?
         ): LuaValue? {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isstring() == true) {
-                mc.interactionManager?.attackBlock(BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),  Direction.valueOf(arg4.tojstring()))
+                mc.networkHandler?.sendPacket(
+                    PlayerActionC2SPacket(
+                        PlayerActionC2SPacket.Action.START_DESTROY_BLOCK,
+                        BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
+                        Direction.valueOf(arg4.tojstring())
+                    )
+                )
                 return TRUE
             }
             return FALSE
@@ -66,7 +73,6 @@ class NetworkObject : LuaValue() {
             arg4: LuaValue?
         ): LuaValue? {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isstring() == true) {
-                BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
                 mc.networkHandler?.sendPacket(
                     PlayerActionC2SPacket(
                         PlayerActionC2SPacket.Action.STOP_DESTROY_BLOCK,
@@ -88,7 +94,6 @@ class NetworkObject : LuaValue() {
             arg4: LuaValue?
         ): LuaValue? {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isstring() == true) {
-                BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
                 mc.networkHandler?.sendPacket(
                     PlayerActionC2SPacket(
                         PlayerActionC2SPacket.Action.ABORT_DESTROY_BLOCK,

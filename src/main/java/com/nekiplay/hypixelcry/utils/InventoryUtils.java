@@ -11,12 +11,6 @@ public class InventoryUtils {
         }
     }
 
-    public static void clickContainerSlot(int slot, int button, SlotActionType actionType) {
-        if (mc.player != null && mc.player.currentScreenHandler != null) {
-            clickSlotWithId(slot, button, actionType, mc.player.currentScreenHandler.syncId);
-        }
-    }
-
     public static void clickSlot(int slot, int button, SlotActionType actionType) {
         if (mc.player != null && mc.player.playerScreenHandler != null) {
             clickSlotWithId(slot, button, actionType, mc.player.playerScreenHandler.syncId);
