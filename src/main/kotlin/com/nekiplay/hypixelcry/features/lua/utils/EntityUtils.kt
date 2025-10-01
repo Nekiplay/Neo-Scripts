@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.utils
 
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EquipmentSlot
@@ -81,20 +82,32 @@ object EntityUtils {
                 val mainHandStack = entity.mainHandStack
                 val offHandStack = entity.offHandStack
 
-                table.set("main_hand", ItemStackUtils.ToLua(mainHandStack) ?: LuaValue.NIL)
-                table.set("off_hand", ItemStackUtils.ToLua(offHandStack) ?: LuaValue.NIL)
+                if (mainHandStack != null && !mainHandStack.isEmpty) {
+                    table.set("main_hand", LuaItemStack(mainHandStack))
+                }
+                if (offHandStack != null && !offHandStack.isEmpty) {
+                    table.set("off_hand", LuaItemStack(offHandStack))
+                }
 
                 val head = entity.getEquippedStack(EquipmentSlot.HEAD)
-                table.set("head", ItemStackUtils.ToLua(head) ?: LuaValue.NIL)
+                if (head != null && !head.isEmpty) {
+                    table.set("head", LuaItemStack(head))
+                }
 
                 val chest = entity.getEquippedStack(EquipmentSlot.CHEST)
-                table.set("chest", ItemStackUtils.ToLua(chest) ?: LuaValue.NIL)
+                if (chest != null && !chest.isEmpty) {
+                    table.set("chest", LuaItemStack(chest))
+                }
 
                 val legs = entity.getEquippedStack(EquipmentSlot.LEGS)
-                table.set("legs", ItemStackUtils.ToLua(legs) ?: LuaValue.NIL)
+                if (legs != null && !legs.isEmpty) {
+                    table.set("legs", LuaItemStack(legs))
+                }
 
                 val feet = entity.getEquippedStack(EquipmentSlot.FEET)
-                table.set("feet", ItemStackUtils.ToLua(feet) ?: LuaValue.NIL)
+                if (feet != null && !feet.isEmpty) {
+                    table.set("feet", LuaItemStack(feet))
+                }
 
                 val effectsTable = LuaValue.tableOf()
                 var effectIndex = 1

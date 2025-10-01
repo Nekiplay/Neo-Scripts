@@ -4,6 +4,7 @@ import com.nekiplay.hypixelcry.features.lua.customArgs.FourArgFunction
 import com.nekiplay.hypixelcry.features.lua.utils.BlockUtil
 import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
+import com.nekiplay.hypixelcry.sugar.getFov
 import com.nekiplay.hypixelcry.utils.RaycastUtils
 import com.nekiplay.hypixelcry.utils.Rotations
 import net.minecraft.block.Block
@@ -18,6 +19,10 @@ import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.tan
 
 class WorldObject : LuaValue() {
     override fun call(): LuaValue {
@@ -40,6 +45,8 @@ class WorldObject : LuaValue() {
 
             "raycast" -> RaycastFunction()
             "raycastToBlocks" -> RaycastToBlocksFunction()
+
+            "worldToScreen" -> WorldToScreenFunction()
             else -> NIL
         } as LuaValue
     }
@@ -370,6 +377,98 @@ class WorldObject : LuaValue() {
             }
 
             return resultTable
+        }
+    }
+
+    private inner class WorldToScreenFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable()) {
+                // Получение 3D координат мира
+                val worldX = if (table.get("x").isnumber()) table.get("x").tofloat() else return NIL
+                val worldY = if (table.get("y").isnumber()) table.get("y").tofloat() else return NIL
+                val worldZ = if (table.get("z").isnumber()) table.get("z").tofloat() else return NIL
+
+                try {
+                    // Конвертация координат
+                    val screenPos = worldToScreen(worldX, worldY, worldZ)
+
+                    if (screenPos != null) {
+                        val resultTable = tableOf()
+                        resultTable.set("x", valueOf(screenPos.first.toDouble()))
+                        resultTable.set("y", valueOf(screenPos.second.toDouble()))
+                        resultTable.set("visible", valueOf(screenPos.third))
+                        return resultTable
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            return NIL
+        }
+    }
+    private fun worldToScreen(worldX: Float, worldY: Float, worldZ: Float): Triple<Float, Float, Boolean>? {
+        try {
+            val camera = mc.gameRenderer.camera
+            val window = mc.window
+
+            // Создаем вектор позиции в мире
+            val worldPos = Vec3d(worldX.toDouble(), worldY.toDouble(), worldZ.toDouble())
+
+            // Получаем позицию камеры
+            val cameraPos = camera.pos
+
+            // Вычисляем относительную позицию к камере
+            val relX = (worldPos.x - cameraPos.x).toFloat()
+            val relY = (worldPos.y - cameraPos.y).toFloat()
+            val relZ = (worldPos.z - cameraPos.z).toFloat()
+
+            // Получаем углы поворота камеры
+            val yaw = Math.toRadians(camera.yaw.toDouble()).toFloat()
+            val pitch = Math.toRadians(camera.pitch.toDouble()).toFloat()
+
+            val cosYaw = cos(yaw)
+            val sinYaw = sin(yaw)
+            val cosPitch = cos(pitch)
+            val sinPitch = sin(pitch)
+
+            // Трансформируем координаты в пространство камеры
+            val x = relX * cosYaw + relZ * sinYaw
+            val y = relY * cosPitch - (relX * sinYaw - relZ * cosYaw) * sinPitch
+            val z = relY * sinPitch + (relX * sinYaw - relZ * cosYaw) * cosPitch
+
+            // Проверяем, не находится ли точка за камерой
+            if (z > 0) {
+                return Triple(0f, 0f, false)
+            }
+
+            // Получаем параметры проекции
+            val fov = Math.toRadians(mc.gameRenderer.getFov(camera, mc.renderTickCounter.getTickProgress(true), true).toDouble()).toFloat()
+            val aspectRatio = window.framebufferWidth.toFloat() / window.framebufferHeight.toFloat()
+
+            val halfHeight = tan(fov * 0.5f)
+            val halfWidth = halfHeight * aspectRatio
+
+            // Избегаем деления на ноль
+            if (abs(z) < 0.01f) {
+                return Triple(0f, 0f, false)
+            }
+
+            // Проецируем на плоскость экрана
+            val projX = x / -z
+            val projY = y / -z
+
+            // Проверяем, находится ли точка в пределах экрана
+            val visible = abs(projX) <= halfWidth && abs(projY) <= halfHeight
+
+            // Конвертируем в экранные координаты
+            val screenX = (projX / halfWidth + 1f) * 0.5f * window.scaledWidth
+            val screenY = (-projY / halfHeight + 1f) * 0.5f * window.scaledHeight
+
+            return Triple(screenX, screenY, visible)
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
         }
     }
 

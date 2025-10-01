@@ -11,7 +11,8 @@
     "MouseMixin",
     "entity.ClientPlayerEntityMixin",
     "entity.PlayerEntityRendererMixin",
-    "gui.AbstractSignEditScreenAccessor"
+    "gui.AbstractSignEditScreenAccessor",
+    "renderer.GameRendererAccessor"
   ],
   "client": [
     "BeaconBlockEntityRendererInvoker",

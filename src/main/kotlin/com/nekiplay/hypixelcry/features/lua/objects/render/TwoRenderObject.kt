@@ -1,6 +1,7 @@
 package com.nekiplay.hypixelcry.features.lua.objects.render
 
 import com.mojang.blaze3d.vertex.VertexFormat
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import net.minecraft.client.font.TextRenderer
 import net.minecraft.client.gl.RenderPipelines
@@ -9,8 +10,10 @@ import net.minecraft.client.render.Tessellator
 import net.minecraft.client.render.VertexFormats
 import net.minecraft.client.texture.NativeImage
 import net.minecraft.client.texture.NativeImageBackedTexture
+import net.minecraft.item.ItemStack
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
+import org.joml.Matrix3x2f
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
@@ -58,6 +61,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
             "renderRect" -> RenderRectFunction()
             "renderLine" -> RenderLineFunction()
             "renderPolygon" -> RenderPolygonFunction()
+            "renderItemStack" -> RenderItemStackFunction()
             else -> NIL
         } as LuaValue
     }
@@ -354,6 +358,36 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
         // Рисуем четырехугольник как два треугольника
         drawTriangle(context, x1, y1, x2, y2, x3, y3, color)
         drawTriangle(context, x1, y1, x3, y3, x4, y4, color)
+    }
+
+    private inner class RenderItemStackFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable() && context != null) {
+                val x = if (table.get("x").isnumber()) table.get("x").toint() else 0
+                val y = if (table.get("y").isnumber()) table.get("y").toint() else 0
+                val scale = if (table.get("scale").isnumber()) table.get("scale").tofloat() else 1.0f
+
+                val itemStackObj = table.get("itemStack")
+                val itemStack = when {
+                    itemStackObj.isuserdata() && itemStackObj.touserdata() is LuaItemStack -> (itemStackObj.touserdata() as LuaItemStack).getItemStack()
+                    itemStackObj.isuserdata() && itemStackObj.touserdata() is ItemStack -> itemStackObj.touserdata() as ItemStack
+                    else -> null
+                }
+
+                if (itemStack != null) {
+                    if (scale != 1.0f) {
+                        context.matrices.pushMatrix()
+                        context.matrices.translate(x.toFloat(), y.toFloat())
+                        context.matrices.scale(scale, scale)
+                        context.drawItem(itemStack, 0, 0)
+                        context.matrices.popMatrix()
+                    } else {
+                        context.drawItem(itemStack, x, y)
+                    }
+                }
+            }
+            return NIL
+        }
     }
 
     private fun drawTriangle(context: DrawContext, x1: Float, y1: Float,

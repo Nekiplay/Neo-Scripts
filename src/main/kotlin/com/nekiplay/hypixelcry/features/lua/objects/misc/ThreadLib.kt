@@ -4,10 +4,10 @@ import org.luaj.vm2.*
 import org.luaj.vm2.lib.*
 import java.util.concurrent.ConcurrentHashMap
 
-class ThreadLib(val scriptName: String) : TwoArgFunction() {
+class ThreadLib : TwoArgFunction() {
 
     // Хранение потоков с меткой скрипта
-    private val threads = ConcurrentHashMap<Int, Pair<String, Thread>>() // id -> (scriptName, thread)
+    private val threads = ConcurrentHashMap<Int, Thread>() // id -> (scriptName, thread)
     private var nextId = 1
 
     override fun call(modname: LuaValue, env: LuaValue): LuaValue {
@@ -37,7 +37,7 @@ class ThreadLib(val scriptName: String) : TwoArgFunction() {
                     threads.remove(threadId)
                 }
             }
-            threads[threadId] = Pair(scriptName, thread)
+            threads[threadId] = thread
             thread.start()
             return LuaValue.valueOf(threadId)
         }
@@ -46,7 +46,7 @@ class ThreadLib(val scriptName: String) : TwoArgFunction() {
     inner class JoinThread : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val threadId = arg.checkint()
-            val thread = threads[threadId]?.second ?: return LuaValue.NIL
+            val thread = threads[threadId] ?: return LuaValue.NIL
             try {
                 thread.join()
             } catch (_: InterruptedException) {}
@@ -57,7 +57,7 @@ class ThreadLib(val scriptName: String) : TwoArgFunction() {
     inner class IsAlive : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val threadId = arg.checkint()
-            val thread = threads[threadId]?.second ?: return LuaValue.FALSE
+            val thread = threads[threadId] ?: return LuaValue.FALSE
             return LuaValue.valueOf(thread.isAlive)
         }
     }
@@ -65,20 +65,18 @@ class ThreadLib(val scriptName: String) : TwoArgFunction() {
     inner class InterruptThread : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val threadId = arg.checkint()
-            val thread = threads[threadId]?.second ?: return LuaValue.FALSE
+            val thread = threads[threadId] ?: return LuaValue.FALSE
             thread.interrupt()
             return LuaValue.TRUE
         }
     }
 
-    public fun stopThreads(scriptName: String) {
+    public fun stopThreads() {
         // Останавливаем и удаляем все потоки для данного скрипта
-        threads.entries.removeIf { entry ->
-            if (entry.value.first == scriptName) {
-                entry.value.second.interrupt()
-                true
-            } else false
-        }
+        threads.entries.forEach({ entry ->
+            entry.value.interrupt()
+        })
+        threads.entries.clear()
     }
 
     inner class Sleep : OneArgFunction() {

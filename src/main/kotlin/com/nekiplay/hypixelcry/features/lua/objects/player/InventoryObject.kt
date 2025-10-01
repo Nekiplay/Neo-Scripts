@@ -1,6 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.objects.player
 
-import com.nekiplay.hypixelcry.features.lua.utils.ItemStackUtils
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.mixins.gui.AbstractSignEditScreenAccessor
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.InventoryUtils
@@ -143,11 +143,21 @@ class InventoryObject: LuaValue() {
 
     private inner class GetStackFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
-            return if (arg?.isnumber() == true) {
-                return ItemStackUtils.ToLua(mc.player?.inventory?.getStack(arg.toint())) ?: NIL
-            } else {
-                NIL
-            }
+            // Проверка аргумента
+            if (arg == null || !arg.isnumber()) return NIL
+
+            val slot = arg.toint()
+
+            // Достаём игрока и инвентарь безопасно
+            val player = mc.player ?: return NIL
+            val inv = player.inventory ?: return NIL
+
+            // Получаем стек и проверяем пустоту
+            val stack = inv.getStack(slot)
+            if (stack == null || stack.isEmpty) return NIL
+
+            // Возвращаем LuaUserdata-обёртку
+            return LuaItemStack(stack)
         }
     }
 
@@ -157,7 +167,10 @@ class InventoryObject: LuaValue() {
                 if (mc.player != null) {
                     val screenHandler: ScreenHandler? = mc.player!!.currentScreenHandler
                     if (screenHandler is GenericContainerScreenHandler) {
-                        return ItemStackUtils.ToLua(screenHandler.getSlot(arg.toint()).stack) ?: NIL
+                        val stack = screenHandler.getSlot(arg.toint()).stack
+                        if (stack == null || stack.isEmpty) return NIL
+
+                        return LuaItemStack(screenHandler.getSlot(arg.toint()).stack)
                     }
                     else {
                         NIL

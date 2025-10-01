@@ -606,7 +606,7 @@ class LuaManager() {
 
             saveCurrentGlobals()
 
-            val threadLib = ThreadLib(scriptName)
+            val threadLib = ThreadLib()
 
             threadLibs[scriptName] = threadLib
 
@@ -685,7 +685,7 @@ class LuaManager() {
             scriptDependencies.remove(scriptName)
         }
 
-        threadLibs[scriptName]?.stopThreads(scriptName)
+        threadLibs[scriptName]?.stopThreads()
         threadLibs.remove(scriptName)
 
         // Clean up stored data
