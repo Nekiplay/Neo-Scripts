@@ -9,6 +9,7 @@
     "MinecraftClientAccessor",
     "MixinClientLoginNetworkHandlerMixin",
     "MouseMixin",
+    "PlayerListHudAccessor",
     "entity.ClientPlayerEntityMixin",
     "entity.PlayerEntityRendererMixin",
     "gui.AbstractSignEditScreenAccessor",

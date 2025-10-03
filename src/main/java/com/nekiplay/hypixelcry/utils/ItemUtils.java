@@ -62,6 +62,13 @@ public class ItemUtils {
         return stack.getOrDefault(DataComponentTypes.LORE, LoreComponent.DEFAULT).styledLines();
     }
 
+    public static @NotNull Text getDisplayName(ItemStack stack) {
+        if (stack == null || stack.getCustomName() == null) {
+            return Text.empty();
+        }
+        return stack.getCustomName();
+    }
+
     public static @NotNull Map<String, Integer> getHypixelEnchantments(ItemStack itemStack) {
         Map<String, Integer> result = new HashMap<>();
         NbtCompound extraAttributes = getCustomData(itemStack);

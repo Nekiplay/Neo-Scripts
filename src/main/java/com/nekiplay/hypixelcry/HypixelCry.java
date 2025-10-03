@@ -110,6 +110,7 @@ public class HypixelCry implements ClientModInitializer {
                     .executes(context -> {
                         MinecraftClient.getInstance().send(() -> {
                             MoulConfigEditor<NEUConfig> editor = new MoulConfigEditor<>(HypixelCry.processor);
+
                             IMinecraft.getInstance().openWrappedScreen(editor);
                         });
                         return 0;

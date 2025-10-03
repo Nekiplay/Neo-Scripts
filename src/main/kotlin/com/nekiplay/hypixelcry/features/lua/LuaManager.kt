@@ -17,6 +17,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.text.Text
+import net.minecraft.util.Formatting
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.jse.JsePlatform
@@ -27,11 +28,8 @@ import java.io.File
 import java.io.StringReader
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.concurrent.Callable
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 class LuaManager() {
@@ -66,6 +64,7 @@ class LuaManager() {
     // Precompute config paths
     private val configDir = FabricLoader.getInstance().configDir
     private val baseModuleSearchPaths = arrayOf(
+        "/",
         "libs/",
         "lib/",
         configDir.resolve("hypixelcry/scripts/libs/").toString() + "/",

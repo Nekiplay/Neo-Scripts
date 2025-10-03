@@ -64,7 +64,7 @@ dependencies {
     modImplementation("net.fabricmc:fabric-language-kotlin:${property("fabric_kotlin_version")}")
 
     include(modImplementation("org.notenoughupdates.moulconfig:modern-1.21.7:4.1.0-beta")!!) // Click GUI
-    shadowModImpl("org.notenoughupdates.moulconfig:modern-1.21.7:4.1.0-beta") // Click GUI
+    shadowModImpl("org.notenoughupdates.moulconfig:modern-1.21.7:4.1.1-beta") // Click GUI
     include(modImplementation("net.azureaaron:hm-api:${property("hm_api_version")}")!!)  // HM API (Hypixel Mod API Library)
 
     // Occlusion Culling

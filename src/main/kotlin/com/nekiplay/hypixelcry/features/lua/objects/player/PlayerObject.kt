@@ -2,6 +2,9 @@ package com.nekiplay.hypixelcry.features.lua.objects.player
 
 import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
+import com.nekiplay.hypixelcry.sugar.getFormattedString
+import com.nekiplay.hypixelcry.sugar.getScoreabordLines
+import com.nekiplay.hypixelcry.sugar.getTab
 import com.nekiplay.hypixelcry.utils.NotificationUtils
 import com.nekiplay.hypixelcry.utils.PlayerUtils
 import com.nekiplay.hypixelcry.utils.Rotations
@@ -16,10 +19,8 @@ import net.minecraft.util.hit.HitResult
 import net.minecraft.util.math.Vec3d
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
-import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
-import java.awt.TrayIcon
 
 class PlayerObject : LuaValue() {
     override fun call(): LuaValue {
@@ -66,6 +67,7 @@ class PlayerObject : LuaValue() {
             "getDirectionFromYawPitch" -> GetDirectionFromYawPitch()
 
             "getScoreBoardLines" -> GetScoreboardLinesFunction()
+            "getTab" -> GetTabFunction()
 
             "raycast" -> RayCastFunction()
 
@@ -103,11 +105,34 @@ class PlayerObject : LuaValue() {
         }
     }
 
+    private inner class GetTabFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val tab = mc.player?.getTab()
+            val table = tableOf()
+
+            table.set("header", if (tab?.header?.isPresent == true)
+                valueOf(tab.header.get().getFormattedString()) else NIL)
+
+            table.set("footer", if (tab?.footer?.isPresent == true)
+                valueOf(tab.footer.get().getFormattedString()) else NIL)
+
+            val lines = tableOf()
+            if (tab?.body != null && tab.body.isNotEmpty()) {
+                tab.body.forEachIndexed { index, line ->
+                    lines.set(index + 1, valueOf(line.getFormattedString()))
+                }
+            }
+            table.set("body", if (lines.length() == 0) NIL else lines)
+
+            return table
+        }
+    }
+
     private inner class GetScoreboardLinesFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val table = tableOf()
-            Utils.STRING_SCOREBOARD.forEachIndexed { index, line ->
-                table.set(index + 1, line)
+            mc.player?.getScoreabordLines()?.forEachIndexed { index, line ->
+                table.set(index + 1, valueOf(line.getFormattedString()))
             }
             return table
         }
@@ -133,37 +158,36 @@ class PlayerObject : LuaValue() {
         ): LuaValue? {
             if (arg1?.isnumber() == true) {
                 val hitResult = mc.player?.raycast(arg1.todouble(), 1f, false)
-                return when (hitResult?.type) {
-                    HitResult.Type.BLOCK -> {
-                        val table = tableOf()
-                        table.set("type", "block")
-                        table.set("x", valueOf(hitResult.pos.x))
-                        table.set("y", valueOf(hitResult.pos.y))
-                        table.set("z", valueOf(hitResult.pos.z))
+                if (hitResult?.type == HitResult.Type.BLOCK) {
+                    val table = tableOf()
+                    table.set("type", "block")
+                    table.set("x", valueOf(hitResult.pos.x))
+                    table.set("y", valueOf(hitResult.pos.y))
+                    table.set("z", valueOf(hitResult.pos.z))
 
-                        if (hitResult is BlockHitResult) {
-                            val blockPos = tableOf()
-                            blockPos.set("x", valueOf(hitResult.blockPos.x))
-                            blockPos.set("y", valueOf(hitResult.blockPos.y))
-                            blockPos.set("z", valueOf(hitResult.blockPos.z))
-                            table.set("blockPos", blockPos)
-                        }
-                        table
+                    if (hitResult is BlockHitResult) {
+                        val blockPos = tableOf()
+                        blockPos.set("x", valueOf(hitResult.blockPos.x))
+                        blockPos.set("y", valueOf(hitResult.blockPos.y))
+                        blockPos.set("z", valueOf(hitResult.blockPos.z))
+                        table.set("blockPos", blockPos)
                     }
-                    HitResult.Type.ENTITY -> {
-                        val table = tableOf()
-                        if (hitResult is EntityHitResult) {
-                            table.set("type", "entity")
-                            table.set("data", EntityUtils.ToLua(hitResult.entity))
-                        }
-                        table
+                    return table
+                }
+                else if (hitResult?.type == HitResult.Type.ENTITY) {
+                    val table = tableOf()
+                    if (hitResult is EntityHitResult) {
+                        table.set("type", "entity")
+                        table.set("data", EntityUtils.ToLua(hitResult.entity))
                     }
-                    HitResult.Type.MISS -> {
-                        val table = tableOf()
+                    return table
+                }
+                else if (hitResult?.type == HitResult.Type.MISS) {
+                    val table = tableOf()
+                    if (hitResult is EntityHitResult) {
                         table.set("type", "miss")
-                        table
                     }
-                    else -> NIL
+                    return table
                 }
             }
             return NIL

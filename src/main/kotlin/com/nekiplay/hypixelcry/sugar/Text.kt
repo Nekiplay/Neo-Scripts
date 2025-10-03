@@ -1,70 +1,56 @@
 package com.nekiplay.hypixelcry.sugar
 
-import com.mojang.brigadier.LiteralMessage
+import net.minecraft.text.OrderedText
 import net.minecraft.text.Style
 import net.minecraft.text.Text
-import net.minecraft.text.TextColor
-import net.minecraft.text.TranslatableTextContent
+import net.minecraft.util.Formatting
+
 
 fun Text.getFormattedString(): String {
-    val result = StringBuilder()
-
-    // Рекурсивная функция для обработки текста и его компонентов
-    fun processText(currentText: Text, inheritedStyle: Style = Style.EMPTY) {
-        val style = inheritedStyle.withParent(currentText.style)
-
-        // Обрабатываем цвет
-        style.color?.let { textColor ->
-            val colorCode = getMinecraftColorCode(textColor)
-            if (colorCode.isNotEmpty()) {
-                result.append(colorCode)
+    val sb = StringBuilder()
+    val ordered: OrderedText = this.asOrderedText()
+    ordered.accept { _: Int, style: Style?, codePoint: Int ->
+        // Применяем цвет
+        if (style!!.getColor() != null) {
+            val rgb = style.getColor()!!.rgb
+            // Пытаемся подобрать ближайший ванильный цвет
+            val nearest: Formatting? = nearestVanillaColor(rgb)
+            if (nearest != null) {
+                sb.append('§').append(nearest.code)
+            } else {
+                // Либо используем hex-коды MiniMessage-стиля — но ванильный клиент §-hex не понимает.
+                // Тогда можно просто сбросить к белому или игнорировать.
             }
         }
+        // Применяем стилевые флаги
+        if (style.isBold) sb.append('§').append(Formatting.BOLD.code)
+        if (style.isItalic) sb.append('§').append(Formatting.ITALIC.code)
+        if (style.isUnderlined) sb.append('§').append(Formatting.UNDERLINE.code)
+        if (style.isStrikethrough) sb.append('§').append(Formatting.STRIKETHROUGH.code)
+        if (style.isObfuscated) sb.append('§').append(Formatting.OBFUSCATED.code)
 
-        // Обрабатываем форматирование
-        if (style.isBold) result.append("§l")
-        if (style.isItalic) result.append("§o")
-        if (style.isUnderlined) result.append("§n")
-        if (style.isStrikethrough) result.append("§m")
-        if (style.isObfuscated) result.append("§k")
-
-        // Добавляем содержимое текста, если это литеральный текст
-        if (currentText is LiteralMessage) {
-            result.append(currentText.string)
-        } else if (currentText is TranslatableTextContent) {
-            // Для переводимого текста можно добавить специальную обработку
-            result.append(currentText.key)
-        }
-
-        // Обрабатываем дочерние компоненты
-        for (sibling in currentText.siblings) {
-            processText(sibling, style)
-        }
+        // Добавляем символ
+        sb.append(Character.toChars(codePoint))
+        true
     }
-
-    processText(this)
-    return result.toString()
+    return sb.toString()
 }
 
-private fun getMinecraftColorCode(textColor: TextColor): String {
-    // Используем маппинг стандартных цветов Minecraft
-    return when (textColor.rgb) {
-        0x000000 -> "§0" // BLACK
-        0x0000AA -> "§1" // DARK_BLUE
-        0x00AA00 -> "§2" // DARK_GREEN
-        0x00AAAA -> "§3" // DARK_AQUA
-        0xAA0000 -> "§4" // DARK_RED
-        0xAA00AA -> "§5" // DARK_PURPLE
-        0xFFAA00 -> "§6" // GOLD
-        0xAAAAAA -> "§7" // GRAY
-        0x555555 -> "§8" // DARK_GRAY
-        0x5555FF -> "§9" // BLUE
-        0x55FF55 -> "§a" // GREEN
-        0x55FFFF -> "§b" // AQUA
-        0xFF5555 -> "§c" // RED
-        0xFF55FF -> "§d" // LIGHT_PURPLE
-        0xFFFF55 -> "§e" // YELLOW
-        0xFFFFFF -> "§f" // WHITE
-        else -> "" // Для неизвестных цветов
+private fun nearestVanillaColor(rgb: Int): Formatting? {
+    var best: Formatting? = null
+    var bestDist = Long.MAX_VALUE
+    for (f in Formatting.entries) {
+        if (!f.isColor) continue
+        val frgb: Int = f.colorValue!! // в 1.21+ доступен для цветовых форматирований
+        if (frgb == -1) continue
+        val dr = (((rgb shr 16) and 0xFF) - ((frgb shr 16) and 0xFF)).toLong()
+        val dg = (((rgb shr 8) and 0xFF) - ((frgb shr 8) and 0xFF)).toLong()
+        val db = ((rgb and 0xFF) - (frgb and 0xFF)).toLong()
+        val dist = dr * dr + dg * dg + db * db
+        if (dist < bestDist) {
+            bestDist = dist
+            best = f
+        }
     }
+    return best
 }

@@ -143,20 +143,15 @@ class InventoryObject: LuaValue() {
 
     private inner class GetStackFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
-            // Проверка аргумента
             if (arg == null || !arg.isnumber()) return NIL
 
             val slot = arg.toint()
 
-            // Достаём игрока и инвентарь безопасно
             val player = mc.player ?: return NIL
             val inv = player.inventory ?: return NIL
 
-            // Получаем стек и проверяем пустоту
             val stack = inv.getStack(slot)
             if (stack == null || stack.isEmpty) return NIL
-
-            // Возвращаем LuaUserdata-обёртку
             return LuaItemStack(stack)
         }
     }

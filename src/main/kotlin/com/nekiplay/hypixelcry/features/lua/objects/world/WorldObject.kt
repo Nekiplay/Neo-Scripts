@@ -8,6 +8,7 @@ import com.nekiplay.hypixelcry.sugar.getFov
 import com.nekiplay.hypixelcry.utils.RaycastUtils
 import com.nekiplay.hypixelcry.utils.Rotations
 import net.minecraft.block.Block
+import net.minecraft.client.render.Camera
 import net.minecraft.util.hit.EntityHitResult
 import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.hit.HitResult
@@ -41,12 +42,9 @@ class WorldObject : LuaValue() {
             "getEntities" -> GetEntitiesFunction()
             "getLivingEntities" -> GetLivingEntitiesFunction()
             "getEntityById" -> GetEntityByIdFunction()
-            "getEntitiesInRadius" -> GetEntitiesInRadiusFunction()
 
             "raycast" -> RaycastFunction()
             "raycastToBlocks" -> RaycastToBlocksFunction()
-
-            "worldToScreen" -> WorldToScreenFunction()
             else -> NIL
         } as LuaValue
     }
@@ -113,37 +111,39 @@ class WorldObject : LuaValue() {
     }
 
     private fun processHitResult(hitResult: HitResult?): LuaValue {
-        return when (hitResult?.type) {
-            HitResult.Type.BLOCK -> {
-                val table = tableOf()
-                table.set("type", "block")
-                table.set("x", valueOf(hitResult.pos.x))
-                table.set("y", valueOf(hitResult.pos.y))
-                table.set("z", valueOf(hitResult.pos.z))
+        if (hitResult?.type == HitResult.Type.BLOCK) {
+            val table = tableOf()
+            table.set("type", "block")
+            table.set("x", valueOf(hitResult.pos.x))
+            table.set("y", valueOf(hitResult.pos.y))
+            table.set("z", valueOf(hitResult.pos.z))
 
-                if (hitResult is BlockHitResult) {
-                    val blockPos = tableOf()
-                    blockPos.set("x", valueOf(hitResult.blockPos.x))
-                    blockPos.set("y", valueOf(hitResult.blockPos.y))
-                    blockPos.set("z", valueOf(hitResult.blockPos.z))
-                    table.set("blockPos", blockPos)
-                }
-                table
+            if (hitResult is BlockHitResult) {
+                val blockPos = tableOf()
+                blockPos.set("x", valueOf(hitResult.blockPos.x))
+                blockPos.set("y", valueOf(hitResult.blockPos.y))
+                blockPos.set("z", valueOf(hitResult.blockPos.z))
+                table.set("blockPos", blockPos)
             }
-            HitResult.Type.ENTITY -> {
-                val table = tableOf()
-                if (hitResult is EntityHitResult) {
-                    table.set("type", "entity")
-                    table.set("data", EntityUtils.ToLua(hitResult.entity))
-                }
-                table
+            return table
+        }
+        else if (hitResult?.type == HitResult.Type.ENTITY) {
+            val table = tableOf()
+            if (hitResult is EntityHitResult) {
+                table.set("type", "entity")
+                table.set("data", EntityUtils.ToLua(hitResult.entity))
             }
-            HitResult.Type.MISS -> {
-                val table = tableOf()
+            return table
+        }
+        else if (hitResult?.type == HitResult.Type.MISS) {
+            val table = tableOf()
+            if (hitResult is EntityHitResult) {
                 table.set("type", "miss")
-                table
             }
-            else -> NIL
+            return table
+        }
+        else {
+            return NIL
         }
     }
 
@@ -339,136 +339,6 @@ class WorldObject : LuaValue() {
             } else {
                 NIL
             }
-        }
-    }
-
-    private inner class GetEntitiesInRadiusFunction : TwoArgFunction() {
-        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
-            val radius = if (arg2?.isnumber() == true) arg2.todouble() else 10.0
-            val centerX: Double
-            val centerY: Double
-            val centerZ: Double
-
-            if (arg1?.istable() == true) {
-                // Если первый аргумент - таблица с координатами
-                centerX = arg1.get("x").optdouble(mc.player?.x ?: 0.0)
-                centerY = arg1.get("y").optdouble(mc.player?.y ?: 0.0)
-                centerZ = arg1.get("z").optdouble(mc.player?.z ?: 0.0)
-            } else if (arg1?.isnumber() == true && arg2 == null) {
-                // Если только один числовой аргумент (радиус от игрока)
-                centerX = mc.player?.x ?: 0.0
-                centerY = mc.player?.y ?: 0.0
-                centerZ = mc.player?.z ?: 0.0
-            } else {
-                // По умолчанию от позиции игрока
-                centerX = mc.player?.x ?: 0.0
-                centerY = mc.player?.y ?: 0.0
-                centerZ = mc.player?.z ?: 0.0
-            }
-
-            val resultTable = LuaValue.tableOf()
-            var index = 1
-
-            mc.world?.entities?.forEach { entity ->
-                val distance = entity.pos.distanceTo(Vec3d(centerX, centerY, centerZ))
-                if (distance <= radius) {
-                    resultTable.set(index++, EntityUtils.ToLua(entity) ?: LuaValue.NIL)
-                }
-            }
-
-            return resultTable
-        }
-    }
-
-    private inner class WorldToScreenFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable()) {
-                // Получение 3D координат мира
-                val worldX = if (table.get("x").isnumber()) table.get("x").tofloat() else return NIL
-                val worldY = if (table.get("y").isnumber()) table.get("y").tofloat() else return NIL
-                val worldZ = if (table.get("z").isnumber()) table.get("z").tofloat() else return NIL
-
-                try {
-                    // Конвертация координат
-                    val screenPos = worldToScreen(worldX, worldY, worldZ)
-
-                    if (screenPos != null) {
-                        val resultTable = tableOf()
-                        resultTable.set("x", valueOf(screenPos.first.toDouble()))
-                        resultTable.set("y", valueOf(screenPos.second.toDouble()))
-                        resultTable.set("visible", valueOf(screenPos.third))
-                        return resultTable
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-            return NIL
-        }
-    }
-    private fun worldToScreen(worldX: Float, worldY: Float, worldZ: Float): Triple<Float, Float, Boolean>? {
-        try {
-            val camera = mc.gameRenderer.camera
-            val window = mc.window
-
-            // Создаем вектор позиции в мире
-            val worldPos = Vec3d(worldX.toDouble(), worldY.toDouble(), worldZ.toDouble())
-
-            // Получаем позицию камеры
-            val cameraPos = camera.pos
-
-            // Вычисляем относительную позицию к камере
-            val relX = (worldPos.x - cameraPos.x).toFloat()
-            val relY = (worldPos.y - cameraPos.y).toFloat()
-            val relZ = (worldPos.z - cameraPos.z).toFloat()
-
-            // Получаем углы поворота камеры
-            val yaw = Math.toRadians(camera.yaw.toDouble()).toFloat()
-            val pitch = Math.toRadians(camera.pitch.toDouble()).toFloat()
-
-            val cosYaw = cos(yaw)
-            val sinYaw = sin(yaw)
-            val cosPitch = cos(pitch)
-            val sinPitch = sin(pitch)
-
-            // Трансформируем координаты в пространство камеры
-            val x = relX * cosYaw + relZ * sinYaw
-            val y = relY * cosPitch - (relX * sinYaw - relZ * cosYaw) * sinPitch
-            val z = relY * sinPitch + (relX * sinYaw - relZ * cosYaw) * cosPitch
-
-            // Проверяем, не находится ли точка за камерой
-            if (z > 0) {
-                return Triple(0f, 0f, false)
-            }
-
-            // Получаем параметры проекции
-            val fov = Math.toRadians(mc.gameRenderer.getFov(camera, mc.renderTickCounter.getTickProgress(true), true).toDouble()).toFloat()
-            val aspectRatio = window.framebufferWidth.toFloat() / window.framebufferHeight.toFloat()
-
-            val halfHeight = tan(fov * 0.5f)
-            val halfWidth = halfHeight * aspectRatio
-
-            // Избегаем деления на ноль
-            if (abs(z) < 0.01f) {
-                return Triple(0f, 0f, false)
-            }
-
-            // Проецируем на плоскость экрана
-            val projX = x / -z
-            val projY = y / -z
-
-            // Проверяем, находится ли точка в пределах экрана
-            val visible = abs(projX) <= halfWidth && abs(projY) <= halfHeight
-
-            // Конвертируем в экранные координаты
-            val screenX = (projX / halfWidth + 1f) * 0.5f * window.scaledWidth
-            val screenY = (-projY / halfHeight + 1f) * 0.5f * window.scaledHeight
-
-            return Triple(screenX, screenY, visible)
-
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return null
         }
     }
 

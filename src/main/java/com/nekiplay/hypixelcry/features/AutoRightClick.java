@@ -7,6 +7,7 @@ import com.nekiplay.hypixelcry.config.enums.AutoRightClickOpenFeatures;
 import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent;
 import com.nekiplay.hypixelcry.utils.Location;
 import com.nekiplay.hypixelcry.utils.RaycastUtils;
+import com.nekiplay.hypixelcry.utils.Utils;
 import com.nekiplay.hypixelcry.utils.scheduler.Scheduler;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -162,13 +163,15 @@ public class AutoRightClick {
         mc.player.swingHand(Hand.MAIN_HAND);
         BlockPos pos = mop.getBlockPos();
         if (HypixelCry.config.macros.autoRightClick.features.contains(AutoRightClickOpenFeatures.Air)) {
-            BlockState state = Blocks.AIR.getDefaultState();
+            if (!Utils.isInDungeons() && Utils.getLocation() != Location.PRIVATE_ISLAND) {
+                BlockState state = Blocks.AIR.getDefaultState();
 
-            assert mc.world != null;
-            mc.world.setBlockState(pos, state);
+                assert mc.world != null;
+                mc.world.setBlockState(pos, state);
 
-            mc.worldRenderer.updateBlock(mc.world, pos, mc.world.getBlockState(pos), state, 0);
-            mc.world.updateNeighbors(pos, Blocks.AIR);
+                mc.worldRenderer.updateBlock(mc.world, pos, mc.world.getBlockState(pos), state, 0);
+                mc.world.updateNeighbors(pos, Blocks.AIR);
+            }
         }
         openedChests.put(mop.getBlockPos(), 0);
     }
