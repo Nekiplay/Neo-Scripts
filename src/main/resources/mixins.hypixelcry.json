@@ -13,6 +13,7 @@
     "entity.ClientPlayerEntityMixin",
     "entity.PlayerEntityRendererMixin",
     "gui.AbstractSignEditScreenAccessor",
+    "minecraft.ClientConnectionMixin",
     "renderer.GameRendererAccessor"
   ],
   "client": [
