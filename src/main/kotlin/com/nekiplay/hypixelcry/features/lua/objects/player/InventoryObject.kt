@@ -4,13 +4,16 @@ import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.mixins.gui.AbstractSignEditScreenAccessor
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.InventoryUtils
+import com.nekiplay.hypixelcry.utils.itemlist.ItemRepository
 import net.minecraft.client.gui.screen.ingame.GenericContainerScreen
 import net.minecraft.client.gui.screen.ingame.SignEditScreen
 import net.minecraft.screen.GenericContainerScreenHandler
 import net.minecraft.screen.ScreenHandler
 import org.luaj.vm2.LuaValue
+import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
+import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 
 
@@ -28,6 +31,7 @@ class InventoryObject: LuaValue() {
 
             "getStackFromContainer" -> GetStackFromContainerFunction()
             "getStack" -> GetStackFunction()
+            "getStackFromId" -> GetStackFromIDFunction()
             "getSignText" -> GetSignTextFunction()
             "setSignText" -> SetSignTextFunction()
 
@@ -37,6 +41,25 @@ class InventoryObject: LuaValue() {
             "closeScreen" -> CloseScreenFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetStackFromIDFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+
+            // Arg 1: item ID as string, e.g. "minecraft:diamond_sword"
+            if (!args.arg(1).isstring()) {
+                error("create item expects a string as 1st argument (item neu id)")
+            }
+            val idString = args.arg(1).checkjstring()
+
+            val stack = ItemRepository.getItemStack(idString)
+            if (stack != null) {
+                return LuaItemStack(stack)
+            }
+            else {
+                return NIL
+            }
+        }
     }
 
     private inner class IsAnyScreenOpened : ZeroArgFunction() {

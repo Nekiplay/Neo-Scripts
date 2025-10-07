@@ -20,6 +20,8 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.PlayerListEntry;
+import net.minecraft.registry.BuiltinRegistries;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.scoreboard.*;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -48,6 +50,7 @@ public class Utils {
     public static final ObjectArrayList<String> STRING_SCOREBOARD = new ObjectArrayList<>();
     public static final ObjectArrayList<Text> TEXT_SCOREBOARD = new ObjectArrayList<>();
 
+    private static final RegistryWrapper.WrapperLookup LOOKUP = BuiltinRegistries.createWrapperLookup();
     private static final String ALTERNATE_HYPIXEL_ADDRESS = System.getProperty("skyblocker.alternateHypixelAddress", "");
     private static final String PROFILE_PREFIX = "Profile: ";
 
@@ -386,5 +389,9 @@ public class Utils {
             default -> {} //Do Nothing
         }
     }
-
+    public static RegistryWrapper.WrapperLookup getRegistryWrapperLookup() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        // Null check on client for tests
+        return client != null && client.getNetworkHandler() != null && client.getNetworkHandler().getRegistryManager() != null ? client.getNetworkHandler().getRegistryManager() : LOOKUP;
+    }
 }

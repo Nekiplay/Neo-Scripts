@@ -111,39 +111,32 @@ class WorldObject : LuaValue() {
     }
 
     private fun processHitResult(hitResult: HitResult?): LuaValue {
-        if (hitResult?.type == HitResult.Type.BLOCK) {
+        if (hitResult?.type == HitResult.Type.ENTITY) {
+            val table = tableOf()
+            table.set("type", "entity")
+            table.set("data", EntityUtils.ToLua((hitResult as EntityHitResult).entity))
+            return table
+        }
+        else if (hitResult is BlockHitResult && hitResult.type == HitResult.Type.BLOCK) {
             val table = tableOf()
             table.set("type", "block")
             table.set("x", valueOf(hitResult.pos.x))
             table.set("y", valueOf(hitResult.pos.y))
             table.set("z", valueOf(hitResult.pos.z))
+            table.set("side", valueOf(hitResult.side.toString()))
 
-            if (hitResult is BlockHitResult) {
-                val blockPos = tableOf()
-                blockPos.set("x", valueOf(hitResult.blockPos.x))
-                blockPos.set("y", valueOf(hitResult.blockPos.y))
-                blockPos.set("z", valueOf(hitResult.blockPos.z))
-                table.set("blockPos", blockPos)
-            }
-            return table
-        }
-        else if (hitResult?.type == HitResult.Type.ENTITY) {
-            val table = tableOf()
-            if (hitResult is EntityHitResult) {
-                table.set("type", "entity")
-                table.set("data", EntityUtils.ToLua(hitResult.entity))
-            }
-            return table
-        }
-        else if (hitResult?.type == HitResult.Type.MISS) {
-            val table = tableOf()
-            if (hitResult is EntityHitResult) {
-                table.set("type", "miss")
-            }
+            val blockPos = tableOf()
+            blockPos.set("x", valueOf(hitResult.blockPos.x))
+            blockPos.set("y", valueOf(hitResult.blockPos.y))
+            blockPos.set("z", valueOf(hitResult.blockPos.z))
+            table.set("blockPos", blockPos)
+
             return table
         }
         else {
-            return NIL
+            val table = tableOf()
+            table.set("type", "miss")
+            return table
         }
     }
 

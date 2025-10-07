@@ -10,10 +10,13 @@ import net.minecraft.client.render.Tessellator
 import net.minecraft.client.render.VertexFormats
 import net.minecraft.client.texture.NativeImage
 import net.minecraft.client.texture.NativeImageBackedTexture
+import net.minecraft.client.util.math.MatrixStack
 import net.minecraft.item.ItemStack
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
 import org.joml.Matrix3x2f
+import org.joml.Matrix3x2fStack
+import org.joml.Matrix4f
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
@@ -234,11 +237,118 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
                         (green and 0xFF shl 8) or
                         (blue and 0xFF)
 
-                val thickness: Float = if (table.get("thickness").isnumber()) table.get("thickness").tofloat() else 1.0f
+                val thickness: Int = if (table.get("thickness").isnumber()) table.get("thickness").toint() else 1
 
-                drawLine(context, x1.toFloat(), y1.toFloat(), x2.toFloat(), y2.toFloat(), thickness, color)
+                drawLine(context, x1, y1, x2, y2, color, thickness)
             }
             return NIL
+        }
+    }
+
+    private fun drawLine(context: DrawContext, x1: Int, y1: Int, x2: Int, y2: Int, color: Int, width: Int = 1) {
+        if (width <= 1) {
+            // Обычная линия шириной 1 пиксель
+            drawLineBresenham(context, x1, y1, x2, y2, color)
+        } else {
+            // Толстая линия
+            drawThickLine(context, x1, y1, x2, y2, color, width)
+        }
+    }
+
+    private fun drawLineBresenham(context: DrawContext, x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
+        val dx = kotlin.math.abs(x2 - x1)
+        val dy = kotlin.math.abs(y2 - y1)
+        val sx = if (x1 < x2) 1 else -1
+        val sy = if (y1 < y2) 1 else -1
+        var err = dx - dy
+
+        var x = x1
+        var y = y1
+
+        while (true) {
+            context.fill(x, y, x + 1, y + 1, color)
+
+            if (x == x2 && y == y2) break
+
+            val e2 = 2 * err
+            if (e2 > -dy) {
+                err -= dy
+                x += sx
+            }
+            if (e2 < dx) {
+                err += dx
+                y += sy
+            }
+        }
+    }
+
+    private fun drawThickLine(context: DrawContext, x1: Int, y1: Int, x2: Int, y2: Int, color: Int, width: Int) {
+        val dx = x2 - x1
+        val dy = y2 - y1
+        val length = kotlin.math.sqrt((dx * dx + dy * dy).toDouble())
+
+        if (length == 0.0) {
+            // Точка - рисуем квадрат
+            val halfWidth = width / 2
+            context.fill(x1 - halfWidth, y1 - halfWidth, x1 + halfWidth + 1, y1 + halfWidth + 1, color)
+            return
+        }
+
+        // Нормализованный перпендикулярный вектор
+        val perpX = -dy / length
+        val perpY = dx / length
+        val halfWidth = width / 2.0
+
+        // Четыре угла прямоугольника линии
+        val x1a = (x1 + perpX * halfWidth).toInt()
+        val y1a = (y1 + perpY * halfWidth).toInt()
+        val x1b = (x1 - perpX * halfWidth).toInt()
+        val y1b = (y1 - perpY * halfWidth).toInt()
+        val x2a = (x2 + perpX * halfWidth).toInt()
+        val y2a = (y2 + perpY * halfWidth).toInt()
+        val x2b = (x2 - perpX * halfWidth).toInt()
+        val y2b = (y2 - perpY * halfWidth).toInt()
+
+        // Рисуем прямоугольник как два треугольника
+        fillTriangleSimple(context, x1a, y1a, x1b, y1b, x2a, y2a, color)
+        fillTriangleSimple(context, x1b, y1b, x2a, y2a, x2b, y2b, color)
+    }
+
+    private fun fillTriangleSimple(context: DrawContext, x1: Int, y1: Int, x2: Int, y2: Int, x3: Int, y3: Int, color: Int) {
+        val minY = minOf(y1, y2, y3)
+        val maxY = maxOf(y1, y2, y3)
+
+        for (y in minY..maxY) {
+            val intersections = mutableListOf<Int>()
+
+            addIntersectionInt(intersections, x1, y1, x2, y2, y)
+            addIntersectionInt(intersections, x2, y2, x3, y3, y)
+            addIntersectionInt(intersections, x3, y3, x1, y1, y)
+
+            if (intersections.size >= 2) {
+                intersections.sort()
+                for (i in 0 until intersections.size step 2) {
+                    if (i + 1 < intersections.size) {
+                        val startX = intersections[i]
+                        val endX = intersections[i + 1]
+                        if (startX <= endX) {
+                            context.drawHorizontalLine(startX, endX, y, color)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun addIntersectionInt(intersections: MutableList<Int>, x1: Int, y1: Int, x2: Int, y2: Int, y: Int) {
+        if ((y1 <= y && y <= y2) || (y2 <= y && y <= y1)) {
+            if (y1 != y2) {
+                val x = x1 + (x2 - x1) * (y - y1) / (y2 - y1)
+                intersections.add(x)
+            } else if (y == y1) {
+                intersections.add(x1)
+                intersections.add(x2)
+            }
         }
     }
 
@@ -264,7 +374,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
                         if (pointTable.istable()) {
                             val x = if (pointTable.get("x").isnumber()) pointTable.get("x").tofloat() else 0f
                             val y = if (pointTable.get("y").isnumber()) pointTable.get("y").tofloat() else 0f
-                            points.add(Pair(x, y))
+                            points.add(x to y)
                             i++
                         } else {
                             break
@@ -304,52 +414,18 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
         }
     }
 
-    private fun drawLine(context: DrawContext, x1: Float, y1: Float, x2: Float, y2: Float, thickness: Float, color: Int) {
-        // Для Fabric 1.21.8 используем более простой подход с fill для линий
-        val dx = x2 - x1
-        val dy = y2 - y1
-        val length = kotlin.math.sqrt(dx * dx + dy * dy)
-        val angle = kotlin.math.atan2(dy.toDouble(), dx.toDouble())
-
-        if (thickness <= 1f) {
-            // Тонкая линия - используем fill
-            context.fill(
-                x1.toInt(), y1.toInt(),
-                x2.toInt(), y2.toInt(),
-                color
-            )
-        } else {
-            // Толстая линия - используем заполненный прямоугольник
-            val sin = kotlin.math.sin(angle).toFloat()
-            val cos = kotlin.math.cos(angle).toFloat()
-            val halfThickness = thickness / 2
-
-            val x11 = x1 - sin * halfThickness
-            val y11 = y1 + cos * halfThickness
-            val x12 = x1 + sin * halfThickness
-            val y12 = y1 - cos * halfThickness
-            val x21 = x2 - sin * halfThickness
-            val y21 = y2 + cos * halfThickness
-            val x22 = x2 + sin * halfThickness
-            val y22 = y2 - cos * halfThickness
-
-            drawQuad(context, x11, y11, x12, y12, x22, y22, x21, y21, color)
-        }
-    }
-
     private fun drawPolygon(context: DrawContext, points: List<Pair<Float, Float>>, color: Int) {
-        // Для полигонов используем triangulation через fill для каждой пары треугольников
         if (points.size < 3) return
 
-        // Простой подход: рисуем треугольники от первой точки ко всем остальным
+        // Кэшируем первую вершину
+        val (x0, y0) = points[0]
+
+        // Рисуем треугольники фана без повторных обращений к списку точек
         for (i in 1 until points.size - 1) {
-            drawTriangle(
-                context,
-                points[0].first, points[0].second,
-                points[i].first, points[i].second,
-                points[i + 1].first, points[i + 1].second,
-                color
-            )
+            val (x1, y1) = points[i]
+            val (x2, y2) = points[i + 1]
+
+            drawTriangle(context, x0, y0, x1, y1, x2, y2, color)
         }
     }
 
@@ -390,20 +466,98 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
         }
     }
 
-    private fun drawTriangle(context: DrawContext, x1: Float, y1: Float,
-                             x2: Float, y2: Float, x3: Float, y3: Float, color: Int) {
-        // Находим bounding box для треугольника
-        val minX = minOf(x1, x2, x3).toInt()
+    private fun drawTriangle(context: DrawContext,
+                             x1: Float, y1: Float,
+                             x2: Float, y2: Float,
+                             x3: Float, y3: Float,
+                             color: Int) {
+        // Используем существующие методы DrawContext для рисования треугольника
+        // через линии (контур) или заливку по пикселям оптимизированно
+
+        // Вариант 1: Контур треугольника
+        drawTriangleOutline(context, x1, y1, x2, y2, x3, y3, color)
+
+        // Вариант 2: Заливка треугольника (оптимизированная)
+        fillTriangle(context, x1, y1, x2, y2, x3, y3, color)
+    }
+
+    private fun drawTriangleOutline(context: DrawContext,
+                                    x1: Float, y1: Float,
+                                    x2: Float, y2: Float,
+                                    x3: Float, y3: Float,
+                                    color: Int) {
+        // Рисуем три линии треугольника
+        drawLine(context, x1.toInt(), y1.toInt(), x2.toInt(), y2.toInt(), color)
+        drawLine(context, x2.toInt(), y2.toInt(), x3.toInt(), y3.toInt(), color)
+        drawLine(context, x3.toInt(), y3.toInt(), x1.toInt(), y1.toInt(), color)
+    }
+
+    private fun fillTriangle(context: DrawContext,
+                             x1: Float, y1: Float,
+                             x2: Float, y2: Float,
+                             x3: Float, y3: Float,
+                             color: Int) {
+        // Оптимизированная заливка через scanline алгоритм
         val minY = minOf(y1, y2, y3).toInt()
-        val maxX = maxOf(x1, x2, x3).toInt()
         val maxY = maxOf(y1, y2, y3).toInt()
 
-        // Простой подход: заполняем bounding box и проверяем каждую точку на принадлежность треугольнику
-        for (x in minX..maxX) {
-            for (y in minY..maxY) {
-                if (isPointInTriangle(x.toFloat(), y.toFloat(), x1, y1, x2, y2, x3, y3)) {
-                    context.fill(x, y, x + 1, y + 1, color)
+        for (y in minY..maxY) {
+            val intersections = mutableListOf<Int>()
+
+            // Находим пересечения с каждой стороной треугольника
+            addIntersection(intersections, x1, y1, x2, y2, y.toFloat())
+            addIntersection(intersections, x2, y2, x3, y3, y.toFloat())
+            addIntersection(intersections, x3, y3, x1, y1, y.toFloat())
+
+            if (intersections.size >= 2) {
+                intersections.sort()
+                for (i in 0 until intersections.size step 2) {
+                    if (i + 1 < intersections.size) {
+                        val x1 = intersections[i]
+                        val x2 = intersections[i + 1]
+                        context.drawHorizontalLine(x1, x2, y, color)
+                    }
                 }
+            }
+        }
+    }
+
+    private fun addIntersection(intersections: MutableList<Int>,
+                                x1: Float, y1: Float,
+                                x2: Float, y2: Float,
+                                y: Float) {
+        if ((y1 <= y && y <= y2) || (y2 <= y && y <= y1)) {
+            if (y1 != y2) {
+                val x = x1 + (x2 - x1) * (y - y1) / (y2 - y1)
+                intersections.add(x.toInt())
+            }
+        }
+    }
+
+    private fun drawLine(context: DrawContext, x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
+        // Алгоритм Брезенхема для рисования линии
+        val dx = kotlin.math.abs(x2 - x1)
+        val dy = kotlin.math.abs(y2 - y1)
+        val sx = if (x1 < x2) 1 else -1
+        val sy = if (y1 < y2) 1 else -1
+        var err = dx - dy
+
+        var x = x1
+        var y = y1
+
+        while (true) {
+            context.fill(x, y, x + 1, y + 1, color)
+
+            if (x == x2 && y == y2) break
+
+            val e2 = 2 * err
+            if (e2 > -dy) {
+                err -= dy
+                x += sx
+            }
+            if (e2 < dx) {
+                err += dx
+                y += sy
             }
         }
     }

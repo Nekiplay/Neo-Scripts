@@ -31,19 +31,21 @@ import java.awt.*;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 
 public class HypixelCry implements ClientModInitializer {
     public static final String MOD_ID = "hypixelcry";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     public static LuaManager LUA_MANAGER;
+    public static final Path CONFIG_DIR = FabricLoader.getInstance().getConfigDir().resolve(MOD_ID);
 
     public static final String PREFIX = Formatting.GRAY + "[" + Formatting.GOLD + "Hypixel Cry" + Formatting.GRAY + "] " + Formatting.RESET;
     public static final String LOG_PREFIX = "[Hypixel Cry] ";
 
     public static NEUConfig config;
     private static File configFile;
-    private static File neuDir;
+    public static File neuDir;
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().excludeFieldsWithoutExposeAnnotation()
             .registerTypeAdapterFactory(new PropertyTypeAdapterFactory()).create();
     public static MoulConfigProcessor<NEUConfig> processor = null;

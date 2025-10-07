@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 
 import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.utils.ItemUtils
+import net.minecraft.component.DataComponentTypes
 import net.minecraft.item.ItemStack
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
@@ -19,6 +20,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
             "is_empty" -> valueOf(stack.isEmpty)
             "head_texture" -> valueOf(ItemUtils.getHeadTexture(stack))
             "skyblock_id" -> valueOf(ItemUtils.getItemId(stack))
+            "neu_id" -> valueOf(ItemUtils.getNeuId(stack))
             "reforge_modifier" -> valueOf(ItemUtils.getReforgeModifier(stack))
             "is_stackable" -> valueOf(stack.isStackable)
             "is_recombobulated" -> valueOf(ItemUtils.isRecombobulated(stack))

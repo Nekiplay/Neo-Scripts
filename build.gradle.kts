@@ -30,6 +30,8 @@ repositories {
         url = uri("https://maven.azureaaron.net/releases")
     }
     maven { url = uri("https://repo1.maven.org/maven2/") }
+    maven { url = uri("https://repo.nea.moe/releases") }
+    maven { url = uri("https://maven.azureaaron.net/releases") }
 }
 
 java {
@@ -69,6 +71,16 @@ dependencies {
 
     // Occlusion Culling
     include(implementation("com.logisticscraft:occlusionculling:${property("occlusionculling_version")}")!!)
+
+    // NEU RepoParser
+    include(implementation("moe.nea:neurepoparser:${property("repoparser_version")}")!!)
+
+    // JGit used pull data from the NEU item repo
+    include(implementation("org.eclipse.jgit:org.eclipse.jgit:${property("jgit_version")}")!!)
+
+    // Legacy Item DFU
+    include(implementation("net.azureaaron:legacy-item-dfu:${property("legacy_item_dfu_version")}")!!)
+
 }
 
 tasks {
