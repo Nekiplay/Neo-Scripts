@@ -8,6 +8,7 @@ import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Direction
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.ZeroArgFunction
+import java.lang.String.valueOf
 
 class NetworkObject : LuaValue() {
     override fun call(): LuaValue {
@@ -28,18 +29,35 @@ class NetworkObject : LuaValue() {
     private inner class GetPlayerList : ZeroArgFunction() {
         override fun call(): LuaValue {
             val playerList = mc.networkHandler?.playerList ?: return NIL
+
             val table = tableOf()
             var index = 1
             for (player in playerList) {
                 val table_player = tableOf()
                 table_player.set("latency", valueOf(player.latency))
-                table_player.set("display_name", valueOf(player.displayName?.string))
-                table_player.set("name", valueOf(player.profile?.name))
-                table_player.set("id", valueOf(player.profile?.id.toString()))
-                table_player.set("gamemode", valueOf(player.gameMode.toString()))
-                table_player.set("skin_texture", valueOf(player.skinTextures.texture.toString()))
+
+                // display_name
+                val displayName = player.displayName?.string
+                table_player.set("display_name", if (displayName != null) valueOf(displayName) else NIL)
+
+                // name
+                val name = player.profile?.name
+                table_player.set("name", if (name != null) valueOf(name) else NIL)
+
+                // id
+                val id = player.profile?.id?.toString()
+                table_player.set("id", if (id != null) valueOf(id) else NIL)
+
+                // gamemode
+                val gamemode = player.gameMode?.toString()
+                table_player.set("gamemode", if (gamemode != null) valueOf(gamemode) else NIL)
+
+                // skin_texture
+                val skinTexture = player.skinTextures?.texture?.toString()
+                table_player.set("skin_texture", if (skinTexture != null) valueOf(skinTexture) else NIL)
+
                 table.set(index, table_player)
-                index++;
+                index++
             }
             return table
         }

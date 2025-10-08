@@ -39,7 +39,7 @@ class LuaManager() {
     private val scriptDependencies = ConcurrentHashMap<String, MutableSet<String>>()
     private val moduleDependents = ConcurrentHashMap<String, MutableSet<String>>()
 
-    // Use more efficient collections
+    // Events
     private val clientTickCallbacks = ArrayList<LuaValue>()
     private val clientPreTickCallbacks = ArrayList<LuaValue>()
     private val renderWorldCallbacks = ArrayList<LuaValue>()
@@ -47,6 +47,9 @@ class LuaManager() {
     private val keyEventCallbacks = ArrayList<LuaValue>()
     private val messageEventCallbacks = ArrayList<LuaValue>()
     private val locationChangeCallbacks = ArrayList<LuaValue>()
+    // Packet events
+    private val serverSideRotationCallbacks = ArrayList<LuaValue>()
+    private val serverSideTeleportCallbacks = ArrayList<LuaValue>()
 
     // Synchronize only when needed
     @Volatile private var callbacksLock = Any()
@@ -203,6 +206,17 @@ class LuaManager() {
                 return LuaValue.valueOf(addLocationChangeCallback(callback))
             }
         })
+        // Packets
+        globals.set("registerServerSideRotationEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(addServerSideRotationCallback(callback))
+            }
+        })
+        globals.set("registerServerSideTeleportEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(addServerSideTeleportCallback(callback))
+            }
+        })
 
         globals.set("unregisterClientTick", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
@@ -247,6 +261,17 @@ class LuaManager() {
         globals.set("unregisterLocationChangeEvent", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(removeLocationChangeEventCallback(callback))
+            }
+        })
+        // Packets
+        globals.set("unregisterServerSideRotationEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(removeServerSideRotationEventCallback(callback))
+            }
+        })
+        globals.set("unregisterServerSideTeleportEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(removeServerSideTeleportEventCallback(callback))
             }
         })
 
@@ -415,7 +440,33 @@ class LuaManager() {
     fun addLocationChangeCallback(callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
-            val result = locationChangeCallbacks    .add(callback)
+            val result = locationChangeCallbacks.add(callback)
+            if (result) {
+                currentExecutingScript.get()?.let { scriptName ->
+                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+                }
+            }
+            return result
+        }
+    }
+
+    fun addServerSideRotationCallback(callback: LuaValue): Boolean {
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
+            val result = serverSideRotationCallbacks.add(callback)
+            if (result) {
+                currentExecutingScript.get()?.let { scriptName ->
+                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+                }
+            }
+            return result
+        }
+    }
+
+    fun addServerSideTeleportCallback(callback: LuaValue): Boolean {
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
+            val result = serverSideTeleportCallbacks.add(callback)
             if (result) {
                 currentExecutingScript.get()?.let { scriptName ->
                     scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
@@ -465,6 +516,18 @@ class LuaManager() {
         }
     }
 
+    fun removeServerSideRotationEventCallback(callback: LuaValue): Boolean {
+        synchronized(callbacksLock) {
+            return serverSideRotationCallbacks.remove(callback)
+        }
+    }
+
+    fun removeServerSideTeleportEventCallback(callback: LuaValue): Boolean {
+        synchronized(callbacksLock) {
+            return serverSideTeleportCallbacks.remove(callback)
+        }
+    }
+
     // Methods to clear all callbacks
     fun clearAllCallbacks() {
         synchronized(callbacksLock) {
@@ -475,6 +538,8 @@ class LuaManager() {
             messageEventCallbacks.clear()
             clientPreTickCallbacks.clear()
             locationChangeCallbacks.clear()
+            serverSideRotationCallbacks.clear()
+            serverSideTeleportCallbacks.clear()
         }
     }
 
@@ -579,13 +644,54 @@ class LuaManager() {
             try {
                 callback.call(LuaValue.valueOf(location.toString()))
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in locatiob change callback: ${e.message}")
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in location change callback: ${e.message}")
             }
         }
         return true
     }
 
+    // Packets
+    fun onServerSideRotationEvent(yaw: Float, pitch: Float): Boolean {
+        var allow = true
+        val callbacks = synchronized(callbacksLock) {
+            serverSideRotationCallbacks.toTypedArray()
+        }
 
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(LuaValue.valueOf(yaw.toDouble()), LuaValue.valueOf(pitch.toDouble()))
+                if (res.isboolean()) {
+                    if (!res.toboolean()) {
+                        allow = false
+                    }
+                }
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in server side rotation callback: ${e.message}")
+            }
+        }
+        return allow
+    }
+
+    fun onServerSideTeleportEvent(x: Double, y: Double, z: Double): Boolean {
+        var allow = true
+        val callbacks = synchronized(callbacksLock) {
+            serverSideTeleportCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(LuaValue.valueOf(x), LuaValue.valueOf(y), LuaValue.valueOf(z))
+                if (res.isboolean()) {
+                    if (!res.toboolean()) {
+                        allow = false
+                    }
+                }
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in server side rotation callback: ${e.message}")
+            }
+        }
+        return allow
+    }
 
     fun executeScript(file: File): Any {
         if (!file.exists() || !file.isFile) {
@@ -647,15 +753,6 @@ class LuaManager() {
         }
     }
 
-    private fun saveScriptCallbacks(scriptName: String) {
-        // Сохраняем все колбэки, которые были добавлены во время выполнения этого скрипта
-        val scriptCallbacksList = mutableListOf<LuaValue>()
-        scriptCallbacks[scriptName] = scriptCallbacksList
-
-        // Сохраняем persistent globals для этого скрипта
-        scriptPersistentGlobals[scriptName] = ConcurrentHashMap(persistentGlobals)
-    }
-
     fun unloadScript(scriptName: String): Boolean {
         val callbacksToRemove = scriptCallbacks[scriptName] ?: return false
 
@@ -667,6 +764,9 @@ class LuaManager() {
             messageEventCallbacks.removeAll(callbacksToRemove.toSet())
             clientPreTickCallbacks.removeAll(callbacksToRemove.toSet())
             locationChangeCallbacks.removeAll(callbacksToRemove.toSet())
+            // Packets
+            serverSideRotationCallbacks.removeAll(callbacksToRemove.toSet())
+            serverSideTeleportCallbacks.removeAll(callbacksToRemove.toSet())
         }
 
         // Clean up dependencies
