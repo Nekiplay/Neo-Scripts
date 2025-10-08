@@ -753,15 +753,6 @@ class LuaManager() {
         }
     }
 
-    private fun saveScriptCallbacks(scriptName: String) {
-        // Сохраняем все колбэки, которые были добавлены во время выполнения этого скрипта
-        val scriptCallbacksList = mutableListOf<LuaValue>()
-        scriptCallbacks[scriptName] = scriptCallbacksList
-
-        // Сохраняем persistent globals для этого скрипта
-        scriptPersistentGlobals[scriptName] = ConcurrentHashMap(persistentGlobals)
-    }
-
     fun unloadScript(scriptName: String): Boolean {
         val callbacksToRemove = scriptCallbacks[scriptName] ?: return false
 
