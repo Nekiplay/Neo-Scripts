@@ -3,6 +3,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.player
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.mixins.gui.AbstractSignEditScreenAccessor
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
+import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.utils.InventoryUtils
 import com.nekiplay.hypixelcry.utils.itemlist.ItemRepository
 import net.minecraft.client.gui.screen.ingame.GenericContainerScreen
@@ -36,6 +37,7 @@ class InventoryObject: LuaValue() {
             "setSignText" -> SetSignTextFunction()
 
             "leftClick" -> LeftClickFunction()
+            "dropAll" -> DropFunction()
             "rightClick" -> RightClickFunction()
 
             "closeScreen" -> CloseScreenFunction()
@@ -53,11 +55,10 @@ class InventoryObject: LuaValue() {
             val idString = args.arg(1).checkjstring()
 
             val stack = ItemRepository.getItemStack(idString)
-            if (stack != null) {
-                return LuaItemStack(stack)
-            }
-            else {
-                return NIL
+            return if (stack != null) {
+                LuaItemStack(stack)
+            } else {
+                NIL
             }
         }
     }
@@ -120,9 +121,9 @@ class InventoryObject: LuaValue() {
 
     private inner class GetChestTitleFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc.player?.currentScreenHandler
+            val screen = mc.currentScreen
             return if (screen is GenericContainerScreen) {
-                valueOf(screen.title.string)
+                valueOf(screen.title.getFormattedString())
             } else {
                 NIL
             }
@@ -133,6 +134,17 @@ class InventoryObject: LuaValue() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
                 InventoryUtils.leftClickSlot(arg.toint())
+                TRUE
+            } else {
+                NIL
+            }
+        }
+    }
+
+    private inner class DropFunction : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue {
+            return if (arg?.isnumber() == true) {
+                InventoryUtils.dropAllFromSlot(arg.toint())
                 TRUE
             } else {
                 NIL
@@ -152,7 +164,7 @@ class InventoryObject: LuaValue() {
     }
     private inner class GetContainerSlotsFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc.player?.currentScreenHandler
+            val screen = mc.currentScreen
             if (screen is GenericContainerScreen) {
                 val container = screen.screenHandler
                 val slots = container.slots.size

@@ -29,8 +29,8 @@ import java.util.function.Supplier
 class TwoRenderObject(private val context: DrawContext?, private val scriptId: String? = null): LuaValue() {
     // Кэш для загруженных текстур с разделением по скриптам
     companion object {
-        private val textureCache = ConcurrentHashMap<String, MutableMap<String, Identifier>>()
-        private val textureCounter = AtomicInteger(0)
+        val textureCache = ConcurrentHashMap<String, MutableMap<String, Identifier>>()
+        val textureCounter = AtomicInteger(0)
 
         // Очистка кэша для конкретного скрипта
         fun clearScriptCache(scriptId: String) {
@@ -180,7 +180,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
      * Загружает текстуру из файла и возвращает её Identifier
      */
     private fun loadTexture(path: String): Identifier? {
-        val scriptCacheId = scriptId ?: "global"
+        val scriptCacheId = scriptId ?: "2d_global"
 
         // Проверяем кэш для текущего скрипта
         val scriptCache = textureCache.getOrPut(scriptCacheId) { ConcurrentHashMap() }
@@ -341,7 +341,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
     }
 
     private fun addIntersectionInt(intersections: MutableList<Int>, x1: Int, y1: Int, x2: Int, y2: Int, y: Int) {
-        if ((y1 <= y && y <= y2) || (y2 <= y && y <= y1)) {
+        if ((y in y1..y2) || (y in y2..y1)) {
             if (y1 != y2) {
                 val x = x1 + (x2 - x1) * (y - y1) / (y2 - y1)
                 intersections.add(x)
