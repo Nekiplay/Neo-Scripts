@@ -1,13 +1,23 @@
 package com.nekiplay.hypixelcry.features.lua.objects.render
 
+import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.render.RenderHelper
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
+import net.minecraft.client.gl.RenderPipelines
+import net.minecraft.client.texture.NativeImage
+import net.minecraft.client.texture.NativeImageBackedTexture
 import net.minecraft.text.Text
+import net.minecraft.util.Identifier
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import java.awt.Color
+import java.io.File
+import java.io.FileInputStream
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.function.Supplier
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.component3
@@ -24,6 +34,7 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
             "renderText" -> RenderTextFunction()
             "renderLinesFromPoints" -> RenderLinesFromPointsFunction()
             "renderLineFromCursor" -> RenderLineFromCursorFunction()
+            "renderImage" -> RenderImageFunction()
             else -> NIL
         } as LuaValue
     }
@@ -232,6 +243,93 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                 return TRUE
             }
             return NIL
+        }
+    }
+
+    private inner class RenderImageFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable() && context != null) {
+                val path = if (table.get("path").isstring()) table.get("path").tojstring() else return NIL
+
+                val x: Double = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
+                val y: Double = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
+                val z: Double = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
+
+                val ox: Double = if (table.get("offset_x").isnumber()) table.get("offset_x").todouble() else 0.0
+                val oy: Double = if (table.get("offset_y").isnumber()) table.get("offset_y").todouble() else 0.0
+                val oz: Double = if (table.get("offset_z").isnumber()) table.get("offset_z").todouble() else 0.0
+
+                val width: Float = if (table.get("width").isnumber()) table.get("width").tofloat() else 0f
+                val height: Float = if (table.get("height").isnumber()) table.get("height").tofloat() else 0f
+
+                val regionWidth: Float = if (table.get("region_width").isnumber()) table.get("region_width").tofloat() else 1f
+                val regionHeight: Float = if (table.get("region_height").isnumber()) table.get("region_height").tofloat() else 1f
+
+                val r: Float = (if (table.get("red").isnumber()) table.get("red").todouble() else 255.0).toFloat() / 255f
+                val g: Float = (if (table.get("green").isnumber()) table.get("green").todouble() else 255.0).toFloat() / 255f
+                val b: Float = (if (table.get("blue").isnumber()) table.get("blue").todouble() else 255.0).toFloat() / 255f
+
+                val alpha: Float = (if (table.get("alpha").isnumber()) table.get("alpha").todouble() else 255.0).toFloat() / 255f
+
+                val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
+
+                val rgb: FloatArray = floatArrayOf(r, g, b)
+
+                try {
+                    val identifier = loadTexture(path)
+                    if (identifier != null) {
+                        RenderHelper.renderTextureInWorld(context, Vec3d(x, y, z), width, height, regionWidth, regionHeight, Vec3d(
+                            ox, oy, oz
+                        ), identifier, rgb, alpha, throughWalls)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            return NIL
+        }
+    }
+
+    /**
+     * Загружает текстуру из файла и возвращает её Identifier
+     */
+    private fun loadTexture(path: String): Identifier? {
+        val scriptCacheId = "wd_global"
+
+        // Проверяем кэш для текущего скрипта
+        val scriptCache = TwoRenderObject.Companion.textureCache.getOrPut(scriptCacheId) { ConcurrentHashMap() }
+        if (scriptCache.containsKey(path)) {
+            return scriptCache[path]
+        }
+
+        try {
+            val file = File(path)
+            if (!file.exists() || !file.isFile) {
+                return null
+            }
+
+            FileInputStream(file).use { inputStream ->
+                val nativeImage = NativeImage.read(inputStream)
+
+                // Используем правильный конструктор NativeImageBackedTexture
+                val textureName = "hypixelcry:texture_${scriptCacheId}_${TwoRenderObject.Companion.textureCounter.getAndIncrement()}"
+                val texture = NativeImageBackedTexture(
+                    Supplier { textureName },
+                    nativeImage
+                )
+
+                // Создаем идентификатор
+                val identifier = Identifier.of("hypixelcry", "texture_${scriptCacheId}_${TwoRenderObject.Companion.textureCounter.get()}")
+                mc.textureManager.registerTexture(identifier, texture)
+
+                // Сохраняем в кэш текущего скрипта
+                scriptCache[path] = identifier
+
+                return identifier
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
         }
     }
 

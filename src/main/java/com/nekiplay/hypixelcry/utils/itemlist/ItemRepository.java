@@ -52,8 +52,8 @@ public class ItemRepository {
         NEURepoManager.runAsyncAfterLoad(ItemStackBuilder::loadPetNums);
         NEURepoManager.runAsyncAfterLoad(ItemRepository::importItemFiles);
         NEURepoManager.runAsyncAfterLoad(ItemRepository::loadBazaarStocks);
-        runAsyncAfterImport(ItemRepository::handleRecipeSynchronization);
-        SkyblockEvents.JOIN.register(ItemRepository::handleRecipeSynchronization);
+        //runAsyncAfterImport(ItemRepository::handleRecipeSynchronization);
+        //SkyblockEvents.JOIN.register(ItemRepository::handleRecipeSynchronization);
     }
 
     /**
