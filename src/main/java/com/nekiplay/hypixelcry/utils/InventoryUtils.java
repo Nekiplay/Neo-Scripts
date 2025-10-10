@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.utils;
 
+import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
 import net.minecraft.screen.slot.SlotActionType;
 
 import static com.nekiplay.hypixelcry.HypixelCry.mc;
@@ -13,13 +14,23 @@ public class InventoryUtils {
 
     public static void clickSlot(int slot, int button, SlotActionType actionType) {
         if (mc.player != null && mc.player.playerScreenHandler != null) {
-            clickSlotWithId(slot, button, actionType, mc.player.playerScreenHandler.syncId);
+            if (mc.currentScreen instanceof GenericContainerScreen) {
+                clickSlotWithId(slot, button, actionType, (((GenericContainerScreen)mc.currentScreen).getScreenHandler().syncId));
+            }
+            else {
+                clickSlotWithId(slot, button, actionType, mc.player.playerScreenHandler.syncId);
+            }
         }
     }
 
     public static void swapSlots(int slot, int hotbarSlot) {
         if (mc.player != null && mc.player.playerScreenHandler != null) {
-            clickSlotWithId(slot, hotbarSlot, SlotActionType.SWAP, mc.player.playerScreenHandler.syncId);
+            if (mc.currentScreen instanceof GenericContainerScreen) {
+                clickSlotWithId(slot, hotbarSlot, SlotActionType.SWAP, (((GenericContainerScreen)mc.currentScreen).getScreenHandler().syncId));
+            }
+            else {
+                clickSlotWithId(slot, hotbarSlot, SlotActionType.SWAP, mc.player.playerScreenHandler.syncId);
+            }
         }
     }
 
