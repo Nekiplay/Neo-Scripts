@@ -624,15 +624,20 @@ class LuaManager() {
         val callbacks = synchronized(callbacksLock) {
             messageEventCallbacks.toTypedArray()
         }
-
+        var allow = true
         for (callback in callbacks) {
             try {
-                callback.call(LuaValue.valueOf(text.getFormattedString()), LuaValue.valueOf(overlay))
+                val res = callback.call(LuaValue.valueOf(text.getFormattedString()), LuaValue.valueOf(overlay))
+                if (res.isboolean()) {
+                    if (!res.toboolean()) {
+                        allow = false
+                    }
+                }
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in message callback: ${e.message}")
             }
         }
-        return true
+        return allow
     }
 
     fun onLocationChangeEvent(location: Location): Boolean {
