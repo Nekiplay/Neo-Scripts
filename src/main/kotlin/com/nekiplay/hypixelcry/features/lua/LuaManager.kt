@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.features.lua
 
 import com.nekiplay.hypixelcry.utils.Location
 import com.nekiplay.hypixelcry.HypixelCry
+import com.nekiplay.hypixelcry.features.lua.objects.misc.ImGuiLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.JsonLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ThreadLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
@@ -47,6 +48,7 @@ class LuaManager() {
     private val keyEventCallbacks = ArrayList<LuaValue>()
     private val messageEventCallbacks = ArrayList<LuaValue>()
     private val locationChangeCallbacks = ArrayList<LuaValue>()
+    private val imguiRenderCallbacks = ArrayList<LuaValue>()
     // Packet events
     private val serverSideRotationCallbacks = ArrayList<LuaValue>()
     private val serverSideTeleportCallbacks = ArrayList<LuaValue>()
@@ -83,6 +85,7 @@ class LuaManager() {
     private val worldObj = WorldObject()
     private val modulesObj = ModulesObject()
 
+    private val imguiLib = ImGuiLib()
     private val jsonLib = JsonLib()
     private val httpLib = HttpClientLib()
 
@@ -101,6 +104,7 @@ class LuaManager() {
 
     private fun registerLibraries(globals: Globals) {
         // Регистрируем библиотеки
+        globals.load(imguiLib)
         globals.load(jsonLib)
         globals.load(httpLib)
     }
@@ -206,6 +210,11 @@ class LuaManager() {
                 return LuaValue.valueOf(addLocationChangeCallback(callback))
             }
         })
+        globals.set("registerImGuiRenderEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(addImguiRenderCallback(callback))
+            }
+        })
         // Packets
         globals.set("registerServerSideRotationEvent", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
@@ -261,6 +270,11 @@ class LuaManager() {
         globals.set("unregisterLocationChangeEvent", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(removeLocationChangeEventCallback(callback))
+            }
+        })
+        globals.set("unregisterImGuiRenderEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(removeImGuiRenderEventCallback(callback))
             }
         })
         // Packets
@@ -450,6 +464,19 @@ class LuaManager() {
         }
     }
 
+    fun addImguiRenderCallback(callback: LuaValue): Boolean {
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
+            val result = imguiRenderCallbacks.add(callback)
+            if (result) {
+                currentExecutingScript.get()?.let { scriptName ->
+                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+                }
+            }
+            return result
+        }
+    }
+
     fun addServerSideRotationCallback(callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
@@ -516,6 +543,12 @@ class LuaManager() {
         }
     }
 
+    fun removeImGuiRenderEventCallback(callback: LuaValue): Boolean {
+        synchronized(callbacksLock) {
+            return imguiRenderCallbacks.remove(callback)
+        }
+    }
+
     fun removeServerSideRotationEventCallback(callback: LuaValue): Boolean {
         synchronized(callbacksLock) {
             return serverSideRotationCallbacks.remove(callback)
@@ -540,6 +573,7 @@ class LuaManager() {
             locationChangeCallbacks.clear()
             serverSideRotationCallbacks.clear()
             serverSideTeleportCallbacks.clear()
+            imguiRenderCallbacks.clear()
         }
     }
 
@@ -650,6 +684,21 @@ class LuaManager() {
                 callback.call(LuaValue.valueOf(location.toString()))
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in location change callback: ${e.message}")
+            }
+        }
+        return true
+    }
+
+    fun omImGuiRenderEvent(): Boolean {
+        val callbacks = synchronized(callbacksLock) {
+            imguiRenderCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                callback.call()
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in imgui callback: ${e.message}")
             }
         }
         return true
@@ -769,6 +818,7 @@ class LuaManager() {
             messageEventCallbacks.removeAll(callbacksToRemove.toSet())
             clientPreTickCallbacks.removeAll(callbacksToRemove.toSet())
             locationChangeCallbacks.removeAll(callbacksToRemove.toSet())
+            imguiRenderCallbacks.removeAll(callbacksToRemove.toSet())
             // Packets
             serverSideRotationCallbacks.removeAll(callbacksToRemove.toSet())
             serverSideTeleportCallbacks.removeAll(callbacksToRemove.toSet())

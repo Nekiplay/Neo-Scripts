@@ -10,6 +10,8 @@
     "MixinClientLoginNetworkHandlerMixin",
     "MouseMixin",
     "PlayerListHudAccessor",
+    "TailRenderMixin",
+    "WindowMixin",
     "entity.ClientPlayerEntityMixin",
     "entity.PlayerEntityRendererMixin",
     "gui.AbstractSignEditScreenAccessor",

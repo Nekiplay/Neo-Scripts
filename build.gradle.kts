@@ -81,6 +81,24 @@ dependencies {
     // Legacy Item DFU
     include(implementation("net.azureaaron:legacy-item-dfu:${property("legacy_item_dfu_version")}")!!)
 
+    // ImGUI
+    val imguiVersion = property("imgui_version") as String
+
+    // Основные зависимости ImGUI
+    implementation("io.github.spair:imgui-java-binding:$imguiVersion")
+    implementation("io.github.spair:imgui-java-lwjgl3:$imguiVersion")
+
+    // Нативные библиотеки для всех платформ
+    implementation("io.github.spair:imgui-java-natives-windows:$imguiVersion")
+    implementation("io.github.spair:imgui-java-natives-linux:$imguiVersion")
+    implementation("io.github.spair:imgui-java-natives-macos:$imguiVersion")
+
+    // Включите все в финальный JAR
+    include("io.github.spair:imgui-java-binding:$imguiVersion")
+    include("io.github.spair:imgui-java-lwjgl3:$imguiVersion")
+    include("io.github.spair:imgui-java-natives-windows:$imguiVersion")
+    include("io.github.spair:imgui-java-natives-linux:$imguiVersion")
+    include("io.github.spair:imgui-java-natives-macos:$imguiVersion")
 }
 
 tasks {

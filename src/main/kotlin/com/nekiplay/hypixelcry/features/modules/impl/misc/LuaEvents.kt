@@ -6,6 +6,7 @@ import com.nekiplay.hypixelcry.events.MouseButtonEvent
 import com.nekiplay.hypixelcry.events.SkyblockEvents
 import com.nekiplay.hypixelcry.events.network.PacketEvent
 import com.nekiplay.hypixelcry.features.modules.ClientModule
+import com.nekiplay.hypixelcry.imgui.ImguiLoader
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
@@ -46,6 +47,7 @@ object LuaEvents: ClientModule() {
 
         HudRenderCallback.EVENT.register(HudRenderCallback { context, _ ->
             LUA_MANAGER.on2DRenderTick(context)
+            ImguiLoader.onFrameRender()
         })
 
         SkyblockEvents.LOCATION_CHANGE.register { location ->
