@@ -1,6 +1,9 @@
 package com.nekiplay.hypixelcry.features.lua
 
-import com.nekiplay.hypixelcry.utils.Location
+import com.mojang.brigadier.Command
+import com.mojang.brigadier.CommandDispatcher
+import com.mojang.brigadier.arguments.StringArgumentType
+import com.mojang.brigadier.context.CommandContext
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ImGuiLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.JsonLib
@@ -12,17 +15,23 @@ import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.features.lua.objects.world.WorldObject
 import com.nekiplay.hypixelcry.sugar.getFormattedString
+import com.nekiplay.hypixelcry.utils.Location
 import com.nekiplay.hypixelcry.utils.misc.input.KeyAction
 import kotlinx.io.files.FileNotFoundException
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.gui.DrawContext
+import net.minecraft.command.CommandRegistryAccess
 import net.minecraft.text.Text
 import org.luaj.vm2.Globals
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.jse.JsePlatform
 import org.luaj.vm2.LuaError
+import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
+import org.luaj.vm2.lib.TwoArgFunction
+import org.luaj.vm2.lib.jse.JsePlatform
 import java.io.BufferedReader
 import java.io.File
 import java.io.StringReader
@@ -52,6 +61,10 @@ class LuaManager() {
     // Packet events
     private val serverSideRotationCallbacks = ArrayList<LuaValue>()
     private val serverSideTeleportCallbacks = ArrayList<LuaValue>()
+
+    // Command events
+    private val commandCallbacks = ConcurrentHashMap<String, LuaValue>()
+    private val scriptCommands = ConcurrentHashMap<String, MutableSet<String>>()
 
     // Synchronize only when needed
     @Volatile private var callbacksLock = Any()
@@ -165,6 +178,18 @@ class LuaManager() {
             override fun call(message: LuaValue): LuaValue {
                 HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + message.tojstring());
                 return NIL
+            }
+        })
+
+        globals.set("registerCommand", object : TwoArgFunction() {
+            override fun call(commandName: LuaValue, callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(addCommandCallback(commandName.checkjstring(), callback))
+            }
+        })
+
+        globals.set("unregisterCommand", object : OneArgFunction() {
+            override fun call(commandName: LuaValue): LuaValue {
+                return LuaValue.valueOf(removeCommandCallback(commandName.checkjstring()))
             }
         })
 
@@ -503,6 +528,34 @@ class LuaManager() {
         }
     }
 
+    fun addCommandCallback(commandName: String, callback: LuaValue): Boolean {
+        if (!callback.isfunction()) return false
+
+        if (commandName.isBlank()) return false
+
+        synchronized(callbacksLock) {
+            // Проверяем, не зарегистрирована ли уже команда с таким именем
+            if (commandCallbacks.containsKey(commandName)) {
+                HypixelCry.LOGGER.warn("Command '$commandName' is already registered")
+                return false
+            }
+
+            commandCallbacks[commandName] = callback
+
+            // Регистрируем команду в Minecraft
+            registerMinecraftCommand(commandName)
+
+            // Связываем команду с текущим скриптом
+            currentExecutingScript.get()?.let { scriptName ->
+                scriptCommands.getOrPut(scriptName) { mutableSetOf() }.add(commandName)
+                scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+            }
+
+            HypixelCry.LOGGER.info("Registered Lua command: /$commandName")
+            return true
+        }
+    }
+
     // Methods for removing callbacks
     fun removeClientTickCallback(callback: LuaValue): Boolean {
         synchronized(callbacksLock) {
@@ -558,6 +611,72 @@ class LuaManager() {
     fun removeServerSideTeleportEventCallback(callback: LuaValue): Boolean {
         synchronized(callbacksLock) {
             return serverSideTeleportCallbacks.remove(callback)
+        }
+    }
+
+    fun removeCommandCallback(commandName: String): Boolean {
+        synchronized(callbacksLock) {
+            val removed = commandCallbacks.remove(commandName) != null
+
+            if (removed) {
+                // Удаляем команду из Minecraft
+                unregisterMinecraftCommand(commandName)
+
+                // Находим скрипт, которому принадлежит команда
+                scriptCommands.entries.find { it.value.contains(commandName) }?.let { (scriptName, commands) ->
+                    commands.remove(commandName)
+                    // Удаляем callback из списка скрипта
+                    scriptCallbacks[scriptName]?.removeAll { callback ->
+                        try {
+                            val result = callback.call()
+                            result.isstring() && result.tojstring() == commandName
+                        } catch (e: Exception) {
+                            false
+                        }
+                    }
+                }
+
+                HypixelCry.LOGGER.info("Unregistered Lua command: /$commandName")
+            }
+
+            return removed
+        }
+    }
+
+    private fun registerMinecraftCommand(commandName: String) {
+        try {
+            // Регистрируем команду в Minecraft
+            ClientCommandRegistrationCallback.EVENT.register(ClientCommandRegistrationCallback { dispatcher: CommandDispatcher<FabricClientCommandSource?>?, registryAccess: CommandRegistryAccess? ->
+                dispatcher!!.register(
+                    ClientCommandManager.literal(commandName)
+                        .executes(Command { context: CommandContext<FabricClientCommandSource?>? ->
+                            executeLuaCommand(commandName, emptyArray(), context?.source)
+                            1
+                        }).then(ClientCommandManager.argument("args", StringArgumentType.greedyString())
+                            .executes { context ->
+                                val args = StringArgumentType.getString(context, "args").split(" ").toTypedArray()
+                                executeLuaCommand(commandName, args, context.source)
+                                1
+                            }
+                        )
+                )
+            })
+        } catch (e: Exception) {
+            HypixelCry.LOGGER.error("Failed to register Minecraft command: /$commandName", e)
+        }
+    }
+
+    private fun executeLuaCommand(commandName: String, args: Array<String>, source: FabricClientCommandSource?) {
+        val callback = commandCallbacks[commandName]
+        if (callback != null && callback.isfunction()) {
+            try {
+                // Преобразуем аргументы в Lua таблицу
+                val argsTable = LuaValue.listOf(args.map { LuaValue.valueOf(it) }.toTypedArray())
+                callback.call(LuaValue.valueOf(commandName), argsTable, LuaValue.valueOf(source?.player?.name?.string ?: ""))
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error("Error executing Lua command: /$commandName", e)
+                source?.sendError(Text.literal("Error executing command: ${e.message}"))
+            }
         }
     }
 
@@ -807,6 +926,19 @@ class LuaManager() {
         }
     }
 
+    private fun unregisterMinecraftCommand(commandName: String) {
+        try {
+            // В Fabric API нет прямого способа удалить команду,
+            // но можно перерегистрировать диспетчер команд
+            ClientCommandRegistrationCallback.EVENT.register(ClientCommandRegistrationCallback { dispatcher: CommandDispatcher<FabricClientCommandSource?>?, registryAccess: CommandRegistryAccess? ->
+
+            })
+            HypixelCry.LOGGER.info("Unregistered Minecraft command: /$commandName")
+        } catch (e: Exception) {
+            HypixelCry.LOGGER.error("Failed to unregister Minecraft command: /$commandName", e)
+        }
+    }
+
     fun unloadScript(scriptName: String): Boolean {
         val callbacksToRemove = scriptCallbacks[scriptName] ?: return false
 
@@ -836,6 +968,19 @@ class LuaManager() {
                 }
             }
             scriptDependencies.remove(scriptName)
+        }
+
+        scriptCommands[scriptName]?.let { commands ->
+            for (commandName in commands) {
+                // Удаляем из commandCallbacks
+                commandCallbacks.remove(commandName)
+
+                // Удаляем команду из Minecraft
+                unregisterMinecraftCommand(commandName)
+
+                HypixelCry.LOGGER.info("Unregistered Lua command: /$commandName (script: $scriptName)")
+            }
+            scriptCommands.remove(scriptName)
         }
 
         threadLibs[scriptName]?.stopThreads()

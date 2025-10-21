@@ -71,10 +71,12 @@ class ThreadLib : TwoArgFunction() {
         }
     }
 
-    public fun stopThreads() {
+    fun stopThreads() {
         // Останавливаем и удаляем все потоки для данного скрипта
         threads.entries.forEach({ entry ->
+            entry.value.interrupt()
             entry.value.stop()
+            entry.value.suspend()
         })
         threads.entries.clear()
     }
