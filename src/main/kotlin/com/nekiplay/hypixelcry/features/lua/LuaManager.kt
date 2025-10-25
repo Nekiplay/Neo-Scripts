@@ -45,7 +45,6 @@ class LuaManager() {
     private val globals: Globals = JsePlatform.standardGlobals()
     private val persistentGlobals = ConcurrentHashMap<String, LuaValue>()
 
-    private val loadedModules = ConcurrentHashMap<String, LuaValue>()
     private val scriptDependencies = ConcurrentHashMap<String, MutableSet<String>>()
     private val moduleDependents = ConcurrentHashMap<String, MutableSet<String>>()
 
@@ -56,8 +55,11 @@ class LuaManager() {
     private val render2DCallbacks = ArrayList<LuaValue>()
     private val keyEventCallbacks = ArrayList<LuaValue>()
     private val messageEventCallbacks = ArrayList<LuaValue>()
+    private val onSendMessageEventCallbacks = ArrayList<LuaValue>()
+    private val onSendCommandEventCallbacks = ArrayList<LuaValue>()
     private val locationChangeCallbacks = ArrayList<LuaValue>()
     private val imguiRenderCallbacks = ArrayList<LuaValue>()
+
     // Packet events
     private val serverSideRotationCallbacks = ArrayList<LuaValue>()
     private val serverSideTeleportCallbacks = ArrayList<LuaValue>()
@@ -126,7 +128,6 @@ class LuaManager() {
         globals.set("require", object : OneArgFunction() {
             override fun call(arg: LuaValue): LuaValue {
                 val moduleName = arg.checkjstring()
-                loadedModules[moduleName]?.let { return it }
 
                 val code: String? = when {
                     moduleName.startsWith("http://") || moduleName.startsWith("https://") -> {
@@ -149,7 +150,6 @@ class LuaManager() {
                     chunk.call()
                 }
 
-                loadedModules[moduleName] = result
                 return result
             }
         })
@@ -230,6 +230,18 @@ class LuaManager() {
             }
         })
 
+        globals.set("registerSendMessageEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(addSendMessageCallback(callback))
+            }
+        })
+
+        globals.set("registerSendCommandEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(addSendCommandCallback(callback))
+            }
+        })
+
         globals.set("registerLocationChangeEvent", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(addLocationChangeCallback(callback))
@@ -292,6 +304,18 @@ class LuaManager() {
             }
         })
 
+        globals.set("unregisterSendMessageEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(removeSendMessageEventCallback(callback))
+            }
+        })
+
+        globals.set("unregisterSendMessageEvent", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(removeSendCommandEventCallback(callback))
+            }
+        })
+
         globals.set("unregisterLocationChangeEvent", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(removeLocationChangeEventCallback(callback))
@@ -302,6 +326,7 @@ class LuaManager() {
                 return LuaValue.valueOf(removeImGuiRenderEventCallback(callback))
             }
         })
+
         // Packets
         globals.set("unregisterServerSideRotationEvent", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
@@ -325,40 +350,21 @@ class LuaManager() {
     }
 
     private fun requireModule(moduleName: String, callingScript: String? = null): LuaValue {
-        // Double-checked locking for module loading
-        loadedModules[moduleName]?.let { cachedModule ->
+        val moduleFile = findModuleFile(moduleName) ?: throw LuaError("module '$moduleName' not found")
+
+        try {
+            val chunk = loadChunk(moduleFile, moduleName)
+            val result = chunk.call()
+
             callingScript?.let { scriptName ->
                 updateDependencies(scriptName, moduleName)
             }
-            return cachedModule
-        }
 
-        return synchronized(loadedModules) {
-            // Check again after synchronization
-            loadedModules[moduleName]?.let { cachedModule ->
-                callingScript?.let { scriptName ->
-                    updateDependencies(scriptName, moduleName)
-                }
-                return@synchronized cachedModule
-            }
-
-            val moduleFile = findModuleFile(moduleName) ?: throw LuaError("module '$moduleName' not found")
-
-            try {
-                val chunk = loadChunk(moduleFile, moduleName)
-                val result = chunk.call()
-
-                loadedModules[moduleName] = result
-                callingScript?.let { scriptName ->
-                    updateDependencies(scriptName, moduleName)
-                }
-
-                result
-            } catch (e: FileNotFoundException) {
-                throw LuaError("module '$moduleName' not found: ${e.message}")
-            } catch (e: Exception) {
-                throw LuaError("error loading module '$moduleName': ${e.message}")
-            }
+            return result
+        } catch (e: FileNotFoundException) {
+            throw LuaError("module '$moduleName' not found: ${e.message}")
+        } catch (e: Exception) {
+            throw LuaError("error loading module '$moduleName': ${e.message}")
         }
     }
 
@@ -467,6 +473,32 @@ class LuaManager() {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
             val result = messageEventCallbacks.add(callback)
+            if (result) {
+                currentExecutingScript.get()?.let { scriptName ->
+                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+                }
+            }
+            return result
+        }
+    }
+
+    fun addSendMessageCallback(callback: LuaValue): Boolean {
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
+            val result = onSendMessageEventCallbacks.add(callback)
+            if (result) {
+                currentExecutingScript.get()?.let { scriptName ->
+                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+                }
+            }
+            return result
+        }
+    }
+
+    fun addSendCommandCallback(callback: LuaValue): Boolean {
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
+            val result = onSendCommandEventCallbacks.add(callback)
             if (result) {
                 currentExecutingScript.get()?.let { scriptName ->
                     scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
@@ -587,6 +619,18 @@ class LuaManager() {
     fun removeMessageEventCallback(callback: LuaValue): Boolean {
         synchronized(callbacksLock) {
             return messageEventCallbacks.remove(callback)
+        }
+    }
+
+    fun removeSendMessageEventCallback(callback: LuaValue): Boolean {
+        synchronized(callbacksLock) {
+            return onSendMessageEventCallbacks.remove(callback)
+        }
+    }
+
+    fun removeSendCommandEventCallback(callback: LuaValue): Boolean {
+        synchronized(callbacksLock) {
+            return onSendCommandEventCallbacks.remove(callback)
         }
     }
 
@@ -793,6 +837,46 @@ class LuaManager() {
         return allow
     }
 
+    fun onSendChatMessageEvent(text: String): Boolean {
+        val callbacks = synchronized(callbacksLock) {
+            onSendMessageEventCallbacks.toTypedArray()
+        }
+        var allow = true
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(LuaValue.valueOf(text))
+                if (res.isboolean()) {
+                    if (!res.toboolean()) {
+                        allow = false
+                    }
+                }
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in send message callback: ${e.message}")
+            }
+        }
+        return allow
+    }
+
+    fun onSendChatCommandEvent(text: String): Boolean {
+        val callbacks = synchronized(callbacksLock) {
+            onSendCommandEventCallbacks.toTypedArray()
+        }
+        var allow = true
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(LuaValue.valueOf(text))
+                if (res.isboolean()) {
+                    if (!res.toboolean()) {
+                        allow = false
+                    }
+                }
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in send command callback: ${e.message}")
+            }
+        }
+        return allow
+    }
+
     fun onLocationChangeEvent(location: Location): Boolean {
         val callbacks = synchronized(callbacksLock) {
             locationChangeCallbacks.toTypedArray()
@@ -963,7 +1047,6 @@ class LuaManager() {
 
                 // Unload unused modules
                 if (moduleDependents[moduleName].isNullOrEmpty()) {
-                    loadedModules.remove(moduleName)
                     moduleDependents.remove(moduleName)
                 }
             }

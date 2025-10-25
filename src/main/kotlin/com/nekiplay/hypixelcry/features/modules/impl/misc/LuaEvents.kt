@@ -9,6 +9,7 @@ import com.nekiplay.hypixelcry.features.modules.ClientModule
 import com.nekiplay.hypixelcry.imgui.ImguiLoader
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents
@@ -41,13 +42,20 @@ object LuaEvents: ClientModule() {
             ActionResult.PASS
         })
 
-        ClientReceiveMessageEvents.ALLOW_GAME.register(ClientReceiveMessageEvents.AllowGame { text, b ->
-            LUA_MANAGER.onChatMessageEvent(text, b)
+        ClientReceiveMessageEvents.ALLOW_GAME.register(ClientReceiveMessageEvents.AllowGame { text, overlay ->
+            LUA_MANAGER.onChatMessageEvent(text, overlay)
         })
+
+        ClientSendMessageEvents.ALLOW_CHAT.register(ClientSendMessageEvents.AllowChat { text ->
+            LUA_MANAGER.onSendChatMessageEvent(text)
+        });
+
+        ClientSendMessageEvents.ALLOW_COMMAND.register(ClientSendMessageEvents.AllowCommand { command ->
+            LUA_MANAGER.onSendChatCommandEvent(command)
+        });
 
         HudRenderCallback.EVENT.register(HudRenderCallback { context, _ ->
             LUA_MANAGER.on2DRenderTick(context)
-            ImguiLoader.onFrameRender()
         })
 
         SkyblockEvents.LOCATION_CHANGE.register { location ->

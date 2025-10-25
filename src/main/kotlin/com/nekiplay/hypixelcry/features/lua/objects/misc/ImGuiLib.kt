@@ -1,5 +1,7 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
+import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.ImGuiTexture
 import imgui.ImGui
 import imgui.flag.ImGuiCol
 import imgui.flag.ImGuiColorEditFlags
@@ -11,6 +13,7 @@ import imgui.type.ImDouble
 import imgui.type.ImFloat
 import imgui.type.ImInt
 import imgui.type.ImString
+import net.minecraft.item.ItemStack
 import org.luaj.vm2.*
 import org.luaj.vm2.lib.*
 
@@ -29,6 +32,10 @@ class ImGuiLib : TwoArgFunction() {
         library.set("textColored", textColored())
         library.set("textDisabled", textDisabled())
         library.set("bulletText", bulletText())
+
+        // Images
+        library.set("createImageObject", createImageObject())
+        library.set("image", image())
 
         // Buttons
         library.set("button", button())
@@ -253,9 +260,6 @@ class ImGuiLib : TwoArgFunction() {
         dl.set("addBezierQuadratic", addBezierQuadratic())
         dl.set("addQuad", addQuad())
         dl.set("addQuadFilled", addQuadFilled())
-        dl.set("addPolyline", addPolyline())
-        dl.set("addPolygon", addPolygon())
-        dl.set("addImage", addImage())
         dl.set("pathClear", pathClear())
         dl.set("pathLineTo", pathLineTo())
         dl.set("pathStroke", pathStroke())
@@ -442,27 +446,30 @@ class ImGuiLib : TwoArgFunction() {
         }
     }
 
-    inner class addPolyline : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            // This would require more complex handling for points array
-            // For simplicity, returning true but not implementing full functionality
-            return LuaValue.TRUE
+    inner class createImageObject : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return ImGuiTexture()
         }
     }
 
-    inner class addPolygon : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            // This would require more complex handling for points array
-            // For simplicity, returning true but not implementing full functionality
-            return LuaValue.TRUE
-        }
-    }
+    inner class image : ThreeArgFunction() {
+        override fun call(
+            arg1: LuaValue?,
+            arg2: LuaValue?,
+            arg3: LuaValue?
+        ): LuaValue? {
+            if (arg1?.isuserdata() == true && arg2?.isnumber() == true  && arg3?.isnumber() == true ) {
+                val image = when {
+                    arg1.isuserdata() && arg1.touserdata() is ImGuiTexture -> arg1.touserdata() as ImGuiTexture
+                    else -> null
+                }
 
-    inner class addImage : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            // This would require texture handling
-            // For simplicity, returning true but not implementing full functionality
-            return LuaValue.TRUE
+                if (image != null) {
+                    ImGui.image(image.getTexture(), arg2.tofloat(), arg3.tofloat())
+                    return TRUE
+                }
+            }
+            return FALSE
         }
     }
 

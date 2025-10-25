@@ -6,17 +6,11 @@ import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import net.minecraft.client.font.TextRenderer
 import net.minecraft.client.gl.RenderPipelines
 import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.render.Tessellator
-import net.minecraft.client.render.VertexFormats
 import net.minecraft.client.texture.NativeImage
 import net.minecraft.client.texture.NativeImageBackedTexture
-import net.minecraft.client.util.math.MatrixStack
 import net.minecraft.item.ItemStack
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
-import org.joml.Matrix3x2f
-import org.joml.Matrix3x2fStack
-import org.joml.Matrix4f
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
