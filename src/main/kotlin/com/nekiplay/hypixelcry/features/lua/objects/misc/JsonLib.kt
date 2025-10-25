@@ -1,19 +1,20 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.google.gson.GsonBuilder
 import org.luaj.vm2.*
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
-import java.lang.reflect.Type
+import org.luaj.vm2.lib.VarArgFunction
 
 class JsonLib : TwoArgFunction() {
     private val gson = Gson()
+    private val gsonPretty = GsonBuilder().setPrettyPrinting().create()
 
     override fun call(modname: LuaValue, env: LuaValue): LuaValue {
         val library = LuaValue.tableOf().apply {
             set("parse", SimpleParseFunction())
-            set("stringify", SimpleStringifyFunction())
+            set("stringify", StringifyFunction())
         }
         env.set("json", library)
         return library
@@ -80,11 +81,25 @@ class JsonLib : TwoArgFunction() {
         }
     }
 
-    inner class SimpleStringifyFunction : OneArgFunction() {
-        override fun call(luaValue: LuaValue): LuaValue {
+    inner class StringifyFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): LuaValue {
             return try {
+                val luaValue = args.arg(1)
+                val indent = if (args.narg() > 1) args.arg(2) else LuaValue.NIL
+
                 val javaObj = convertToJava(luaValue)
-                LuaValue.valueOf(gson.toJson(javaObj))
+                val jsonString = if (indent.isnil()) {
+                    // По умолчанию - форматированный JSON
+                    gsonPretty.toJson(javaObj)
+                } else {
+                    // Если указан indent = 0 или false - неформатированный
+                    if (indent.isnumber() && indent.todouble() == 0.0 || indent.isboolean() && !indent.toboolean()) {
+                        gson.toJson(javaObj)
+                    } else {
+                        gsonPretty.toJson(javaObj)
+                    }
+                }
+                LuaValue.valueOf(jsonString)
             } catch (e: Exception) {
                 LuaValue.NIL
             }

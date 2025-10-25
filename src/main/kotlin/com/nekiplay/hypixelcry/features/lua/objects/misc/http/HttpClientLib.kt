@@ -10,14 +10,28 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.apache.http.HttpHost
+import org.apache.http.client.config.RequestConfig
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.entity.StringEntity
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.LibFunction
-import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
+import org.apache.http.conn.socket.ConnectionSocketFactory
+import org.apache.http.conn.socket.PlainConnectionSocketFactory
+import org.apache.http.protocol.HttpContext
+import org.apache.http.config.RegistryBuilder
+import org.apache.http.conn.socket.LayeredConnectionSocketFactory
+import java.net.InetSocketAddress
+import java.net.Socket
+import javax.net.ssl.SSLContext
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager
 import org.luaj.vm2.lib.ZeroArgFunction
+import java.net.Authenticator
+import java.net.PasswordAuthentication
+import java.net.Proxy
 import java.net.URI
 
 class HttpClientLib : TwoArgFunction() {
@@ -44,13 +58,706 @@ class HttpClientLib : TwoArgFunction() {
         http.set("post_async_callback", postAsyncCallbackFunction())
         http.set("post_async_with_headers_callback", postAsyncWithHeadersCallbackFunction())
 
+        // Универсальные GET функции с прокси
+        http.set("get_with_proxy", getWithProxyFunction())
+        http.set("get_with_headers_and_proxy", getWithHeadersAndProxyFunction())
+        http.set("get_async_with_proxy", getAsyncWithProxyFunction())
+        http.set("get_async_with_headers_and_proxy", getAsyncWithHeadersAndProxyFunction())
+
+        // Универсальные POST функции с прокси
+        http.set("post_with_proxy", postWithProxyFunction())
+        http.set("post_with_headers_and_proxy", postWithHeadersAndProxyFunction())
+        http.set("post_async_with_proxy", postAsyncWithProxyFunction())
+        http.set("post_async_with_headers_and_proxy", postAsyncWithHeadersAndProxyFunction())
+
         env.set("http", http)
         return http
     }
 
-    // POST функции
+    // Вспомогательные методы для работы с прокси
 
-    // Синхронный POST запрос
+    private fun createHttpClientWithProxy(
+        proxyHost: String,
+        proxyPort: Int,
+        proxyType: String = "http",
+        username: String? = null,
+        password: String? = null
+    ): org.apache.http.impl.client.CloseableHttpClient {
+
+        // Настраиваем аутентификацию для SOCKS прокси
+        if (proxyType.lowercase().startsWith("socks") && username != null && password != null) {
+            Authenticator.setDefault(object : Authenticator() {
+                override fun getPasswordAuthentication(): PasswordAuthentication {
+                    return PasswordAuthentication(username, password.toCharArray())
+                }
+            })
+        }
+
+        val proxy = HttpHost(proxyHost, proxyPort)
+
+        // Создаем socket factory для SOCKS прокси
+        val socketFactory: LayeredConnectionSocketFactory? = when (proxyType.lowercase()) {
+            "socks", "socks4", "socks5" -> {
+                object : LayeredConnectionSocketFactory {
+                    private val plainFactory = PlainConnectionSocketFactory()
+
+                    override fun createSocket(context: HttpContext): Socket {
+                        val proxyAddress = InetSocketAddress(proxyHost, proxyPort)
+                        val proxy = Proxy(Proxy.Type.SOCKS, proxyAddress)
+                        return Socket(proxy)
+                    }
+
+                    override fun connectSocket(
+                        connectTimeout: Int,
+                        socket: Socket,
+                        host: HttpHost,
+                        remoteAddress: InetSocketAddress,
+                        localAddress: InetSocketAddress?,
+                        context: HttpContext
+                    ): Socket {
+                        // Для SOCKS прокси используем обычное соединение
+                        socket.connect(remoteAddress, connectTimeout)
+                        return socket
+                    }
+
+                    override fun createLayeredSocket(
+                        socket: Socket,
+                        target: String,
+                        port: Int,
+                        context: HttpContext
+                    ): Socket {
+                        return SSLContext.getDefault().socketFactory.createSocket(socket, target, port, true)
+                    }
+                }
+            }
+            else -> null
+        }
+
+        val requestConfig = RequestConfig.custom()
+            .setConnectTimeout(5000)
+            .setSocketTimeout(5000)
+            .setProxy(proxy)
+            .build()
+
+        val builder = HttpClients.custom()
+            .setDefaultRequestConfig(requestConfig)
+
+        // Если указаны логин и пароль для HTTP прокси
+        if (username != null && password != null && !proxyType.lowercase().startsWith("socks")) {
+            val credentialsProvider = org.apache.http.impl.client.BasicCredentialsProvider()
+            credentialsProvider.setCredentials(
+                org.apache.http.auth.AuthScope(proxyHost, proxyPort),
+                org.apache.http.auth.UsernamePasswordCredentials(username, password)
+            )
+            builder.setDefaultCredentialsProvider(credentialsProvider)
+        }
+
+        // Если это SOCKS прокси, настраиваем специальный connection manager
+        if (socketFactory != null && proxyType.lowercase().startsWith("socks")) {
+            val registry = RegistryBuilder.create<ConnectionSocketFactory>()
+                .register("http", PlainConnectionSocketFactory())
+                .register("https", socketFactory)
+                .build()
+
+            val connectionManager = PoolingHttpClientConnectionManager(registry)
+            builder.setConnectionManager(connectionManager)
+        }
+
+        return builder.build()
+    }
+
+    // Вспомогательные методы для парсинга параметров прокси
+    private fun parseProxyArgs(args: Varargs, startIndex: Int): ProxyConfig {
+        val proxyHost = args.arg(startIndex).checkjstring()
+        val proxyPort = args.arg(startIndex + 1).checkint()
+        val proxyType = args.arg(startIndex + 2).optjstring("http")
+        val username = args.arg(startIndex + 3).optjstring(null)
+        val password = args.arg(startIndex + 4).optjstring(null)
+
+        return ProxyConfig(proxyHost, proxyPort, proxyType, username, password)
+    }
+
+    data class ProxyConfig(
+        val host: String,
+        val port: Int,
+        val type: String = "http",
+        val username: String? = null,
+        val password: String? = null
+    )
+
+    // Универсальные GET методы с прокси
+
+    private fun getWithProxyFunction(): LuaValue {
+        return object : LibFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                return try {
+                    val url = args.arg(1).checkjstring()
+
+                    when (args.narg()) {
+                        3 -> { // url, proxyHost, proxyPort
+                            val proxyConfig = parseProxyArgs(args, 2)
+                            val response = executeGetRequestWithProxy(
+                                url, proxyConfig, emptyMap()
+                            )
+                            LuaValue.valueOf(response)
+                        }
+                        4 -> { // url, proxyHost, proxyPort, proxyType
+                            val proxyConfig = parseProxyArgs(args, 2)
+                            val response = executeGetRequestWithProxy(
+                                url, proxyConfig, emptyMap()
+                            )
+                            LuaValue.valueOf(response)
+                        }
+                        6 -> { // url, proxyHost, proxyPort, proxyType, username, password
+                            val proxyConfig = parseProxyArgs(args, 2)
+                            val response = executeGetRequestWithProxy(
+                                url, proxyConfig, emptyMap()
+                            )
+                            LuaValue.valueOf(response)
+                        }
+                        else -> throw LuaError("Invalid number of arguments for get_with_proxy")
+                    }
+                } catch (e: Exception) {
+                    throw LuaError("HTTP GET with proxy error: ${e.message}")
+                }
+            }
+        }
+    }
+
+    private fun getWithHeadersAndProxyFunction(): LuaValue {
+        return object : LibFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                return try {
+                    val url = args.arg(1).checkjstring()
+                    val headersTable = args.arg(2)
+                    val headers = parseHeaders(headersTable)
+
+                    when (args.narg()) {
+                        4 -> { // url, headers, proxyHost, proxyPort
+                            val proxyConfig = parseProxyArgs(args, 3)
+                            val response = executeGetRequestWithProxy(
+                                url, proxyConfig, headers
+                            )
+                            LuaValue.valueOf(response)
+                        }
+                        5 -> { // url, headers, proxyHost, proxyPort, proxyType
+                            val proxyConfig = parseProxyArgs(args, 3)
+                            val response = executeGetRequestWithProxy(
+                                url, proxyConfig, headers
+                            )
+                            LuaValue.valueOf(response)
+                        }
+                        7 -> { // url, headers, proxyHost, proxyPort, proxyType, username, password
+                            val proxyConfig = parseProxyArgs(args, 3)
+                            val response = executeGetRequestWithProxy(
+                                url, proxyConfig, headers
+                            )
+                            LuaValue.valueOf(response)
+                        }
+                        else -> throw LuaError("Invalid number of arguments for get_with_headers_and_proxy")
+                    }
+                } catch (e: Exception) {
+                    throw LuaError("HTTP GET with headers and proxy error: ${e.message}")
+                }
+            }
+        }
+    }
+
+    private fun getAsyncWithProxyFunction(): LuaValue {
+        return object : LibFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                return AsyncResult { callback ->
+                    coroutineScope.launch {
+                        try {
+                            val url = args.arg(1).checkjstring()
+                            val proxyConfig = when (args.narg()) {
+                                3 -> parseProxyArgs(args, 2) // url, proxyHost, proxyPort
+                                4 -> parseProxyArgs(args, 2) // url, proxyHost, proxyPort, proxyType
+                                6 -> parseProxyArgs(args, 2) // url, proxyHost, proxyPort, proxyType, username, password
+                                else -> throw LuaError("Invalid number of arguments for get_async_with_proxy")
+                            }
+
+                            val response = withContext(Dispatchers.IO) {
+                                executeGetRequestWithProxy(url, proxyConfig, emptyMap())
+                            }
+                            callback.onSuccess(LuaValue.valueOf(response))
+                        } catch (e: Exception) {
+                            callback.onError(LuaValue.valueOf("HTTP async GET with proxy error: ${e.message}"))
+                        }
+                    }
+                }.asLuaValue()
+            }
+        }
+    }
+
+    private fun getAsyncWithHeadersAndProxyFunction(): LuaValue {
+        return object : LibFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                return AsyncResult { callback ->
+                    coroutineScope.launch {
+                        try {
+                            val url = args.arg(1).checkjstring()
+                            val headersTable = args.arg(2)
+                            val headers = parseHeaders(headersTable)
+
+                            val proxyConfig = when (args.narg()) {
+                                4 -> parseProxyArgs(args, 3) // url, headers, proxyHost, proxyPort
+                                5 -> parseProxyArgs(args, 3) // url, headers, proxyHost, proxyPort, proxyType
+                                7 -> parseProxyArgs(args, 3) // url, headers, proxyHost, proxyPort, proxyType, username, password
+                                else -> throw LuaError("Invalid number of arguments for get_async_with_headers_and_proxy")
+                            }
+
+                            val response = withContext(Dispatchers.IO) {
+                                executeGetRequestWithProxy(url, proxyConfig, headers)
+                            }
+                            callback.onSuccess(LuaValue.valueOf(response))
+                        } catch (e: Exception) {
+                            callback.onError(LuaValue.valueOf("HTTP async GET with headers and proxy error: ${e.message}"))
+                        }
+                    }
+                }.asLuaValue()
+            }
+        }
+    }
+
+    // Универсальные POST методы с прокси
+
+    private fun postWithProxyFunction(): LuaValue {
+        return object : LibFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                return try {
+                    val url = args.arg(1).checkjstring()
+                    val body = args.arg(2).checkjstring()
+
+                    when (args.narg()) {
+                        4 -> { // url, body, proxyHost, proxyPort
+                            val proxyConfig = parseProxyArgs(args, 3)
+                            val response = executePostRequestWithProxy(
+                                url, proxyConfig, emptyMap(), body
+                            )
+                            LuaValue.valueOf(response)
+                        }
+                        5 -> { // url, body, proxyHost, proxyPort, proxyType
+                            val proxyConfig = parseProxyArgs(args, 3)
+                            val response = executePostRequestWithProxy(
+                                url, proxyConfig, emptyMap(), body
+                            )
+                            LuaValue.valueOf(response)
+                        }
+                        7 -> { // url, body, proxyHost, proxyPort, proxyType, username, password
+                            val proxyConfig = parseProxyArgs(args, 3)
+                            val response = executePostRequestWithProxy(
+                                url, proxyConfig, emptyMap(), body
+                            )
+                            LuaValue.valueOf(response)
+                        }
+                        else -> throw LuaError("Invalid number of arguments for post_with_proxy")
+                    }
+                } catch (e: Exception) {
+                    throw LuaError("HTTP POST with proxy error: ${e.message}")
+                }
+            }
+        }
+    }
+
+    private fun postWithHeadersAndProxyFunction(): LuaValue {
+        return object : LibFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                return try {
+                    val url = args.arg(1).checkjstring()
+                    val headersTable = args.arg(2)
+                    val body = args.arg(3).checkjstring()
+                    val headers = parseHeaders(headersTable)
+
+                    when (args.narg()) {
+                        5 -> { // url, headers, body, proxyHost, proxyPort
+                            val proxyConfig = parseProxyArgs(args, 4)
+                            val response = executePostRequestWithProxy(
+                                url, proxyConfig, headers, body
+                            )
+                            LuaValue.valueOf(response)
+                        }
+                        6 -> { // url, headers, body, proxyHost, proxyPort, proxyType
+                            val proxyConfig = parseProxyArgs(args, 4)
+                            val response = executePostRequestWithProxy(
+                                url, proxyConfig, headers, body
+                            )
+                            LuaValue.valueOf(response)
+                        }
+                        8 -> { // url, headers, body, proxyHost, proxyPort, proxyType, username, password
+                            val proxyConfig = parseProxyArgs(args, 4)
+                            val response = executePostRequestWithProxy(
+                                url, proxyConfig, headers, body
+                            )
+                            LuaValue.valueOf(response)
+                        }
+                        else -> throw LuaError("Invalid number of arguments for post_with_headers_and_proxy")
+                    }
+                } catch (e: Exception) {
+                    throw LuaError("HTTP POST with headers and proxy error: ${e.message}")
+                }
+            }
+        }
+    }
+
+    private fun postAsyncWithProxyFunction(): LuaValue {
+        return object : LibFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                return AsyncResult { callback ->
+                    coroutineScope.launch {
+                        try {
+                            val url = args.arg(1).checkjstring()
+                            val body = args.arg(2).checkjstring()
+
+                            val proxyConfig = when (args.narg()) {
+                                4 -> parseProxyArgs(args, 3) // url, body, proxyHost, proxyPort
+                                5 -> parseProxyArgs(args, 3) // url, body, proxyHost, proxyPort, proxyType
+                                7 -> parseProxyArgs(args, 3) // url, body, proxyHost, proxyPort, proxyType, username, password
+                                else -> throw LuaError("Invalid number of arguments for post_async_with_proxy")
+                            }
+
+                            val response = withContext(Dispatchers.IO) {
+                                executePostRequestWithProxy(url, proxyConfig, emptyMap(), body)
+                            }
+                            callback.onSuccess(LuaValue.valueOf(response))
+                        } catch (e: Exception) {
+                            callback.onError(LuaValue.valueOf("HTTP async POST with proxy error: ${e.message}"))
+                        }
+                    }
+                }.asLuaValue()
+            }
+        }
+    }
+
+    private fun postAsyncWithHeadersAndProxyFunction(): LuaValue {
+        return object : LibFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                return AsyncResult { callback ->
+                    coroutineScope.launch {
+                        try {
+                            val url = args.arg(1).checkjstring()
+                            val headersTable = args.arg(2)
+                            val body = args.arg(3).checkjstring()
+                            val headers = parseHeaders(headersTable)
+
+                            val proxyConfig = when (args.narg()) {
+                                5 -> parseProxyArgs(args, 4) // url, headers, body, proxyHost, proxyPort
+                                6 -> parseProxyArgs(args, 4) // url, headers, body, proxyHost, proxyPort, proxyType
+                                8 -> parseProxyArgs(args, 4) // url, headers, body, proxyHost, proxyPort, proxyType, username, password
+                                else -> throw LuaError("Invalid number of arguments for post_async_with_headers_and_proxy")
+                            }
+
+                            val response = withContext(Dispatchers.IO) {
+                                executePostRequestWithProxy(url, proxyConfig, headers, body)
+                            }
+                            callback.onSuccess(LuaValue.valueOf(response))
+                        } catch (e: Exception) {
+                            callback.onError(LuaValue.valueOf("HTTP async POST with headers and proxy error: ${e.message}"))
+                        }
+                    }
+                }.asLuaValue()
+            }
+        }
+    }
+
+    // Методы выполнения запросов с прокси
+
+    private fun executeGetRequestWithProxy(
+        url: String,
+        proxyConfig: ProxyConfig,
+        headers: Map<String, String>
+    ): String {
+        val httpGet = HttpGet(URI.create(url))
+
+        val requestConfig = RequestConfig.custom()
+            .setConnectTimeout(5000)
+            .setSocketTimeout(5000)
+            .setProxy(HttpHost(proxyConfig.host, proxyConfig.port))
+            .build()
+        httpGet.config = requestConfig
+
+        headers.forEach { (key, value) ->
+            httpGet.addHeader(key, value)
+        }
+
+        return createHttpClientWithProxy(
+            proxyConfig.host,
+            proxyConfig.port,
+            proxyConfig.type,
+            proxyConfig.username,
+            proxyConfig.password
+        ).use { client ->
+            client.execute(httpGet).use { response ->
+                val entity = response.entity
+                if (entity != null) {
+                    EntityUtils.toString(entity)
+                } else {
+                    throw RuntimeException("Empty response")
+                }
+            }
+        }
+    }
+
+    private fun executePostRequestWithProxy(
+        url: String,
+        proxyConfig: ProxyConfig,
+        headers: Map<String, String>,
+        body: String
+    ): String {
+        val httpPost = HttpPost(URI.create(url))
+
+        val requestConfig = RequestConfig.custom()
+            .setConnectTimeout(5000)
+            .setSocketTimeout(5000)
+            .setProxy(HttpHost(proxyConfig.host, proxyConfig.port))
+            .build()
+        httpPost.config = requestConfig
+
+        headers.forEach { (key, value) ->
+            httpPost.addHeader(key, value)
+        }
+
+        if (body.isNotEmpty()) {
+            httpPost.entity = StringEntity(body, "UTF-8")
+            httpPost.setHeader("Content-type", "application/json")
+        }
+
+        return createHttpClientWithProxy(
+            proxyConfig.host,
+            proxyConfig.port,
+            proxyConfig.type,
+            proxyConfig.username,
+            proxyConfig.password
+        ).use { client ->
+            client.execute(httpPost).use { response ->
+                val entity = response.entity
+                if (entity != null) {
+                    EntityUtils.toString(entity)
+                } else {
+                    throw RuntimeException("Empty response")
+                }
+            }
+        }
+    }
+
+    // Существующие методы без прокси (остаются без изменений)
+
+    private fun executeGetRequest(url: String, timeout: Int, headers: Map<String, String>): String {
+        val httpGet = HttpGet(URI.create(url))
+
+        val requestConfig = RequestConfig.custom()
+            .setConnectTimeout(timeout)
+            .setSocketTimeout(timeout)
+            .build()
+        httpGet.config = requestConfig
+
+        headers.forEach { (key, value) ->
+            httpGet.addHeader(key, value)
+        }
+
+        return HttpClients.createDefault().use { client ->
+            client.execute(httpGet).use { response ->
+                val entity = response.entity
+                if (entity != null) {
+                    EntityUtils.toString(entity)
+                } else {
+                    throw RuntimeException("Empty response")
+                }
+            }
+        }
+    }
+
+    private fun executePostRequest(url: String, timeout: Int, headers: Map<String, String>, body: String): String {
+        val httpPost = HttpPost(URI.create(url))
+
+        val requestConfig = RequestConfig.custom()
+            .setConnectTimeout(timeout)
+            .setSocketTimeout(timeout)
+            .build()
+        httpPost.config = requestConfig
+
+        headers.forEach { (key, value) ->
+            httpPost.addHeader(key, value)
+        }
+
+        if (body.isNotEmpty()) {
+            httpPost.entity = StringEntity(body, "UTF-8")
+            httpPost.setHeader("Content-type", "application/json")
+        }
+
+        return HttpClients.createDefault().use { client ->
+            client.execute(httpPost).use { response ->
+                val entity = response.entity
+                if (entity != null) {
+                    EntityUtils.toString(entity)
+                } else {
+                    throw RuntimeException("Empty response")
+                }
+            }
+        }
+    }
+
+    private fun parseHeaders(headersTable: LuaValue): Map<String, String> {
+        val headers = mutableMapOf<String, String>()
+        if (headersTable.istable()) {
+            headersTable.checktable().keys().forEach { key ->
+                val headerName = key.checkjstring()
+                val headerValue = headersTable.get(key).checkjstring()
+                headers[headerName] = headerValue
+            }
+        }
+        return headers
+    }
+
+    // Классы для поддержки дополнительных аргументов
+
+    abstract class FourArgFunction : LibFunction() {
+        abstract override fun call(arg1: LuaValue, arg2: LuaValue, arg3: LuaValue, arg4: LuaValue): LuaValue
+
+        override fun invoke(args: Varargs): Varargs {
+            return call(args.arg1(), args.arg(2), args.arg(3), args.arg(4))
+        }
+    }
+
+    abstract class FiveArgFunction : LibFunction() {
+        abstract fun call(arg1: LuaValue, arg2: LuaValue, arg3: LuaValue, arg4: LuaValue, arg5: LuaValue): LuaValue
+
+        override fun invoke(args: Varargs): Varargs {
+            return call(args.arg1(), args.arg(2), args.arg(3), args.arg(4), args.arg(5))
+        }
+    }
+
+    // GET функции без прокси
+
+    private fun getFunction(): LuaValue {
+        return object : TwoArgFunction() {
+            override fun call(url: LuaValue, timeout: LuaValue): LuaValue {
+                return try {
+                    val response = executeGetRequest(
+                        url.checkjstring(),
+                        timeout.optint(5000),
+                        emptyMap()
+                    )
+                    LuaValue.valueOf(response)
+                } catch (e: Exception) {
+                    throw LuaError("HTTP GET error: ${e.message}")
+                }
+            }
+        }
+    }
+
+    private fun getWithHeadersFunction(): LuaValue {
+        return object : TwoArgFunction() {
+            override fun call(url: LuaValue, headersTable: LuaValue): LuaValue {
+                return try {
+                    val headers = parseHeaders(headersTable)
+                    val response = executeGetRequest(
+                        url.checkjstring(),
+                        5000,
+                        headers
+                    )
+                    LuaValue.valueOf(response)
+                } catch (e: Exception) {
+                    throw LuaError("HTTP GET with headers error: ${e.message}")
+                }
+            }
+        }
+    }
+
+    private fun getAsyncFunction(): LuaValue {
+        return object : TwoArgFunction() {
+            override fun call(url: LuaValue, timeout: LuaValue): LuaValue {
+                return AsyncResult { callback ->
+                    coroutineScope.launch {
+                        try {
+                            val response = withContext(Dispatchers.IO) {
+                                executeGetRequest(
+                                    url.checkjstring(),
+                                    timeout.optint(5000),
+                                    emptyMap()
+                                )
+                            }
+                            callback.onSuccess(LuaValue.valueOf(response))
+                        } catch (e: Exception) {
+                            callback.onError(LuaValue.valueOf("HTTP async GET error: ${e.message}"))
+                        }
+                    }
+                }.asLuaValue()
+            }
+        }
+    }
+
+    private fun getAsyncWithHeadersFunction(): LuaValue {
+        return object : TwoArgFunction() {
+            override fun call(url: LuaValue, headersTable: LuaValue): LuaValue {
+                return AsyncResult { callback ->
+                    coroutineScope.launch {
+                        try {
+                            val headers = parseHeaders(headersTable)
+                            val response = withContext(Dispatchers.IO) {
+                                executeGetRequest(
+                                    url.checkjstring(),
+                                    5000,
+                                    headers
+                                )
+                            }
+                            callback.onSuccess(LuaValue.valueOf(response))
+                        } catch (e: Exception) {
+                            callback.onError(LuaValue.valueOf("HTTP async GET with headers error: ${e.message}"))
+                        }
+                    }
+                }.asLuaValue()
+            }
+        }
+    }
+
+    private fun getAsyncCallbackFunction(): LuaValue {
+        return object : TwoArgFunction() {
+            override fun call(url: LuaValue, callback: LuaValue): LuaValue {
+                return if (callback.isfunction()) {
+                    coroutineScope.launch {
+                        try {
+                            val response = withContext(Dispatchers.IO) {
+                                executeGetRequest(url.checkjstring(), 5000, emptyMap())
+                            }
+                            callback.call(LuaValue.valueOf(response), LuaValue.NIL)
+                        } catch (e: Exception) {
+                            callback.call(LuaValue.NIL, LuaValue.valueOf("Error: ${e.message}"))
+                        }
+                    }
+                    LuaValue.TRUE
+                } else {
+                    throw LuaError("Second argument must be a function for callback")
+                }
+            }
+        }
+    }
+
+    private fun getAsyncWithHeadersCallbackFunction(): LuaValue {
+        return object : ThreeArgFunction() {
+            override fun call(url: LuaValue, headersTable: LuaValue, callback: LuaValue): LuaValue {
+                return if (callback.isfunction()) {
+                    coroutineScope.launch {
+                        try {
+                            val headers = parseHeaders(headersTable)
+                            val response = withContext(Dispatchers.IO) {
+                                executeGetRequest(url.checkjstring(), 5000, headers)
+                            }
+                            callback.call(LuaValue.valueOf(response), LuaValue.NIL)
+                        } catch (e: Exception) {
+                            callback.call(LuaValue.NIL, LuaValue.valueOf("Error: ${e.message}"))
+                        }
+                    }
+                    LuaValue.TRUE
+                } else {
+                    throw LuaError("Third argument must be a function for callback")
+                }
+            }
+        }
+    }
+
+    // POST функции без прокси
+
     private fun postFunction(): LuaValue {
         return object : ThreeArgFunction() {
             override fun call(url: LuaValue, headersTable: LuaValue, body: LuaValue): LuaValue {
@@ -70,7 +777,6 @@ class HttpClientLib : TwoArgFunction() {
         }
     }
 
-    // Синхронный POST с заголовками (упрощенная версия)
     private fun postWithHeadersFunction(): LuaValue {
         return object : TwoArgFunction() {
             override fun call(url: LuaValue, body: LuaValue): LuaValue {
@@ -89,7 +795,6 @@ class HttpClientLib : TwoArgFunction() {
         }
     }
 
-    // Асинхронный POST
     private fun postAsyncFunction(): LuaValue {
         return object : ThreeArgFunction() {
             override fun call(url: LuaValue, headersTable: LuaValue, body: LuaValue): LuaValue {
@@ -115,7 +820,6 @@ class HttpClientLib : TwoArgFunction() {
         }
     }
 
-    // Асинхронный POST с заголовками
     private fun postAsyncWithHeadersFunction(): LuaValue {
         return object : TwoArgFunction() {
             override fun call(url: LuaValue, body: LuaValue): LuaValue {
@@ -140,7 +844,6 @@ class HttpClientLib : TwoArgFunction() {
         }
     }
 
-    // Асинхронный POST с callback
     private fun postAsyncCallbackFunction(): LuaValue {
         return object : ThreeArgFunction() {
             override fun call(url: LuaValue, headersTable: LuaValue, callback: LuaValue): LuaValue {
@@ -169,7 +872,6 @@ class HttpClientLib : TwoArgFunction() {
         }
     }
 
-    // Асинхронный POST с заголовками и body callback
     private fun postAsyncWithHeadersCallbackFunction(): LuaValue {
         return object : FourArgFunction() {
             override fun call(url: LuaValue, headersTable: LuaValue, body: LuaValue, callback: LuaValue): LuaValue {
@@ -197,282 +899,4 @@ class HttpClientLib : TwoArgFunction() {
             }
         }
     }
-
-    abstract class FourArgFunction : LibFunction() {
-        abstract override fun call(arg1: LuaValue, arg2: LuaValue, arg3: LuaValue, arg4: LuaValue): LuaValue
-
-        override fun invoke(args: Varargs): Varargs {
-            return call(args.arg1(), args.arg(2), args.arg(3), args.arg(4))
-        }
-    }
-
-    private fun executePostRequest(url: String, timeout: Int, headers: Map<String, String>, body: String): String {
-        val httpPost = HttpPost(URI.create(url))
-
-        // Устанавливаем таймаут
-        val requestConfig = org.apache.http.client.config.RequestConfig.custom()
-            .setConnectTimeout(timeout)
-            .setSocketTimeout(timeout)
-            .build()
-        httpPost.config = requestConfig
-
-        // Добавляем заголовки
-        headers.forEach { (key, value) ->
-            httpPost.addHeader(key, value)
-        }
-
-        // Устанавливаем тело запроса
-        if (body.isNotEmpty()) {
-            httpPost.entity = StringEntity(body, "UTF-8")
-            httpPost.setHeader("Content-type", "application/json")
-        }
-
-        return client.execute(httpPost).use { response ->
-            val entity = response.entity
-            if (entity != null) {
-                EntityUtils.toString(entity)
-            } else {
-                throw RuntimeException("Empty response")
-            }
-        }
-    }
-
-    private fun convertTableToJson(table: LuaTable): String {
-        val json = StringBuilder()
-        json.append("{")
-
-        val keys = table.keys()
-        var first = true
-
-        keys.forEach { key ->
-            if (!first) json.append(",")
-            first = false
-
-            val keyStr = key.checkjstring()
-            val value = table.get(key)
-
-            json.append("\"$keyStr\":")
-
-            when {
-                value.isstring() -> json.append("\"${value.checkjstring()}\"")
-                value.isint() -> json.append(value.checkint())
-                value.isnumber() -> json.append(value.checkdouble())
-                value.istable() -> json.append(convertTableToJson(value.checktable()))
-                value.isboolean() -> json.append(if (value.checkboolean()) "true" else "false")
-                value.isnil() -> json.append("null")
-                else -> json.append("\"${value.tojstring()}\"")
-            }
-        }
-
-        json.append("}")
-        return json.toString()
-    }
-
-    private fun convertJsonToTable(jsonString: String): LuaValue {
-        // Простая реализация парсинга JSON (для production лучше использовать библиотеку)
-        val table = LuaValue.tableOf()
-
-        // Упрощенный парсинг - в реальности нужно использовать JSON библиотеку
-        if (jsonString.startsWith("{") && jsonString.endsWith("}")) {
-            val content = jsonString.substring(1, jsonString.length - 1)
-            val pairs = content.split(",")
-
-            pairs.forEach { pair ->
-                val keyValue = pair.split(":", limit = 2)
-                if (keyValue.size == 2) {
-                    val key = keyValue[0].trim().removeSurrounding("\"")
-                    var value = keyValue[1].trim()
-
-                    when {
-                        value.startsWith("\"") && value.endsWith("\"") -> {
-                            table.set(key, LuaValue.valueOf(value.removeSurrounding("\"")))
-                        }
-                        value == "true" -> table.set(key, LuaValue.TRUE)
-                        value == "false" -> table.set(key, LuaValue.FALSE)
-                        value == "null" -> table.set(key, LuaValue.NIL)
-                        value.contains(".") -> table.set(key, LuaValue.valueOf(value.toDouble()))
-                        else -> table.set(key, LuaValue.valueOf(value.toInt()))
-                    }
-                }
-            }
-        }
-
-        return table
-    }
-
-    // Синхронный GET запрос
-    private fun getFunction(): LuaValue {
-        return object : TwoArgFunction() {
-            override fun call(url: LuaValue, timeout: LuaValue): LuaValue {
-                return try {
-                    val response = executeGetRequest(
-                        url.checkjstring(),
-                        timeout.optint(5000),
-                        emptyMap()
-                    )
-                    LuaValue.valueOf(response)
-                } catch (e: Exception) {
-                    throw LuaError("HTTP GET error: ${e.message}")
-                }
-            }
-        }
-    }
-
-    // Синхронный GET с заголовками
-    private fun getWithHeadersFunction(): LuaValue {
-        return object : TwoArgFunction() {
-            override fun call(url: LuaValue, headersTable: LuaValue): LuaValue {
-                return try {
-                    val headers = parseHeaders(headersTable)
-                    val response = executeGetRequest(
-                        url.checkjstring(),
-                        5000,
-                        headers
-                    )
-                    LuaValue.valueOf(response)
-                } catch (e: Exception) {
-                    throw LuaError("HTTP GET with headers error: ${e.message}")
-                }
-            }
-        }
-    }
-
-    // Асинхронный GET (возвращает Deferred)
-    private fun getAsyncFunction(): LuaValue {
-        return object : TwoArgFunction() {
-            override fun call(url: LuaValue, timeout: LuaValue): LuaValue {
-                return AsyncResult { callback ->
-                    coroutineScope.launch {
-                        try {
-                            val response = withContext(Dispatchers.IO) {
-                                executeGetRequest(
-                                    url.checkjstring(),
-                                    timeout.optint(5000),
-                                    emptyMap()
-                                )
-                            }
-                            callback.onSuccess(LuaValue.valueOf(response))
-                        } catch (e: Exception) {
-                            callback.onError(LuaValue.valueOf("HTTP async GET error: ${e.message}"))
-                        }
-                    }
-                }.asLuaValue()
-            }
-        }
-    }
-
-    // Асинхронный GET с заголовками
-    private fun getAsyncWithHeadersFunction(): LuaValue {
-        return object : TwoArgFunction() {
-            override fun call(url: LuaValue, headersTable: LuaValue): LuaValue {
-                return AsyncResult { callback ->
-                    coroutineScope.launch {
-                        try {
-                            val headers = parseHeaders(headersTable)
-                            val response = withContext(Dispatchers.IO) {
-                                executeGetRequest(
-                                    url.checkjstring(),
-                                    5000,
-                                    headers
-                                )
-                            }
-                            callback.onSuccess(LuaValue.valueOf(response))
-                        } catch (e: Exception) {
-                            callback.onError(LuaValue.valueOf("HTTP async GET with headers error: ${e.message}"))
-                        }
-                    }
-                }.asLuaValue()
-            }
-        }
-    }
-
-    // Асинхронный GET с callback-функцией
-    private fun getAsyncCallbackFunction(): LuaValue {
-        return object : TwoArgFunction() {
-            override fun call(url: LuaValue, callback: LuaValue): LuaValue {
-                return if (callback.isfunction()) {
-                    coroutineScope.launch {
-                        try {
-                            val response = withContext(Dispatchers.IO) {
-                                executeGetRequest(url.checkjstring(), 5000, emptyMap())
-                            }
-                            // Вызываем callback с результатом (первый аргумент) и nil вместо ошибки (второй аргумент)
-                            callback.call(LuaValue.valueOf(response), LuaValue.NIL)
-                        } catch (e: Exception) {
-                            // Вызываем callback с nil вместо результата и ошибкой
-                            callback.call(LuaValue.NIL, LuaValue.valueOf("Error: ${e.message}"))
-                        }
-                    }
-                    LuaValue.TRUE
-                } else {
-                    throw LuaError("Second argument must be a function for callback")
-                }
-            }
-        }
-    }
-
-    // Асинхронный GET с заголовками и callback-функцией
-    private fun getAsyncWithHeadersCallbackFunction(): LuaValue {
-        return object : ThreeArgFunction() {
-            override fun call(url: LuaValue, headersTable: LuaValue, callback: LuaValue): LuaValue {
-                return if (callback.isfunction()) {
-                    coroutineScope.launch {
-                        try {
-                            val headers = parseHeaders(headersTable)
-                            val response = withContext(Dispatchers.IO) {
-                                executeGetRequest(url.checkjstring(), 5000, headers)
-                            }
-                            // Вызываем callback с результатом и nil вместо ошибки
-                            callback.call(LuaValue.valueOf(response), LuaValue.NIL)
-                        } catch (e: Exception) {
-                            // Вызываем callback с nil вместо результата и ошибкой
-                            callback.call(LuaValue.NIL, LuaValue.valueOf("Error: ${e.message}"))
-                        }
-                    }
-                    LuaValue.TRUE
-                } else {
-                    throw LuaError("Third argument must be a function for callback")
-                }
-            }
-        }
-    }
-
-    private fun executeGetRequest(url: String, timeout: Int, headers: Map<String, String>): String {
-        val httpGet = HttpGet(URI.create(url))
-
-        // Устанавливаем таймаут
-        val requestConfig = org.apache.http.client.config.RequestConfig.custom()
-            .setConnectTimeout(timeout)
-            .setSocketTimeout(timeout)
-            .build()
-        httpGet.config = requestConfig
-
-        // Добавляем заголовки
-        headers.forEach { (key, value) ->
-            httpGet.addHeader(key, value)
-        }
-
-        return client.execute(httpGet).use { response ->
-            val entity = response.entity
-            if (entity != null) {
-                EntityUtils.toString(entity)
-            } else {
-                throw RuntimeException("Empty response")
-            }
-        }
-    }
-
-    private fun parseHeaders(headersTable: LuaValue): Map<String, String> {
-        val headers = mutableMapOf<String, String>()
-        if (headersTable.istable()) {
-            headersTable.checktable().keys().forEach { key ->
-                val headerName = key.checkjstring()
-                val headerValue = headersTable.get(key).checkjstring()
-                headers[headerName] = headerValue
-            }
-        }
-        return headers
-    }
 }
-
-// Класс для асинхронных результатов
