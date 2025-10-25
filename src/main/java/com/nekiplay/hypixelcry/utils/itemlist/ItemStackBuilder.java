@@ -49,8 +49,6 @@ public class ItemStackBuilder {
 
             //The item couldn't be fixed up
             if (stack.isEmpty()) {
-                LOGGER.error("[Skyblocker ItemStackBuilder] Failed to build item with skyblock id: {}!", item.getSkyblockItemId());
-
                 return createErrorStack(item.getSkyblockItemId());
             }
 
@@ -68,7 +66,7 @@ public class ItemStackBuilder {
 
             return stack;
         } catch (Exception e) {
-            LOGGER.error("[Skyblocker ItemStackBuilder] Failed to build item with skyblock id: {}!", item.getSkyblockItemId(), e);
+
         }
 
         return createErrorStack(item.getSkyblockItemId());

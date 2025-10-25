@@ -5,12 +5,19 @@ import com.nekiplay.hypixelcry.utils.ItemUtils;
 import com.nekiplay.hypixelcry.utils.Location;
 import com.nekiplay.hypixelcry.utils.RegexUtils;
 import com.nekiplay.hypixelcry.utils.Utils;
+import com.nekiplay.hypixelcry.utils.itemlist.PetInfo;
 import com.nekiplay.hypixelcry.utils.scheduler.Scheduler;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
+import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
+import net.minecraft.util.ActionResult;
+import net.minecraft.util.Hand;
+import net.minecraft.world.World;
 
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,6 +26,7 @@ public class StatusBarTracker {
     private static final Pattern DEFENSE_STATUS = Pattern.compile("§a(?<defense>[\\d,]+)§a❈ Defense *");
     private static final Pattern MANA_USE = Pattern.compile("§b-([\\d,]+) Mana \\(§.*?\\) *");
     private static final Pattern MANA_STATUS = Pattern.compile("§b(?<mana>[\\d,]+)/(?<max>[\\d,]+)✎ (?:Mana|§3(?<overflow>[\\d,]+)ʬ) *");
+    private static final Pattern MANA_LORE = Pattern.compile("Mana Cost: (\\d+)");
 
     private static final MinecraftClient client = MinecraftClient.getInstance();
     private static Resource health = new Resource(100, 100, 0);
@@ -27,10 +35,16 @@ public class StatusBarTracker {
     private static Resource air = new Resource(100, 300, 0);
     private static int defense = 0;
 
+    private static int ticks;
+    private static int lastManaTick;
+    private static int lastMana;
+    private static int manaPerSecond;
+
     @Init
     public static void init() {
         ClientReceiveMessageEvents.ALLOW_GAME.register(StatusBarTracker::allowOverlayMessage);
         ClientReceiveMessageEvents.MODIFY_GAME.register(StatusBarTracker::onOverlayMessage);
+        UseItemCallback.EVENT.register(StatusBarTracker::interactItem);
         Scheduler.INSTANCE.scheduleCyclic(StatusBarTracker::tick, 1);
     }
 
@@ -40,6 +54,10 @@ public class StatusBarTracker {
 
     public static Resource getMana() {
         return mana;
+    }
+
+    public static boolean isManaEstimated() {
+        return ticks - lastManaTick > 30;
     }
 
     public static int getDefense() {
@@ -55,10 +73,36 @@ public class StatusBarTracker {
     }
 
     private static void tick() {
-        if (client == null || client.player == null) return;
+        if (client == null || client.player == null || !Utils.isOnSkyblock()) return;
+        ticks++;
         updateHealth(health.value, health.max, health.overflow);
         updateSpeed();
         updateAir();
+        if (ticks - lastManaTick > 0 && (ticks - lastManaTick) % 20 == 0) {
+            mana = new Resource(Math.min(mana.value() + manaPerSecond, mana.max()), mana.max(), mana.overflow());
+        }
+    }
+
+    @SuppressWarnings("SameReturnValue")
+    private static ActionResult interactItem(PlayerEntity player, World world, Hand hand) {
+        if (client.player == null) return ActionResult.PASS;
+        ItemStack handStack = client.player.getMainHandStack();
+        int manaCost = 0;
+        boolean foundRightClick = false;
+        for (Text text : ItemUtils.getLore(handStack)) {
+            Matcher matcher;
+            if (foundRightClick && (matcher = MANA_LORE.matcher(text.getString())).matches()) {
+                manaCost = RegexUtils.parseIntFromMatcher(matcher, 1);
+                break;
+            }
+            if (text.getString().trim().toLowerCase(Locale.ENGLISH).endsWith("right click")) {
+                foundRightClick = true;
+            }
+        }
+        if (manaCost > 0 && manaCost <= mana.value()) {
+            mana = new Resource(Math.max(mana.value() - manaCost, 0), mana.max(), mana.overflow());
+        }
+        return ActionResult.PASS;
     }
 
     private static boolean allowOverlayMessage(Text text, boolean overlay) {
@@ -71,7 +115,8 @@ public class StatusBarTracker {
             return text;
         }
         update(text.getString(), false);
-        return Text.of(update(text.getString(), false));
+
+        return text;
     }
 
     public static String update(String actionBar, boolean filterManaUse) {
@@ -126,6 +171,9 @@ public class StatusBarTracker {
         int max = RegexUtils.parseIntFromMatcher(m, "max");
         int overflow = m.group("overflow") == null ? 0 : RegexUtils.parseIntFromMatcher(m, "overflow");
         StatusBarTracker.mana = new Resource(mana, max, overflow);
+        if (mana != max && lastMana < mana) manaPerSecond = Math.max(mana - lastMana, 0);
+        if (lastMana != mana || mana == max) lastManaTick = ticks;
+        lastMana = mana;
     }
 
     private static void updateSpeed() {
@@ -148,7 +196,6 @@ public class StatusBarTracker {
         if (youngDragCount == 4) {
             max = 500;
         }
-        
         speed = new Resource(value, max, 0);
     }
 
