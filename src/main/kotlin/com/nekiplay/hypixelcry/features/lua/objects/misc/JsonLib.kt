@@ -117,9 +117,59 @@ class JsonLib : TwoArgFunction() {
         }
 
         private fun convertTable(table: LuaValue): Any {
-            // Простая реализация - всегда возвращаем как объект
+            val tableObj = table.checktable()
+
+            // Проверяем, является ли таблица массивом
+            if (isArray(tableObj)) {
+                return convertTableToArray(tableObj)
+            } else {
+                return convertTableToObject(tableObj)
+            }
+        }
+
+        private fun isArray(table: LuaTable): Boolean {
+            var arrayIndex = 1
+            val keys = table.keys()
+
+            // Проверяем все ключи таблицы
+            for (key in keys) {
+                // Если ключ не число или не соответствует последовательности массива - это объект
+                if (!key.isnumber()) {
+                    return false
+                }
+
+                val keyNum = key.todouble()
+                // Если ключ не целое число или не соответствует ожидаемому индексу массива
+                if (keyNum != arrayIndex.toDouble() || keyNum != Math.floor(keyNum)) {
+                    return false
+                }
+
+                arrayIndex++
+            }
+
+            // Если в таблице нет элементов, считаем ее объектом
+            return keys.isNotEmpty()
+        }
+
+        private fun convertTableToArray(table: LuaTable): List<Any?> {
+            val list = mutableListOf<Any?>()
+            var index = 1
+
+            while (true) {
+                val value = table.get(index)
+                if (value.isnil()) {
+                    break
+                }
+                list.add(convertToJava(value))
+                index++
+            }
+
+            return list
+        }
+
+        private fun convertTableToObject(table: LuaTable): Map<String, Any?> {
             val map = mutableMapOf<String, Any?>()
-            val keys = table.checktable().keys()
+            val keys = table.keys()
 
             for (key in keys) {
                 map[key.tojstring()] = convertToJava(table.get(key))

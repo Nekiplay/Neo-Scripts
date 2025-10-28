@@ -127,6 +127,7 @@ class ImGuiLib : TwoArgFunction() {
         library.set("popID", popID())
 
         // Utilities
+        library.set("setNextItemWidth", setNextItemWidth())
         library.set("isItemHovered", isItemHovered())
         library.set("isItemClicked", isItemClicked())
         library.set("isItemActive", isItemActive())
@@ -269,6 +270,14 @@ class ImGuiLib : TwoArgFunction() {
 
         env.set("imgui", library)
         return library
+    }
+
+    inner class setNextItemWidth : VarArgFunction() {
+        override fun invoke(args: Varargs): LuaValue {
+            val width = args.checkdouble(1).toFloat()
+            ImGui.setNextItemWidth(width)
+            return LuaValue.NIL
+        }
     }
 
     // DrawList functions implementation

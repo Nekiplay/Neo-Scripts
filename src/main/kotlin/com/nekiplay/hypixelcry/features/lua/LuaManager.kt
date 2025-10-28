@@ -29,8 +29,10 @@ import net.minecraft.text.Text
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaError
 import org.luaj.vm2.LuaValue
+import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
+import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.jse.JsePlatform
 import java.io.BufferedReader
 import java.io.File
@@ -51,6 +53,7 @@ class LuaManager() {
     // Events
     private val clientTickCallbacks = ArrayList<LuaValue>()
     private val clientPreTickCallbacks = ArrayList<LuaValue>()
+    private val blockUpdateCallbacks = ArrayList<LuaValue>()
     private val renderWorldCallbacks = ArrayList<LuaValue>()
     private val render2DCallbacks = ArrayList<LuaValue>()
     private val keyEventCallbacks = ArrayList<LuaValue>()
@@ -59,6 +62,9 @@ class LuaManager() {
     private val onSendCommandEventCallbacks = ArrayList<LuaValue>()
     private val locationChangeCallbacks = ArrayList<LuaValue>()
     private val imguiRenderCallbacks = ArrayList<LuaValue>()
+
+    // Script events
+    private val scriptUnloadCallbacks: MutableMap<String, MutableList<LuaValue>> = mutableMapOf()
 
     // Packet events
     private val serverSideRotationCallbacks = ArrayList<LuaValue>()
@@ -174,13 +180,32 @@ class LuaManager() {
     }
 
     private fun registerCustomFunctions(globals: Globals) {
-        globals.set("print", object : OneArgFunction() {
-            override fun call(message: LuaValue): LuaValue {
-                HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + message.tojstring());
+        globals.set("print", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val message = StringBuilder()
+
+                // Обрабатываем все переданные аргументы
+                for (i in 1..args.narg()) {
+                    if (i > 1) message.append(" ")
+                    message.append(args.arg(i).tojstring())
+                }
+                val messageStr = message.toString()
+                HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + messageStr)
                 return NIL
             }
         })
 
+        globals.set("registerUnloadCallback", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                val scriptName = currentExecutingScript.get() // используем именно эту переменную
+                if (scriptName == null || !callback.isfunction()) return LuaValue.FALSE
+                synchronized(scriptUnloadCallbacks) {
+                    val list = scriptUnloadCallbacks.getOrPut(scriptName) { mutableListOf() }
+                    list.add(callback)
+                }
+                return LuaValue.TRUE
+            }
+        })
         globals.set("registerCommand", object : TwoArgFunction() {
             override fun call(commandName: LuaValue, callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(addCommandCallback(commandName.checkjstring(), callback))
@@ -206,6 +231,11 @@ class LuaManager() {
         globals.set("registerClientTickPre", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(addPreClientTickCallback(callback))
+            }
+        })
+        globals.set("registerBlockUpdate", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(addBlockUpdateCallback(callback))
             }
         })
         globals.set("registerWorldRenderer", object : OneArgFunction() {
@@ -276,12 +306,16 @@ class LuaManager() {
             }
         })
 
-        globals.set("unregisterClientTickPost", object : OneArgFunction() {
+        globals.set("unregisterClientTickPre", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(removeClientPreTickCallback(callback))
             }
         })
-
+        globals.set("unregisterBlockUpdate", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(removeBlockUpdateCallback(callback))
+            }
+        })
         globals.set("unregisterWorldRenderer", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(removeWorldRendererCallback(callback))
@@ -421,6 +455,19 @@ class LuaManager() {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
             val result = clientPreTickCallbacks.add(callback)
+            if (result) {
+                currentExecutingScript.get()?.let { scriptName ->
+                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+                }
+            }
+            return result
+        }
+    }
+
+    fun addBlockUpdateCallback(callback: LuaValue): Boolean {
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
+            val result = blockUpdateCallbacks.add(callback)
             if (result) {
                 currentExecutingScript.get()?.let { scriptName ->
                     scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
@@ -599,6 +646,11 @@ class LuaManager() {
             return clientPreTickCallbacks.remove(callback)
         }
     }
+    fun removeBlockUpdateCallback(callback: LuaValue): Boolean {
+        synchronized(callbacksLock) {
+            return blockUpdateCallbacks.remove(callback)
+        }
+    }
     fun removeWorldRendererCallback(callback: LuaValue): Boolean {
         synchronized(callbacksLock) {
             return renderWorldCallbacks.remove(callback)
@@ -663,9 +715,6 @@ class LuaManager() {
             val removed = commandCallbacks.remove(commandName) != null
 
             if (removed) {
-                // Удаляем команду из Minecraft
-                unregisterMinecraftCommand(commandName)
-
                 // Находим скрипт, которому принадлежит команда
                 scriptCommands.entries.find { it.value.contains(commandName) }?.let { (scriptName, commands) ->
                     commands.remove(commandName)
@@ -737,6 +786,7 @@ class LuaManager() {
             serverSideRotationCallbacks.clear()
             serverSideTeleportCallbacks.clear()
             imguiRenderCallbacks.clear()
+            blockUpdateCallbacks.clear()
         }
     }
 
@@ -877,6 +927,26 @@ class LuaManager() {
         return allow
     }
 
+    fun onBlockUpdateEvent(table: LuaValue): Boolean {
+        val callbacks = synchronized(callbacksLock) {
+            blockUpdateCallbacks.toTypedArray()
+        }
+        var allow = true
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(table)
+                if (res.isboolean()) {
+                    if (!res.toboolean()) {
+                        allow = false
+                    }
+                }
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in block update callback: ${e.message}")
+            }
+        }
+        return allow
+    }
+
     fun onLocationChangeEvent(location: Location): Boolean {
         val callbacks = synchronized(callbacksLock) {
             locationChangeCallbacks.toTypedArray()
@@ -1010,21 +1080,17 @@ class LuaManager() {
         }
     }
 
-    private fun unregisterMinecraftCommand(commandName: String) {
-        try {
-            // В Fabric API нет прямого способа удалить команду,
-            // но можно перерегистрировать диспетчер команд
-            ClientCommandRegistrationCallback.EVENT.register(ClientCommandRegistrationCallback { dispatcher: CommandDispatcher<FabricClientCommandSource?>?, registryAccess: CommandRegistryAccess? ->
-
-            })
-            HypixelCry.LOGGER.info("Unregistered Minecraft command: /$commandName")
-        } catch (e: Exception) {
-            HypixelCry.LOGGER.error("Failed to unregister Minecraft command: /$commandName", e)
-        }
-    }
-
     fun unloadScript(scriptName: String): Boolean {
         val callbacksToRemove = scriptCallbacks[scriptName] ?: return false
+
+        val callbacks = scriptUnloadCallbacks[scriptName]
+        if (callbacks != null) {
+            callbacks.forEach { callback ->
+                try { callback.call() }
+                catch (e: Exception) { /* логировать ошибку */ }
+            }
+            scriptUnloadCallbacks.remove(scriptName)
+        }
 
         synchronized(callbacksLock) {
             clientTickCallbacks.removeAll(callbacksToRemove.toSet())
@@ -1035,6 +1101,8 @@ class LuaManager() {
             clientPreTickCallbacks.removeAll(callbacksToRemove.toSet())
             locationChangeCallbacks.removeAll(callbacksToRemove.toSet())
             imguiRenderCallbacks.removeAll(callbacksToRemove.toSet())
+            blockUpdateCallbacks.removeAll(callbacksToRemove.toSet())
+
             // Packets
             serverSideRotationCallbacks.removeAll(callbacksToRemove.toSet())
             serverSideTeleportCallbacks.removeAll(callbacksToRemove.toSet())
@@ -1057,11 +1125,6 @@ class LuaManager() {
             for (commandName in commands) {
                 // Удаляем из commandCallbacks
                 commandCallbacks.remove(commandName)
-
-                // Удаляем команду из Minecraft
-                unregisterMinecraftCommand(commandName)
-
-                HypixelCry.LOGGER.info("Unregistered Lua command: /$commandName (script: $scriptName)")
             }
             scriptCommands.remove(scriptName)
         }

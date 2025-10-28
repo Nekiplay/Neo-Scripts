@@ -5,8 +5,10 @@ import com.nekiplay.hypixelcry.events.KeyEvent
 import com.nekiplay.hypixelcry.events.MouseButtonEvent
 import com.nekiplay.hypixelcry.events.SkyblockEvents
 import com.nekiplay.hypixelcry.events.network.PacketEvent
+import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent
+import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent.BlockUpdateCallback
+import com.nekiplay.hypixelcry.features.lua.utils.BlockUtil
 import com.nekiplay.hypixelcry.features.modules.ClientModule
-import com.nekiplay.hypixelcry.imgui.ImguiLoader
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
@@ -17,6 +19,8 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AfterTransl
 import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket
 import net.minecraft.network.packet.s2c.play.PlayerRotationS2CPacket
 import net.minecraft.util.ActionResult
+import org.luaj.vm2.LuaValue
+
 
 object LuaEvents: ClientModule() {
     override fun init() {
@@ -61,6 +65,30 @@ object LuaEvents: ClientModule() {
         SkyblockEvents.LOCATION_CHANGE.register { location ->
             LUA_MANAGER.onLocationChangeEvent(location)
         }
+
+        BlockUpdateEvent.EVENT.register(BlockUpdateCallback { event ->
+            val blockPos = event.blockPos
+            val oldState = event.old
+            val newState = event.new
+
+            val table = LuaValue.tableOf()
+            val oldL = BlockUtil.ToLua(oldState)
+            val newL = BlockUtil.ToLua(newState)
+
+            table.set("x", blockPos.x)
+            table.set("y", blockPos.y)
+            table.set("z", blockPos.z)
+            table.set("old", oldL)
+            table.set("new", newL)
+
+
+            val allow = LUA_MANAGER.onBlockUpdateEvent(table)
+            if (allow) {
+                ActionResult.PASS
+            } else {
+                ActionResult.FAIL
+            }
+        })
 
         PacketEvent.RECEIVE.register { event ->
             val allow = when (val packet = event.packet) {

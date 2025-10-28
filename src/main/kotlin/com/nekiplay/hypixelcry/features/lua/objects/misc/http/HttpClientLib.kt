@@ -115,7 +115,6 @@ class HttpClientLib : TwoArgFunction() {
                         localAddress: InetSocketAddress?,
                         context: HttpContext
                     ): Socket {
-                        // Для SOCKS прокси используем обычное соединение
                         socket.connect(remoteAddress, connectTimeout)
                         return socket
                     }
@@ -266,26 +265,50 @@ class HttpClientLib : TwoArgFunction() {
     private fun getAsyncWithProxyFunction(): LuaValue {
         return object : LibFunction() {
             override fun invoke(args: Varargs): Varargs {
-                return AsyncResult { callback ->
+                val url = args.arg(1).checkjstring()
+
+                // Проверяем, есть ли callback функция в конце
+                val lastArg = args.arg(args.narg())
+                val hasCallback = lastArg.isfunction()
+
+                val proxyConfig = when {
+                    hasCallback && args.narg() == 4 -> parseProxyArgs(args, 2) // url, proxyHost, proxyPort, callback
+                    hasCallback && args.narg() == 5 -> parseProxyArgs(args, 2) // url, proxyHost, proxyPort, proxyType, callback
+                    hasCallback && args.narg() == 7 -> parseProxyArgs(args, 2) // url, proxyHost, proxyPort, proxyType, username, password, callback
+                    !hasCallback && args.narg() == 3 -> parseProxyArgs(args, 2) // url, proxyHost, proxyPort
+                    !hasCallback && args.narg() == 4 -> parseProxyArgs(args, 2) // url, proxyHost, proxyPort, proxyType
+                    !hasCallback && args.narg() == 6 -> parseProxyArgs(args, 2) // url, proxyHost, proxyPort, proxyType, username, password
+                    else -> throw LuaError("Invalid number of arguments for get_async_with_proxy")
+                }
+
+                return if (hasCallback) {
+                    // Режим с callback
                     coroutineScope.launch {
                         try {
-                            val url = args.arg(1).checkjstring()
-                            val proxyConfig = when (args.narg()) {
-                                3 -> parseProxyArgs(args, 2) // url, proxyHost, proxyPort
-                                4 -> parseProxyArgs(args, 2) // url, proxyHost, proxyPort, proxyType
-                                6 -> parseProxyArgs(args, 2) // url, proxyHost, proxyPort, proxyType, username, password
-                                else -> throw LuaError("Invalid number of arguments for get_async_with_proxy")
-                            }
-
                             val response = withContext(Dispatchers.IO) {
                                 executeGetRequestWithProxy(url, proxyConfig, emptyMap())
                             }
-                            callback.onSuccess(LuaValue.valueOf(response))
+                            lastArg.call(LuaValue.valueOf(response), LuaValue.NIL)
                         } catch (e: Exception) {
-                            callback.onError(LuaValue.valueOf("HTTP async GET with proxy error: ${e.message}"))
+                            lastArg.call(LuaValue.NIL, LuaValue.valueOf("Error: ${e.message}"))
                         }
                     }
-                }.asLuaValue()
+                    LuaValue.TRUE
+                } else {
+                    // Режим с await
+                    AsyncResult { callback ->
+                        coroutineScope.launch {
+                            try {
+                                val response = withContext(Dispatchers.IO) {
+                                    executeGetRequestWithProxy(url, proxyConfig, emptyMap())
+                                }
+                                callback.onSuccess(LuaValue.valueOf(response))
+                            } catch (e: Exception) {
+                                callback.onError(LuaValue.valueOf("HTTP async GET with proxy error: ${e.message}"))
+                            }
+                        }
+                    }.asLuaValue()
+                }
             }
         }
     }
@@ -293,29 +316,52 @@ class HttpClientLib : TwoArgFunction() {
     private fun getAsyncWithHeadersAndProxyFunction(): LuaValue {
         return object : LibFunction() {
             override fun invoke(args: Varargs): Varargs {
-                return AsyncResult { callback ->
+                val url = args.arg(1).checkjstring()
+                val headersTable = args.arg(2)
+                val headers = parseHeaders(headersTable)
+
+                // Проверяем, есть ли callback функция в конце
+                val lastArg = args.arg(args.narg())
+                val hasCallback = lastArg.isfunction()
+
+                val proxyConfig = when {
+                    hasCallback && args.narg() == 5 -> parseProxyArgs(args, 3) // url, headers, proxyHost, proxyPort, callback
+                    hasCallback && args.narg() == 6 -> parseProxyArgs(args, 3) // url, headers, proxyHost, proxyPort, proxyType, callback
+                    hasCallback && args.narg() == 8 -> parseProxyArgs(args, 3) // url, headers, proxyHost, proxyPort, proxyType, username, password, callback
+                    !hasCallback && args.narg() == 4 -> parseProxyArgs(args, 3) // url, headers, proxyHost, proxyPort
+                    !hasCallback && args.narg() == 5 -> parseProxyArgs(args, 3) // url, headers, proxyHost, proxyPort, proxyType
+                    !hasCallback && args.narg() == 7 -> parseProxyArgs(args, 3) // url, headers, proxyHost, proxyPort, proxyType, username, password
+                    else -> throw LuaError("Invalid number of arguments for get_async_with_headers_and_proxy")
+                }
+
+                return if (hasCallback) {
+                    // Режим с callback
                     coroutineScope.launch {
                         try {
-                            val url = args.arg(1).checkjstring()
-                            val headersTable = args.arg(2)
-                            val headers = parseHeaders(headersTable)
-
-                            val proxyConfig = when (args.narg()) {
-                                4 -> parseProxyArgs(args, 3) // url, headers, proxyHost, proxyPort
-                                5 -> parseProxyArgs(args, 3) // url, headers, proxyHost, proxyPort, proxyType
-                                7 -> parseProxyArgs(args, 3) // url, headers, proxyHost, proxyPort, proxyType, username, password
-                                else -> throw LuaError("Invalid number of arguments for get_async_with_headers_and_proxy")
-                            }
-
                             val response = withContext(Dispatchers.IO) {
                                 executeGetRequestWithProxy(url, proxyConfig, headers)
                             }
-                            callback.onSuccess(LuaValue.valueOf(response))
+                            lastArg.call(LuaValue.valueOf(response), LuaValue.NIL)
                         } catch (e: Exception) {
-                            callback.onError(LuaValue.valueOf("HTTP async GET with headers and proxy error: ${e.message}"))
+                            lastArg.call(LuaValue.NIL, LuaValue.valueOf("Error: ${e.message}"))
                         }
                     }
-                }.asLuaValue()
+                    LuaValue.TRUE
+                } else {
+                    // Режим с await
+                    AsyncResult { callback ->
+                        coroutineScope.launch {
+                            try {
+                                val response = withContext(Dispatchers.IO) {
+                                    executeGetRequestWithProxy(url, proxyConfig, headers)
+                                }
+                                callback.onSuccess(LuaValue.valueOf(response))
+                            } catch (e: Exception) {
+                                callback.onError(LuaValue.valueOf("HTTP async GET with headers and proxy error: ${e.message}"))
+                            }
+                        }
+                    }.asLuaValue()
+                }
             }
         }
     }
@@ -403,28 +449,51 @@ class HttpClientLib : TwoArgFunction() {
     private fun postAsyncWithProxyFunction(): LuaValue {
         return object : LibFunction() {
             override fun invoke(args: Varargs): Varargs {
-                return AsyncResult { callback ->
+                val url = args.arg(1).checkjstring()
+                val body = args.arg(2).checkjstring()
+
+                // Проверяем, есть ли callback функция в конце
+                val lastArg = args.arg(args.narg())
+                val hasCallback = lastArg.isfunction()
+
+                val proxyConfig = when {
+                    hasCallback && args.narg() == 5 -> parseProxyArgs(args, 3) // url, body, proxyHost, proxyPort, callback
+                    hasCallback && args.narg() == 6 -> parseProxyArgs(args, 3) // url, body, proxyHost, proxyPort, proxyType, callback
+                    hasCallback && args.narg() == 8 -> parseProxyArgs(args, 3) // url, body, proxyHost, proxyPort, proxyType, username, password, callback
+                    !hasCallback && args.narg() == 4 -> parseProxyArgs(args, 3) // url, body, proxyHost, proxyPort
+                    !hasCallback && args.narg() == 5 -> parseProxyArgs(args, 3) // url, body, proxyHost, proxyPort, proxyType
+                    !hasCallback && args.narg() == 7 -> parseProxyArgs(args, 3) // url, body, proxyHost, proxyPort, proxyType, username, password
+                    else -> throw LuaError("Invalid number of arguments for post_async_with_proxy")
+                }
+
+                return if (hasCallback) {
+                    // Режим с callback
                     coroutineScope.launch {
                         try {
-                            val url = args.arg(1).checkjstring()
-                            val body = args.arg(2).checkjstring()
-
-                            val proxyConfig = when (args.narg()) {
-                                4 -> parseProxyArgs(args, 3) // url, body, proxyHost, proxyPort
-                                5 -> parseProxyArgs(args, 3) // url, body, proxyHost, proxyPort, proxyType
-                                7 -> parseProxyArgs(args, 3) // url, body, proxyHost, proxyPort, proxyType, username, password
-                                else -> throw LuaError("Invalid number of arguments for post_async_with_proxy")
-                            }
-
                             val response = withContext(Dispatchers.IO) {
                                 executePostRequestWithProxy(url, proxyConfig, emptyMap(), body)
                             }
-                            callback.onSuccess(LuaValue.valueOf(response))
+                            lastArg.call(LuaValue.valueOf(response), LuaValue.NIL)
                         } catch (e: Exception) {
-                            callback.onError(LuaValue.valueOf("HTTP async POST with proxy error: ${e.message}"))
+                            lastArg.call(LuaValue.NIL, LuaValue.valueOf("Error: ${e.message}"))
                         }
                     }
-                }.asLuaValue()
+                    LuaValue.TRUE
+                } else {
+                    // Режим с await
+                    AsyncResult { callback ->
+                        coroutineScope.launch {
+                            try {
+                                val response = withContext(Dispatchers.IO) {
+                                    executePostRequestWithProxy(url, proxyConfig, emptyMap(), body)
+                                }
+                                callback.onSuccess(LuaValue.valueOf(response))
+                            } catch (e: Exception) {
+                                callback.onError(LuaValue.valueOf("HTTP async POST with proxy error: ${e.message}"))
+                            }
+                        }
+                    }.asLuaValue()
+                }
             }
         }
     }
@@ -432,30 +501,53 @@ class HttpClientLib : TwoArgFunction() {
     private fun postAsyncWithHeadersAndProxyFunction(): LuaValue {
         return object : LibFunction() {
             override fun invoke(args: Varargs): Varargs {
-                return AsyncResult { callback ->
+                val url = args.arg(1).checkjstring()
+                val headersTable = args.arg(2)
+                val body = args.arg(3).checkjstring()
+                val headers = parseHeaders(headersTable)
+
+                // Проверяем, есть ли callback функция в конце
+                val lastArg = args.arg(args.narg())
+                val hasCallback = lastArg.isfunction()
+
+                val proxyConfig = when {
+                    hasCallback && args.narg() == 6 -> parseProxyArgs(args, 4) // url, headers, body, proxyHost, proxyPort, callback
+                    hasCallback && args.narg() == 7 -> parseProxyArgs(args, 4) // url, headers, body, proxyHost, proxyPort, proxyType, callback
+                    hasCallback && args.narg() == 9 -> parseProxyArgs(args, 4) // url, headers, body, proxyHost, proxyPort, proxyType, username, password, callback
+                    !hasCallback && args.narg() == 5 -> parseProxyArgs(args, 4) // url, headers, body, proxyHost, proxyPort
+                    !hasCallback && args.narg() == 6 -> parseProxyArgs(args, 4) // url, headers, body, proxyHost, proxyPort, proxyType
+                    !hasCallback && args.narg() == 8 -> parseProxyArgs(args, 4) // url, headers, body, proxyHost, proxyPort, proxyType, username, password
+                    else -> throw LuaError("Invalid number of arguments for post_async_with_headers_and_proxy")
+                }
+
+                return if (hasCallback) {
+                    // Режим с callback
                     coroutineScope.launch {
                         try {
-                            val url = args.arg(1).checkjstring()
-                            val headersTable = args.arg(2)
-                            val body = args.arg(3).checkjstring()
-                            val headers = parseHeaders(headersTable)
-
-                            val proxyConfig = when (args.narg()) {
-                                5 -> parseProxyArgs(args, 4) // url, headers, body, proxyHost, proxyPort
-                                6 -> parseProxyArgs(args, 4) // url, headers, body, proxyHost, proxyPort, proxyType
-                                8 -> parseProxyArgs(args, 4) // url, headers, body, proxyHost, proxyPort, proxyType, username, password
-                                else -> throw LuaError("Invalid number of arguments for post_async_with_headers_and_proxy")
-                            }
-
                             val response = withContext(Dispatchers.IO) {
                                 executePostRequestWithProxy(url, proxyConfig, headers, body)
                             }
-                            callback.onSuccess(LuaValue.valueOf(response))
+                            lastArg.call(LuaValue.valueOf(response), LuaValue.NIL)
                         } catch (e: Exception) {
-                            callback.onError(LuaValue.valueOf("HTTP async POST with headers and proxy error: ${e.message}"))
+                            lastArg.call(LuaValue.NIL, LuaValue.valueOf("Error: ${e.message}"))
                         }
                     }
-                }.asLuaValue()
+                    LuaValue.TRUE
+                } else {
+                    // Режим с await
+                    AsyncResult { callback ->
+                        coroutineScope.launch {
+                            try {
+                                val response = withContext(Dispatchers.IO) {
+                                    executePostRequestWithProxy(url, proxyConfig, headers, body)
+                                }
+                                callback.onSuccess(LuaValue.valueOf(response))
+                            } catch (e: Exception) {
+                                callback.onError(LuaValue.valueOf("HTTP async POST with headers and proxy error: ${e.message}"))
+                            }
+                        }
+                    }.asLuaValue()
+                }
             }
         }
     }
@@ -540,33 +632,6 @@ class HttpClientLib : TwoArgFunction() {
         }
     }
 
-    // Существующие методы без прокси (остаются без изменений)
-
-    private fun executeGetRequest(url: String, timeout: Int, headers: Map<String, String>): String {
-        val httpGet = HttpGet(URI.create(url))
-
-        val requestConfig = RequestConfig.custom()
-            .setConnectTimeout(timeout)
-            .setSocketTimeout(timeout)
-            .build()
-        httpGet.config = requestConfig
-
-        headers.forEach { (key, value) ->
-            httpGet.addHeader(key, value)
-        }
-
-        return HttpClients.createDefault().use { client ->
-            client.execute(httpGet).use { response ->
-                val entity = response.entity
-                if (entity != null) {
-                    EntityUtils.toString(entity)
-                } else {
-                    throw RuntimeException("Empty response")
-                }
-            }
-        }
-    }
-
     private fun executePostRequest(url: String, timeout: Int, headers: Map<String, String>, body: String): String {
         val httpPost = HttpPost(URI.create(url))
 
@@ -607,6 +672,31 @@ class HttpClientLib : TwoArgFunction() {
             }
         }
         return headers
+    }
+
+    private fun executeGetRequest(url: String, timeout: Int, headers: Map<String, String>): String {
+        val httpGet = HttpGet(URI.create(url))
+
+        val requestConfig = RequestConfig.custom()
+            .setConnectTimeout(timeout)
+            .setSocketTimeout(timeout)
+            .build()
+        httpGet.config = requestConfig
+
+        headers.forEach { (key, value) ->
+            httpGet.addHeader(key, value)
+        }
+
+        return HttpClients.createDefault().use { client ->
+            client.execute(httpGet).use { response ->
+                val entity = response.entity
+                if (entity != null) {
+                    EntityUtils.toString(entity)
+                } else {
+                    throw RuntimeException("Empty response")
+                }
+            }
+        }
     }
 
     // Классы для поддержки дополнительных аргументов
