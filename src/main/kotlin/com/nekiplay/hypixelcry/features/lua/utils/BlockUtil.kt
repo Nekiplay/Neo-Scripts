@@ -3,6 +3,10 @@ package com.nekiplay.hypixelcry.features.lua.utils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import net.minecraft.block.Block
 import net.minecraft.block.BlockState
+import net.minecraft.block.FluidDrainable
+import net.minecraft.block.FluidFillable
+import net.minecraft.fluid.FluidState
+import net.minecraft.fluid.WaterFluid
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.shape.VoxelShapes
 import org.luaj.vm2.LuaValue
@@ -36,6 +40,11 @@ object BlockUtil {
 
             // Дополнительные свойства
             table.set("is_air", LuaValue.valueOf(state.isAir))
+
+            if (state.fluidState != null) {
+                table.set("is_still", LuaValue.valueOf(state.fluidState.isStill))
+            }
+
             return table
         } else {
             return LuaValue.NIL

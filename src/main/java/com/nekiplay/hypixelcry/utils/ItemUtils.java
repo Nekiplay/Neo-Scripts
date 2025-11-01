@@ -66,6 +66,8 @@ public class ItemUtils {
                 .orElse("");
     }
 
+
+
     public static @NotNull List<Text> getLore(ItemStack stack) {
         return stack.getOrDefault(DataComponentTypes.LORE, LoreComponent.DEFAULT).styledLines();
     }
@@ -75,6 +77,13 @@ public class ItemUtils {
             return Text.empty();
         }
         return stack.getCustomName();
+    }
+
+    public static void setDisplayName(ItemStack stack, Text name) {
+        if (stack == null || stack.isEmpty()) {
+            return;
+        }
+        stack.set(DataComponentTypes.CUSTOM_NAME, name);
     }
 
     public static @NotNull Map<String, Integer> getHypixelEnchantments(ItemStack itemStack) {

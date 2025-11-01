@@ -7,6 +7,7 @@ import imgui.flag.ImGuiCol
 import imgui.flag.ImGuiColorEditFlags
 import imgui.flag.ImGuiCond
 import imgui.flag.ImGuiStyleVar
+import imgui.flag.ImGuiTableFlags
 import imgui.flag.ImGuiWindowFlags
 import imgui.type.ImBoolean
 import imgui.type.ImDouble
@@ -148,6 +149,14 @@ class ImGuiLib : TwoArgFunction() {
         library.set("getWindowWidth", getWindowWidth())
         library.set("getWindowHeight", getWindowHeight())
 
+        // Table
+        library.set("beginTable", beginTable())
+        library.set("tableSetupColumn", tableSetupColumn())
+        library.set("tableHeadersRow", tableHeadersRow())
+        library.set("tableNextRow", tableNextRow())
+        library.set("tableSetColumnIndex", tableSetColumnIndex())
+        library.set("endTable", endTable())
+
         // Constants
         val constants = LuaTable()
         constants.set("WindowFlags_None", ImGuiWindowFlags.None.toInt())
@@ -245,6 +254,11 @@ class ImGuiLib : TwoArgFunction() {
         constants.set("StyleVar_TabRounding", ImGuiStyleVar.TabRounding.toInt())
         constants.set("StyleVar_ButtonTextAlign", ImGuiStyleVar.ButtonTextAlign.toInt())
         constants.set("StyleVar_SelectableTextAlign", ImGuiStyleVar.SelectableTextAlign.toInt())
+
+        constants.set("TableFlags_BordersInner", ImGuiTableFlags.BordersInner.toInt())
+        constants.set("TableFlags_BordersInnerH", ImGuiTableFlags.BordersInnerH.toInt())
+        constants.set("TableFlags_BordersInnerV", ImGuiTableFlags.BordersInnerV.toInt())
+        constants.set("TableFlags_Resizable", ImGuiTableFlags.Resizable.toInt())
         
         library.set("constants", constants)
 
@@ -272,10 +286,63 @@ class ImGuiLib : TwoArgFunction() {
         return library
     }
 
+    inner class beginTable : VarArgFunction() {
+        override fun invoke(args: Varargs): LuaValue {
+            val name = args.checkjstring(1)
+            val column = args.checkint(2)
+            val flags = args.checkint(3)
+            ImGui.beginTable(name, column, flags)
+
+            return LuaValue.NIL
+        }
+    }
+
+    inner class endTable : VarArgFunction() {
+        override fun invoke(args: Varargs): LuaValue {
+            ImGui.endTable()
+
+            return LuaValue.NIL
+        }
+    }
+
+    inner class tableSetColumnIndex : VarArgFunction() {
+        override fun invoke(args: Varargs): LuaValue {
+            val index = args.checkint(1)
+            ImGui.tableSetColumnIndex(index)
+
+            return LuaValue.NIL
+        }
+    }
+
+    inner class tableNextRow : VarArgFunction() {
+        override fun invoke(args: Varargs): LuaValue {
+            ImGui.tableNextRow()
+
+            return LuaValue.NIL
+        }
+    }
+
+    inner class tableHeadersRow : VarArgFunction() {
+        override fun invoke(args: Varargs): LuaValue {
+            ImGui.tableHeadersRow()
+
+            return LuaValue.NIL
+        }
+    }
+
+    inner class tableSetupColumn : VarArgFunction() {
+        override fun invoke(args: Varargs): LuaValue {
+            val name = args.checkjstring(1)
+            ImGui.tableSetupColumn(name)
+
+            return LuaValue.NIL
+        }
+    }
+
     inner class setNextItemWidth : VarArgFunction() {
         override fun invoke(args: Varargs): LuaValue {
             val width = args.checkdouble(1).toFloat()
-            ImGui.setNextItemWidth(width)
+
             return LuaValue.NIL
         }
     }

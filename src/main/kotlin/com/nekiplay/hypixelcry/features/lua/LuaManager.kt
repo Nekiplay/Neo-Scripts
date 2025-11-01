@@ -33,6 +33,7 @@ import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.VarArgFunction
+import org.luaj.vm2.lib.jse.CoerceJavaToLua
 import org.luaj.vm2.lib.jse.JsePlatform
 import java.io.BufferedReader
 import java.io.File
@@ -180,6 +181,9 @@ class LuaManager() {
     }
 
     private fun registerCustomFunctions(globals: Globals) {
+        globals.set("HypixelCry", CoerceJavaToLua.coerce(HypixelCry.getInstance()))
+
+
         globals.set("print", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val message = StringBuilder()

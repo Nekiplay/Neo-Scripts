@@ -16,7 +16,7 @@ public abstract class WorldChunkMixin {
     private void onSetBlockState(BlockPos pos, BlockState state, int flags, CallbackInfoReturnable<BlockState> cir) {
         ActionResult result = BlockUpdateEvent.EVENT.invoker().update(new BlockUpdateEvent(pos, cir.getReturnValue(), state));
 
-        if(result == ActionResult.FAIL) {
+        if (result == ActionResult.FAIL) {
             cir.setReturnValue(cir.getReturnValue());
             cir.cancel();
         }

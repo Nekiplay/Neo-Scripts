@@ -11,6 +11,9 @@ import com.nekiplay.hypixelcry.utils.Rotations
 import com.nekiplay.hypixelcry.utils.StatusBarTracker
 import com.nekiplay.hypixelcry.utils.Utils
 import com.nekiplay.hypixelcry.utils.trackers.ColdTracker
+import kotlinx.io.files.SystemTemporaryDirectory
+import net.minecraft.client.toast.SystemToast
+import net.minecraft.client.toast.Toast
 import net.minecraft.text.Text
 import net.minecraft.util.Hand
 import net.minecraft.util.hit.BlockHitResult
@@ -19,6 +22,7 @@ import net.minecraft.util.hit.HitResult
 import net.minecraft.util.math.Vec3d
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
+import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 
@@ -55,6 +59,8 @@ class PlayerObject : LuaValue() {
             "getDefence" -> GetPlayerDefenceFunction()
             "getSpeed" -> GetPlayerSpeedFunction()
             "getCold" -> GetPlayerColdFunction()
+            "getAir" -> GetPlayerAirFunction()
+            "getMaxAir" -> GetPlayerMaxAirFunction()
             "isSneaking" -> IsPlayerSneakingFunction()
             "isSprinting" -> IsPlayerSprintingFunction()
             "isOnGround" -> IsPlayerOnGroundFunction()
@@ -69,22 +75,46 @@ class PlayerObject : LuaValue() {
             "getScoreBoardLines" -> GetScoreboardLinesFunction()
             "getTab" -> GetTabFunction()
 
-            "raycast" -> RayCastFunction()
+            "addToast" -> AddToastFunction()
 
-            "showNotification" -> ShowNotificatioFucntion()
+            "raycast" -> RayCastFunction()
             else -> NIL
         } as LuaValue
     }
 
-    private inner class ShowNotificatioFucntion : TwoArgFunction() {
-        override fun call(arg: LuaValue?, arg2: LuaValue?): LuaValue? {
-            if (arg?.isstring() == true && arg2?.isstring() == true) {
-                NotificationUtils.getInstance()
-                    .sendNotification(arg.tojstring(), arg2.tojstring())
-
-               return TRUE
+    private inner class AddToastFunction : ThreeArgFunction() {
+        override fun call(arg: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue? {
+            if (arg?.isstring() == true && arg2?.isstring() == true && arg3?.isnumber() == true) {
+                val type = SystemToast.Type(arg3.tonumber().tolong())
+                SystemToast.add(
+                    mc.toastManager,
+                    type,
+                    Text.literal(arg.tojstring()),
+                    Text.literal(arg2.tojstring())
+                );
+                return TRUE
             }
             return FALSE
+        }
+    }
+
+    private inner class GetPlayerAirFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return if (Utils.isOnSkyblock()) {
+                valueOf(StatusBarTracker.getAir().value)
+            } else {
+                valueOf(0)
+            }
+        }
+    }
+
+    private inner class GetPlayerMaxAirFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return if (Utils.isOnSkyblock()) {
+                valueOf(StatusBarTracker.getAir().max)
+            } else {
+                valueOf(0)
+            }
         }
     }
 
@@ -165,11 +195,10 @@ class PlayerObject : LuaValue() {
     }
 
     private fun processHitResult(hitResult: HitResult?): LuaValue {
-        if (hitResult?.type == HitResult.Type.ENTITY) {
+        if (hitResult is EntityHitResult) {
             val table = tableOf()
             table.set("type", "entity")
-            table.set("data", EntityUtils.ToLua((hitResult as EntityHitResult).entity))
-
+            table.set("data", EntityUtils.ToLua(hitResult.entity))
             return table
         }
         else if (hitResult is BlockHitResult && hitResult.type == HitResult.Type.BLOCK) {
@@ -209,16 +238,6 @@ class PlayerObject : LuaValue() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
                 mc.networkHandler?.sendChatMessage(message.tojstring())
-                return valueOf(true)
-            }
-            return NIL
-        }
-    }
-
-    private inner class SendChatCommandFunction : OneArgFunction() {
-        override fun call(message: LuaValue): LuaValue {
-            if (message.isstring()) {
-                mc.networkHandler?.sendChatCommand(message.tojstring())
                 return valueOf(true)
             }
             return NIL

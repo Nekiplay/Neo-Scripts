@@ -59,12 +59,32 @@ class WorldObject : LuaValue() {
                 val endY = arg.get("endY").optdouble(0.0)
                 val endZ = arg.get("endZ").optdouble(0.0)
 
+                val include_fluid = arg.get("include_fluid").optboolean(false)
+
                 val startVec = Vec3d(startX, startY, startZ)
                 val endVec = Vec3d(endX, endY, endZ)
 
-                val context = RaycastContext(startVec, endVec, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, mc.player)
+                var context = RaycastContext(
+                    startVec,
+                    endVec,
+                    RaycastContext.ShapeType.OUTLINE,
+                    RaycastContext.FluidHandling.NONE,
+                    mc.player
+                )
+
+                if (include_fluid) {
+                    context = RaycastContext(
+                        startVec,
+                        endVec,
+                        RaycastContext.ShapeType.OUTLINE,
+                        RaycastContext.FluidHandling.ANY,
+                        mc.player
+                    )
+
+                }
 
                 val hitResult = mc.world?.raycast(context)
+
 
                 processHitResult(hitResult)
             } else {
@@ -111,10 +131,10 @@ class WorldObject : LuaValue() {
     }
 
     private fun processHitResult(hitResult: HitResult?): LuaValue {
-        if (hitResult?.type == HitResult.Type.ENTITY) {
+        if (hitResult is EntityHitResult) {
             val table = tableOf()
             table.set("type", "entity")
-            table.set("data", EntityUtils.ToLua((hitResult as EntityHitResult).entity))
+            table.set("data", EntityUtils.ToLua(hitResult.entity))
             return table
         }
         else if (hitResult is BlockHitResult && hitResult.type == HitResult.Type.BLOCK) {
@@ -147,10 +167,8 @@ class WorldObject : LuaValue() {
             arg3: LuaValue?
         ): LuaValue? {
             return if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
-
                 val yaw = Rotations.getYaw(Vec3d(arg1.todouble(), arg2.todouble(), arg3.todouble()))
                 val pitch = Rotations.getPitch(Vec3d(arg1.todouble(), arg2.todouble(), arg3.todouble()))
-
                 val table = tableOf()
                 table.set("yaw", valueOf(yaw))
                 table.set("pitch", valueOf(pitch))
@@ -160,8 +178,6 @@ class WorldObject : LuaValue() {
                 NIL
             }
         }
-
-
     }
 
     private inner class SetBlockFunction : FourArgFunction() {

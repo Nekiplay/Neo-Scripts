@@ -67,6 +67,9 @@ public class HypixelCry implements ClientModInitializer {
     }
 
     public static void saveConfig() {
+        for (String script : LUA_MANAGER.getLoadedScripts()) {
+            LUA_MANAGER.unloadScript(script);
+        }
         ConfigUtil.saveConfig(config, configFile, gson);
     }
 
@@ -129,7 +132,7 @@ public class HypixelCry implements ClientModInitializer {
         loadStartupScripts(scriptsDir);
     }
 
-    private ArrayList<String> startUpScriptNames = new ArrayList<String>() {{
+    private final ArrayList<String> startUpScriptNames = new ArrayList<String>() {{
         add("autoload.lua");
         add("startup.lua");
         add("init.lua");

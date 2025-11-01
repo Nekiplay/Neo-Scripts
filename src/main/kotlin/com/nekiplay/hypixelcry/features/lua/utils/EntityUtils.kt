@@ -33,7 +33,7 @@ object EntityUtils {
     }
 
     // Функция для преобразования Entity в Lua таблицу
-    public fun ToLua(entity: Entity?): LuaValue? {
+    fun ToLua(entity: Entity?): LuaValue? {
         if (entity != null) {
             val table = LuaValue.tableOf()
 
