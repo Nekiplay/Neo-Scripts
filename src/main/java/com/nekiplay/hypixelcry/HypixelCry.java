@@ -85,6 +85,8 @@ public class HypixelCry implements ClientModInitializer {
             config = ConfigUtil.loadConfig(NEUConfig.class, configFile, gson);
         }
 
+        LUA_MANAGER = new LuaManager();
+        
         if (config == null) {
             config = new NEUConfig();
             saveConfig();
@@ -104,8 +106,6 @@ public class HypixelCry implements ClientModInitializer {
         driver.checkExpose = false;
         driver.warnForPrivateFields = false;
         driver.processConfig(config);
-
-        LUA_MANAGER = new LuaManager();
 
         Runtime.getRuntime().addShutdownHook(new Thread(HypixelCry::saveConfig));
 
