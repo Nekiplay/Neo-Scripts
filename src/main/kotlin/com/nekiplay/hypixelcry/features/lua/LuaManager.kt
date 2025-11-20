@@ -201,7 +201,7 @@ class LuaManager() {
 
         globals.set("registerUnloadCallback", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
-                val scriptName = currentExecutingScript.get() // используем именно эту переменную
+                val scriptName = currentExecutingScript.get()
                 if (scriptName == null || !callback.isfunction()) return LuaValue.FALSE
                 synchronized(scriptUnloadCallbacks) {
                     val list = scriptUnloadCallbacks.getOrPut(scriptName) { mutableListOf() }
@@ -778,22 +778,6 @@ class LuaManager() {
     }
 
     // Methods to clear all callbacks
-    fun clearAllCallbacks() {
-        synchronized(callbacksLock) {
-            clientTickCallbacks.clear()
-            renderWorldCallbacks.clear()
-            render2DCallbacks.clear()
-            keyEventCallbacks.clear()
-            messageEventCallbacks.clear()
-            clientPreTickCallbacks.clear()
-            locationChangeCallbacks.clear()
-            serverSideRotationCallbacks.clear()
-            serverSideTeleportCallbacks.clear()
-            imguiRenderCallbacks.clear()
-            blockUpdateCallbacks.clear()
-        }
-    }
-
     // Callback methods
     // for multiple handlers
     fun onClientTick() {
@@ -1106,6 +1090,8 @@ class LuaManager() {
             locationChangeCallbacks.removeAll(callbacksToRemove.toSet())
             imguiRenderCallbacks.removeAll(callbacksToRemove.toSet())
             blockUpdateCallbacks.removeAll(callbacksToRemove.toSet())
+            onSendCommandEventCallbacks.removeAll(callbacksToRemove.toSet())
+            onSendMessageEventCallbacks.removeAll(callbacksToRemove.toSet())
 
             // Packets
             serverSideRotationCallbacks.removeAll(callbacksToRemove.toSet())

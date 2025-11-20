@@ -8,7 +8,6 @@ open class ClientModule {
     val world by lazy { mc.world }
     val screen by lazy { mc.currentScreen }
     val interaction by lazy { mc.interactionManager }
-    val config by lazy { HypixelCry.config }
 
     open fun init() {
 

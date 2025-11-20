@@ -5,6 +5,7 @@ import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EquipmentSlot
 import net.minecraft.entity.LivingEntity
+import net.minecraft.entity.decoration.ItemFrameEntity
 import org.luaj.vm2.LuaValue
 
 object EntityUtils {
@@ -71,6 +72,10 @@ object EntityUtils {
             // Дополнительные свойства
             table.set("age", LuaValue.valueOf(entity.age))
             table.set("distance_to_player", LuaValue.valueOf(entity.squaredDistanceTo(mc.player)))
+
+            if (entity is ItemFrameEntity) {
+                table.set("item", LuaItemStack(entity.heldItemStack))
+            }
 
             if (entity is LivingEntity) {
                 table.set("health", LuaValue.valueOf(entity.health.toDouble()) ?: LuaValue.NIL)

@@ -84,9 +84,11 @@ class WorldObject : LuaValue() {
                 }
 
                 val hitResult = mc.world?.raycast(context)
-
-
-                processHitResult(hitResult)
+                return if (hitResult != null) {
+                    processHitResult(hitResult)
+                } else {
+                    NIL
+                }
             } else {
                 NIL
             }
@@ -122,41 +124,48 @@ class WorldObject : LuaValue() {
                 }
 
                 val hitResult = RaycastUtils.rayTraceToBlocks(startVec, endVec, targetBlocks)
-
-                processHitResult(hitResult)
+                return if (hitResult != null) {
+                    processHitResult(hitResult)
+                } else {
+                    NIL
+                }
             } else {
                 NIL
             }
         }
     }
 
-    private fun processHitResult(hitResult: HitResult?): LuaValue {
-        if (hitResult is EntityHitResult) {
-            val table = tableOf()
-            table.set("type", "entity")
-            table.set("data", EntityUtils.ToLua(hitResult.entity))
-            return table
-        }
-        else if (hitResult is BlockHitResult && hitResult.type == HitResult.Type.BLOCK) {
-            val table = tableOf()
-            table.set("type", "block")
-            table.set("x", valueOf(hitResult.pos.x))
-            table.set("y", valueOf(hitResult.pos.y))
-            table.set("z", valueOf(hitResult.pos.z))
-            table.set("side", valueOf(hitResult.side.toString()))
+    private fun processHitResult(hitResult: HitResult): LuaValue {
+        when (hitResult.type)
+        {
+            HitResult.Type.ENTITY -> {
+                val table = tableOf()
+                table.set("type", "entity")
+                table.set("data", EntityUtils.ToLua((hitResult as EntityHitResult).entity))
+                return table
+            }
+            HitResult.Type.BLOCK -> {
+                val result = hitResult as BlockHitResult
+                val table = tableOf()
+                table.set("type", "block")
+                table.set("x", valueOf(result.pos.x))
+                table.set("y", valueOf(result.pos.y))
+                table.set("z", valueOf(result.pos.z))
+                table.set("side", valueOf(result.side.toString()))
 
-            val blockPos = tableOf()
-            blockPos.set("x", valueOf(hitResult.blockPos.x))
-            blockPos.set("y", valueOf(hitResult.blockPos.y))
-            blockPos.set("z", valueOf(hitResult.blockPos.z))
-            table.set("blockPos", blockPos)
+                val blockPos = tableOf()
+                blockPos.set("x", valueOf(result.blockPos.x))
+                blockPos.set("y", valueOf(result.blockPos.y))
+                blockPos.set("z", valueOf(result.blockPos.z))
+                table.set("blockPos", blockPos)
 
-            return table
-        }
-        else {
-            val table = tableOf()
-            table.set("type", "miss")
-            return table
+                return table
+            }
+            else -> {
+                val table = tableOf()
+                table.set("type", "miss")
+                return table
+            }
         }
     }
 

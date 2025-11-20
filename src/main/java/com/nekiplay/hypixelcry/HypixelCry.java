@@ -3,22 +3,12 @@ package com.nekiplay.hypixelcry;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.nekiplay.hypixelcry.annotations.Init;
-import com.nekiplay.hypixelcry.config.NEUConfig;
 import com.nekiplay.hypixelcry.features.commands.impl.LuaCommand;
 import com.nekiplay.hypixelcry.features.modules.ModuleManager;
-import com.nekiplay.hypixelcry.utils.ConfigUtil;
-import com.nekiplay.hypixelcry.utils.NotificationUtils;
 import com.nekiplay.hypixelcry.utils.Utils;
 import com.nekiplay.hypixelcry.utils.scheduler.Scheduler;
 import com.nekiplay.hypixelcry.features.lua.LuaManager;
-import io.github.notenoughupdates.moulconfig.common.IMinecraft;
-import io.github.notenoughupdates.moulconfig.gui.MoulConfigEditor;
-import io.github.notenoughupdates.moulconfig.observer.PropertyTypeAdapterFactory;
-import io.github.notenoughupdates.moulconfig.processor.BuiltinMoulConfigGuis;
-import io.github.notenoughupdates.moulconfig.processor.ConfigProcessorDriver;
-import io.github.notenoughupdates.moulconfig.processor.MoulConfigProcessor;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
@@ -29,8 +19,6 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 
@@ -43,13 +31,7 @@ public class HypixelCry implements ClientModInitializer {
     public static final String PREFIX = Formatting.GRAY + "[" + Formatting.GOLD + "Hypixel Cry" + Formatting.GRAY + "] " + Formatting.RESET;
     public static final String LOG_PREFIX = "[Hypixel Cry] ";
 
-    public static NEUConfig config;
-    private static File configFile;
     public static File neuDir;
-    private static final Gson gson = new GsonBuilder().setPrettyPrinting().excludeFieldsWithoutExposeAnnotation()
-            .registerTypeAdapterFactory(new PropertyTypeAdapterFactory()).create();
-    public static MoulConfigProcessor<NEUConfig> processor = null;
-
     public static MinecraftClient mc = MinecraftClient.getInstance();
     private static HypixelCry INSTANCE;
 
@@ -70,7 +52,6 @@ public class HypixelCry implements ClientModInitializer {
         for (String script : LUA_MANAGER.getLoadedScripts()) {
             LUA_MANAGER.unloadScript(script);
         }
-        ConfigUtil.saveConfig(config, configFile, gson);
     }
 
     @Override
@@ -78,20 +59,7 @@ public class HypixelCry implements ClientModInitializer {
 
         neuDir = FabricLoader.getInstance().getConfigDir().resolve("hypixelcry").toFile();
         neuDir.mkdirs();
-
-        configFile = new File(neuDir, "config.json");
-
-        if (configFile.exists()) {
-            config = ConfigUtil.loadConfig(NEUConfig.class, configFile, gson);
-        }
-
         LUA_MANAGER = new LuaManager();
-        
-        if (config == null) {
-            config = new NEUConfig();
-            saveConfig();
-        }
-
         File scriptsDir = new File(neuDir, "scripts");
         if (!scriptsDir.exists()) {
             scriptsDir.mkdir();
@@ -100,28 +68,10 @@ public class HypixelCry implements ClientModInitializer {
         if (!libsDir.exists()) {
             libsDir.mkdir();
         }
-        processor = new MoulConfigProcessor<>(config);
-        BuiltinMoulConfigGuis.addProcessors(processor);
-        ConfigProcessorDriver driver = new ConfigProcessorDriver(processor);
-        driver.checkExpose = false;
-        driver.warnForPrivateFields = false;
-        driver.processConfig(config);
 
         Runtime.getRuntime().addShutdownHook(new Thread(HypixelCry::saveConfig));
 
         ClientTickEvents.END_CLIENT_TICK.register(this::tick);
-        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommandManager.literal("cry")
-                    .executes(context -> {
-                        MinecraftClient.getInstance().send(() -> {
-                            MoulConfigEditor<NEUConfig> editor = new MoulConfigEditor<>(HypixelCry.processor);
-
-                            IMinecraft.getInstance().openWrappedScreen(editor);
-                        });
-                        return 0;
-                    })
-            );
-        });
         ClientCommandRegistrationCallback.EVENT.register(LuaCommand.INSTANCE::register);
 
         init();

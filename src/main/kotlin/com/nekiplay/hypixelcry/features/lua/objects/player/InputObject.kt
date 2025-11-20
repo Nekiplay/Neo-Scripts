@@ -1,9 +1,12 @@
 package com.nekiplay.hypixelcry.features.lua.objects.player
 
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
+import com.nekiplay.hypixelcry.sugar.attackBlock
+import com.nekiplay.hypixelcry.sugar.attackEntity
 import com.nekiplay.hypixelcry.sugar.leftClick
 import com.nekiplay.hypixelcry.sugar.rightClick
 import com.nekiplay.hypixelcry.sugar.silentUse
+import com.nekiplay.hypixelcry.sugar.useItem
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.option.KeyBinding
 import org.luaj.vm2.LuaValue
@@ -18,7 +21,10 @@ class InputObject: LuaValue() {
 
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
+            "useItem" -> UseFunction()
             "silentUse" -> SilentUseFunction()
+            "attackBlock" -> AttackBlockFunction()
+            "attackEntity" -> AttackEntityFunction()
 
             "leftClick" -> LeftClickFunction()
             "rightClick" -> RightClickFunction()
@@ -69,6 +75,27 @@ class InputObject: LuaValue() {
         override fun call(): LuaValue {
             mc.rightClick()
             return TRUE
+        }
+    }
+
+    private inner class AttackBlockFunction : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            mc.interactionManager?.attackBlock()
+            return NIL
+        }
+    }
+
+    private inner class AttackEntityFunction : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            mc.interactionManager?.attackEntity()
+            return NIL
+        }
+    }
+
+    private inner class UseFunction : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            mc.interactionManager?.useItem()
+            return NIL
         }
     }
 

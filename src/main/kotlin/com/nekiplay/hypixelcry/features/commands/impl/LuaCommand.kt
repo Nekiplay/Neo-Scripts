@@ -26,13 +26,6 @@ object LuaCommand {
 
     fun register(dispatcher: CommandDispatcher<FabricClientCommandSource>, registryAccess: CommandRegistryAccess) {
         val luaCommand = ClientCommandManager.literal("lua")
-            .then(ClientCommandManager.literal("clear")
-                .executes { context ->
-                    HypixelCry.LUA_MANAGER.clearAllCallbacks()
-                    context.source.sendFeedback(Text.literal(HypixelCry.PREFIX + "§aAll Lua callback's cleared"))
-                    1
-                }
-            )
             .then(ClientCommandManager.literal("load")
                 .then(ClientCommandManager.argument("filename", StringArgumentType.string())
                     .suggests(SCRIPT_SUGGESTION_PROVIDER) // Добавляем авто-дополнение

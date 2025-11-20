@@ -1,6 +1,5 @@
 package com.nekiplay.hypixelcry.features.esp.pathfinder;
 
-import com.nekiplay.hypixelcry.HypixelCry;
 import com.nekiplay.hypixelcry.annotations.Init;
 import com.nekiplay.hypixelcry.events.world.ClientChunkLoadEvent;
 import com.nekiplay.hypixelcry.pathfinder.calculate.Path;
@@ -85,13 +84,11 @@ public class PathFinderWorker {
         BlockPos currentPos = mc.player.getBlockPos().add(0, -1, 0);
         processPathResults();
 
-        if (HypixelCry.config.misc.pathFinderESP.enabled) {
-            PATHS.values().forEach(pathData -> {
-                if (pathData.allow_update) {
-                    updatePath(currentPos, pathData);
-                }
-            });
-        }
+        PATHS.values().forEach(pathData -> {
+            if (pathData.allow_update) {
+                updatePath(currentPos, pathData);
+            }
+        });
     }
 
     private static void processPathResults() {
@@ -271,9 +268,9 @@ public class PathFinderWorker {
     }
 
     private static void onRenderWorldLast(WorldRenderContext context) {
-        if (mc.world == null || PATHS.isEmpty() || !HypixelCry.config.esp.pathFinderESP.enabled) return;
+        //if (mc.world == null || PATHS.isEmpty() || !HypixelCry.config.esp.pathFinderESP.enabled) return;
 
-        PATHS.values().forEach(pathData -> renderPath(pathData, context));
+        //PATHS.values().forEach(pathData -> renderPath(pathData, context));
     }
 
     private static void renderPath(PathData pathData, WorldRenderContext context) {
@@ -294,10 +291,10 @@ public class PathFinderWorker {
                     currentPos.toCenterPos()
             };
             RenderHelper.renderLinesFromPoints(context, points, pathData.color, pathData.color[3], 3f, true);
-            if (HypixelCry.config.esp.pathFinderESP.enableSubPoints) {
+            //if (HypixelCry.config.esp.pathFinderESP.enableSubPoints) {
                 RenderHelper.renderFilled(context, currentPos, pathData.color, pathData.color[3], true);
                 RenderHelper.renderOutline(context, currentPos, pathData.color, 1f, true);
-            }
+            //}
             prevPos = currentPos;
         }
     }

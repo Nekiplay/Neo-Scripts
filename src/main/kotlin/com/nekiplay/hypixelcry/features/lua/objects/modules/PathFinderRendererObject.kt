@@ -14,30 +14,12 @@ class PathFinderRendererObject: LuaValue() {
 
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
-            "isEnabled" -> IsEnabledFunction()
-            "setEnabled" -> SetEnabledFunction()
             "isHasPath" -> IsHasPathFunction()
             "removePath" -> RemovePathFunction()
             "addOrUpdatePath" -> AddOrUpdatePathFunction()
             "getPathBlocks" -> GetPathBlocksFunction()
             else -> NIL
         } as LuaValue
-    }
-
-    private inner class IsEnabledFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(HypixelCry.config.misc.pathFinderESP.enabled)
-        }
-    }
-
-    private inner class SetEnabledFunction : OneArgFunction() {
-        override fun call(value: LuaValue): LuaValue {
-            if (value.isboolean()) {
-                HypixelCry.config.misc.pathFinderESP.enabled = value.toboolean()
-                return valueOf(true)
-            }
-            return NIL
-        }
     }
 
     private inner class IsHasPathFunction : OneArgFunction() {
