@@ -7,6 +7,7 @@ import com.nekiplay.hypixelcry.sugar.getScoreabordLines
 import com.nekiplay.hypixelcry.sugar.getTab
 import com.nekiplay.hypixelcry.utils.NotificationUtils
 import com.nekiplay.hypixelcry.utils.PlayerUtils
+import com.nekiplay.hypixelcry.utils.RaycastUtils
 import com.nekiplay.hypixelcry.utils.Rotations
 import com.nekiplay.hypixelcry.utils.StatusBarTracker
 import com.nekiplay.hypixelcry.utils.Utils
@@ -187,7 +188,8 @@ class PlayerObject : LuaValue() {
             arg1: LuaValue?
         ): LuaValue? {
             if (arg1?.isnumber() == true) {
-                val hitResult = mc.player?.raycast(arg1.todouble(), 1f, false)
+                val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, mc.player?.blockInteractionRange ?: 0.0, mc.player?.entityInteractionRange
+                    ?: 0.0, 1f)
                 return if (hitResult != null) {
                     processHitResult(hitResult)
                 } else {

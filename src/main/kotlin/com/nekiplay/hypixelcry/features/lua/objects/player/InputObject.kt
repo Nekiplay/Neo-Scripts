@@ -3,6 +3,8 @@ package com.nekiplay.hypixelcry.features.lua.objects.player
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.sugar.attackBlock
 import com.nekiplay.hypixelcry.sugar.attackEntity
+import com.nekiplay.hypixelcry.sugar.interactBlock
+import com.nekiplay.hypixelcry.sugar.interactEntity
 import com.nekiplay.hypixelcry.sugar.leftClick
 import com.nekiplay.hypixelcry.sugar.rightClick
 import com.nekiplay.hypixelcry.sugar.silentUse
@@ -23,8 +25,12 @@ class InputObject: LuaValue() {
         return when (key.tojstring()) {
             "useItem" -> UseFunction()
             "silentUse" -> SilentUseFunction()
+
             "attackBlock" -> AttackBlockFunction()
             "attackEntity" -> AttackEntityFunction()
+
+            "interactBlock" -> InteractBlockFunction()
+            "interactEntity" -> InteractEntityFunction()
 
             "leftClick" -> LeftClickFunction()
             "rightClick" -> RightClickFunction()
@@ -80,22 +86,31 @@ class InputObject: LuaValue() {
 
     private inner class AttackBlockFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            mc.interactionManager?.attackBlock()
-            return NIL
+            return LuaValue.valueOf(mc.interactionManager?.attackBlock() == true)
         }
     }
 
     private inner class AttackEntityFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            mc.interactionManager?.attackEntity()
-            return NIL
+            return LuaValue.valueOf(mc.interactionManager?.attackEntity() == true)
+        }
+    }
+
+    private inner class InteractEntityFunction : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            return LuaValue.valueOf(mc.interactionManager?.interactEntity() == true)
+        }
+    }
+
+    private inner class InteractBlockFunction : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            return LuaValue.valueOf(mc.interactionManager?.interactBlock() == true)
         }
     }
 
     private inner class UseFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            mc.interactionManager?.useItem()
-            return NIL
+            return LuaValue.valueOf(mc.interactionManager?.useItem() == true)
         }
     }
 
@@ -103,7 +118,6 @@ class InputObject: LuaValue() {
         override fun call(arg: LuaValue?): LuaValue? {
             return if (arg != null && arg.isnumber()) {
                 val slot = arg.toint()
-                // Проверяем, что слот в пределах хотбара (0-8)
                 if (slot in 0..8) {
                     if (mc.currentScreen == null) {
                         mc.interactionManager?.silentUse(slot)
@@ -124,7 +138,6 @@ class InputObject: LuaValue() {
         override fun call(arg: LuaValue?): LuaValue? {
             return if (arg != null && arg.isnumber()) {
                 val slot = arg.toint()
-                // Проверяем, что слот в пределах хотбара (0-8)
                 if (slot in 0..8) {
                     if (mc.currentScreen == null) {
                         mc.player?.inventory?.selectedSlot = slot
