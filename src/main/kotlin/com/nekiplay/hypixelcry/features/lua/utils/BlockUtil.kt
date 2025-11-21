@@ -37,7 +37,7 @@ object BlockUtil {
             table.set("is_air", LuaValue.valueOf(state.isAir))
 
             // Additional stated
-            if (state.block is FacingBlock && state.getOrEmpty(FacingBlock.FACING).isPresent) {
+            if (state.getOrEmpty(FacingBlock.FACING).isPresent) {
                 table.set("facing", LuaValue.valueOf(state.get(FacingBlock.FACING).name))
             }
             if (state.getOrEmpty(PistonBlock.EXTENDED).isPresent) {
