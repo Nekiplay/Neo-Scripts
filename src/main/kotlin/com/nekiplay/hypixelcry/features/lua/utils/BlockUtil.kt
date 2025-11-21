@@ -1,14 +1,9 @@
 package com.nekiplay.hypixelcry.features.lua.utils
 
-import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import net.minecraft.block.Block
 import net.minecraft.block.BlockState
-import net.minecraft.block.FluidDrainable
-import net.minecraft.block.FluidFillable
-import net.minecraft.fluid.FluidState
-import net.minecraft.fluid.WaterFluid
-import net.minecraft.util.math.BlockPos
-import net.minecraft.util.shape.VoxelShapes
+import net.minecraft.block.FacingBlock
+import net.minecraft.block.PistonBlock
 import org.luaj.vm2.LuaValue
 
 object BlockUtil {
@@ -25,22 +20,29 @@ object BlockUtil {
     fun ToLua(table: LuaValue, state: BlockState?): LuaValue? {
         if (state != null) {
             val block = state.block
-            // Основная информация о блоке
+            // Main information
             table.set("id", LuaValue.valueOf(Block.getRawIdFromState(state)))
             table.set("name", LuaValue.valueOf(block.translationKey))
             table.set("type", LuaValue.valueOf(state.toString()))
 
-            // Свойства блока
+            // Block property
             table.set("hardness", LuaValue.valueOf(block.hardness.toDouble()))
             table.set("blast_resistance", LuaValue.valueOf(block.blastResistance.toDouble()))
 
-            // Информация о материале
+            // Material info
             table.set("is_solid", LuaValue.valueOf(state.isSolid))
             table.set("is_liquid", LuaValue.valueOf(state.isLiquid))
 
-            // Дополнительные свойства
+            // Additional property
             table.set("is_air", LuaValue.valueOf(state.isAir))
 
+            // Additional stated
+            if (state.block is FacingBlock && state.getOrEmpty(FacingBlock.FACING).isPresent) {
+                table.set("facing", LuaValue.valueOf(state.get(FacingBlock.FACING).name))
+            }
+            if (state.getOrEmpty(PistonBlock.EXTENDED).isPresent) {
+                table.set("extended", LuaValue.valueOf(state.get(PistonBlock.EXTENDED)))
+            }
             if (state.fluidState != null) {
                 table.set("is_still", LuaValue.valueOf(state.fluidState.isStill))
             }
