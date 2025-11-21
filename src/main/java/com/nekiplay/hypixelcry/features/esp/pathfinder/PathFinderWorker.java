@@ -8,8 +8,6 @@ import com.nekiplay.hypixelcry.pathfinder.goal.Goal;
 import com.nekiplay.hypixelcry.pathfinder.movement.CalculationContext;
 import com.nekiplay.hypixelcry.utils.render.RenderHelper;
 import com.nekiplay.hypixelcry.utils.scheduler.Scheduler;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
@@ -61,7 +59,6 @@ public class PathFinderWorker {
 
     @Init
     public static void init() {
-        WorldRenderEvents.AFTER_TRANSLUCENT.register(PathFinderWorker::onRenderWorldLast);
         Scheduler.INSTANCE.scheduleCyclic(PathFinderWorker::onClientTick, 1);
         ClientChunkLoadEvent.EVENT.register(PathFinderWorker::chunkLoad);
     }
@@ -265,65 +262,6 @@ public class PathFinderWorker {
         if (nearestIndex > 0) {
             pathData.remainingPath = pathData.remainingPath.subList(nearestIndex, pathData.remainingPath.size());
         }
-    }
-
-    private static void onRenderWorldLast(WorldRenderContext context) {
-        //if (mc.world == null || PATHS.isEmpty() || !HypixelCry.config.esp.pathFinderESP.enabled) return;
-
-        //PATHS.values().forEach(pathData -> renderPath(pathData, context));
-    }
-
-    private static void renderPath(PathData pathData, WorldRenderContext context) {
-        if (pathData.blocks == null || pathData.blocks.isEmpty() || pathData.remainingPath.isEmpty()) return;
-
-        BlockPos endPos = pathData.blocks.getLast();
-        renderPathLines(pathData, endPos, context);
-        renderEndPoint(pathData, endPos, context);
-    }
-
-    private static void renderPathLines(PathData pathData, BlockPos endPos, WorldRenderContext context) {
-        BlockPos prevPos = pathData.blocks.getFirst();
-        renderStartPoint(pathData, prevPos, context);
-        for (int i = 1; i < pathData.blocks.size(); i++) {
-            BlockPos currentPos = pathData.blocks.get(i);
-            Vec3d[] points = new Vec3d[] {
-                    prevPos.toCenterPos(),
-                    currentPos.toCenterPos()
-            };
-            RenderHelper.renderLinesFromPoints(context, points, pathData.color, pathData.color[3], 3f, true);
-            //if (HypixelCry.config.esp.pathFinderESP.enableSubPoints) {
-                RenderHelper.renderFilled(context, currentPos, pathData.color, pathData.color[3], true);
-                RenderHelper.renderOutline(context, currentPos, pathData.color, 1f, true);
-            //}
-            prevPos = currentPos;
-        }
-    }
-
-    private static void renderStartPoint(PathData pathData, BlockPos startPos, WorldRenderContext context) {
-        RenderHelper.renderFilled(context, startPos, pathData.color, pathData.color[3], true);
-        RenderHelper.renderOutline(context, startPos, pathData.color, 4f, true);
-
-        //int r = (int) (pathData.color[0] * 255);
-        //int g = (int) (pathData.color[1] * 255);
-        //int b = (int) (pathData.color[2] * 255);
-
-        //int color = (255 << 24) | (r << 16) | (g << 8) | b;
-
-        //RenderHelper.renderText(context, Text.of(pathData.endText).asOrderedText(), startPos.toCenterPos().add(0, 1, 0), color, 1, 0.5f, true);
-        //RenderHelper.renderText(context, Text.of("Start").asOrderedText(), startPos.toCenterPos().add(0, 1.2, 0), color, 1, 1.5f, true);
-    }
-
-    private static void renderEndPoint(PathData pathData, BlockPos endPos, WorldRenderContext context) {
-        RenderHelper.renderFilled(context, endPos, pathData.color, pathData.color[3], true);
-        RenderHelper.renderOutline(context, endPos, pathData.color, 4f, true);
-
-        int r = (int) (pathData.color[0] * 255);
-        int g = (int) (pathData.color[1] * 255);
-        int b = (int) (pathData.color[2] * 255);
-
-        int color = (255 << 24) | (r << 16) | (g << 8) | b;
-
-        RenderHelper.renderText(context, Text.of(pathData.endText).asOrderedText(), endPos.toCenterPos().add(0, 1, 0), color, 1, 0.5f, true);
     }
 
     // API methods

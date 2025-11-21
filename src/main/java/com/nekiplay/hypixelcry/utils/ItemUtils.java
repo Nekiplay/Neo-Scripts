@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.properties.PropertyMap;
 import com.mojang.serialization.JsonOps;
 import com.nekiplay.hypixelcry.utils.itemlist.*;
 import it.unimi.dsi.fastutil.doubles.DoubleBooleanPair;
@@ -19,6 +20,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.text.Text;
+import net.minecraft.util.dynamic.Codecs;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -60,7 +62,7 @@ public class ItemUtils {
         ProfileComponent profile = stack.get(DataComponentTypes.PROFILE);
         if (profile == null) return "";
 
-        return profile.properties().get("textures").stream().filter(Objects::nonNull)
+        return profile.getGameProfile().properties().get("textures").stream().filter(Objects::nonNull)
                 .map(Property::value)
                 .findFirst()
                 .orElse("");
@@ -104,21 +106,24 @@ public class ItemUtils {
         return result;
     }
 
-    @SuppressWarnings("Varargs")
-    public static ItemStack createSkull(String displayName, String uuid, String value, Collection<String> loreColl) {
-        return createSkull(displayName, uuid, value, loreColl.toArray(new String[0]));
+    public static @NotNull PropertyMap propertyMapWithTexture(String textureValue) {
+        return Codecs.GAME_PROFILE_PROPERTY_MAP.parse(JsonOps.INSTANCE, JsonParser.parseString("[{\"name\":\"textures\",\"value\":\"" + textureValue + "\"}]")).getOrThrow();
     }
 
-    // Taken from NEU
-    public static ItemStack createSkull(String displayName, String uuid, String value, String... lore) {
-        ItemStack stack = new ItemStack(Items.PLAYER_HEAD);
-        GameProfile profile = new GameProfile(UUID.fromString(uuid), displayName);
-        profile.getProperties().put("textures", new Property("textures", value));
-        stack.set(DataComponentTypes.PROFILE, new ProfileComponent(profile));
+    @SuppressWarnings("Varargs")
+    public static @NotNull ItemStack createSkull(String textureBase64) {
+        GameProfile profile = new GameProfile(java.util.UUID.randomUUID(), "a", propertyMapWithTexture(textureBase64));
+        return createSkull(profile);
+    }
 
-        stack = setCustomItemName(stack, displayName);
-        stack = setLore(stack, Arrays.asList(lore));
-        return stack;
+    public static @NotNull ItemStack createSkull(GameProfile profile) {
+        try {
+            ItemStack stack = new ItemStack(Items.PLAYER_HEAD);
+            stack.set(DataComponentTypes.PROFILE, ProfileComponent.ofStatic(profile));
+            return stack;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static ItemStack createItemStack(Item item, String displayName, String model) {
@@ -176,7 +181,7 @@ public class ItemUtils {
      */
     @SuppressWarnings("deprecation")
     public static @NotNull NbtCompound getCustomData(@NotNull ComponentHolder stack) {
-        return stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).getNbt();
+        return stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt();
     }
 
     public static List<ItemStack> getArmor(LivingEntity entity) {

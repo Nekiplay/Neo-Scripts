@@ -54,7 +54,7 @@ public class LegacyItemStackFixer {
 
         //Remap Custom Data
         if (stack.contains(DataComponentTypes.CUSTOM_DATA)) {
-            stack.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(stack.get(DataComponentTypes.CUSTOM_DATA).getNbt().getCompoundOrEmpty("ExtraAttributes")));
+            stack.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(stack.get(DataComponentTypes.CUSTOM_DATA).copyNbt().getCompoundOrEmpty("ExtraAttributes")));
         }
 
         //Hide Attributes & Vanilla Enchantments

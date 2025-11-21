@@ -42,9 +42,9 @@ public class EntityUtils {
         // Получаем компонент с данными черепа
         ProfileComponent profileComponent = components.get(DataComponentTypes.PROFILE);
         if (profileComponent != null) {
-            GameProfile profile = profileComponent.gameProfile();
-            if (profile != null && profile.getId() != null) {
-                return profile.getId().toString();
+            GameProfile profile = profileComponent.getGameProfile();
+            if (profile != null && profile.id() != null) {
+                return profile.id().toString();
             }
         }
         return null;
@@ -64,7 +64,7 @@ public class EntityUtils {
         if (player.getGameProfile() == null) {
             return null;
         }
-        Map<String, Collection<Property>> map = player.getGameProfile().getProperties().asMap();
+        Map<String, Collection<Property>> map = player.getGameProfile().properties().asMap();
         Collection<Property> textures = map.get("textures");
 
         Property texture = textures.stream().findFirst().orElse(null);

@@ -17,11 +17,11 @@ import com.nekiplay.hypixelcry.features.lua.objects.world.WorldObject
 import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.utils.Location
 import com.nekiplay.hypixelcry.utils.misc.input.KeyAction
+import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
 import kotlinx.io.files.FileNotFoundException
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.command.CommandRegistryAccess
@@ -808,7 +808,7 @@ class LuaManager() {
         }
     }
 
-    fun onRenderTick(context: WorldRenderContext?) {
+    fun onRenderTick(context: PrimitiveCollector?) {
         val callbacks = synchronized(callbacksLock) {
             renderWorldCallbacks.toTypedArray()
         }

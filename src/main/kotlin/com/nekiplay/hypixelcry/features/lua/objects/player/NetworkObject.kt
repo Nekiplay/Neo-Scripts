@@ -53,7 +53,7 @@ class NetworkObject : LuaValue() {
                 table_player.set("gamemode", if (gamemode != null) valueOf(gamemode) else NIL)
 
                 // skin_texture
-                val skinTexture = player.skinTextures?.texture?.toString()
+                val skinTexture = player.skinTextures?.body?.toString()
                 table_player.set("skin_texture", if (skinTexture != null) valueOf(skinTexture) else NIL)
 
                 table.set(index, table_player)

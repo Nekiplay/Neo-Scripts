@@ -21,8 +21,7 @@
   "client": [
     "BeaconBlockEntityRendererInvoker",
     "FrustumInvoker",
-    "WorldChunkMixin",
-    "WorldRendererAccessor"
+    "WorldChunkMixin"
   ],
   "injectors": {
     "defaultRequire": 1

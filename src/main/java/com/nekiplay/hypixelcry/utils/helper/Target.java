@@ -40,7 +40,7 @@ public class Target {
         }
 
         if (entity != null) {
-            return AngleUtils.getRotation(entity.getPos().add(0, additionalY, 0));
+            return AngleUtils.getRotation(entity.getEntityPos().add(0, additionalY, 0));
         }
 
         return angle;

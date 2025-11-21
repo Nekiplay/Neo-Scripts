@@ -46,7 +46,7 @@ object EntityUtils {
             table.set("type", LuaValue.valueOf(entity.type.toString()))
 
             // Позиция и движение
-            val pos = entity.pos
+            val pos = entity.getLerpedPos(1f)
             table.set("x", LuaValue.valueOf(pos.x))
             table.set("y", LuaValue.valueOf(pos.y))
             table.set("z", LuaValue.valueOf(pos.z))

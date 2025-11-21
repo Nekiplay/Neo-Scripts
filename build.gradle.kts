@@ -2,9 +2,9 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     java
-    id("fabric-loom") version "1.10.1"
-    id("org.jetbrains.kotlin.jvm") version "2.1.0"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.1.0"
+    id("fabric-loom") version "1.13-SNAPSHOT"
+    id("org.jetbrains.kotlin.jvm") version "2.2.21"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.21"
     id("com.nekiplay.hypixelcry.annotation-processor")
     id("com.github.johnrengelman.shadow") version "8.1.1"
 }

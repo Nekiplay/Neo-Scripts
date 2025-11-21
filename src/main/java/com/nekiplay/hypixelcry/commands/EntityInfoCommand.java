@@ -67,8 +67,8 @@ public class EntityInfoCommand {
                 ItemStack helmet = skullEntity.getEquippedStack(EquipmentSlot.HEAD);
                 if (helmet != null && helmet.isOf(Items.PLAYER_HEAD)) {
                     ProfileComponent profile = helmet.get(DataComponentTypes.PROFILE);
-                    if (profile != null && profile.gameProfile() != null && profile.gameProfile().getId() != null) {
-                        String id = profile.gameProfile().getId().toString();
+                    if (profile != null && profile.getGameProfile() != null && profile.getGameProfile().id() != null) {
+                        String id = profile.getGameProfile().id().toString();
                         source.sendFeedback(Text.literal(HypixelCry.PREFIX + "[ArmorStand SkullOwner] " + id));
                         copy.append("[ArmorStand SkullOwner] ").append(id).append("\n");
                     }
@@ -89,7 +89,7 @@ public class EntityInfoCommand {
             if (playerEntity != null) {
                 GameProfile profile = playerEntity.getGameProfile();
                 if (profile != null) {
-                    Collection<Property> textures = profile.getProperties().get("textures");
+                    Collection<Property> textures = profile.properties().get("textures");
                     for (Property entry : textures) {
                         if (entry != null && entry.value() != null) {
                             String playerName = playerEntity.getName().getString();

@@ -244,8 +244,9 @@ public class Utils {
 
             ClientPlayerEntity player = client.player;
             if (player == null) return;
+            if (player.getScoreboardTeam() == null) return;
 
-            Scoreboard scoreboard = player.getScoreboard();
+            Scoreboard scoreboard = player.getScoreboardTeam().getScoreboard();
             ScoreboardObjective objective = scoreboard.getObjectiveForSlot(ScoreboardDisplaySlot.FROM_ID.apply(1));
             ObjectArrayList<Text> textLines = new ObjectArrayList<>();
             ObjectArrayList<String> stringLines = new ObjectArrayList<>();

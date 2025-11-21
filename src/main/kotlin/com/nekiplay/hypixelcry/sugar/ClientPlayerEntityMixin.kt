@@ -13,7 +13,7 @@ import net.minecraft.text.TextCodecs
 import java.util.Optional
 
 fun ClientPlayerEntity.getScoreabordLines(): List<Text> {
-    val scoreboard = mc.player?.scoreboard ?: return listOf()
+    val scoreboard = mc.player?.scoreboardTeam?.scoreboard ?: return listOf()
     val activeObjective = scoreboard.getObjectiveForSlot(ScoreboardDisplaySlot.SIDEBAR) ?: return listOf()
     return scoreboard.getScoreboardEntries(activeObjective)
         .filter { !it.hidden() }

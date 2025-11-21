@@ -1,28 +1,22 @@
 package com.nekiplay.hypixelcry.features.lua.objects.render
 
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
-import com.nekiplay.hypixelcry.utils.render.RenderHelper
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
-import net.minecraft.client.gl.RenderPipelines
+import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
 import net.minecraft.client.texture.NativeImage
 import net.minecraft.client.texture.NativeImageBackedTexture
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.ColorHelper
 import net.minecraft.util.math.Vec3d
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
-import java.awt.Color
 import java.io.File
 import java.io.FileInputStream
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Supplier
-import kotlin.collections.component1
-import kotlin.collections.component2
-import kotlin.collections.component3
 
-class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() {
+class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() {
     override fun call(): LuaValue {
         return this
     }
@@ -61,7 +55,7 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
 
                 val alphaComponent = alpha.toFloat() / 255.0f
 
-                RenderHelper.renderFilled(context, BlockPos(x, y, z), colorComponents, alphaComponent, throughWalls)
+                context.submitFilledBox(BlockPos(x, y, z), colorComponents, alphaComponent, throughWalls)
                 return TRUE
             }
             return NIL
@@ -92,11 +86,15 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                 )
 
 
-                RenderHelper.renderOutline(context, BlockPos(x, y, z), colorComponents, lineWidth, throughWalls)
+                context.submitOutlinedBox( BlockPos(x, y, z), colorComponents, lineWidth, throughWalls)
                 return TRUE
             }
             return NIL
         }
+    }
+
+    fun getArgb(red: Int, green: Int, blue: Int): Int {
+        return (0xFF shl 24) or (red shl 16) or (green shl 8) or blue
     }
 
     private inner class RenderTextFunction : OneArgFunction() {
@@ -109,20 +107,18 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                 val text = if (table.get("text").isstring()) table.get("text").tojstring() else "Empty"
                 val scale = if (table.get("scale").isnumber()) table.get("scale").tofloat() else 1f
 
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else -0x1
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else -0x1
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else -0x1
+                val red = if (table.get("red").isnumber()) table.get("red").toint() else -1
+                val green = if (table.get("green").isnumber()) table.get("green").toint() else -1
+                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else -1
 
                 val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
                 val pos = Vec3d(x, y, z)
 
-                if (red != -0x1 && green != -0x1 && blue != -0x1) {
-                    val (hue, sat, bri) = Color.RGBtoHSB(red, green, blue, null)
-                    RenderHelper.renderText(
-                        context,
-                        Text.of(text).asOrderedText(),
+                if (red != -1 && green != -1 && blue != -1) {
+                    context.submitText(
+                        Text.of(text),
                         pos,
-                        Color.HSBtoRGB(hue, sat, bri),
+                        ColorHelper.fromAbgr(getArgb(red, green, blue)),
                         scale,
                         0.5f,
                         throughWalls
@@ -130,11 +126,10 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                     return TRUE
                 }
                 else {
-                    RenderHelper.renderText(
-                        context,
-                        Text.of(text).asOrderedText(),
+                    context.submitText(
+                        Text.of(text),
                         pos,
-                        -0x1,
+                        -1,
                         scale,
                         0.5f,
                         throughWalls
@@ -194,8 +189,7 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                         val alphaComponent = alpha.toFloat() / 255.0f
 
                         // Call the render method
-                        RenderHelper.renderLinesFromPoints(
-                            context,
+                        context.submitLinesFromPoints(
                             pointsList.toTypedArray(),
                             colorComponents,
                             alphaComponent,
@@ -233,8 +227,7 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
 
                 val pos = Vec3d(x, y, z)
 
-                RenderHelper.renderLineFromCursor(
-                    context,
+                context.submitLineFromCursor(
                     pos,
                     colorComponents,
                     alphah,
@@ -278,7 +271,7 @@ class WorldRendererObject(private val context: WorldRenderContext?): LuaValue() 
                 try {
                     val identifier = loadTexture(path)
                     if (identifier != null) {
-                        RenderHelper.renderTextureInWorld(context, Vec3d(x, y, z), width, height, regionWidth, regionHeight, Vec3d(
+                        context.submitTexturedQuad(Vec3d(x, y, z), width, height, regionWidth, regionHeight, Vec3d(
                             ox, oy, oz
                         ), identifier, rgb, alpha, throughWalls)
                     }
