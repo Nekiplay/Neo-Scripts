@@ -6,26 +6,9 @@
 	<a href="https://discord.gg/zSefVGvKsW"><img src="https://img.shields.io/discord/1418100297615802439?logo=discord" alt="Discord server"/></a><br/>
 </div>
 
-![1748385538470](https://github.com/user-attachments/assets/8cb12840-ea5e-4500-8594-2f134d0e78aa)
-
 # Features
 ### Commands:
-- /cry - Open settings menu
-- /path - Set pathfinder
 - /lua - Lua API control
-
-### Helpers:
-- Auto right click (Chests, Leavers, Skulls)
-- Auto close chests in dungeons
-- Bindable use Healing Wands
-- Bindable use Aspect Of The End
-- Bindable use Rogue Sword
-- Bindable use Wither Cloak
-- Bindable use Zombie Sword
-
-### ESP:
-- Dark Monolith in Dwarden Mines
-- Frozen Courpes (include PathFinder) in Glacite Mineshafts
 
 ### Misc:
 - [Lua API](https://skillshop.gitbook.io/hypixelcry/), [Lua Scripts Library](https://github.com/Nekiplay/Hypixel-Cry-Scripts)
