@@ -188,8 +188,7 @@ class PlayerObject : LuaValue() {
             arg1: LuaValue?
         ): LuaValue? {
             if (arg1?.isnumber() == true) {
-                val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, mc.player?.blockInteractionRange ?: 0.0, mc.player?.entityInteractionRange
-                    ?: 0.0, 1f)
+                val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, arg1.todouble(), arg1.todouble(), 1f)
                 return if (hitResult != null) {
                     processHitResult(hitResult)
                 } else {
