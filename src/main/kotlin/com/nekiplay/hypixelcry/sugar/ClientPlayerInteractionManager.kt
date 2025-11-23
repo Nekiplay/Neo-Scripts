@@ -35,7 +35,7 @@ fun ClientPlayerInteractionManager.silentUse(useSlot: Int): Boolean {
 fun ClientPlayerInteractionManager.attackBlock(): Boolean {
     if (mc.crosshairTarget == null) return false
 
-    if (mc.crosshairTarget!!.type == HitResult.Type.BLOCK) {
+    if (mc.crosshairTarget?.type == HitResult.Type.BLOCK) {
         val blockHitResult = mc.crosshairTarget as BlockHitResult
         val blockPos = blockHitResult.blockPos
         mc.world?.getBlockState(blockPos)?.isAir?.let {
@@ -111,8 +111,9 @@ fun ClientPlayerInteractionManager.useItem(): Boolean {
     return false
 }
 
-fun ClientPlayerInteractionManager.syncSelectedSlot() {
+fun ClientPlayerInteractionManager.syncSelectedSlot(): Boolean {
     (this as ClientPlayerInteractionManagerAccessor).syncSelectedSlot()
+    return true
 }
 
 fun ClientPlayerInteractionManager.sendSequencedPacket(packetCreator: SequencedPacketCreator) {

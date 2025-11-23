@@ -8,6 +8,7 @@ import com.nekiplay.hypixelcry.sugar.interactEntity
 import com.nekiplay.hypixelcry.sugar.leftClick
 import com.nekiplay.hypixelcry.sugar.rightClick
 import com.nekiplay.hypixelcry.sugar.silentUse
+import com.nekiplay.hypixelcry.sugar.syncSelectedSlot
 import com.nekiplay.hypixelcry.sugar.useItem
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.option.KeyBinding
@@ -25,6 +26,7 @@ class InputObject: LuaValue() {
         return when (key.tojstring()) {
             "useItem" -> UseFunction()
             "silentUse" -> SilentUseFunction()
+            "syncSelectedSlot" -> SyncSelectedSlotFunction()
 
             "attackBlock" -> AttackBlockFunction()
             "attackEntity" -> AttackEntityFunction()
@@ -69,6 +71,12 @@ class InputObject: LuaValue() {
             "isPressedUse" -> IsPressedUseFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class SyncSelectedSlotFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return valueOf(mc.interactionManager?.syncSelectedSlot() == true)
+        }
     }
 
     private inner class LeftClickFunction : ZeroArgFunction() {

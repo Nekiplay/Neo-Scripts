@@ -1,13 +1,11 @@
 package com.nekiplay.hypixelcry.features.lua.objects.render
 
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
 import net.minecraft.block.BlockState
 import net.minecraft.client.texture.NativeImage
 import net.minecraft.client.texture.NativeImageBackedTexture
-import net.minecraft.item.ItemStack
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
 import net.minecraft.util.math.BlockPos
