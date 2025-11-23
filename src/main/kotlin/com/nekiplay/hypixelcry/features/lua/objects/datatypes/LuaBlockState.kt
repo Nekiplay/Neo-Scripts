@@ -45,6 +45,6 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
         }
     }
 
-    fun getBlockState(): BlockState = blockState
+    fun getState(): BlockState = blockState
 
 }

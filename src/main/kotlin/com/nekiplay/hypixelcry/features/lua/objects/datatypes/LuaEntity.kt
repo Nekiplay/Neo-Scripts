@@ -205,5 +205,5 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
         }
     }
 
-    fun getEntity(): Entity = entity
+    fun getEnt(): Entity = entity
 }

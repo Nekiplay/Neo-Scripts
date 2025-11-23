@@ -8,7 +8,6 @@ import com.nekiplay.hypixelcry.events.network.PacketEvent
 import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent
 import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent.BlockUpdateCallback
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
-import com.nekiplay.hypixelcry.features.lua.utils.BlockUtil
 import com.nekiplay.hypixelcry.features.modules.ClientModule
 import com.nekiplay.hypixelcry.utils.render.WorldRenderExtractionCallback
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
@@ -72,14 +71,16 @@ object LuaEvents: ClientModule() {
             val newState = event.new
 
             val table = LuaValue.tableOf()
-            val oldL = LuaBlockState(oldState)
-            val newL = LuaBlockState(newState)
 
             table.set("x", blockPos.x)
             table.set("y", blockPos.y)
             table.set("z", blockPos.z)
-            table.set("old", oldL)
-            table.set("new", newL)
+            if (oldState != null) {
+                table.set("old", LuaBlockState(oldState))
+            }
+            if (newState != null) {
+                table.set("new", LuaBlockState(newState))
+            }
 
 
             val allow = LUA_MANAGER.onBlockUpdateEvent(table)

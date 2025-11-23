@@ -56,7 +56,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
 
                 val blockStateObject = table.get("blockState")
                 val blockState = when {
-                    blockStateObject.isuserdata() && blockStateObject.touserdata() is LuaBlockState -> (blockStateObject.touserdata() as LuaBlockState).getBlockState()
+                    blockStateObject.isuserdata() && blockStateObject.touserdata() is LuaBlockState -> (blockStateObject.touserdata() as LuaBlockState).getState()
                     blockStateObject.isuserdata() && blockStateObject.touserdata() is BlockState -> blockStateObject.touserdata() as BlockState
                     else -> null
                 }
@@ -113,7 +113,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
 
                 val blockStateObject = table.get("blockState")
                 val blockState = when {
-                    blockStateObject.isuserdata() && blockStateObject.touserdata() is LuaBlockState -> (blockStateObject.touserdata() as LuaBlockState).getBlockState()
+                    blockStateObject.isuserdata() && blockStateObject.touserdata() is LuaBlockState -> (blockStateObject.touserdata() as LuaBlockState).getState()
                     blockStateObject.isuserdata() && blockStateObject.touserdata() is BlockState -> blockStateObject.touserdata() as BlockState
                     else -> null
                 }
@@ -133,8 +133,8 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         }
     }
 
-    fun getArgb(red: Int, green: Int, blue: Int): Int {
-        return (0xFF shl 24) or (red shl 16) or (green shl 8) or blue
+    fun getArgb(alpha: Int, red: Int, green: Int, blue: Int): Int {
+        return (alpha shl 24) or (red shl 16) or (green shl 8) or blue
     }
 
     private inner class RenderTextFunction : OneArgFunction() {
@@ -150,15 +150,16 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 val red = if (table.get("red").isnumber()) table.get("red").toint() else -1
                 val green = if (table.get("green").isnumber()) table.get("green").toint() else -1
                 val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else -1
+                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else -1
 
                 val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
                 val pos = Vec3d(x, y, z)
 
-                if (red != -1 && green != -1 && blue != -1) {
+                if (alpha != -1 && red != -1 && green != -1 && blue != -1) {
                     context.submitText(
                         Text.of(text),
                         pos,
-                        ColorHelper.fromAbgr(getArgb(red, green, blue)),
+                        ColorHelper.fromAbgr(getArgb(alpha, red, green, blue)),
                         scale,
                         0.5f,
                         throughWalls
