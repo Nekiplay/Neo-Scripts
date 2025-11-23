@@ -1,14 +1,13 @@
 package com.nekiplay.hypixelcry.features.lua.objects.world
 
 import com.nekiplay.hypixelcry.features.lua.customArgs.FourArgFunction
-import com.nekiplay.hypixelcry.features.lua.utils.BlockUtil
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
-import com.nekiplay.hypixelcry.sugar.getFov
 import com.nekiplay.hypixelcry.utils.RaycastUtils
 import com.nekiplay.hypixelcry.utils.Rotations
 import net.minecraft.block.Block
-import net.minecraft.client.render.Camera
 import net.minecraft.util.hit.EntityHitResult
 import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.hit.HitResult
@@ -20,10 +19,6 @@ import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.math.tan
 
 class WorldObject : LuaValue() {
     override fun call(): LuaValue {
@@ -36,7 +31,6 @@ class WorldObject : LuaValue() {
             "getRotation" -> GetRotationFunction()
             "getBlock" -> GetBlockFunction()
             "setBlock" -> SetBlockFunction()
-            "getBlocksInRadius" -> GetBlocksInRadiusFunction()
             "isBlockLoaded" -> IsBlockLoadedFunction()
 
             "getEntities" -> GetEntitiesFunction()
@@ -141,7 +135,7 @@ class WorldObject : LuaValue() {
             HitResult.Type.ENTITY -> {
                 val table = tableOf()
                 table.set("type", "entity")
-                table.set("data", EntityUtils.ToLua((hitResult as EntityHitResult).entity))
+                table.set("data", LuaEntity((hitResult as EntityHitResult).entity))
                 return table
             }
             HitResult.Type.BLOCK -> {
@@ -247,7 +241,9 @@ class WorldObject : LuaValue() {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
                 val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
                 val state = mc.world?.getBlockState(blockPos)
-                return BlockUtil.ToLua(state);
+                if (state != null) {
+                    return LuaBlockState(state);
+                }
             }
             else if (arg1?.istable() == true) {
                 val x: Int = if (arg1.get("x").isnumber()) arg1.get("x").toint() else 0
@@ -255,63 +251,11 @@ class WorldObject : LuaValue() {
                 val z: Int = if (arg1.get("z").isnumber()) arg1.get("z").toint() else 0
                 val blockPos = BlockPos(x, y, z)
                 val state = mc.world?.getBlockState(blockPos)
-                return BlockUtil.ToLua(state);
-            }
-            return NIL
-        }
-    }
-
-    private inner class GetBlocksInRadiusFunction : TwoArgFunction() {
-        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
-            val radius = if (arg2?.isnumber() == true) arg2.toint() else 10
-            val centerX: Int
-            val centerY: Int
-            val centerZ: Int
-
-            if (arg1?.istable() == true) {
-                // Если первый аргумент - таблица с координатами
-                centerX = arg1.get("x").optint(mc.player?.blockPos?.x ?: 0)
-                centerY = arg1.get("y").optint(mc.player?.blockPos?.y ?: 0)
-                centerZ = arg1.get("z").optint(mc.player?.blockPos?.z ?: 0)
-            } else if (arg1?.isnumber() == true && arg2 == null) {
-                // Если только один числовой аргумент (радиус от игрока)
-                centerX = mc.player?.blockPos?.x ?: 0
-                centerY = mc.player?.blockPos?.y ?: 0
-                centerZ = mc.player?.blockPos?.z ?: 0
-            } else {
-                // По умолчанию от позиции игрока
-                centerX = mc.player?.blockPos?.x ?: 0
-                centerY = mc.player?.blockPos?.y ?: 0
-                centerZ = mc.player?.blockPos?.z ?: 0
-            }
-
-            val resultTable = tableOf()
-            var index = 1
-
-            val centerPos = BlockPos(centerX, centerY, centerZ)
-
-            // Перебираем все блоки в кубе радиуса
-            for (x in centerX - radius..centerX + radius) {
-                for (y in centerY - radius..centerY + radius) {
-                    for (z in centerZ - radius..centerZ + radius) {
-                        val blockPos = BlockPos(x, y, z)
-                        val distance = centerPos.getSquaredDistance(blockPos).toDouble()
-
-                        if (distance <= radius * radius) {
-                            val state = mc.world?.getBlockState(blockPos)
-                            val blockTable = BlockUtil.ToLua(state)
-                            if (blockTable != null && !blockTable.isnil()) {
-                                blockTable.set("x", blockPos.x)
-                                blockTable.set("y", blockPos.y)
-                                blockTable.set("z", blockPos.z)
-                                resultTable.set(index++, blockTable)
-                            }
-                        }
-                    }
+                if (state != null) {
+                    return LuaBlockState(state);
                 }
             }
-
-            return resultTable
+            return NIL
         }
     }
 
@@ -353,7 +297,12 @@ class WorldObject : LuaValue() {
             return if (arg?.isnumber() == true) {
                 val entityId = arg.toint()
                 val entity = mc.world?.getEntityById(entityId)
-                EntityUtils.ToLua(entity) ?: NIL
+                if (entity != null) {
+                    LuaEntity(entity)
+                }
+                else {
+                    NIL
+                }
             } else {
                 NIL
             }

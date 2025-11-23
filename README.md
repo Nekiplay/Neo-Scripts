@@ -10,23 +10,8 @@
 
 # Features
 ### Commands:
-- /cry - Open settings menu
-- /path - Set pathfinder
 - /lua - Lua API control
-
-### Helpers:
-- Auto right click (Chests, Leavers, Skulls)
-- Auto close chests in dungeons
-- Bindable use Healing Wands
-- Bindable use Aspect Of The End
-- Bindable use Rogue Sword
-- Bindable use Wither Cloak
-- Bindable use Zombie Sword
-
-### ESP:
-- Dark Monolith in Dwarden Mines
-- Frozen Courpes (include PathFinder) in Glacite Mineshafts
-
+- 
 ### Misc:
 - [Lua API](https://skillshop.gitbook.io/hypixelcry/), [Lua Scripts Library](https://github.com/Nekiplay/Hypixel-Cry-Scripts)
 

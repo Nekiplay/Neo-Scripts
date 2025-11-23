@@ -1,12 +1,17 @@
 package com.nekiplay.hypixelcry.features.lua.objects.render
 
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
+import net.minecraft.block.BlockState
 import net.minecraft.client.texture.NativeImage
 import net.minecraft.client.texture.NativeImageBackedTexture
+import net.minecraft.item.ItemStack
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Box
 import net.minecraft.util.math.ColorHelper
 import net.minecraft.util.math.Vec3d
 import org.luaj.vm2.LuaValue
@@ -36,9 +41,13 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
     private inner class RenderFilledFunction : OneArgFunction() {
         override fun call(table: LuaValue): LuaValue {
             if (table.istable() && context != null) {
-                val x = if (table.get("x").isnumber()) table.get("x").toint() else 0
-                val y = if (table.get("y").isnumber()) table.get("y").toint() else 0
-                val z = if (table.get("z").isnumber()) table.get("z").toint() else 0
+                val x = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
+                val y = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
+                val z = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
+
+                val x2 = if (table.get("x2").isnumber()) table.get("x2").todouble() else null
+                val y2 = if (table.get("y2").isnumber()) table.get("y2").todouble() else null
+                val z2 = if (table.get("z2").isnumber()) table.get("z2").todouble() else null
 
                 val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
                 val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
@@ -46,6 +55,13 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
 
                 val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
+
+                val blockStateObject = table.get("blockState")
+                val blockState = when {
+                    blockStateObject.isuserdata() && blockStateObject.touserdata() is LuaBlockState -> (blockStateObject.touserdata() as LuaBlockState).getBlockState()
+                    blockStateObject.isuserdata() && blockStateObject.touserdata() is BlockState -> blockStateObject.touserdata() as BlockState
+                    else -> null
+                }
 
                 val colorComponents = floatArrayOf(
                     red.toFloat() / 255.0f,
@@ -55,7 +71,15 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
 
                 val alphaComponent = alpha.toFloat() / 255.0f
 
-                context.submitFilledBox(BlockPos(x, y, z), colorComponents, alphaComponent, throughWalls)
+                if (blockState == null) {
+                    context.submitFilledBox(BlockPos(x.toInt(), y.toInt(), z.toInt()), colorComponents, alphaComponent, throughWalls)
+                }
+                else if (x2 != null && y2 != null && z2 != null) {
+                    context.submitFilledBox(Box(Vec3d(x, y, z), Vec3d(x2, y2, z2)), colorComponents, alphaComponent, throughWalls)
+                }
+                else {
+                    context.submitFilledBox(blockState.getCollisionShape(mc.world, BlockPos(x.toInt(), y.toInt(), z.toInt())).boundingBox, colorComponents, alphaComponent, throughWalls)
+                }
                 return TRUE
             }
             return NIL
@@ -65,9 +89,13 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
     private inner class RenderOutlineFunction : OneArgFunction() {
         override fun call(table: LuaValue): LuaValue {
             if (table.istable() && context != null) {
-                val x = if (table.get("x").isnumber()) table.get("x").toint() else 0
-                val y = if (table.get("y").isnumber()) table.get("y").toint() else 0
-                val z = if (table.get("z").isnumber()) table.get("z").toint() else 0
+                val x = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
+                val y = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
+                val z = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
+
+                val x2 = if (table.get("x2").isnumber()) table.get("x2").todouble() else null
+                val y2 = if (table.get("y2").isnumber()) table.get("y2").todouble() else null
+                val z2 = if (table.get("z2").isnumber()) table.get("z2").todouble() else null
 
                 val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
                 val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
@@ -85,8 +113,22 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                     alpha.toFloat() / 255.0f
                 )
 
+                val blockStateObject = table.get("blockState")
+                val blockState = when {
+                    blockStateObject.isuserdata() && blockStateObject.touserdata() is LuaBlockState -> (blockStateObject.touserdata() as LuaBlockState).getBlockState()
+                    blockStateObject.isuserdata() && blockStateObject.touserdata() is BlockState -> blockStateObject.touserdata() as BlockState
+                    else -> null
+                }
 
-                context.submitOutlinedBox( BlockPos(x, y, z), colorComponents, lineWidth, throughWalls)
+                if (blockState == null) {
+                    context.submitOutlinedBox(BlockPos(x.toInt(), y.toInt(), z.toInt()), colorComponents, lineWidth, throughWalls)
+                }
+                else if (x2 != null && y2 != null && z2 != null) {
+                    context.submitOutlinedBox(Box(Vec3d(x, y, z), Vec3d(x2, y2, z2)), colorComponents, lineWidth, throughWalls)
+                }
+                else {
+                    context.submitOutlinedBox(blockState.getCollisionShape(mc.world, BlockPos(x.toInt(), y.toInt(), z.toInt())).boundingBox, colorComponents, lineWidth, throughWalls)
+                }
                 return TRUE
             }
             return NIL

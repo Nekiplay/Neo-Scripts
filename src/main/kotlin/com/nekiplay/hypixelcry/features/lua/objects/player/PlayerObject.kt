@@ -1,20 +1,18 @@
 package com.nekiplay.hypixelcry.features.lua.objects.player
 
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.sugar.getScoreabordLines
 import com.nekiplay.hypixelcry.sugar.getTab
-import com.nekiplay.hypixelcry.utils.NotificationUtils
 import com.nekiplay.hypixelcry.utils.PlayerUtils
 import com.nekiplay.hypixelcry.utils.RaycastUtils
 import com.nekiplay.hypixelcry.utils.Rotations
 import com.nekiplay.hypixelcry.utils.StatusBarTracker
 import com.nekiplay.hypixelcry.utils.Utils
 import com.nekiplay.hypixelcry.utils.trackers.ColdTracker
-import kotlinx.io.files.SystemTemporaryDirectory
 import net.minecraft.client.toast.SystemToast
-import net.minecraft.client.toast.Toast
 import net.minecraft.text.Text
 import net.minecraft.util.Hand
 import net.minecraft.util.hit.BlockHitResult
@@ -40,14 +38,28 @@ class PlayerObject : LuaValue() {
             "network" -> NetworkObject()
 
             // Variables
-            "entity" -> EntityUtils.ToLua(mc.player)
-            "fishHook" -> EntityUtils.ToLua(mc.player?.fishHook)
+            "entity" -> {
+                if (mc.player != null) {
+                    LuaEntity(mc.player!!)
+                }
+                else {
+                    NIL
+                }
+            }
+            "fishHook" -> {
+                if (mc.player != null && mc.player?.fishHook != null) {
+                    LuaEntity(mc.player!!.fishHook!!)
+                }
+                else {
+                    NIL
+                }
+            }
 
             // Functions
             "addMessage" -> AddChatMessageFunction()
             "sendMessage" -> SendChatMessageFunction()
             "sendCommand" -> SendChatMessageFunction()
-            "getPos" -> GetPlayerPosFunction()
+            "getPos", "getPosition" -> GetPlayerPosFunction()
             "getRotation" -> GetPlayerRotationFunction()
             "setRotation" -> SetPlayerRotationFunction()
             "getName" -> GetPlayerNameFunction()
@@ -205,7 +217,7 @@ class PlayerObject : LuaValue() {
             HitResult.Type.ENTITY -> {
                 val table = tableOf()
                 table.set("type", "entity")
-                table.set("data", EntityUtils.ToLua((hitResult as EntityHitResult).entity))
+                table.set("data", LuaEntity((hitResult as EntityHitResult).entity))
                 return table
             }
             HitResult.Type.BLOCK -> {
