@@ -4,6 +4,7 @@ import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
 import net.minecraft.block.BlockState
+import net.minecraft.block.ShapeContext
 import net.minecraft.client.texture.NativeImage
 import net.minecraft.client.texture.NativeImageBackedTexture
 import net.minecraft.text.Text
@@ -53,14 +54,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
 
                 val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
-
-                val blockStateObject = table.get("blockState")
-                val blockState = when {
-                    blockStateObject.isuserdata() && blockStateObject.touserdata() is LuaBlockState -> (blockStateObject.touserdata() as LuaBlockState).getState()
-                    blockStateObject.isuserdata() && blockStateObject.touserdata() is BlockState -> blockStateObject.touserdata() as BlockState
-                    else -> null
-                }
-
+                
                 val colorComponents = floatArrayOf(
                     red.toFloat() / 255.0f,
                     green.toFloat() / 255.0f,
@@ -69,14 +63,11 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
 
                 val alphaComponent = alpha.toFloat() / 255.0f
 
-                if (blockState == null) {
-                    context.submitFilledBox(BlockPos(x.toInt(), y.toInt(), z.toInt()), colorComponents, alphaComponent, throughWalls)
-                }
-                else if (x2 != null && y2 != null && z2 != null) {
+                if (x2 != null && y2 != null && z2 != null) {
                     context.submitFilledBox(Box(Vec3d(x, y, z), Vec3d(x2, y2, z2)), colorComponents, alphaComponent, throughWalls)
                 }
                 else {
-                    context.submitFilledBox(blockState.getCollisionShape(mc.world, BlockPos(x.toInt(), y.toInt(), z.toInt())).boundingBox, colorComponents, alphaComponent, throughWalls)
+                    context.submitFilledBox(BlockPos(x.toInt(), y.toInt(), z.toInt()), colorComponents, alphaComponent, throughWalls)
                 }
                 return TRUE
             }
@@ -111,21 +102,11 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                     alpha.toFloat() / 255.0f
                 )
 
-                val blockStateObject = table.get("blockState")
-                val blockState = when {
-                    blockStateObject.isuserdata() && blockStateObject.touserdata() is LuaBlockState -> (blockStateObject.touserdata() as LuaBlockState).getState()
-                    blockStateObject.isuserdata() && blockStateObject.touserdata() is BlockState -> blockStateObject.touserdata() as BlockState
-                    else -> null
-                }
-
-                if (blockState == null) {
-                    context.submitOutlinedBox(BlockPos(x.toInt(), y.toInt(), z.toInt()), colorComponents, lineWidth, throughWalls)
-                }
-                else if (x2 != null && y2 != null && z2 != null) {
+                if (x2 != null && y2 != null && z2 != null) {
                     context.submitOutlinedBox(Box(Vec3d(x, y, z), Vec3d(x2, y2, z2)), colorComponents, lineWidth, throughWalls)
                 }
                 else {
-                    context.submitOutlinedBox(blockState.getCollisionShape(mc.world, BlockPos(x.toInt(), y.toInt(), z.toInt())).boundingBox, colorComponents, lineWidth, throughWalls)
+                    context.submitOutlinedBox(BlockPos(x.toInt(), y.toInt(), z.toInt()), colorComponents, lineWidth, throughWalls)
                 }
                 return TRUE
             }
@@ -133,8 +114,8 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         }
     }
 
-    fun getArgb(alpha: Int, red: Int, green: Int, blue: Int): Int {
-        return (alpha shl 24) or (red shl 16) or (green shl 8) or blue
+    fun getArgb(red: Int, green: Int, blue: Int): Int {
+        return (0xFF shl 24) or (red shl 16) or (green shl 8) or blue
     }
 
     private inner class RenderTextFunction : OneArgFunction() {
@@ -150,16 +131,15 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 val red = if (table.get("red").isnumber()) table.get("red").toint() else -1
                 val green = if (table.get("green").isnumber()) table.get("green").toint() else -1
                 val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else -1
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else -1
 
                 val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
                 val pos = Vec3d(x, y, z)
 
-                if (alpha != -1 && red != -1 && green != -1 && blue != -1) {
+                if (red != -1 && green != -1 && blue != -1) {
                     context.submitText(
                         Text.of(text),
                         pos,
-                        ColorHelper.fromAbgr(getArgb(alpha, red, green, blue)),
+                        ColorHelper.fromAbgr(getArgb(red, green, blue)),
                         scale,
                         0.5f,
                         throughWalls

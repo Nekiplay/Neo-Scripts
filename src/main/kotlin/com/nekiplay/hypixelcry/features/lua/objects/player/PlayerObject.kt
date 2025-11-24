@@ -272,7 +272,7 @@ class PlayerObject : LuaValue() {
                 if (player != null) {
                     // Ограничиваем yaw в диапазоне -180° до 180°
                     var yaw = arg1.tofloat()
-                    yaw = yaw % 360f
+                    yaw %= 360f
                     if (yaw > 180f) yaw -= 360f
                     if (yaw < -180f) yaw += 360f
 

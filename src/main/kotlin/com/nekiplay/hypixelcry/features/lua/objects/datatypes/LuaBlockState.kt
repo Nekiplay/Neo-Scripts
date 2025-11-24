@@ -4,6 +4,8 @@ import net.minecraft.block.Block
 import net.minecraft.block.BlockState
 import net.minecraft.block.FacingBlock
 import net.minecraft.block.PistonBlock
+import net.minecraft.block.PowderSnowBlock
+import net.minecraft.block.SnowyBlock
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 
@@ -21,15 +23,17 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
             "is_liquid" -> valueOf(blockState.isLiquid)
             "is_air" -> valueOf(blockState.isAir)
             "facing" -> {
-                if (blockState.getOrEmpty(FacingBlock.FACING).isPresent) {
-                    valueOf(blockState.get(FacingBlock.FACING).name)
+                val facing = blockState.getOrEmpty(FacingBlock.FACING)
+                if (facing.isPresent) {
+                    valueOf(facing.get().name)
                 } else {
                     LuaValue.NIL
                 }
             }
             "extended" -> {
-                if (blockState.getOrEmpty(PistonBlock.EXTENDED).isPresent) {
-                    valueOf(blockState.get(PistonBlock.EXTENDED))
+                val extended = blockState.getOrEmpty(PistonBlock.EXTENDED)
+                if (extended.isPresent) {
+                    valueOf(extended.get())
                 } else {
                     LuaValue.NIL
                 }

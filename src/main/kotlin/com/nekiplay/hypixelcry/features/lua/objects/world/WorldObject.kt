@@ -8,6 +8,7 @@ import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.RaycastUtils
 import com.nekiplay.hypixelcry.utils.Rotations
 import net.minecraft.block.Block
+import net.minecraft.block.BlockState
 import net.minecraft.util.hit.EntityHitResult
 import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.hit.HitResult
@@ -29,18 +30,150 @@ class WorldObject : LuaValue() {
         return when (key.tojstring()) {
             // Functions
             "getRotation" -> GetRotationFunction()
-            "getBlock" -> GetBlockFunction()
+            "getBlock", "getBlockState" -> GetBlockFunction()
             "setBlock" -> SetBlockFunction()
             "isBlockLoaded" -> IsBlockLoadedFunction()
 
             "getEntities" -> GetEntitiesFunction()
             "getLivingEntities" -> GetLivingEntitiesFunction()
             "getEntityById" -> GetEntityByIdFunction()
+            "getCollisionBoxes" -> GetCollisionBoxesFunction()
+            "getOutlineBoxes" -> GetOutlineBoxesFunction()
 
             "raycast" -> RaycastFunction()
             "raycastToBlocks" -> RaycastToBlocksFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetOutlineBoxesFunction : FourArgFunction() {
+        override fun invoke(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?, arg4: LuaValue?): LuaValue {
+            // Проверяем обязательные аргументы (координаты)
+            if (arg1?.isnumber() != true || arg2?.isnumber() != true || arg3?.isnumber() != true) {
+                return LuaValue.error("Expected three number arguments for coordinates")
+            }
+
+            // Проверяем blockState аргумент
+            if (arg4 == null) {
+                return LuaValue.error("BlockState argument is required")
+            }
+
+            val x = arg1.toint()
+            val y = arg2.toint()
+            val z = arg3.toint()
+            val blockPos = BlockPos(x, y, z)
+
+            val blockState = when {
+                arg4.isuserdata(LuaBlockState::class.java) -> {
+                    val luaBlockState = arg4.touserdata() as? LuaBlockState
+                    luaBlockState?.getState()
+                }
+                arg4.isuserdata(BlockState::class.java) -> {
+                    arg4.touserdata() as? BlockState
+                }
+                else -> null
+            }
+
+            // Если не удалось получить BlockState, возвращаем пустой список
+            if (blockState == null) {
+                return LuaValue.error("Invalid BlockState provided")
+            }
+
+            // Получаем collision shape
+            val collisionShape = try {
+                blockState.getOutlineShape(mc.world, blockPos)
+            } catch (e: Exception) {
+                return LuaValue.error("Error getting collision shape: ${e.message}")
+            }
+
+            // Если shape пустой, возвращаем пустую таблицу
+            if (collisionShape.isEmpty) {
+                return LuaValue.tableOf()
+            }
+
+            // Конвертируем VoxelShape в Lua таблицу с bounding boxes
+            val result = LuaValue.tableOf()
+
+            var index: Int = 1
+            collisionShape.boundingBoxes.forEach { voxel ->
+                val boxTable = LuaValue.tableOf()
+                boxTable.set("minX", LuaValue.valueOf(voxel.minX))
+                boxTable.set("minY", LuaValue.valueOf(voxel.minY))
+                boxTable.set("minZ", LuaValue.valueOf(voxel.minZ))
+                boxTable.set("maxX", LuaValue.valueOf(voxel.maxX))
+                boxTable.set("maxY", LuaValue.valueOf(voxel.maxY))
+                boxTable.set("maxZ", LuaValue.valueOf(voxel.maxZ))
+                result.set(index, boxTable)
+                index++
+            }
+
+            return result
+        }
+    }
+
+    private inner class GetCollisionBoxesFunction : FourArgFunction() {
+        override fun invoke(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?, arg4: LuaValue?): LuaValue {
+            // Проверяем обязательные аргументы (координаты)
+            if (arg1?.isnumber() != true || arg2?.isnumber() != true || arg3?.isnumber() != true) {
+                return LuaValue.error("Expected three number arguments for coordinates")
+            }
+
+            // Проверяем blockState аргумент
+            if (arg4 == null) {
+                return LuaValue.error("BlockState argument is required")
+            }
+
+            val x = arg1.toint()
+            val y = arg2.toint()
+            val z = arg3.toint()
+            val blockPos = BlockPos(x, y, z)
+
+            val blockState = when {
+                arg4.isuserdata(LuaBlockState::class.java) -> {
+                    val luaBlockState = arg4.touserdata() as? LuaBlockState
+                    luaBlockState?.getState()
+                }
+                arg4.isuserdata(BlockState::class.java) -> {
+                    arg4.touserdata() as? BlockState
+                }
+                else -> null
+            }
+
+            // Если не удалось получить BlockState, возвращаем пустой список
+            if (blockState == null) {
+                return LuaValue.error("Invalid BlockState provided")
+            }
+
+            // Получаем collision shape
+            val collisionShape = try {
+                blockState.getCollisionShape(mc.world, blockPos)
+            } catch (e: Exception) {
+                return LuaValue.error("Error getting collision shape: ${e.message}")
+            }
+
+            // Если shape пустой, возвращаем пустую таблицу
+            if (collisionShape.isEmpty) {
+                return LuaValue.tableOf()
+            }
+
+            // Конвертируем VoxelShape в Lua таблицу с bounding boxes
+            val result = LuaValue.tableOf()
+
+            var index: Int = 1
+            collisionShape.boundingBoxes.forEach { voxel ->
+                val boxTable = LuaValue.tableOf()
+                boxTable.set("minX", LuaValue.valueOf(voxel.minX))
+                boxTable.set("minY", LuaValue.valueOf(voxel.minY))
+                boxTable.set("minZ", LuaValue.valueOf(voxel.minZ))
+                boxTable.set("maxX", LuaValue.valueOf(voxel.maxX))
+                boxTable.set("maxY", LuaValue.valueOf(voxel.maxY))
+                boxTable.set("maxZ", LuaValue.valueOf(voxel.maxZ))
+                result.set(index, boxTable)
+                index++
+            }
+
+            return result
+        }
     }
 
     private inner class RaycastFunction : OneArgFunction() {
@@ -74,7 +207,6 @@ class WorldObject : LuaValue() {
                         RaycastContext.FluidHandling.ANY,
                         mc.player
                     )
-
                 }
 
                 val hitResult = mc.world?.raycast(context)
