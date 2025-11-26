@@ -328,7 +328,7 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
     }
 
     @Override
-    public void submitFilledCircle(Vec3d centre, float radius, int segments, int colour) {
+    public void submitFilledCircle(Vec3d centre, float radius, int segments, int colour, boolean throughWalls) {
         ensureNotFrozen();
 
         if (this.filledCircleStates == null) {
@@ -340,6 +340,7 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
         state.radius = radius;
         state.segments = segments;
         state.colour = colour;
+        state.throughWalls = throughWalls;
 
         this.filledCircleStates.add(state);
     }
@@ -363,7 +364,7 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
     }
 
     @Override
-    public void submitOutlinedCircle(Vec3d centre, float radius, float thickness, int segments, int colour) {
+    public void submitOutlinedCircle(Vec3d centre, float radius, float thickness, int segments, int colour, boolean throughWalls) {
         ensureNotFrozen();
 
         if (this.outlinedCircleStates == null) {
@@ -376,6 +377,7 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
         state.thickness = thickness;
         state.segments = segments;
         state.colour = colour;
+        state.throughWalls = throughWalls;
 
         this.outlinedCircleStates.add(state);
     }

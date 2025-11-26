@@ -85,7 +85,7 @@ public interface PrimitiveCollector {
      * @param radius   The radius of the circle.
      * @param segments The number of triangles used to approximate the circle.
      */
-    void submitFilledCircle(Vec3d centre, float radius, int segments, int colour);
+    void submitFilledCircle(Vec3d centre, float radius, int segments, int colour, boolean throughWalls);
 
     /**
      * Submits a circle sphere in using triangle strips.
@@ -105,5 +105,5 @@ public interface PrimitiveCollector {
      * @param thickness The thickness of the outline in blocks.
      * @param segments  The number of triangles used to approximate the circle.
      */
-    void submitOutlinedCircle(Vec3d centre, float radius, float thickness, int segments, int colour);
+    void submitOutlinedCircle(Vec3d centre, float radius, float thickness, int segments, int colour, boolean throughWalls);
 }

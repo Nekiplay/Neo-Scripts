@@ -7,4 +7,5 @@ public class FilledCircleRenderState {
     public float radius;
     public int segments;
     public int colour;
+    public boolean throughWalls;
 }

@@ -8,4 +8,5 @@ public class OutlinedCircleRenderState {
     public float thickness;
     public int segments;
     public int colour;
+    public boolean throughWalls;
 }

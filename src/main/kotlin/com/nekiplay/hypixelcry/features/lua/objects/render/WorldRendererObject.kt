@@ -28,13 +28,64 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "renderFilled" -> RenderFilledFunction()
+            "renderFilledCircle" -> RenderFilledCircleFunction()
             "renderOutline" -> RenderOutlineFunction()
+            "renderOutlineCircle" -> RenderOutlineCircleFunction()
             "renderText" -> RenderTextFunction()
             "renderLinesFromPoints" -> RenderLinesFromPointsFunction()
             "renderLineFromCursor" -> RenderLineFromCursorFunction()
             "renderImage" -> RenderImageFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class RenderFilledCircleFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable() && context != null) {
+                val x = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
+                val y = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
+                val z = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
+                val radius = if (table.get("radius").isnumber()) table.get("radius").todouble() else 1.0
+                val segments = if (table.get("segments").isnumber()) table.get("segments").toint() else 8
+
+
+                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
+                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
+                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
+                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
+
+                val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
+
+                context.submitFilledCircle(Vec3d(x, y, z), radius.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
+                return TRUE
+            }
+            return NIL
+        }
+    }
+
+    private inner class RenderOutlineCircleFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable() && context != null) {
+                val x = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
+                val y = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
+                val z = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
+                val radius = if (table.get("radius").isnumber()) table.get("radius").todouble() else 1.0
+                val segments = if (table.get("segments").isnumber()) table.get("segments").toint() else 8
+                val thickness = if (table.get("line_width").isnumber()) table.get("line_width").todouble() else 1.0
+
+
+                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
+                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
+                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
+                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
+
+                val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
+
+                context.submitOutlinedCircle(Vec3d(x, y, z), radius.toFloat(), thickness.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
+                return TRUE
+            }
+            return NIL
+        }
     }
 
     private inner class RenderFilledFunction : OneArgFunction() {
@@ -114,8 +165,11 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         }
     }
 
-    fun getArgb(red: Int, green: Int, blue: Int): Int {
+    fun getrgb(red: Int, green: Int, blue: Int): Int {
         return (0xFF shl 24) or (red shl 16) or (green shl 8) or blue
+    }
+    fun getArgb(alpha: Int, red: Int, green: Int, blue: Int): Int {
+        return (alpha shl 24) or (red shl 16) or (green shl 8) or blue
     }
 
     private inner class RenderTextFunction : OneArgFunction() {
@@ -139,7 +193,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                     context.submitText(
                         Text.of(text),
                         pos,
-                        ColorHelper.fromAbgr(getArgb(red, green, blue)),
+                        ColorHelper.fromAbgr(getrgb(red, green, blue)),
                         scale,
                         0.5f,
                         throughWalls

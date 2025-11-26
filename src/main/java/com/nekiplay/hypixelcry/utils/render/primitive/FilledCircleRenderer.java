@@ -15,7 +15,7 @@ public final class FilledCircleRenderer implements PrimitiveRenderer<FilledCircl
 
     @Override
     public void submitPrimitives(FilledCircleRenderState state, CameraRenderState cameraState) {
-        BufferBuilder buffer = Renderer.getBuffer(SkyblockerRenderPipelines.CIRCLE);
+        BufferBuilder buffer = Renderer.getBuffer(state.throughWalls ? SkyblockerRenderPipelines.CIRCLE_THROUGH_WALLS : SkyblockerRenderPipelines.CIRCLE);
         Matrix4f positionMatrix = new Matrix4f()
                 .translate((float) -cameraState.pos.x, (float) -cameraState.pos.y, (float) -cameraState.pos.z);
 

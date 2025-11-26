@@ -3,6 +3,7 @@ package com.nekiplay.hypixelcry.utils.render.primitive;
 import com.nekiplay.hypixelcry.utils.render.Renderer;
 import com.nekiplay.hypixelcry.utils.render.SkyblockerRenderPipelines;
 import com.nekiplay.hypixelcry.utils.render.state.OutlinedCircleRenderState;
+import net.minecraft.client.gl.RenderPipelines;
 import org.joml.Matrix4f;
 
 import net.minecraft.client.render.BufferBuilder;
@@ -15,7 +16,7 @@ public final class OutlinedCircleRenderer implements PrimitiveRenderer<OutlinedC
 
     @Override
     public void submitPrimitives(OutlinedCircleRenderState state, CameraRenderState cameraState) {
-        BufferBuilder buffer = Renderer.getBuffer(SkyblockerRenderPipelines.CIRCLE_LINES);
+        BufferBuilder buffer = Renderer.getBuffer(state.throughWalls ? SkyblockerRenderPipelines.CIRCLE_LINES_THROUGH_WALLS : SkyblockerRenderPipelines.CIRCLE_LINES);
         Matrix4f positionMatrix = new Matrix4f()
                 .translate((float) -cameraState.pos.x, (float) -cameraState.pos.y, (float) -cameraState.pos.z);
 
