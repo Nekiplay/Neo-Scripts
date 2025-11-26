@@ -149,7 +149,7 @@ public class PathFinderWorker {
     }
 
     private static BlockPos getNearestLoadedPos(CalculationContext ctx, BlockPos target) {
-        if (ctx.getWorld().isPosLoaded(target)) {
+        if (ctx.getWorld().isLoaded(target)) {
             return target;
         }
 
@@ -174,7 +174,7 @@ public class PathFinderWorker {
             int checkZ = playerPos.getZ() + (int)(stepZ * i);
             BlockPos checkPos = new BlockPos(checkX, playerPos.getY(), checkZ);
 
-            if (ctx.getWorld().isPosLoaded(checkPos)) {
+            if (ctx.getWorld().isLoaded(checkPos)) {
                 farthestLoaded = checkPos;
             } else {
                 break;

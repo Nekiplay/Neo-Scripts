@@ -3,7 +3,6 @@ package com.nekiplay.hypixelcry.utils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
-import net.minecraft.util.math.*;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.projectile.ProjectileUtil;

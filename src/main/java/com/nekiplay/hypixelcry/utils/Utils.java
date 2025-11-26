@@ -25,7 +25,6 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.scoreboard.*;
 import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.PlayerTeam;

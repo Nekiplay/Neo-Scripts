@@ -7,10 +7,6 @@ import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.properties.PropertyMap;
 import com.mojang.serialization.JsonOps;
 import com.nekiplay.hypixelcry.utils.itemlist.*;
-import it.unimi.dsi.fastutil.doubles.DoubleBooleanPair;
-import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import net.minecraft.component.type.*;
 import net.minecraft.core.component.DataComponentHolder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
@@ -27,7 +23,6 @@ import net.minecraft.world.item.component.CustomModelData;
 import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.item.component.ResolvableProfile;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.stream.Collectors;
