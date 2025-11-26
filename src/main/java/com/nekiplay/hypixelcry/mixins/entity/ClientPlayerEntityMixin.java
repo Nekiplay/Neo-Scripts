@@ -31,9 +31,4 @@ public abstract class ClientPlayerEntityMixin extends AbstractClientPlayer {
     private void onSendMovementPacketsTail(CallbackInfo info) {
         SendMovementPacketsEvent.POST.invoker().onSendMovementPacketsPost();
     }
-
-    @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/ClientPacketListener;sendPacket(Lnet/minecraft/network/protocol/Packet;)V", ordinal = 1, shift = At.Shift.AFTER))
-    private void onTickHasVehicleAfterSendPackets(CallbackInfo info) {
-        SendMovementPacketsEvent.POST.invoker().onSendMovementPacketsPost();
-    }
 }

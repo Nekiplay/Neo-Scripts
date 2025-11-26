@@ -280,8 +280,8 @@ class PlayerObject : LuaValue() {
                     var pitch = arg2.tofloat()
                     pitch = pitch.coerceIn(-90f, 90f)
 
-                    player.xRot = yaw
-                    player.yRot = pitch
+                    player.yRot = yaw
+                    player.xRot = pitch
                     return TRUE
                 }
                 return FALSE
@@ -295,8 +295,8 @@ class PlayerObject : LuaValue() {
             val player = mc.player;
             return if (player != null) {
                 val table = tableOf()
-                table.set("yaw", valueOf(player.xRot.toDouble()))
-                table.set("pitch", valueOf(player.yRot.toDouble()))
+                table.set("yaw", valueOf(player.yRot.toDouble()))
+                table.set("pitch", valueOf(player.xRot.toDouble()))
                 table
             } else {
                 NIL
