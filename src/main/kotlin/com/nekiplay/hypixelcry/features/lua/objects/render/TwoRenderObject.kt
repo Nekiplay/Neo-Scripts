@@ -1,16 +1,15 @@
 package com.nekiplay.hypixelcry.features.lua.objects.render
 
-import com.mojang.blaze3d.vertex.VertexFormat
+import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
-import net.minecraft.client.font.TextRenderer
-import net.minecraft.client.gl.RenderPipelines
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.texture.NativeImage
-import net.minecraft.client.texture.NativeImageBackedTexture
-import net.minecraft.item.ItemStack
-import net.minecraft.text.Text
-import net.minecraft.util.Identifier
+import net.minecraft.client.gui.Font
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.client.renderer.texture.DynamicTexture
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.item.ItemStack
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
@@ -20,16 +19,16 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Supplier
 
-class TwoRenderObject(private val context: DrawContext?, private val scriptId: String? = null): LuaValue() {
+class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: String? = null): LuaValue() {
     // Кэш для загруженных текстур с разделением по скриптам
     companion object {
-        val textureCache = ConcurrentHashMap<String, MutableMap<String, Identifier>>()
+        val textureCache = ConcurrentHashMap<String, MutableMap<String, ResourceLocation>>()
         val textureCounter = AtomicInteger(0)
 
         // Очистка кэша для конкретного скрипта
         fun clearScriptCache(scriptId: String) {
             textureCache[scriptId]?.values?.forEach { identifier ->
-                mc.textureManager.destroyTexture(identifier)
+                mc.textureManager.release(identifier)
             }
             textureCache.remove(scriptId)
         }
@@ -38,7 +37,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
         fun clearAllCaches() {
             textureCache.values.forEach { scriptCache ->
                 scriptCache.values.forEach { identifier ->
-                    mc.textureManager.destroyTexture(identifier)
+                    mc.textureManager.release(identifier)
                 }
             }
             textureCache.clear()
@@ -66,8 +65,8 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
     private inner class GetTextWidthFunction : OneArgFunction() {
         override fun call(text: LuaValue): LuaValue {
             if (text.isstring()) {
-                val textRenderer: TextRenderer? = mc.textRenderer
-                val width: Int? = textRenderer?.getWidth(text.tojstring())
+                val textRenderer: Font? = mc.font
+                val width: Int? = textRenderer?.width(text.tojstring())
                 if (width != null) {
                     return valueOf(width)
                 }
@@ -79,8 +78,8 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
     private inner class GetWindowScaleFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val table = tableOf()
-            val width: Int = mc.window.scaledWidth
-            val height: Int = mc.window.scaledHeight
+            val width: Int = mc.window.screenWidth
+            val height: Int = mc.window.screenHeight
 
             table.set("width", width)
             table.set("height", height)
@@ -110,18 +109,18 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
                 val scale = if (table.get("scale").isnumber()) table.get("scale").tofloat() else 1.0f
 
 
-                val textRenderer: TextRenderer? = mc.textRenderer
+                val textRenderer: Font? = mc.font
                 if (scale != 1.0f) {
-                    context.matrices.pushMatrix()
-                    context.matrices.translate(x.toFloat(), y.toFloat())
-                    context.matrices.scale(scale, scale)
+                    context.pose().pushMatrix()
+                    context.pose().translate(x.toFloat(), y.toFloat())
+                    context.pose().scale(scale, scale)
 
-                    context.drawText(textRenderer, Text.literal(text), 0, 0, color, isShadow)
+                    context.drawString(textRenderer, Component.literal(text), 0, 0, color, isShadow)
 
-                    context.matrices.popMatrix()
+                    context.pose().popMatrix()
                 }
                 else {
-                    context.drawText(textRenderer, Text.literal(text), x, y, color, isShadow)
+                    context.drawString(textRenderer, Component.literal(text), x, y, color, isShadow)
                 }
             }
             return NIL
@@ -145,7 +144,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
                 try {
                     val identifier = loadTexture(path)
                     if (identifier != null) {
-                        context.drawTexture(
+                        context.blit(
                             RenderPipelines.GUI_TEXTURED, identifier,
                             x, y,
                             u.toFloat(), v.toFloat(),
@@ -173,7 +172,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
     /**
      * Загружает текстуру из файла и возвращает её Identifier
      */
-    private fun loadTexture(path: String): Identifier? {
+    private fun loadTexture(path: String): ResourceLocation? {
         val scriptCacheId = scriptId ?: "2d_global"
 
         // Проверяем кэш для текущего скрипта
@@ -193,14 +192,14 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
 
                 // Используем правильный конструктор NativeImageBackedTexture
                 val textureName = "hypixelcry:texture_${scriptCacheId}_${textureCounter.getAndIncrement()}"
-                val texture = NativeImageBackedTexture(
+                val texture = DynamicTexture(
                     Supplier { textureName },
                     nativeImage
                 )
 
                 // Создаем идентификатор
-                val identifier = Identifier.of("hypixelcry", "texture_${scriptCacheId}_${textureCounter.get()}")
-                mc.textureManager.registerTexture(identifier, texture)
+                val identifier = ResourceLocation.fromNamespaceAndPath("hypixelcry", "texture_${scriptCacheId}_${textureCounter.get()}")
+                mc.textureManager.register(identifier, texture)
 
                 // Сохраняем в кэш текущего скрипта
                 scriptCache[path] = identifier
@@ -239,7 +238,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
         }
     }
 
-    private fun drawLine(context: DrawContext, x1: Int, y1: Int, x2: Int, y2: Int, color: Int, width: Int = 1) {
+    private fun drawLine(context: GuiGraphics, x1: Int, y1: Int, x2: Int, y2: Int, color: Int, width: Int = 1) {
         if (width <= 1) {
             // Обычная линия шириной 1 пиксель
             drawLineBresenham(context, x1, y1, x2, y2, color)
@@ -249,7 +248,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
         }
     }
 
-    private fun drawLineBresenham(context: DrawContext, x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
+    private fun drawLineBresenham(context: GuiGraphics, x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
         val dx = kotlin.math.abs(x2 - x1)
         val dy = kotlin.math.abs(y2 - y1)
         val sx = if (x1 < x2) 1 else -1
@@ -276,7 +275,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
         }
     }
 
-    private fun drawThickLine(context: DrawContext, x1: Int, y1: Int, x2: Int, y2: Int, color: Int, width: Int) {
+    private fun drawThickLine(context: GuiGraphics, x1: Int, y1: Int, x2: Int, y2: Int, color: Int, width: Int) {
         val dx = x2 - x1
         val dy = y2 - y1
         val length = kotlin.math.sqrt((dx * dx + dy * dy).toDouble())
@@ -308,7 +307,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
         fillTriangleSimple(context, x1b, y1b, x2a, y2a, x2b, y2b, color)
     }
 
-    private fun fillTriangleSimple(context: DrawContext, x1: Int, y1: Int, x2: Int, y2: Int, x3: Int, y3: Int, color: Int) {
+    private fun fillTriangleSimple(context: GuiGraphics, x1: Int, y1: Int, x2: Int, y2: Int, x3: Int, y3: Int, color: Int) {
         val minY = minOf(y1, y2, y3)
         val maxY = maxOf(y1, y2, y3)
 
@@ -326,7 +325,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
                         val startX = intersections[i]
                         val endX = intersections[i + 1]
                         if (startX <= endX) {
-                            context.drawHorizontalLine(startX, endX, y, color)
+                            context.hLine(startX, endX, y, color)
                         }
                     }
                 }
@@ -408,7 +407,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
         }
     }
 
-    private fun drawPolygon(context: DrawContext, points: List<Pair<Float, Float>>, color: Int) {
+    private fun drawPolygon(context: GuiGraphics, points: List<Pair<Float, Float>>, color: Int) {
         if (points.size < 3) return
 
         // Кэшируем первую вершину
@@ -423,7 +422,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
         }
     }
 
-    private fun drawQuad(context: DrawContext, x1: Float, y1: Float, x2: Float, y2: Float,
+    private fun drawQuad(context: GuiGraphics, x1: Float, y1: Float, x2: Float, y2: Float,
                          x3: Float, y3: Float, x4: Float, y4: Float, color: Int) {
         // Рисуем четырехугольник как два треугольника
         drawTriangle(context, x1, y1, x2, y2, x3, y3, color)
@@ -446,13 +445,13 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
 
                 if (itemStack != null) {
                     if (scale != 1.0f) {
-                        context.matrices.pushMatrix()
-                        context.matrices.translate(x.toFloat(), y.toFloat())
-                        context.matrices.scale(scale, scale)
-                        context.drawItem(itemStack, 0, 0)
-                        context.matrices.popMatrix()
+                        context.pose().pushMatrix()
+                        context.pose().translate(x.toFloat(), y.toFloat())
+                        context.pose().scale(scale, scale)
+                        context.renderItem(itemStack, 0, 0)
+                        context.pose().popMatrix()
                     } else {
-                        context.drawItem(itemStack, x, y)
+                        context.renderItem(itemStack, x, y)
                     }
                 }
             }
@@ -460,7 +459,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
         }
     }
 
-    private fun drawTriangle(context: DrawContext,
+    private fun drawTriangle(context: GuiGraphics,
                              x1: Float, y1: Float,
                              x2: Float, y2: Float,
                              x3: Float, y3: Float,
@@ -475,7 +474,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
         fillTriangle(context, x1, y1, x2, y2, x3, y3, color)
     }
 
-    private fun drawTriangleOutline(context: DrawContext,
+    private fun drawTriangleOutline(context: GuiGraphics,
                                     x1: Float, y1: Float,
                                     x2: Float, y2: Float,
                                     x3: Float, y3: Float,
@@ -486,7 +485,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
         drawLine(context, x3.toInt(), y3.toInt(), x1.toInt(), y1.toInt(), color)
     }
 
-    private fun fillTriangle(context: DrawContext,
+    private fun fillTriangle(context: GuiGraphics,
                              x1: Float, y1: Float,
                              x2: Float, y2: Float,
                              x3: Float, y3: Float,
@@ -509,7 +508,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
                     if (i + 1 < intersections.size) {
                         val x1 = intersections[i]
                         val x2 = intersections[i + 1]
-                        context.drawHorizontalLine(x1, x2, y, color)
+                        context.hLine(x1, x2, y, color)
                     }
                 }
             }
@@ -528,7 +527,7 @@ class TwoRenderObject(private val context: DrawContext?, private val scriptId: S
         }
     }
 
-    private fun drawLine(context: DrawContext, x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
+    private fun drawLine(context: GuiGraphics, x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
         // Алгоритм Брезенхема для рисования линии
         val dx = kotlin.math.abs(x2 - x1)
         val dy = kotlin.math.abs(y2 - y1)

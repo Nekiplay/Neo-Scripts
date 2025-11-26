@@ -1,18 +1,15 @@
 package com.nekiplay.hypixelcry.features.lua.objects.render
 
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
+import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
-import net.minecraft.block.BlockState
-import net.minecraft.block.ShapeContext
-import net.minecraft.client.texture.NativeImage
-import net.minecraft.client.texture.NativeImageBackedTexture
-import net.minecraft.text.Text
-import net.minecraft.util.Identifier
-import net.minecraft.util.math.BlockPos
-import net.minecraft.util.math.Box
-import net.minecraft.util.math.ColorHelper
-import net.minecraft.util.math.Vec3d
+import net.fabricmc.fabric.impl.client.indigo.renderer.helper.ColorHelper
+import net.minecraft.client.renderer.texture.DynamicTexture
+import net.minecraft.core.BlockPos
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import java.io.File
@@ -56,7 +53,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
 
                 val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
 
-                context.submitFilledCircle(Vec3d(x, y, z), radius.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
+                context.submitFilledCircle(Vec3(x, y, z), radius.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
                 return TRUE
             }
             return NIL
@@ -81,7 +78,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
 
                 val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
 
-                context.submitOutlinedCircle(Vec3d(x, y, z), radius.toFloat(), thickness.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
+                context.submitOutlinedCircle(Vec3(x, y, z), radius.toFloat(), thickness.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
                 return TRUE
             }
             return NIL
@@ -115,7 +112,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 val alphaComponent = alpha.toFloat() / 255.0f
 
                 if (x2 != null && y2 != null && z2 != null) {
-                    context.submitFilledBox(Box(Vec3d(x, y, z), Vec3d(x2, y2, z2)), colorComponents, alphaComponent, throughWalls)
+                    context.submitFilledBox(AABB(Vec3(x, y, z), Vec3(x2, y2, z2)), colorComponents, alphaComponent, throughWalls)
                 }
                 else {
                     context.submitFilledBox(BlockPos(x.toInt(), y.toInt(), z.toInt()), colorComponents, alphaComponent, throughWalls)
@@ -154,7 +151,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 )
 
                 if (x2 != null && y2 != null && z2 != null) {
-                    context.submitOutlinedBox(Box(Vec3d(x, y, z), Vec3d(x2, y2, z2)), colorComponents, lineWidth, throughWalls)
+                    context.submitOutlinedBox(AABB(Vec3(x, y, z), Vec3(x2, y2, z2)), colorComponents, lineWidth, throughWalls)
                 }
                 else {
                     context.submitOutlinedBox(BlockPos(x.toInt(), y.toInt(), z.toInt()), colorComponents, lineWidth, throughWalls)
@@ -187,13 +184,13 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else -1
 
                 val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
-                val pos = Vec3d(x, y, z)
+                val pos = Vec3(x, y, z)
 
                 if (red != -1 && green != -1 && blue != -1) {
                     context.submitText(
-                        Text.of(text),
+                        Component.literal(text),
                         pos,
-                        ColorHelper.fromAbgr(getrgb(red, green, blue)),
+                        ColorHelper.fromVanillaColor(getrgb(red, green, blue)),
                         scale,
                         0.5f,
                         throughWalls
@@ -202,7 +199,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 }
                 else {
                     context.submitText(
-                        Text.of(text),
+                        Component.literal(text),
                         pos,
                         -1,
                         scale,
@@ -222,7 +219,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 // Parse points array
                 val pointsTable = table.get("points")
                 if (pointsTable.istable()) {
-                    val pointsList = mutableListOf<Vec3d>()
+                    val pointsList = mutableListOf<Vec3>()
                     var i = 0
                     while (true) {
                         val pointTable = pointsTable.get(i)
@@ -230,7 +227,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                             val x = if (pointTable.get("x").isnumber()) pointTable.get("x").todouble() else 0.0
                             val y = if (pointTable.get("y").isnumber()) pointTable.get("y").todouble() else 0.0
                             val z = if (pointTable.get("z").isnumber()) pointTable.get("z").todouble() else 0.0
-                            pointsList.add(Vec3d(x, y, z))
+                            pointsList.add(Vec3(x, y, z))
                             i++
                         } else {
                             // If 0-based fails, try 1-based
@@ -300,7 +297,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 )
                 val alphah: Float =  alpha.toFloat() / 255.0f
 
-                val pos = Vec3d(x, y, z)
+                val pos = Vec3(x, y, z)
 
                 context.submitLineFromCursor(
                     pos,
@@ -346,7 +343,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 try {
                     val identifier = loadTexture(path)
                     if (identifier != null) {
-                        context.submitTexturedQuad(Vec3d(x, y, z), width, height, regionWidth, regionHeight, Vec3d(
+                        context.submitTexturedQuad(Vec3(x, y, z), width, height, regionWidth, regionHeight, Vec3(
                             ox, oy, oz
                         ), identifier, rgb, alpha, throughWalls)
                     }
@@ -361,7 +358,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
     /**
      * Загружает текстуру из файла и возвращает её Identifier
      */
-    private fun loadTexture(path: String): Identifier? {
+    private fun loadTexture(path: String): ResourceLocation? {
         val scriptCacheId = "wd_global"
 
         // Проверяем кэш для текущего скрипта
@@ -381,14 +378,14 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
 
                 // Используем правильный конструктор NativeImageBackedTexture
                 val textureName = "hypixelcry:texture_${scriptCacheId}_${TwoRenderObject.Companion.textureCounter.getAndIncrement()}"
-                val texture = NativeImageBackedTexture(
+                val texture = DynamicTexture(
                     Supplier { textureName },
                     nativeImage
                 )
 
                 // Создаем идентификатор
-                val identifier = Identifier.of("hypixelcry", "texture_${scriptCacheId}_${TwoRenderObject.Companion.textureCounter.get()}")
-                mc.textureManager.registerTexture(identifier, texture)
+                val identifier = ResourceLocation.fromNamespaceAndPath("hypixelcry", "texture_${scriptCacheId}_${TwoRenderObject.Companion.textureCounter.get()}")
+                mc.textureManager.register(identifier, texture)
 
                 // Сохраняем в кэш текущего скрипта
                 scriptCache[path] = identifier
