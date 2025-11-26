@@ -45,7 +45,7 @@ val shadowModImpl by configurations.creating {
 
 dependencies {
     minecraft("com.mojang:minecraft:${property("minecraft_version")}")
-    mappings("net.fabricmc:yarn:${property("yarn_mappings")}:v2")
+    mappings(loom.officialMojangMappings())
 
     implementation("org.luaj:luaj-jse:3.0.1")
     include("org.luaj:luaj-jse:3.0.1")

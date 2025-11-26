@@ -2,8 +2,8 @@ package com.nekiplay.hypixelcry.events.world;
 
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.world.chunk.Chunk;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.world.level.chunk.ChunkAccess;
 
 public class ClientChunkLoadEvent {
     public static final Event<ClientChunkLoadCallback> EVENT = EventFactory.createArrayBacked(
@@ -16,6 +16,6 @@ public class ClientChunkLoadEvent {
     );
 
     public interface ClientChunkLoadCallback {
-        void onChunkLoad(ClientWorld world, Chunk chunk);
+        void onChunkLoad(ClientLevel world, ChunkAccess chunk);
     }
 }

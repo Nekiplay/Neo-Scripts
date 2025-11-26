@@ -1,23 +1,23 @@
 package com.nekiplay.hypixelcry.utils;
 
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
 
 public class TextUtils {
-    public static String textToFormattingString(Text text) {
+    public static String textToFormattingString(Component text) {
         StringBuilder result = new StringBuilder();
 
         // Рекурсивно обрабатываем все части текста
-        for (Text sibling : text.getSiblings()) {
+        for (Component sibling : text.getSiblings()) {
             // Получаем стиль текущего текста
             Style style = sibling.getStyle();
 
             // Добавляем коды форматирования
             if (style.getColor() != null) {
-                Formatting formatting = Formatting.byName(style.getColor().getName());
+                ChatFormatting formatting = ChatFormatting.getByName(style.getColor().serialize());
                 if (formatting != null) {
-                    result.append("§").append(formatting.getCode());
+                    result.append("§").append(formatting.getChar());
                 }
             }
 

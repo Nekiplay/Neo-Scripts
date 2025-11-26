@@ -9,9 +9,9 @@ import com.nekiplay.hypixelcry.features.esp.pathfinder.PathFinderWorker;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.command.CommandRegistryAccess;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.commands.CommandBuildContext;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 
 public class PathFinderCommand {
     private static final String CUSTOM_PATH_ID = "Custom";
@@ -23,7 +23,7 @@ public class PathFinderCommand {
     }
 
     private static void registerCommands(CommandDispatcher<FabricClientCommandSource> dispatcher,
-                                         CommandRegistryAccess commandRegistryAccess) {
+                                         CommandBuildContext commandRegistryAccess) {
         dispatcher.register(
                 ClientCommandManager.literal("path")
                         .then(ClientCommandManager.literal("set")
@@ -62,6 +62,6 @@ public class PathFinderCommand {
     }
 
     private static void sendFeedback(CommandContext<FabricClientCommandSource> context, String message) {
-        context.getSource().sendFeedback(Text.literal(message));
+        context.getSource().sendFeedback(Component.literal(message));
     }
 }

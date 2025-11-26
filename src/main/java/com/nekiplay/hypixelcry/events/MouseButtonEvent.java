@@ -3,21 +3,21 @@ package com.nekiplay.hypixelcry.events;
 import com.nekiplay.hypixelcry.utils.misc.input.KeyAction;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
-import net.minecraft.util.ActionResult;
+import net.minecraft.world.InteractionResult;
 
 public class MouseButtonEvent {
     public static final Event<MouseButtonEvent.KeyCallback> EVENT = EventFactory.createArrayBacked(
             MouseButtonEvent.KeyCallback.class,
             (listeners) -> (event) -> {
                 for (MouseButtonEvent.KeyCallback listener : listeners) {
-                    ActionResult result = listener.onKeyEvent(event);
+                    InteractionResult result = listener.onKeyEvent(event);
 
-                    if(result != ActionResult.PASS) {
+                    if(result != InteractionResult.PASS) {
                         return result;
                     }
                 }
 
-                return ActionResult.PASS;
+                return InteractionResult.PASS;
             }
     );
 
@@ -38,6 +38,6 @@ public class MouseButtonEvent {
     }
 
     public interface KeyCallback {
-        ActionResult onKeyEvent(MouseButtonEvent event);
+        InteractionResult onKeyEvent(MouseButtonEvent event);
     }
 }

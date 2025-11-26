@@ -1,42 +1,41 @@
 package com.nekiplay.hypixelcry.sugar
 
-import net.minecraft.text.OrderedText
-import net.minecraft.text.Style
-import net.minecraft.text.Text
-import net.minecraft.util.Formatting
+import net.minecraft.ChatFormatting
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Style
 
-fun Text.getFormattedString(): String {
+fun Component.getFormattedString(): String {
     val sb = StringBuilder()
-    val ordered: OrderedText = this.asOrderedText()
+    val ordered = this.visualOrderText
 
-    var currentColor: Formatting? = null
-    var currentStyles = mutableSetOf<Formatting>()
+    var currentColor: ChatFormatting? = null
+    var currentStyles = mutableSetOf<ChatFormatting>()
 
     ordered.accept { _: Int, style: Style?, codePoint: Int ->
         val char = Character.toChars(codePoint)[0]
 
         // Определяем новый цвет
         val newColor = if (style?.getColor() != null) {
-            nearestVanillaColor(style.getColor()!!.rgb)
+            nearestVanillaColor(style.getColor()!!.value)
         } else {
             null
         }
 
         // Определяем новые стили
-        val newStyles = mutableSetOf<Formatting>()
-        if (style?.isBold == true) newStyles.add(Formatting.BOLD)
-        if (style?.isItalic == true) newStyles.add(Formatting.ITALIC)
-        if (style?.isUnderlined == true) newStyles.add(Formatting.UNDERLINE)
-        if (style?.isStrikethrough == true) newStyles.add(Formatting.STRIKETHROUGH)
-        if (style?.isObfuscated == true) newStyles.add(Formatting.OBFUSCATED)
+        val newStyles = mutableSetOf<ChatFormatting>()
+        if (style?.isBold == true) newStyles.add(ChatFormatting.BOLD)
+        if (style?.isItalic == true) newStyles.add(ChatFormatting.ITALIC)
+        if (style?.isUnderlined == true) newStyles.add(ChatFormatting.UNDERLINE)
+        if (style?.isStrikethrough == true) newStyles.add(ChatFormatting.STRIKETHROUGH)
+        if (style?.isObfuscated == true) newStyles.add(ChatFormatting.OBFUSCATED)
 
         // Если цвет изменился или это начало строки
         if (newColor != currentColor || sb.isEmpty()) {
             if (newColor != null) {
-                sb.append('§').append(newColor.code)
+                sb.append('§').append(newColor.char)
             } else if (currentColor != null) {
                 // Сбрасываем цвет, если он был установлен, но теперь null
-                sb.append('§').append(Formatting.RESET.code)
+                sb.append('§').append(ChatFormatting.RESET.char)
             }
             currentColor = newColor
         }
@@ -44,7 +43,7 @@ fun Text.getFormattedString(): String {
         // Добавляем стили, которые появились
         for (styleFlag in newStyles) {
             if (!currentStyles.contains(styleFlag)) {
-                sb.append('§').append(styleFlag.code)
+                sb.append('§').append(styleFlag.char)
             }
         }
 
@@ -54,12 +53,12 @@ fun Text.getFormattedString(): String {
                 // Вместо удаления отдельных стилей используем RESET и применяем заново
                 // Это проще, чем отслеживать каждый стиль отдельно
                 if (newStyles.isNotEmpty() || newColor != null) {
-                    sb.append('§').append(Formatting.RESET.code)
+                    sb.append('§').append(ChatFormatting.RESET.char)
                     if (newColor != null) {
-                        sb.append('§').append(newColor.code)
+                        sb.append('§').append(newColor.char)
                     }
                     for (s in newStyles) {
-                        sb.append('§').append(s.code)
+                        sb.append('§').append(s.char)
                     }
                 }
                 break
@@ -75,12 +74,12 @@ fun Text.getFormattedString(): String {
     return sb.toString()
 }
 
-private fun nearestVanillaColor(rgb: Int): Formatting? {
-    var best: Formatting? = null
+private fun nearestVanillaColor(rgb: Int): ChatFormatting? {
+    var best: ChatFormatting? = null
     var bestDist = Long.MAX_VALUE
-    for (f in Formatting.entries) {
+    for (f in ChatFormatting.entries) {
         if (!f.isColor) continue
-        val frgb: Int = f.colorValue ?: continue
+        val frgb: Int = f.color ?: continue
         if (frgb == -1) continue
         val dr = (((rgb shr 16) and 0xFF) - ((frgb shr 16) and 0xFF)).toLong()
         val dg = (((rgb shr 8) and 0xFF) - ((frgb shr 8) and 0xFF)).toLong()

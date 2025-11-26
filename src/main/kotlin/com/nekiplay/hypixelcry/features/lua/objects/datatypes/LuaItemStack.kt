@@ -2,10 +2,10 @@ package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 
 import com.nekiplay.hypixelcry.sugar.*
 import com.nekiplay.hypixelcry.utils.ItemUtils
-import net.minecraft.component.DataComponentTypes
-import net.minecraft.component.type.LoreComponent
-import net.minecraft.item.ItemStack
-import net.minecraft.text.Text
+import net.minecraft.core.component.DataComponents
+import net.minecraft.network.chat.Component
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.component.ItemLore
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 
@@ -16,7 +16,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
 
         return when (val field = key.tojstring()) {
             "count" -> valueOf(stack.count.toDouble())
-            "max_count" -> valueOf(stack.maxCount.toDouble())
+            "max_count" -> valueOf(stack.maxStackSize.toDouble())
             "name" -> valueOf(stack.item.name.string)
             "display_name" -> valueOf(stack.getDisplayName().getFormattedString())
             "is_empty" -> valueOf(stack.isEmpty)
@@ -58,16 +58,16 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
         when (val field = key.tojstring()) {
             "display_name" -> {
                 if (!value.isnil()) {
-                    val name = Text.literal(value.tojstring())
+                    val name = Component.literal(value.tojstring())
                     stack.setDisplayName(name)
                 } else {
                     // Удаление пользовательского имени
-                    stack.remove(DataComponentTypes.CUSTOM_NAME)
+                    stack.remove(DataComponents.CUSTOM_NAME)
                 }
             }
             "count" -> {
                 val count = value.toint()
-                if (count in 1..stack.maxCount) {
+                if (count in 1..stack.maxStackSize) {
                     stack.count = count
                 }
             }
@@ -79,8 +79,8 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
     }
 
     private fun setLore(loreValue: LuaValue) {
-        val loreLines = mutableListOf<Text>()
-        val styledLines = mutableListOf<Text>()
+        val loreLines = mutableListOf<Component>()
+        val styledLines = mutableListOf<Component>()
 
         if (loreValue.istable()) {
             var index = 1
@@ -91,7 +91,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                 }
 
                 val loreLine = currentValue.tojstring()
-                val textLine = Text.literal(loreLine)
+                val textLine = Component.literal(loreLine)
 
                 loreLines.add(textLine)
                 styledLines.add(textLine)
@@ -101,10 +101,10 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
         }
 
         if (loreLines.isNotEmpty()) {
-            val loreComponent = LoreComponent(loreLines, styledLines)
-            stack.set(DataComponentTypes.LORE, loreComponent)
+            val loreComponent = ItemLore(loreLines, styledLines)
+            stack.set(DataComponents.LORE, loreComponent)
         } else {
-            stack.remove(DataComponentTypes.LORE)
+            stack.remove(DataComponents.LORE)
         }
     }
 

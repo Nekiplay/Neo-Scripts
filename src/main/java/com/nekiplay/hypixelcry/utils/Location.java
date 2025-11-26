@@ -1,14 +1,14 @@
 package com.nekiplay.hypixelcry.utils;
 
 import com.mojang.serialization.Codec;
-import net.minecraft.util.StringIdentifiable;
 import org.apache.commons.lang3.text.WordUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.EnumSet;
+import net.minecraft.util.StringRepresentable;
 
-public enum Location implements StringIdentifiable {
+public enum Location implements StringRepresentable {
     PRIVATE_ISLAND("dynamic"),
     GARDEN("garden", "Garden"),
     HUB("hub", "Hub"),
@@ -42,7 +42,7 @@ public enum Location implements StringIdentifiable {
      */
     UNKNOWN("unknown");
 
-    public static final Codec<Location> CODEC = StringIdentifiable.createCodec(Location::values);
+    public static final Codec<Location> CODEC = StringRepresentable.fromEnum(Location::values);
     public static final Codec<EnumSet<Location>> SET_CODEC = CodecUtils.enumSetCodec(CODEC, Location.class);
 
     /**
@@ -85,7 +85,7 @@ public enum Location implements StringIdentifiable {
     }
 
     @Override
-    public String asString() {
+    public String getSerializedName() {
         return id();
     }
 

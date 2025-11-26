@@ -2,23 +2,23 @@ package com.nekiplay.hypixelcry.events.world;
 
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
-import net.minecraft.block.BlockState;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.level.block.state.BlockState;
 
 public class BlockUpdateEvent {
     public static final Event<BlockUpdateCallback> EVENT = EventFactory.createArrayBacked(
             BlockUpdateCallback.class,
             (listeners) -> (event) -> {
                 for (BlockUpdateCallback listener : listeners) {
-                    ActionResult result = listener.update(event);
+                    InteractionResult result = listener.update(event);
 
-                    if(result != ActionResult.PASS) {
+                    if(result != InteractionResult.PASS) {
                         return result;
                     }
                 }
 
-                return ActionResult.PASS;
+                return InteractionResult.PASS;
             }
     );
 
@@ -45,6 +45,6 @@ public class BlockUpdateEvent {
     }
 
     public interface BlockUpdateCallback {
-        ActionResult update(BlockUpdateEvent event);
+        InteractionResult update(BlockUpdateEvent event);
     }
 }

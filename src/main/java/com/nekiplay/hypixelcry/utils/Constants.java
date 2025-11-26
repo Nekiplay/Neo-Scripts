@@ -1,14 +1,13 @@
 package com.nekiplay.hypixelcry.utils;
 
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 
 /**
  * Holds generic static constants
@@ -18,40 +17,40 @@ public interface Constants {
 
     Pattern PLAYER_NAME = Pattern.compile("(?:\\[[0-9]+\\] )?(?:[" + Constants.LEVEL_EMBLEMS + "] )?(?:\\[[A-Z+]+\\] )?([A-Za-z0-9_]+)");
 
-    Supplier<MutableText> PREFIX = () -> {
+    Supplier<MutableComponent> PREFIX = () -> {
         LocalDate time = LocalDate.now();
         if (time.getMonthValue() == 4 && time.getDayOfMonth() == 1) {
-            return Text.empty().append(Text.literal("[").formatted(Formatting.GRAY))
-                    .append(Text.literal("S").withColor(0x00ff4c))
-                    .append(Text.literal("k").withColor(0x02fa60))
-                    .append(Text.literal("i").withColor(0x04f574))
-                    .append(Text.literal("b").withColor(0x07ef88))
-                    .append(Text.literal("i").withColor(0x09ea9c))
-                    .append(Text.literal("d").withColor(0x0be5af))
-                    .append(Text.literal("i").withColor(0x0de0c3))
-                    .append(Text.literal("b").withColor(0x10dad7))
-                    .append(Text.literal("l").withColor(0x12d5eb))
-                    .append(Text.literal("o").withColor(0x14d0ff))
-                    .append(Text.literal("c").withColor(0x16cbff))
-                    .append(Text.literal("k").withColor(0x18c6ff))
-                    .append(Text.literal("e").withColor(0x1ac1ff))
-                    .append(Text.literal("r").withColor(0x1cbbff))
-                    .append(Text.literal("] ").formatted(Formatting.GRAY));
+            return Component.empty().append(Component.literal("[").withStyle(ChatFormatting.GRAY))
+                    .append(Component.literal("S").withColor(0x00ff4c))
+                    .append(Component.literal("k").withColor(0x02fa60))
+                    .append(Component.literal("i").withColor(0x04f574))
+                    .append(Component.literal("b").withColor(0x07ef88))
+                    .append(Component.literal("i").withColor(0x09ea9c))
+                    .append(Component.literal("d").withColor(0x0be5af))
+                    .append(Component.literal("i").withColor(0x0de0c3))
+                    .append(Component.literal("b").withColor(0x10dad7))
+                    .append(Component.literal("l").withColor(0x12d5eb))
+                    .append(Component.literal("o").withColor(0x14d0ff))
+                    .append(Component.literal("c").withColor(0x16cbff))
+                    .append(Component.literal("k").withColor(0x18c6ff))
+                    .append(Component.literal("e").withColor(0x1ac1ff))
+                    .append(Component.literal("r").withColor(0x1cbbff))
+                    .append(Component.literal("] ").withStyle(ChatFormatting.GRAY));
         }
 
-        return Text.empty()
-                .append(Text.literal("[").formatted(Formatting.GRAY))
-                .append(Text.literal("S").withColor(0x00ff4c))
-                .append(Text.literal("k").withColor(0x02fa60))
-                .append(Text.literal("y").withColor(0x04f574))
-                .append(Text.literal("b").withColor(0x07ef88))
-                .append(Text.literal("l").withColor(0x09ea9c))
-                .append(Text.literal("o").withColor(0x0be5af))
-                .append(Text.literal("c").withColor(0x0de0c3))
-                .append(Text.literal("k").withColor(0x10dad7))
-                .append(Text.literal("e").withColor(0x12d5eb))
-                .append(Text.literal("r").withColor(0x14d0ff))
-                .append(Text.literal("] ").formatted(Formatting.GRAY));
+        return Component.empty()
+                .append(Component.literal("[").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal("S").withColor(0x00ff4c))
+                .append(Component.literal("k").withColor(0x02fa60))
+                .append(Component.literal("y").withColor(0x04f574))
+                .append(Component.literal("b").withColor(0x07ef88))
+                .append(Component.literal("l").withColor(0x09ea9c))
+                .append(Component.literal("o").withColor(0x0be5af))
+                .append(Component.literal("c").withColor(0x0de0c3))
+                .append(Component.literal("k").withColor(0x10dad7))
+                .append(Component.literal("e").withColor(0x12d5eb))
+                .append(Component.literal("r").withColor(0x14d0ff))
+                .append(Component.literal("] ").withStyle(ChatFormatting.GRAY));
     };
 
 

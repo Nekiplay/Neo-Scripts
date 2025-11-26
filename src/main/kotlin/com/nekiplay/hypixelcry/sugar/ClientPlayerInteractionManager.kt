@@ -2,17 +2,16 @@ package com.nekiplay.hypixelcry.sugar
 
 import com.nekiplay.hypixelcry.HypixelCry.mc
 import com.nekiplay.hypixelcry.mixins.ClientPlayerInteractionManagerAccessor
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.network.ClientPlayerInteractionManager
-import net.minecraft.client.network.SequencedPacketCreator
-import net.minecraft.util.ActionResult
-import net.minecraft.util.ActionResult.SwingSource
-import net.minecraft.util.Hand
-import net.minecraft.util.hit.BlockHitResult
-import net.minecraft.util.hit.EntityHitResult
-import net.minecraft.util.hit.HitResult
+import net.minecraft.client.Minecraft
+import net.minecraft.client.multiplayer.MultiPlayerGameMode
+import net.minecraft.client.multiplayer.prediction.PredictiveAction
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
+import net.minecraft.world.phys.BlockHitResult
+import net.minecraft.world.phys.EntityHitResult
+import net.minecraft.world.phys.HitResult
 
-fun ClientPlayerInteractionManager.silentUse(useSlot: Int): Boolean {
+fun MultiPlayerGameMode.silentUse(useSlot: Int): Boolean {
     val player = mc.player ?: return false
     val inventory = player.inventory
     val originalSlot = inventory.selectedSlot
@@ -32,15 +31,15 @@ fun ClientPlayerInteractionManager.silentUse(useSlot: Int): Boolean {
     }
 }
 
-fun ClientPlayerInteractionManager.attackBlock(): Boolean {
-    if (mc.crosshairTarget == null) return false
+fun MultiPlayerGameMode.attackBlock(): Boolean {
+    if (mc.hitResult == null) return false
 
-    if (mc.crosshairTarget?.type == HitResult.Type.BLOCK) {
-        val blockHitResult = mc.crosshairTarget as BlockHitResult
+    if (mc.hitResult?.type == HitResult.Type.BLOCK) {
+        val blockHitResult = mc.hitResult as BlockHitResult
         val blockPos = blockHitResult.blockPos
-        mc.world?.getBlockState(blockPos)?.isAir?.let {
+        mc.level?.getBlockState(blockPos)?.isAir?.let {
             if (!it) {
-                this.attackBlock(blockPos, blockHitResult.side)
+                this.startDestroyBlock(blockPos, blockHitResult.direction)
                 return true
             }
         }
@@ -48,28 +47,28 @@ fun ClientPlayerInteractionManager.attackBlock(): Boolean {
     return false
 }
 
-fun ClientPlayerInteractionManager.attackEntity(): Boolean {
+fun MultiPlayerGameMode.attackEntity(): Boolean {
     val player = mc.player ?: return false
-    if (mc.crosshairTarget == null) return false
+    if (mc.hitResult == null) return false
 
-    if (mc.crosshairTarget!!.type == HitResult.Type.ENTITY) {
-        this.attackEntity(player, (mc.crosshairTarget as EntityHitResult).entity)
+    if (mc.hitResult!!.type == HitResult.Type.ENTITY) {
+        this.attack(player, (mc.hitResult as EntityHitResult).entity)
         return true
     }
     return false
 }
 
-fun ClientPlayerInteractionManager.interactBlock(): Boolean {
+fun MultiPlayerGameMode.interactBlock(): Boolean {
     val player = mc.player ?: return false
-    if (mc.crosshairTarget == null) return false
+    if (mc.hitResult == null) return false
 
-    if (mc.crosshairTarget!!.type == HitResult.Type.BLOCK) {
-        for (hand in Hand.entries) {
-            val actionResult2: ActionResult? = this.interactBlock(player, hand, mc.crosshairTarget as BlockHitResult)
-            if (actionResult2 is ActionResult.Success) {
+    if (mc.hitResult!!.type == HitResult.Type.BLOCK) {
+        for (hand in InteractionHand.entries) {
+            val actionResult2: InteractionResult? = this.useItemOn(player, hand, mc.hitResult as BlockHitResult)
+            if (actionResult2 is InteractionResult.Success) {
                 val success2 = actionResult2
-                if (success2.swingSource() == SwingSource.CLIENT) {
-                    player.swingHand(hand)
+                if (success2.swingSource() == InteractionResult.SwingSource.CLIENT) {
+                    player.swing(hand)
                 }
                 return true
             }
@@ -78,19 +77,18 @@ fun ClientPlayerInteractionManager.interactBlock(): Boolean {
     return false
 }
 
-fun ClientPlayerInteractionManager.interactEntity(): Boolean {
+fun MultiPlayerGameMode.interactEntity(): Boolean {
     val player = mc.player ?: return false
-    if (mc.crosshairTarget == null) return false
+    if (mc.hitResult == null) return false
 
-    if (mc.crosshairTarget!!.type == HitResult.Type.ENTITY) {
-        for (hand in Hand.entries) {
-            val actionResult2: ActionResult =
-                this.interactEntityAtLocation(player, (mc.crosshairTarget as EntityHitResult).entity,
-                    mc.crosshairTarget as EntityHitResult?, hand)
-            if (actionResult2 is ActionResult.Success) {
+    if (mc.hitResult!!.type == HitResult.Type.ENTITY) {
+        for (hand in InteractionHand.entries) {
+            val actionResult2: InteractionResult =
+                this.interact(player, (mc.hitResult as EntityHitResult).entity, hand)
+            if (actionResult2 is InteractionResult.Success) {
                 val success2 = actionResult2
-                if (success2.swingSource() == SwingSource.CLIENT) {
-                    player.swingHand(hand)
+                if (success2.swingSource() == InteractionResult.SwingSource.CLIENT) {
+                    player.swing(hand)
                 }
                 return true
             }
@@ -99,23 +97,23 @@ fun ClientPlayerInteractionManager.interactEntity(): Boolean {
     return false
 }
 
-fun ClientPlayerInteractionManager.useItem(): Boolean {
-    val player = MinecraftClient.getInstance().player ?: return false
-    val result = this.interactItem(player, Hand.MAIN_HAND)
-    if (result is ActionResult.Success) {
-        player.swingHand(Hand.MAIN_HAND)
+fun MultiPlayerGameMode.useItem(): Boolean {
+    val player = Minecraft.getInstance().player ?: return false
+    val result = this.useItem(player, InteractionHand.MAIN_HAND)
+    if (result is InteractionResult.Success) {
+        player.swing(InteractionHand.MAIN_HAND)
     }
-    if (result is ActionResult.Success || result is ActionResult.Pass) {
+    if (result is InteractionResult.Success || result is InteractionResult.Pass) {
         return true
     }
     return false
 }
 
-fun ClientPlayerInteractionManager.syncSelectedSlot(): Boolean {
+fun MultiPlayerGameMode.syncSelectedSlot(): Boolean {
     (this as ClientPlayerInteractionManagerAccessor).syncSelectedSlot()
     return true
 }
 
-fun ClientPlayerInteractionManager.sendSequencedPacket(packetCreator: SequencedPacketCreator) {
-    (this as ClientPlayerInteractionManagerAccessor).sendSequencedPacket(mc.world, packetCreator)
+fun MultiPlayerGameMode.sendSequencedPacket(packetCreator: PredictiveAction) {
+    (this as ClientPlayerInteractionManagerAccessor).sendSequencedPacket(mc.level, packetCreator)
 }

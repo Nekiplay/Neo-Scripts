@@ -1,11 +1,11 @@
 package com.nekiplay.hypixelcry.sugar
 
 import com.nekiplay.hypixelcry.mixins.MinecraftClientAccessor
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 
-fun MinecraftClient.rightClick() {
+fun Minecraft.rightClick() {
     (this as MinecraftClientAccessor).doItemUse()
 }
-fun MinecraftClient.leftClick(): Boolean {
+fun Minecraft.leftClick(): Boolean {
     return (this as MinecraftClientAccessor).doAttack()
 }

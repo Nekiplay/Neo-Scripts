@@ -1,46 +1,42 @@
 package com.nekiplay.hypixelcry.sugar
 
-import com.mojang.serialization.Codec
-import com.mojang.serialization.codecs.RecordCodecBuilder
 import com.nekiplay.hypixelcry.mixins.PlayerListHudAccessor
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
-import net.minecraft.client.gui.hud.InGameHud
-import net.minecraft.client.network.ClientPlayerEntity
-import net.minecraft.scoreboard.ScoreboardDisplaySlot
-import net.minecraft.scoreboard.Team
-import net.minecraft.text.Text
-import net.minecraft.text.TextCodecs
+import net.minecraft.client.player.LocalPlayer
+import net.minecraft.network.chat.Component
+import net.minecraft.world.scores.DisplaySlot
+import net.minecraft.world.scores.PlayerTeam
+import net.minecraft.client.gui.screens.Overlay
 import java.util.Optional
 
-fun ClientPlayerEntity.getScoreabordLines(): List<Text> {
-    val scoreboard = mc.player?.scoreboardTeam?.scoreboard ?: return listOf()
-    val activeObjective = scoreboard.getObjectiveForSlot(ScoreboardDisplaySlot.SIDEBAR) ?: return listOf()
-    return scoreboard.getScoreboardEntries(activeObjective)
-        .filter { !it.hidden() }
-        .sortedWith(InGameHud.SCOREBOARD_ENTRY_COMPARATOR)
+fun LocalPlayer.getScoreabordLines(): List<Component> {
+    val scoreboard = mc.player?.team?.scoreboard ?: return listOf()
+    val activeObjective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR) ?: return listOf()
+    return scoreboard.listPlayerScores(activeObjective)
+        .filter { !it.isHidden }
         .take(15).map {
-            val team = scoreboard.getScoreHolderTeam(it.owner)
-            val text = it.name()
-            Team.decorateName(team, text)
+            val team = scoreboard.getPlayerTeam(it.owner)
+            val text = it.display
+            PlayerTeam.formatNameForTeam(team, text)
         }
 }
 
 data class CurrentTabList(
-    val header: Optional<Text>,
-    val footer: Optional<Text>,
-    val body: List<Text>,
+    val header: Optional<Component>,
+    val footer: Optional<Component>,
+    val body: List<Component>,
 )
 
-fun ClientPlayerEntity.getTab(): CurrentTabList {
-    val tab = mc.inGameHud.playerListHud ?: return CurrentTabList(Optional.empty(), Optional.empty(), listOf())
+fun LocalPlayer.getTab(): CurrentTabList {
+    val tab = mc.gui.tabList ?: return CurrentTabList(Optional.empty(), Optional.empty(), listOf())
     val tabAccessor = tab as PlayerListHudAccessor
 
     val entries = tabAccessor.collectPlayerEntries_hypixel_cry()
         .map {
-            it.displayName ?: run {
-                val team = it.scoreboardTeam
+            it.tabListDisplayName ?: run {
+                val team = it.team
                 val name = it.profile.name
-                Team.decorateName(team, Text.literal(name))
+                PlayerTeam.formatNameForTeam(team, Component.literal(name))
             }
         }
     return CurrentTabList(

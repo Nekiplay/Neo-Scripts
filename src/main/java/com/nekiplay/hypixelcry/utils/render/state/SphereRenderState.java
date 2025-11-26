@@ -1,9 +1,9 @@
 package com.nekiplay.hypixelcry.utils.render.state;
 
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.phys.Vec3;
 
 public class SphereRenderState {
-    public Vec3d centre;
+    public Vec3 centre;
     public float radius;
     public int segments;
     public int rings;

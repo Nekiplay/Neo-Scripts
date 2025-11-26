@@ -28,7 +28,7 @@ class NetworkObject : LuaValue() {
 
     private inner class GetPlayerList : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val playerList = mc.networkHandler?.playerList ?: return NIL
+            val playerList = mc.connection?.listedOnlinePlayers ?: return NIL
 
             val table = tableOf()
             var index = 1
@@ -37,7 +37,7 @@ class NetworkObject : LuaValue() {
                 table_player.set("latency", valueOf(player.latency))
 
                 // display_name
-                val displayName = player.displayName?.string
+                val displayName = player.tabListDisplayName?.string
                 table_player.set("display_name", if (displayName != null) valueOf(displayName) else NIL)
 
                 // name
@@ -53,7 +53,7 @@ class NetworkObject : LuaValue() {
                 table_player.set("gamemode", if (gamemode != null) valueOf(gamemode) else NIL)
 
                 // skin_texture
-                val skinTexture = player.skinTextures?.body?.toString()
+                val skinTexture = player.skin?.body?.toString()
                 table_player.set("skin_texture", if (skinTexture != null) valueOf(skinTexture) else NIL)
 
                 table.set(index, table_player)
@@ -71,7 +71,7 @@ class NetworkObject : LuaValue() {
             arg4: LuaValue?
         ): LuaValue? {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isstring() == true) {
-                mc.interactionManager?.sendSequencedPacket { sequence ->
+                mc.gameMode?.sendSequencedPacket { sequence ->
                     PlayerActionC2SPacket(
                         PlayerActionC2SPacket.Action.START_DESTROY_BLOCK,
                         BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),

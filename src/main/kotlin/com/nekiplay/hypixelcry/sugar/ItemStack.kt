@@ -1,13 +1,13 @@
 package com.nekiplay.hypixelcry.sugar
 
 import com.nekiplay.hypixelcry.utils.ItemUtils
-import net.minecraft.item.ItemStack
-import net.minecraft.text.Text
+import net.minecraft.network.chat.Component
+import net.minecraft.world.item.ItemStack
 
-fun ItemStack.getDisplayName(): Text {
+fun ItemStack.getDisplayName(): Component {
     return ItemUtils.getDisplayName(this)
 }
-fun ItemStack.setDisplayName(text: Text) {
+fun ItemStack.setDisplayName(text: Component) {
     return ItemUtils.setDisplayName(this, text)
 }
 fun ItemStack.getHeadTexture(): String {

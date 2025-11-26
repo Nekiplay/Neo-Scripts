@@ -1,9 +1,9 @@
 package com.nekiplay.hypixelcry.utils.render.state;
 
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.phys.Vec3;
 
 public class LinesRenderState {
-    public Vec3d[] points;
+    public Vec3[] points;
     public float[] colourComponents;
     public float alpha;
     public float lineWidth;
