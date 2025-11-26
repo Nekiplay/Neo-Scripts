@@ -2,30 +2,31 @@ package com.nekiplay.hypixelcry.pathfinder.utils
 
 import com.nekiplay.hypixelcry.pathfinder.movement.CalculationContext
 import com.nekiplay.hypixelcry.pathfinder.movement.MovementHelper
-import net.minecraft.block.*
-import net.minecraft.util.math.BlockPos
-import net.minecraft.util.math.Direction
-import net.minecraft.util.math.MathHelper
-import net.minecraft.util.math.Vec3d
+import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
+import net.minecraft.world.level.block.SnowLayerBlock
+import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.Vec3
+import kotlin.math.floor
 
 object BlockUtil {
     fun bresenham(ctx: CalculationContext, start: BlockPos, end: BlockPos): Boolean {
         return bresenham(
             ctx,
-            Vec3d.ofCenter(start),
-            Vec3d.ofCenter(end)
+            Vec3.atCenterOf(start),
+            Vec3.atCenterOf(end)
         )
     }
 
-    fun bresenham(ctx: CalculationContext, start: Vec3d, end: Vec3d): Boolean {
+    fun bresenham(ctx: CalculationContext, start: Vec3, end: Vec3): Boolean {
         var currentPos = start
 
-        val x1 = MathHelper.floor(end.x)
-        val y1 = MathHelper.floor(end.y)
-        val z1 = MathHelper.floor(end.z)
-        var x0 = MathHelper.floor(currentPos.x)
-        var y0 = MathHelper.floor(currentPos.y)
-        var z0 = MathHelper.floor(currentPos.z)
+        val x1 = floor(end.x).toInt()
+        val y1 = floor(end.y).toInt()
+        val z1 = floor(end.z).toInt()
+        var x0 = floor(currentPos.x).toInt()
+        var y0 = floor(currentPos.y).toInt()
+        var z0 = floor(currentPos.z).toInt()
 
         var lastState: BlockState? = world?.getBlockState(BlockPos(x0, y0, z0))
         var lastPos = BlockPos(x0, y0, z0)
@@ -86,18 +87,18 @@ object BlockUtil {
             val direction: Direction?
             if (stepX < stepY && stepX < stepZ) {
                 direction = if (x1 > x0) Direction.WEST else Direction.EAST
-                currentPos = Vec3d(newX, currentPos.y + dy * stepX, currentPos.z + dz * stepX)
+                currentPos = Vec3(newX, currentPos.y + dy * stepX, currentPos.z + dz * stepX)
             } else if (stepY < stepZ) {
                 direction = if (y1 > y0) Direction.DOWN else Direction.UP
-                currentPos = Vec3d(currentPos.x + dx * stepY, newY, currentPos.z + dz * stepY)
+                currentPos = Vec3(currentPos.x + dx * stepY, newY, currentPos.z + dz * stepY)
             } else {
                 direction = if (z1 > z0) Direction.NORTH else Direction.SOUTH
-                currentPos = Vec3d(currentPos.x + dx * stepZ, currentPos.y + dy * stepZ, newZ)
+                currentPos = Vec3(currentPos.x + dx * stepZ, currentPos.y + dy * stepZ, newZ)
             }
 
-            x0 = MathHelper.floor(currentPos.x) - (if (direction == Direction.EAST) 1 else 0)
-            y0 = MathHelper.floor(currentPos.y) - (if (direction == Direction.UP) 1 else 0)
-            z0 = MathHelper.floor(currentPos.z) - (if (direction == Direction.SOUTH) 1 else 0)
+            x0 = floor(currentPos.x).toInt() - (if (direction == Direction.EAST) 1 else 0)
+            y0 = floor(currentPos.y).toInt() - (if (direction == Direction.UP) 1 else 0)
+            z0 = floor(currentPos.z).toInt() - (if (direction == Direction.SOUTH) 1 else 0)
 
             var currState: BlockState? = world?.getBlockState(BlockPos(x0, y0, z0))
             var i = 0
@@ -141,13 +142,13 @@ object BlockUtil {
                 var destHeight = -1.0
                 var snow = false
 
-                if (lastState?.getBlock() is SnowBlock) {
-                    sourceHeight = (lastState.get<Int?>(SnowBlock.LAYERS) - 1) * 0.125
+                if (lastState?.getBlock() is SnowLayerBlock) {
+                    sourceHeight = (lastState.getValue(SnowLayerBlock.LAYERS) - 1) * 0.125
                     snow = true
                 }
 
-                if (currState?.getBlock() is SnowBlock) {
-                    destHeight = (currState.get<Int?>(SnowBlock.LAYERS) - 1) * 0.125
+                if (currState?.getBlock() is SnowLayerBlock) {
+                    destHeight = (currState.getValue(SnowLayerBlock.LAYERS) - 1) * 0.125
                     snow = true
                 }
 
@@ -164,11 +165,11 @@ object BlockUtil {
                     }
                 } else {
                     if (sourceHeight == -1.0) {
-                        sourceHeight = lastState?.getCollisionShape(world, lastPos)?.getMax(Direction.Axis.Y) ?: 0.0
+                        sourceHeight = lastState?.getCollisionShape(world, lastPos)?.max(Direction.Axis.Y) ?: 0.0
                     }
                     if (destHeight == -1.0) {
                         destHeight =
-                            currState?.getCollisionShape(world, BlockPos(x0, y0 + i, z0))?.getMax(Direction.Axis.Y) ?: 0.0
+                            currState?.getCollisionShape(world, BlockPos(x0, y0 + i, z0))?.max(Direction.Axis.Y) ?: 0.0
                     }
                     if (destHeight - sourceHeight > -0.5) {
                         return false

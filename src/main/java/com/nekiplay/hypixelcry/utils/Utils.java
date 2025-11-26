@@ -17,15 +17,19 @@ import net.azureaaron.hmapi.network.packet.s2c.HypixelS2CPacket;
 import net.azureaaron.hmapi.network.packet.v1.s2c.LocationUpdateS2CPacket;
 import net.azureaaron.hmapi.network.packet.v1.s2c.PlayerInfoS2CPacket;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.registry.BuiltinRegistries;
-import net.minecraft.registry.RegistryWrapper;
-import net.minecraft.scoreboard.*;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Util;
+import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.data.registries.VanillaRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.scores.DisplaySlot;
+import net.minecraft.world.scores.Objective;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.ScoreHolder;
+import net.minecraft.world.scores.Scoreboard;
 import org.jetbrains.annotations.NotNull;
 
 import javax.imageio.ImageIO;
@@ -48,9 +52,9 @@ import static com.nekiplay.hypixelcry.HypixelCry.LOGGER;
 
 public class Utils {
     public static final ObjectArrayList<String> STRING_SCOREBOARD = new ObjectArrayList<>();
-    public static final ObjectArrayList<Text> TEXT_SCOREBOARD = new ObjectArrayList<>();
+    public static final ObjectArrayList<Component> TEXT_SCOREBOARD = new ObjectArrayList<>();
 
-    private static final RegistryWrapper.WrapperLookup LOOKUP = BuiltinRegistries.createWrapperLookup();
+    private static final HolderLookup.Provider LOOKUP = VanillaRegistries.createLookup();
     private static final String ALTERNATE_HYPIXEL_ADDRESS = System.getProperty("skyblocker.alternateHypixelAddress", "");
     private static final String PROFILE_PREFIX = "Profile: ";
 
@@ -87,9 +91,9 @@ public class Utils {
     /**
      * Updates {@link #isOnSkyblock} if in a development environment and {@link #isOnHypixel} in all environments.
      */
-    private static void updatePlayerPresence(MinecraftClient client) {
+    private static void updatePlayerPresence(Minecraft client) {
         FabricLoader fabricLoader = FabricLoader.getInstance();
-        if (client.world == null || client.isInSingleplayer()) {
+        if (client.level == null || client.isLocalServer()) {
             if (fabricLoader.isDevelopmentEnvironment()) { // Pretend we're always in skyblock when in dev
                 isOnSkyblock = true;
             }
@@ -104,9 +108,9 @@ public class Utils {
         }
     }
 
-    private static boolean isConnectedToHypixel(MinecraftClient client) {
-        String serverAddress = (client.getCurrentServerEntry() != null) ? client.getCurrentServerEntry().address.toLowerCase() : "";
-        String serverBrand = (client.player != null && client.player.networkHandler != null && client.player.networkHandler.getBrand() != null) ? client.player.networkHandler.getBrand() : "";
+    private static boolean isConnectedToHypixel(Minecraft client) {
+        String serverAddress = (client.getCurrentServer() != null) ? client.getCurrentServer().ip.toLowerCase() : "";
+        String serverBrand = (client.player != null && client.player.connection != null && client.player.connection.serverBrand() != null) ? client.player.connection.serverBrand() : "";
 
         return (!serverAddress.isEmpty() && serverAddress.equalsIgnoreCase(ALTERNATE_HYPIXEL_ADDRESS)) || serverAddress.contains("hypixel.net") || serverAddress.contains("hypixel.io") || serverBrand.contains("Hypixel BungeeCord");
     }
@@ -231,37 +235,37 @@ public class Utils {
     }
 
     public static void update() {
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         updateScoreboard(client);
         updatePlayerPresence(client);
         updateFromPlayerList(client);
     }
 
-    private static void updateScoreboard(MinecraftClient client) {
+    private static void updateScoreboard(Minecraft client) {
         try {
             TEXT_SCOREBOARD.clear();
             STRING_SCOREBOARD.clear();
 
-            ClientPlayerEntity player = client.player;
+            LocalPlayer player = client.player;
             if (player == null) return;
-            if (player.getScoreboardTeam() == null) return;
+            if (player.getTeam() == null) return;
 
-            Scoreboard scoreboard = player.getScoreboardTeam().getScoreboard();
-            ScoreboardObjective objective = scoreboard.getObjectiveForSlot(ScoreboardDisplaySlot.FROM_ID.apply(1));
-            ObjectArrayList<Text> textLines = new ObjectArrayList<>();
+            Scoreboard scoreboard = player.getTeam().getScoreboard();
+            Objective objective = scoreboard.getDisplayObjective(DisplaySlot.BY_ID.apply(1));
+            ObjectArrayList<Component> textLines = new ObjectArrayList<>();
             ObjectArrayList<String> stringLines = new ObjectArrayList<>();
 
-            for (ScoreHolder scoreHolder : scoreboard.getKnownScoreHolders()) {
+            for (ScoreHolder scoreHolder : scoreboard.getTrackedPlayers()) {
                 //Limit to just objectives displayed in the scoreboard (specifically sidebar objective)
-                if (scoreboard.getScoreHolderObjectives(scoreHolder).containsKey(objective)) {
-                    Team team = scoreboard.getScoreHolderTeam(scoreHolder.getNameForScoreboard());
+                if (scoreboard.listPlayerScores(scoreHolder).containsKey(objective)) {
+                    PlayerTeam team = scoreboard.getPlayersTeam(scoreHolder.getScoreboardName());
 
                     if (team != null) {
-                        Text textLine = Text.empty().append(team.getPrefix().copy()).append(team.getSuffix().copy());
-                        String strLine = team.getPrefix().getString() + team.getSuffix().getString();
+                        Component textLine = Component.empty().append(team.getPlayerPrefix().copy()).append(team.getPlayerSuffix().copy());
+                        String strLine = team.getPlayerPrefix().getString() + team.getPlayerSuffix().getString();
 
                         if (!strLine.trim().isEmpty()) {
-                            String formatted = Formatting.strip(strLine);
+                            String formatted = ChatFormatting.stripFormatting(strLine);
 
                             textLines.add(textLine);
                             stringLines.add(formatted);
@@ -272,7 +276,7 @@ public class Utils {
 
             if (objective != null) {
                 stringLines.add(objective.getDisplayName().getString());
-                textLines.add(Text.empty().append(objective.getDisplayName().copy()));
+                textLines.add(Component.empty().append(objective.getDisplayName().copy()));
 
                 Collections.reverse(stringLines);
                 Collections.reverse(textLines);
@@ -306,15 +310,15 @@ public class Utils {
         });
     }
 
-    private static void updateFromPlayerList(MinecraftClient client) {
-        if (client.getNetworkHandler() == null) {
+    private static void updateFromPlayerList(Minecraft client) {
+        if (client.getConnection() == null) {
             return;
         }
-        for (PlayerListEntry playerListEntry : client.getNetworkHandler().getPlayerList()) {
-            if (playerListEntry.getDisplayName() == null) {
+        for (PlayerInfo playerListEntry : client.getConnection().getOnlinePlayers()) {
+            if (playerListEntry.getTabListDisplayName() == null) {
                 continue;
             }
-            String name = playerListEntry.getDisplayName().getString();
+            String name = playerListEntry.getTabListDisplayName().getString();
             if (name.startsWith(PROFILE_PREFIX)) {
                 profile = name.substring(PROFILE_PREFIX.length());
             }
@@ -379,7 +383,7 @@ public class Utils {
                 location = Location.UNKNOWN;
                 map = "";
 
-                ClientPlayerEntity player = MinecraftClient.getInstance().player;
+                LocalPlayer player = Minecraft.getInstance().player;
                 LOGGER.error("[Skyblocker] Failed to update your current location! Some features of the mod may not work correctly :( - Error: {}", error);
             }
 
@@ -390,9 +394,9 @@ public class Utils {
             default -> {} //Do Nothing
         }
     }
-    public static RegistryWrapper.WrapperLookup getRegistryWrapperLookup() {
-        MinecraftClient client = MinecraftClient.getInstance();
+    public static HolderLookup.Provider getRegistryWrapperLookup() {
+        Minecraft client = Minecraft.getInstance();
         // Null check on client for tests
-        return client != null && client.getNetworkHandler() != null && client.getNetworkHandler().getRegistryManager() != null ? client.getNetworkHandler().getRegistryManager() : LOOKUP;
+        return client != null && client.getConnection() != null && client.getConnection().registryAccess() != null ? client.getConnection().registryAccess() : LOOKUP;
     }
 }

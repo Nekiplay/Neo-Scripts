@@ -1,7 +1,7 @@
 package com.nekiplay.hypixelcry.utils.misc.input;
 
 import net.fabricmc.fabric.mixin.client.keybinding.KeyBindingAccessor;
-import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
 
 public class Input {
@@ -19,15 +19,15 @@ public class Input {
         if (button >= 0 && button < buttons.length) buttons[button] = pressed;
     }
 
-    public static int getKey(KeyBinding bind) {
-        return ((KeyBindingAccessor) bind).fabric_getBoundKey().getCode();
+    public static int getKey(KeyMapping bind) {
+        return ((KeyBindingAccessor) bind).fabric_getBoundKey().getValue();
     }
 
-    public static void setKeyState(KeyBinding bind, boolean pressed) {
+    public static void setKeyState(KeyMapping bind, boolean pressed) {
         setKeyState(getKey(bind), pressed);
     }
 
-    public static boolean isPressed(KeyBinding bind) {
+    public static boolean isPressed(KeyMapping bind) {
         return isKeyPressed(getKey(bind));
     }
 

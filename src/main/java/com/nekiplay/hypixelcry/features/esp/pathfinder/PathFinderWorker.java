@@ -8,18 +8,15 @@ import com.nekiplay.hypixelcry.pathfinder.goal.Goal;
 import com.nekiplay.hypixelcry.pathfinder.movement.CalculationContext;
 import com.nekiplay.hypixelcry.utils.render.RenderHelper;
 import com.nekiplay.hypixelcry.utils.scheduler.Scheduler;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.chunk.Chunk;
-
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.chunk.ChunkAccess;
 
 import static com.nekiplay.hypixelcry.HypixelCry.mc;
 
@@ -63,8 +60,8 @@ public class PathFinderWorker {
         ClientChunkLoadEvent.EVENT.register(PathFinderWorker::chunkLoad);
     }
 
-    private static void chunkLoad(ClientWorld clientWorld, Chunk chunk) {
-        if (mc.player == null || mc.world == null) return;
+    private static void chunkLoad(ClientLevel clientWorld, ChunkAccess chunk) {
+        if (mc.player == null || mc.level == null) return;
 
         int chunkX = chunk.getPos().x;
         int chunkZ = chunk.getPos().z;
@@ -76,9 +73,9 @@ public class PathFinderWorker {
     }
 
     private static void onClientTick() {
-        if (mc.player == null || mc.world == null) return;
+        if (mc.player == null || mc.level == null) return;
 
-        BlockPos currentPos = mc.player.getBlockPos().add(0, -1, 0);
+        BlockPos currentPos = mc.player.blockPosition().offset(0, -1, 0);
         processPathResults();
 
         PATHS.values().forEach(pathData -> {
@@ -152,11 +149,11 @@ public class PathFinderWorker {
     }
 
     private static BlockPos getNearestLoadedPos(CalculationContext ctx, BlockPos target) {
-        if (ctx.getWorld().isPosLoaded(target)) {
+        if (ctx.getWorld().isLoaded(target)) {
             return target;
         }
 
-        BlockPos playerPos = mc.player.getBlockPos();
+        BlockPos playerPos = mc.player.blockPosition();
         BlockPos farthestLoaded = playerPos;
 
         int dx = target.getX() - playerPos.getX();
@@ -177,7 +174,7 @@ public class PathFinderWorker {
             int checkZ = playerPos.getZ() + (int)(stepZ * i);
             BlockPos checkPos = new BlockPos(checkX, playerPos.getY(), checkZ);
 
-            if (ctx.getWorld().isPosLoaded(checkPos)) {
+            if (ctx.getWorld().isLoaded(checkPos)) {
                 farthestLoaded = checkPos;
             } else {
                 break;
@@ -197,7 +194,7 @@ public class PathFinderWorker {
         }
 
         BlockPos endPos = pathData.blocks.getLast();
-        double distanceToEnd = currentPos.getSquaredDistance(endPos);
+        double distanceToEnd = currentPos.distSqr(endPos);
         if (distanceToEnd < RECALCULATION_DISTANCE * RECALCULATION_DISTANCE) {
             return true;
         }
@@ -207,16 +204,16 @@ public class PathFinderWorker {
         }
 
         BlockPos nearest = findNearestPathPoint(currentPos, pathData.blocks);
-        return nearest == null || currentPos.getSquaredDistance(nearest) > RECALCULATION_DISTANCE * RECALCULATION_DISTANCE;
+        return nearest == null || currentPos.distSqr(nearest) > RECALCULATION_DISTANCE * RECALCULATION_DISTANCE;
     }
 
     private static boolean isPathToLoadedArea(BlockPos playerPos, PathData pathData) {
-        if (mc.world == null) return false;
+        if (mc.level == null) return false;
 
         int checkLength = Math.min(5, pathData.blocks.size());
         for (int i = pathData.blocks.size() - 1; i >= pathData.blocks.size() - checkLength; i--) {
             BlockPos pathPos = pathData.blocks.get(i);
-            if (!mc.world.isPosLoaded(pathPos)) {
+            if (!mc.level.isLoaded(pathPos)) {
                 return false;
             }
         }
@@ -229,7 +226,7 @@ public class PathFinderWorker {
 
         return IntStream.range(0, path.size() - 1)
                 .mapToObj(i -> getClosestPointOnSegment(playerPos, path.get(i), path.get(i + 1)))
-                .min(Comparator.comparingDouble(playerPos::getSquaredDistance))
+                .min(Comparator.comparingDouble(playerPos::distSqr))
                 .orElse(null);
     }
 

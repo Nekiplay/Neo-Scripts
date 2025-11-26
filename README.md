@@ -6,8 +6,6 @@
 	<a href="https://discord.gg/zSefVGvKsW"><img src="https://img.shields.io/discord/1418100297615802439?logo=discord" alt="Discord server"/></a><br/>
 </div>
 
-![1748385538470](https://github.com/user-attachments/assets/8cb12840-ea5e-4500-8594-2f134d0e78aa)
-
 # Features
 ### Commands:
 - /lua - Lua API control

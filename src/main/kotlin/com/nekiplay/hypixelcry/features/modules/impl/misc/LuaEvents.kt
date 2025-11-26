@@ -15,9 +15,9 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
-import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket
-import net.minecraft.network.packet.s2c.play.PlayerRotationS2CPacket
-import net.minecraft.util.ActionResult
+import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
+import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
+import net.minecraft.world.InteractionResult
 import org.luaj.vm2.LuaValue
 
 
@@ -37,12 +37,12 @@ object LuaEvents: ClientModule() {
 
         KeyEvent.EVENT.register(KeyEvent.KeyCallback { keyEvent ->
             LUA_MANAGER.onKeyEvent(keyEvent.key, keyEvent.action)
-            ActionResult.PASS
+            InteractionResult.PASS
         })
 
         MouseButtonEvent.EVENT.register(MouseButtonEvent.KeyCallback { mouseButtonEvent ->
             LUA_MANAGER.onKeyEvent(mouseButtonEvent.button, mouseButtonEvent.action)
-            ActionResult.PASS
+            InteractionResult.PASS
         })
 
         ClientReceiveMessageEvents.ALLOW_GAME.register(ClientReceiveMessageEvents.AllowGame { text, overlay ->
@@ -85,17 +85,17 @@ object LuaEvents: ClientModule() {
 
             val allow = LUA_MANAGER.onBlockUpdateEvent(table)
             if (allow) {
-                ActionResult.PASS
+                InteractionResult.PASS
             } else {
-                ActionResult.FAIL
+                InteractionResult.FAIL
             }
         })
 
         PacketEvent.RECEIVE.register { event ->
             val allow = when (val packet = event.packet) {
-                is PlayerRotationS2CPacket -> LUA_MANAGER.onServerSideRotationEvent(packet.yaw, packet.pitch)
-                is PlayerPositionLookS2CPacket -> {
-                    val rotationAllowed = LUA_MANAGER.onServerSideRotationEvent(packet.change.yaw, packet.change.pitch)
+                is ClientboundPlayerRotationPacket -> LUA_MANAGER.onServerSideRotationEvent(packet.xRot, packet.yRot)
+                is ClientboundPlayerPositionPacket -> {
+                    val rotationAllowed = LUA_MANAGER.onServerSideRotationEvent(packet.change.xRot(), packet.change.yRot())
                     val teleportAllowed = LUA_MANAGER.onServerSideTeleportEvent(
                         packet.change.position.x,
                         packet.change.position.y,
@@ -106,7 +106,7 @@ object LuaEvents: ClientModule() {
                 else -> true
             }
 
-            if (allow) ActionResult.PASS else ActionResult.FAIL
+            if (allow) InteractionResult.PASS else InteractionResult.FAIL
         }
     }
 

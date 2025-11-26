@@ -1,7 +1,7 @@
 package com.nekiplay.hypixelcry.pathfinder.movement
 
 import com.nekiplay.hypixelcry.HypixelCry
-import net.minecraft.util.math.BlockPos
+import net.minecraft.core.BlockPos
 
 abstract class Movement(override val mm: HypixelCry, override val source: BlockPos, override val dest: BlockPos) :
     IMovement {

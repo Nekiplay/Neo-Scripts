@@ -4,32 +4,32 @@ import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Dynamic;
 import com.nekiplay.hypixelcry.utils.Utils;
 import net.azureaaron.legacyitemdfu.TypeReferences;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.LoreComponent;
-import net.minecraft.component.type.NbtComponent;
-import net.minecraft.component.type.TooltipDisplayComponent;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.registry.RegistryOps;
-import net.minecraft.text.Text;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.RegistryOps;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.item.component.TooltipDisplay;
 import org.slf4j.Logger;
 
 import java.util.List;
 
 import static net.azureaaron.legacyitemdfu.LegacyItemStackFixer.getFirstVersion;
 import static net.azureaaron.legacyitemdfu.LegacyItemStackFixer.getLatestVersion;
-import static net.minecraft.datafixer.Schemas.getFixer;
+import static net.minecraft.util.datafix.DataFixers.getDataFixer;
 
 public class LegacyItemStackFixer {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     //Static import things to avoid class name conflicts
     @SuppressWarnings("deprecation")
-    public static ItemStack fixLegacyStack(NbtCompound nbt) {
-        RegistryOps<NbtElement> ops = Utils.getRegistryWrapperLookup().getOps(NbtOps.INSTANCE);
-        Dynamic<NbtElement> fixed = getFixer().update(TypeReferences.LEGACY_ITEM_STACK, new Dynamic<>(ops, nbt), getFirstVersion(), getLatestVersion());
+    public static ItemStack fixLegacyStack(CompoundTag nbt) {
+        RegistryOps<Tag> ops = Utils.getRegistryWrapperLookup().createSerializationContext(NbtOps.INSTANCE);
+        Dynamic<Tag> fixed = getDataFixer().update(TypeReferences.LEGACY_ITEM_STACK, new Dynamic<>(ops, nbt), getFirstVersion(), getLatestVersion());
         ItemStack stack = ItemStack.CODEC.parse(fixed)
                 .setPartial(ItemStack.EMPTY)
                 .resultOrPartial(LegacyItemStackFixer::log)
@@ -38,30 +38,30 @@ public class LegacyItemStackFixer {
         //Don't continue fixing up if it failed
         if (stack.isEmpty()) return stack;
 
-        if (stack.contains(DataComponentTypes.CUSTOM_NAME)) {
-            stack.set(DataComponentTypes.CUSTOM_NAME, TextTransformer.fromLegacy(stack.get(DataComponentTypes.CUSTOM_NAME).getString()));
+        if (stack.has(DataComponents.CUSTOM_NAME)) {
+            stack.set(DataComponents.CUSTOM_NAME, TextTransformer.fromLegacy(stack.get(DataComponents.CUSTOM_NAME).getString()));
         }
 
-        if (stack.contains(DataComponentTypes.LORE)) {
-            List<Text> fixedLore = stack.get(DataComponentTypes.LORE).lines().stream()
-                    .map(Text::getString)
+        if (stack.has(DataComponents.LORE)) {
+            List<Component> fixedLore = stack.get(DataComponents.LORE).lines().stream()
+                    .map(Component::getString)
                     .map(TextTransformer::fromLegacy)
-                    .map(Text.class::cast)
+                    .map(Component.class::cast)
                     .toList();
 
-            stack.set(DataComponentTypes.LORE, new LoreComponent(fixedLore));
+            stack.set(DataComponents.LORE, new ItemLore(fixedLore));
         }
 
         //Remap Custom Data
-        if (stack.contains(DataComponentTypes.CUSTOM_DATA)) {
-            stack.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(stack.get(DataComponentTypes.CUSTOM_DATA).copyNbt().getCompoundOrEmpty("ExtraAttributes")));
+        if (stack.has(DataComponents.CUSTOM_DATA)) {
+            stack.set(DataComponents.CUSTOM_DATA, CustomData.of(stack.get(DataComponents.CUSTOM_DATA).copyTag().getCompoundOrEmpty("ExtraAttributes")));
         }
 
         //Hide Attributes & Vanilla Enchantments
-        TooltipDisplayComponent display = stack.getOrDefault(DataComponentTypes.TOOLTIP_DISPLAY, TooltipDisplayComponent.DEFAULT)
-                .with(DataComponentTypes.ATTRIBUTE_MODIFIERS, true)
-                .with(DataComponentTypes.ENCHANTMENTS, true);
-        stack.set(DataComponentTypes.TOOLTIP_DISPLAY, display);
+        TooltipDisplay display = stack.getOrDefault(DataComponents.TOOLTIP_DISPLAY, TooltipDisplay.DEFAULT)
+                .withHidden(DataComponents.ATTRIBUTE_MODIFIERS, true)
+                .withHidden(DataComponents.ENCHANTMENTS, true);
+        stack.set(DataComponents.TOOLTIP_DISPLAY, display);
 
         return stack;
     }

@@ -12,8 +12,8 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,11 +28,11 @@ public class HypixelCry implements ClientModInitializer {
     public static LuaManager LUA_MANAGER;
     public static final Path CONFIG_DIR = FabricLoader.getInstance().getConfigDir().resolve(MOD_ID);
 
-    public static final String PREFIX = Formatting.GRAY + "[" + Formatting.GOLD + "Hypixel Cry" + Formatting.GRAY + "] " + Formatting.RESET;
+    public static final String PREFIX = ChatFormatting.GRAY + "[" + ChatFormatting.GOLD + "Hypixel Cry" + ChatFormatting.GRAY + "] " + ChatFormatting.RESET;
     public static final String LOG_PREFIX = "[Hypixel Cry] ";
 
     public static File neuDir;
-    public static MinecraftClient mc = MinecraftClient.getInstance();
+    public static Minecraft mc = Minecraft.getInstance();
     private static HypixelCry INSTANCE;
 
 
@@ -110,7 +110,7 @@ public class HypixelCry implements ClientModInitializer {
      *
      * @param client the Minecraft client.
      */
-    public void tick(MinecraftClient client) {
+    public void tick(Minecraft client) {
         Scheduler.INSTANCE.tick();
     }
 

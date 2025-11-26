@@ -7,22 +7,22 @@ import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.properties.PropertyMap;
 import com.mojang.serialization.JsonOps;
 import com.nekiplay.hypixelcry.utils.itemlist.*;
-import it.unimi.dsi.fastutil.doubles.DoubleBooleanPair;
-import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import net.minecraft.component.ComponentHolder;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.*;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.text.Text;
-import net.minecraft.util.dynamic.Codecs;
+import net.minecraft.core.component.DataComponentHolder;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.ExtraCodecs;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.CustomModelData;
+import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.item.component.ResolvableProfile;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -36,33 +36,33 @@ public class ItemUtils {
      * @param stack the item stack to get the internal name from
      * @return the Skyblock item id of the item stack, or an empty string if the item stack does not have a Skyblock id
      */
-    public static @NotNull String getItemUuid(@NotNull ComponentHolder stack) {
-        return getCustomData(stack).getString("uuid", "");
+    public static @NotNull String getItemUuid(@NotNull DataComponentHolder stack) {
+        return getCustomData(stack).getStringOr("uuid", "");
     }
 
-    public static @NotNull String getItemId(@NotNull ComponentHolder stack) {
-        return getCustomData(stack).getString(ID, "");
+    public static @NotNull String getItemId(@NotNull DataComponentHolder stack) {
+        return getCustomData(stack).getStringOr(ID, "");
     }
 
-    public static @NotNull Boolean isRecombobulated(@NotNull ComponentHolder stack) {
-        return getCustomData(stack).getInt("rarity_upgrades", 0) > 0;
+    public static @NotNull Boolean isRecombobulated(@NotNull DataComponentHolder stack) {
+        return getCustomData(stack).getIntOr("rarity_upgrades", 0) > 0;
     }
 
-    public static @NotNull Boolean isMuseumDonated(@NotNull ComponentHolder stack) {
-        return getCustomData(stack).getBoolean("donated_museum", false);
+    public static @NotNull Boolean isMuseumDonated(@NotNull DataComponentHolder stack) {
+        return getCustomData(stack).getBooleanOr("donated_museum", false);
     }
 
-    public static @NotNull String getReforgeModifier(@NotNull ComponentHolder stack) {
-        return getCustomData(stack).getString("modifier", "");
+    public static @NotNull String getReforgeModifier(@NotNull DataComponentHolder stack) {
+        return getCustomData(stack).getStringOr("modifier", "");
     }
 
     public static @NotNull String getHeadTexture(@NotNull ItemStack stack) {
-        if (!stack.isOf(Items.PLAYER_HEAD) || !stack.contains(DataComponentTypes.PROFILE)) return "";
+        if (!stack.is(Items.PLAYER_HEAD) || !stack.has(DataComponents.PROFILE)) return "";
 
-        ProfileComponent profile = stack.get(DataComponentTypes.PROFILE);
+        ResolvableProfile profile = stack.get(DataComponents.PROFILE);
         if (profile == null) return "";
 
-        return profile.getGameProfile().properties().get("textures").stream().filter(Objects::nonNull)
+        return profile.partialProfile().properties().get("textures").stream().filter(Objects::nonNull)
                 .map(Property::value)
                 .findFirst()
                 .orElse("");
@@ -70,44 +70,44 @@ public class ItemUtils {
 
 
 
-    public static @NotNull List<Text> getLore(ItemStack stack) {
-        return stack.getOrDefault(DataComponentTypes.LORE, LoreComponent.DEFAULT).styledLines();
+    public static @NotNull List<Component> getLore(ItemStack stack) {
+        return stack.getOrDefault(DataComponents.LORE, ItemLore.EMPTY).styledLines();
     }
 
-    public static @NotNull Text getDisplayName(ItemStack stack) {
+    public static @NotNull Component getDisplayName(ItemStack stack) {
         if (stack == null || stack.getCustomName() == null) {
-            return Text.empty();
+            return Component.empty();
         }
         return stack.getCustomName();
     }
 
-    public static void setDisplayName(ItemStack stack, Text name) {
+    public static void setDisplayName(ItemStack stack, Component name) {
         if (stack == null || stack.isEmpty()) {
             return;
         }
-        stack.set(DataComponentTypes.CUSTOM_NAME, name);
+        stack.set(DataComponents.CUSTOM_NAME, name);
     }
 
     public static @NotNull Map<String, Integer> getHypixelEnchantments(ItemStack itemStack) {
         Map<String, Integer> result = new HashMap<>();
-        NbtCompound extraAttributes = getCustomData(itemStack);
+        CompoundTag extraAttributes = getCustomData(itemStack);
 
-        Optional<NbtCompound> enchantmentsOpt = extraAttributes.getCompound("enchantments");
+        Optional<CompoundTag> enchantmentsOpt = extraAttributes.getCompound("enchantments");
         if (enchantmentsOpt.isEmpty()) {
             return result;
         }
 
-        NbtCompound enchantments = enchantmentsOpt.get();
+        CompoundTag enchantments = enchantmentsOpt.get();
 
-        for (String key : enchantments.getKeys()) {
-            result.put(key, enchantments.getInt(key, 0));
+        for (String key : enchantments.keySet()) {
+            result.put(key, enchantments.getIntOr(key, 0));
         }
 
         return result;
     }
 
     public static @NotNull PropertyMap propertyMapWithTexture(String textureValue) {
-        return Codecs.GAME_PROFILE_PROPERTY_MAP.parse(JsonOps.INSTANCE, JsonParser.parseString("[{\"name\":\"textures\",\"value\":\"" + textureValue + "\"}]")).getOrThrow();
+        return ExtraCodecs.PROPERTY_MAP.parse(JsonOps.INSTANCE, JsonParser.parseString("[{\"name\":\"textures\",\"value\":\"" + textureValue + "\"}]")).getOrThrow();
     }
 
     @SuppressWarnings("Varargs")
@@ -119,7 +119,7 @@ public class ItemUtils {
     public static @NotNull ItemStack createSkull(GameProfile profile) {
         try {
             ItemStack stack = new ItemStack(Items.PLAYER_HEAD);
-            stack.set(DataComponentTypes.PROFILE, ProfileComponent.ofStatic(profile));
+            stack.set(DataComponents.PROFILE, ResolvableProfile.createResolved(profile));
             return stack;
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -136,14 +136,14 @@ public class ItemUtils {
     }
 
     public static ItemStack setLore(ItemStack stack, List<String> lore) {
-        stack.set(DataComponentTypes.LORE, new LoreComponent(lore.stream().map(Text::of)
+        stack.set(DataComponents.LORE, new ItemLore(lore.stream().map(Component::nullToEmpty)
              .collect(Collectors.toList())));
 
         return stack;
     }
 
     public static ItemStack setCustomItemName(ItemStack stack, String name) {
-        stack.set(DataComponentTypes.CUSTOM_NAME, Text.of(name));
+        stack.set(DataComponents.CUSTOM_NAME, Component.nullToEmpty(name));
 
         return stack;
     }
@@ -153,41 +153,41 @@ public class ItemUtils {
         ItemStack stack = new ItemStack(item, amount);
         stack = setCustomItemName(stack, displayName);
         stack = setLore(stack, lore);
-        var tooltip = net.minecraft.component.type.TooltipDisplayComponent.DEFAULT
-             .with(DataComponentTypes.DAMAGE, true)
-             .with(DataComponentTypes.ATTRIBUTE_MODIFIERS, true)
-             .with(DataComponentTypes.UNBREAKABLE, true);
+        var tooltip = net.minecraft.world.item.component.TooltipDisplay.DEFAULT
+             .withHidden(DataComponents.DAMAGE, true)
+             .withHidden(DataComponents.ATTRIBUTE_MODIFIERS, true)
+             .withHidden(DataComponents.UNBREAKABLE, true);
         if (!model.isEmpty()) {
-            CustomModelDataComponent customModel = new CustomModelDataComponent(
+            CustomModelData customModel = new CustomModelData(
                     List.of(),             // floats
                     List.of(),             // flags
                     List.of(model),   // strings, сюда можно записать свой идентификатор или тег для модели
                     List.of()              // colors
             );
 
-            stack.set(DataComponentTypes.CUSTOM_MODEL_DATA, customModel);
+            stack.set(DataComponents.CUSTOM_MODEL_DATA, customModel);
         }
         if (displayName.isBlank() && lore.isEmpty()) {
-             tooltip = new net.minecraft.component.type.TooltipDisplayComponent(true, tooltip.hiddenComponents());
+             tooltip = new net.minecraft.world.item.component.TooltipDisplay(true, tooltip.hiddenComponents());
          }
-        stack.set(DataComponentTypes.TOOLTIP_DISPLAY, tooltip);
+        stack.set(DataComponents.TOOLTIP_DISPLAY, tooltip);
         return stack;
     }
 
     /**
      * Gets the nbt in the custom data component of the item stack.
-     * @return The {@link DataComponentTypes#CUSTOM_DATA custom data} of the itemstack,
-     *         or an empty {@link NbtCompound} if the itemstack is missing a custom data component
+     * @return The {@link DataComponents#CUSTOM_DATA custom data} of the itemstack,
+     *         or an empty {@link CompoundTag} if the itemstack is missing a custom data component
      */
     @SuppressWarnings("deprecation")
-    public static @NotNull NbtCompound getCustomData(@NotNull ComponentHolder stack) {
-        return stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt();
+    public static @NotNull CompoundTag getCustomData(@NotNull DataComponentHolder stack) {
+        return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
     }
 
     public static List<ItemStack> getArmor(LivingEntity entity) {
-        return AttributeModifierSlot.ARMOR.getSlots().stream()
+        return EquipmentSlotGroup.ARMOR.slots().stream()
                 .filter(es -> es.getType() == EquipmentSlot.Type.HUMANOID_ARMOR)
-                .map(entity::getEquippedStack)
+                .map(entity::getItemBySlot)
                 .toList();
     }
 
@@ -195,14 +195,14 @@ public class ItemUtils {
     public static PetInfo getPetInfo(ItemStack stack) {
         if (!getItemId(stack).equals("PET")) return PetInfo.EMPTY;
 
-        String petInfo = getCustomData(stack).getString("petInfo", "");
+        String petInfo = getCustomData(stack).getStringOr("petInfo", "");
 
         if (!petInfo.isEmpty()) {
             try {
                 JsonElement jsonElement = JsonParser.parseString(petInfo);
 
                 // Add item name into PetInfo to be used for wiki lookup
-                jsonElement.getAsJsonObject().addProperty("name", stack.getName().getString());
+                jsonElement.getAsJsonObject().addProperty("name", stack.getHoverName().getString());
                 return PetInfo.CODEC.parse(JsonOps.INSTANCE, jsonElement)
                         .setPartial(PetInfo.EMPTY)
                         .getPartialOrThrow();
@@ -215,32 +215,32 @@ public class ItemUtils {
     public static @NotNull String getNeuId(ItemStack stack) {
         if (stack == null) return "";
         String id = getItemId(stack);
-        NbtCompound customData = ItemUtils.getCustomData(stack);
+        CompoundTag customData = ItemUtils.getCustomData(stack);
         return switch (id) {
             case "ENCHANTED_BOOK" -> {
-                NbtCompound enchantments = customData.getCompoundOrEmpty("enchantments");
-                String enchant = enchantments.getKeys().stream().findFirst().orElse("");
-                yield enchant.toUpperCase(Locale.ENGLISH) + ";" + enchantments.getInt(enchant, 0);
+                CompoundTag enchantments = customData.getCompoundOrEmpty("enchantments");
+                String enchant = enchantments.keySet().stream().findFirst().orElse("");
+                yield enchant.toUpperCase(Locale.ENGLISH) + ";" + enchantments.getIntOr(enchant, 0);
             }
             case "PET" -> {
                 if (!customData.contains("petInfo")) yield id;
-                PetInfo petInfo = PetInfo.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString(customData.getString("petInfo", ""))).getOrThrow();
+                PetInfo petInfo = PetInfo.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString(customData.getStringOr("petInfo", ""))).getOrThrow();
                 yield petInfo.type() + ';' + petInfo.tierIndex();
             }
             case "RUNE" -> {
-                NbtCompound runes = customData.getCompoundOrEmpty("runes");
-                String rune = runes.getKeys().stream().findFirst().orElse("");
-                yield rune.toUpperCase(Locale.ENGLISH) + "_RUNE;" + runes.getInt(rune, 0);
+                CompoundTag runes = customData.getCompoundOrEmpty("runes");
+                String rune = runes.keySet().stream().findFirst().orElse("");
+                yield rune.toUpperCase(Locale.ENGLISH) + "_RUNE;" + runes.getIntOr(rune, 0);
             }
-            case "POTION" -> "POTION_" + customData.getString("potion", "").toUpperCase(Locale.ENGLISH) + ";" + customData.getInt("potion_level", 0);
+            case "POTION" -> "POTION_" + customData.getStringOr("potion", "").toUpperCase(Locale.ENGLISH) + ";" + customData.getIntOr("potion_level", 0);
             case "ATTRIBUTE_SHARD" -> {
                 Attribute attribute = Attributes.getAttributeFromItemName(stack);
                 if (attribute == null) yield id;
                 yield ItemRepository.getBazaarStocks().getOrDefault(attribute.apiId(), id);
             }
-            case "PARTY_HAT_CRAB", "BALLOON_HAT_2024", "BALLOON_HAT_2025" -> id + "_" + customData.getString("party_hat_color", "").toUpperCase(Locale.ENGLISH);
-            case "PARTY_HAT_CRAB_ANIMATED" -> "PARTY_HAT_CRAB_" + customData.getString("party_hat_color", "").toUpperCase(Locale.ENGLISH) + "_ANIMATED";
-            case "PARTY_HAT_SLOTH" -> id + "_" + customData.getString("party_hat_emoji", "").toUpperCase(Locale.ENGLISH);
+            case "PARTY_HAT_CRAB", "BALLOON_HAT_2024", "BALLOON_HAT_2025" -> id + "_" + customData.getStringOr("party_hat_color", "").toUpperCase(Locale.ENGLISH);
+            case "PARTY_HAT_CRAB_ANIMATED" -> "PARTY_HAT_CRAB_" + customData.getStringOr("party_hat_color", "").toUpperCase(Locale.ENGLISH) + "_ANIMATED";
+            case "PARTY_HAT_SLOTH" -> id + "_" + customData.getStringOr("party_hat_emoji", "").toUpperCase(Locale.ENGLISH);
             default -> id.replace(":", "-");
         };
     }

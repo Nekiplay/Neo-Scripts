@@ -7,11 +7,6 @@ import com.nekiplay.hypixelcry.utils.NEURepoManager;
 import com.nekiplay.hypixelcry.utils.itemlist.recipes.SkyblockRecipe;
 import io.github.moulberry.repo.data.*;
 import io.github.moulberry.repo.util.NEUId;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.network.packet.s2c.play.SynchronizeRecipesS2CPacket;
-import net.minecraft.recipe.display.CuttingRecipeDisplay;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -22,6 +17,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.protocol.game.ClientboundUpdateRecipesPacket;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.SelectableRecipe;
 
 public class ItemRepository {
     protected static final Logger LOGGER = LoggerFactory.getLogger(ItemRepository.class);
@@ -61,12 +61,12 @@ public class ItemRepository {
      * This also reloads REI to include the Skyblock items when the items are done loading.
      */
     private static void handleRecipeSynchronization() {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.world == null || client.getNetworkHandler() == null) return;
+        Minecraft client = Minecraft.getInstance();
+        if (client.level == null || client.getConnection() == null) return;
 
-        SynchronizeRecipesS2CPacket packet = new SynchronizeRecipesS2CPacket(Map.of(), CuttingRecipeDisplay.Grouping.empty());
+        ClientboundUpdateRecipesPacket packet = new ClientboundUpdateRecipesPacket(Map.of(), SelectableRecipe.SingleInputSet.empty());
         try {
-            client.execute(() -> client.getNetworkHandler().onSynchronizeRecipes(packet));
+            client.execute(() -> client.getConnection().handleUpdateRecipes(packet));
         } catch (Exception e) {
             LOGGER.info("[Skyblocker Item Repo] recipe sync error", e);
         }
@@ -111,7 +111,7 @@ public class ItemRepository {
             ItemStack stack = ItemStackBuilder.fromNEUItem(item);
             StackOverlays.applyOverlay(item, stack);
 
-            if (stack.isOf(Items.ENCHANTED_BOOK) && ItemUtils.getItemId(stack).contains(";")) {
+            if (stack.is(Items.ENCHANTED_BOOK) && ItemUtils.getItemId(stack).contains(";")) {
                 ItemUtils.getCustomData(stack).putString("id", "ENCHANTED_BOOK");
             }
 

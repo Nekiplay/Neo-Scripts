@@ -7,10 +7,9 @@ import com.nekiplay.hypixelcry.pathfinder.goal.Goal
 import com.nekiplay.hypixelcry.pathfinder.movement.CalculationContext
 import com.nekiplay.hypixelcry.pathfinder.movement.MovementResult
 import com.nekiplay.hypixelcry.pathfinder.movement.Moves
-import com.nekiplay.hypixelcry.pathfinder.utils.world
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap
-import net.minecraft.util.math.BlockPos
+import net.minecraft.core.BlockPos
 
 class AStarPathFinder(val startX: Int, val startY: Int, val startZ: Int, val goal: Goal, val ctx: CalculationContext) {
     private val closedSet: Long2ObjectMap<PathNode> = Long2ObjectOpenHashMap()
@@ -90,11 +89,11 @@ class AStarPathFinder(val startX: Int, val startY: Int, val startZ: Int, val goa
         // Добавляем проверку на граничные блоки
         return ctx.world?.let { world ->
             val pos = BlockPos(x, y, z)
-            world.isPosLoaded(pos) ||
-                    world.isPosLoaded(pos.add(1, 0, 0)) ||
-                    world.isPosLoaded(pos.add(-1, 0, 0)) ||
-                    world.isPosLoaded(pos.add(0, 0, 1)) ||
-                    world.isPosLoaded(pos.add(0, 0, -1))
+            world.isLoaded(pos) ||
+                    world.isLoaded(pos.offset(1, 0, 0)) ||
+                    world.isLoaded(pos.offset(-1, 0, 0)) ||
+                    world.isLoaded(pos.offset(0, 0, 1)) ||
+                    world.isLoaded(pos.offset(0, 0, -1))
         } ?: false
     }
 

@@ -1,6 +1,6 @@
 package com.nekiplay.hypixelcry.pathfinder.movement
 
-import net.minecraft.util.math.BlockPos
+import net.minecraft.core.BlockPos
 
 class MovementResult {
     var x: Int = 0

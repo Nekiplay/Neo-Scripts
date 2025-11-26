@@ -6,10 +6,8 @@ import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.utils.InventoryUtils
 import com.nekiplay.hypixelcry.utils.itemlist.ItemRepository
-import net.minecraft.client.gui.screen.ingame.GenericContainerScreen
-import net.minecraft.client.gui.screen.ingame.SignEditScreen
-import net.minecraft.screen.GenericContainerScreenHandler
-import net.minecraft.screen.ScreenHandler
+import net.minecraft.client.gui.screens.inventory.ContainerScreen
+import net.minecraft.client.gui.screens.inventory.SignEditScreen
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
@@ -65,7 +63,7 @@ class InventoryObject: LuaValue() {
 
     private inner class IsAnyScreenOpened : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc.currentScreen
+            val screen = mc.screen
             return valueOf(screen != null)
         }
     }
@@ -73,7 +71,7 @@ class InventoryObject: LuaValue() {
     private inner class SetSignTextFunction : TwoArgFunction() {
         override fun call(arg: LuaValue, arg2: LuaValue): LuaValue {
             if (arg.isnumber() && arg2.isstring()) {
-                val screen = mc.currentScreen
+                val screen = mc.screen
                 if (screen is SignEditScreen) {
                     val sign = screen as AbstractSignEditScreenAccessor
                     sign.messages[arg.toint()] = arg2.tojstring()
@@ -89,7 +87,7 @@ class InventoryObject: LuaValue() {
     private inner class GetSignTextFunction : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             if (arg.isnumber()) {
-                val screen = mc.currentScreen
+                val screen = mc.screen
                 if (screen is SignEditScreen) {
                     val sign = screen as AbstractSignEditScreenAccessor
                     return valueOf(sign.messages[arg.toint()])
@@ -103,14 +101,14 @@ class InventoryObject: LuaValue() {
 
     private inner class CloseScreenFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            mc.player?.closeHandledScreen()
+            mc.player?.closeContainer()
             return TRUE
         }
     }
 
     private inner class IsSignOpenedFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc.currentScreen
+            val screen = mc.screen
             return if (screen is SignEditScreen) {
                 TRUE
             } else {
@@ -121,8 +119,8 @@ class InventoryObject: LuaValue() {
 
     private inner class GetChestTitleFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc.currentScreen
-            return if (screen is GenericContainerScreen) {
+            val screen = mc.screen
+            return if (screen is ContainerScreen) {
                 valueOf(screen.title.getFormattedString())
             } else {
                 NIL
@@ -164,9 +162,9 @@ class InventoryObject: LuaValue() {
     }
     private inner class GetContainerSlotsFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc.currentScreen
-            if (screen is GenericContainerScreen) {
-                val container = screen.screenHandler
+            val screen = mc.screen
+            if (screen is ContainerScreen) {
+                val container = screen.menu
                 val slots = container.slots.size
                 return valueOf(slots)
             }
@@ -185,7 +183,7 @@ class InventoryObject: LuaValue() {
             val player = mc.player ?: return NIL
             val inv = player.inventory ?: return NIL
 
-            val stack = inv.getStack(slot)
+            val stack = inv.getItem(slot)
             if (stack == null || stack.isEmpty) return NIL
             return LuaItemStack(stack)
         }
@@ -195,9 +193,9 @@ class InventoryObject: LuaValue() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
                 if (mc.player != null) {
-                    val screenHandler: ScreenHandler? = mc.player!!.currentScreenHandler
-                    if (screenHandler is GenericContainerScreenHandler) {
-                        val stack = screenHandler.getSlot(arg.toint()).stack
+                    val screenHandler = mc.player?.containerMenu
+                    if (screenHandler != null) {
+                        val stack = screenHandler.getSlot(arg.toint()).item
                         if (stack == null || stack.isEmpty) return NIL
 
                         return LuaItemStack(stack)

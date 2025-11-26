@@ -4,8 +4,7 @@ import com.nekiplay.hypixelcry.annotations.Init;
 import com.nekiplay.hypixelcry.utils.Utils;
 import com.nekiplay.hypixelcry.utils.scheduler.Scheduler;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
-import net.minecraft.text.Text;
-
+import net.minecraft.network.chat.Component;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,7 +19,7 @@ public class ColdTracker {
         ClientReceiveMessageEvents.ALLOW_GAME.register(ColdTracker::coldReset);
     }
 
-    private static boolean coldReset(Text text, boolean b) {
+    private static boolean coldReset(Component text, boolean b) {
         if (!Utils.isInDwarvenMines() || b) {
             return true;
         }

@@ -1,3 +1,3 @@
 accessWidener	v1	named
 
-accessible field net/minecraft/client/gui/hud/InGameHud SCOREBOARD_ENTRY_COMPARATOR Ljava/util/Comparator;
+accessible field net/minecraft/client/gui/Gui SCORE_DISPLAY_ORDER Ljava/util/Comparator;

@@ -3,25 +3,23 @@ package com.nekiplay.hypixelcry.events.network;
 import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
-import net.minecraft.block.BlockState;
-import net.minecraft.network.ClientConnection;
-import net.minecraft.network.packet.Packet;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.network.Connection;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.world.InteractionResult;
 
 public class PacketEvent {
     public static final Event<PacketEvent.PacketEventReciveCallback> RECEIVE = EventFactory.createArrayBacked(
             PacketEvent.PacketEventReciveCallback.class,
             (listeners) -> (event) -> {
                 for (PacketEvent.PacketEventReciveCallback listener : listeners) {
-                    ActionResult result = listener.update(event);
+                    InteractionResult result = listener.update(event);
 
-                    if(result != ActionResult.PASS) {
+                    if(result != InteractionResult.PASS) {
                         return result;
                     }
                 }
 
-                return ActionResult.PASS;
+                return InteractionResult.PASS;
             }
     );
 
@@ -29,14 +27,14 @@ public class PacketEvent {
             PacketEvent.PacketEventSendCallback.class,
             (listeners) -> (event) -> {
                 for (PacketEvent.PacketEventSendCallback listener : listeners) {
-                    ActionResult result = listener.update(event);
+                    InteractionResult result = listener.update(event);
 
-                    if(result != ActionResult.PASS) {
+                    if(result != InteractionResult.PASS) {
                         return result;
                     }
                 }
 
-                return ActionResult.PASS;
+                return InteractionResult.PASS;
             }
     );
 
@@ -44,21 +42,21 @@ public class PacketEvent {
             PacketEvent.PacketEventSentCallback.class,
             (listeners) -> (event) -> {
                 for (PacketEvent.PacketEventSentCallback listener : listeners) {
-                    ActionResult result = listener.update(event);
+                    InteractionResult result = listener.update(event);
 
-                    if(result != ActionResult.PASS) {
+                    if(result != InteractionResult.PASS) {
                         return result;
                     }
                 }
 
-                return ActionResult.PASS;
+                return InteractionResult.PASS;
             }
     );
 
     private Packet<?> packet;
-    private ClientConnection connection;
+    private Connection connection;
 
-    public PacketEvent(Packet<?> packet, ClientConnection connection) {
+    public PacketEvent(Packet<?> packet, Connection connection) {
         this.packet = packet;
         this.connection = connection;
     }
@@ -67,17 +65,17 @@ public class PacketEvent {
         return packet;
     }
 
-    public ClientConnection getConnection() {
+    public Connection getConnection() {
         return connection;
     }
 
     public interface PacketEventReciveCallback {
-        ActionResult update(PacketEvent event);
+        InteractionResult update(PacketEvent event);
     }
     public interface PacketEventSendCallback {
-        ActionResult update(PacketEvent event);
+        InteractionResult update(PacketEvent event);
     }
     public interface PacketEventSentCallback {
-        ActionResult update(PacketEvent event);
+        InteractionResult update(PacketEvent event);
     }
 }

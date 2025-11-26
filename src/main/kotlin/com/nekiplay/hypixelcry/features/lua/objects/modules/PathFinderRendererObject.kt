@@ -1,11 +1,9 @@
 package com.nekiplay.hypixelcry.features.lua.objects.modules
 
-import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.esp.pathfinder.PathFinderWorker
-import net.minecraft.util.math.BlockPos
+import net.minecraft.core.BlockPos
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
-import org.luaj.vm2.lib.ZeroArgFunction
 
 class PathFinderRendererObject: LuaValue() {
     override fun call(): LuaValue {

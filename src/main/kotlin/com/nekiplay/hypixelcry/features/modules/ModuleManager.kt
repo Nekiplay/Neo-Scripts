@@ -1,10 +1,6 @@
 package com.nekiplay.hypixelcry.features.modules
 
-import com.nekiplay.hypixelcry.events.KeyEvent
-import com.nekiplay.hypixelcry.events.MouseButtonEvent
 import com.nekiplay.hypixelcry.features.modules.impl.misc.LuaEvents
-import com.nekiplay.hypixelcry.utils.misc.input.KeyAction
-import net.minecraft.util.ActionResult
 
 object ModuleManager {
     private val modulesMap = mutableMapOf<String, ClientModule>()

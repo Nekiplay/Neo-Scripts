@@ -3,10 +3,9 @@ package com.nekiplay.hypixelcry.utils;
 import com.nekiplay.hypixelcry.annotations.Init;
 import com.nekiplay.hypixelcry.utils.scheduler.Scheduler;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
-
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,7 +15,7 @@ public class StatusBarTracker {
     private static final Pattern MANA_USE = Pattern.compile("§b-([\\d,]+) Mana \\(§.*?\\) *");
     private static final Pattern MANA_STATUS = Pattern.compile("§b(?<mana>[\\d,]+)/(?<max>[\\d,]+)✎ (?:Mana|§3(?<overflow>[\\d,]+)ʬ) *");
 
-    private static final MinecraftClient client = MinecraftClient.getInstance();
+    private static final Minecraft client = Minecraft.getInstance();
     private static Resource health = new Resource(100, 100, 0);
     private static Resource mana = new Resource(100, 100, 0);
     private static Resource speed = new Resource(100, 400, 0);
@@ -57,17 +56,17 @@ public class StatusBarTracker {
         updateAir();
     }
 
-    private static boolean allowOverlayMessage(Text text, boolean overlay) {
+    private static boolean allowOverlayMessage(Component text, boolean overlay) {
         onOverlayMessage(text, overlay);
         return true;
     }
 
-    private static Text onOverlayMessage(Text text, boolean overlay) {
+    private static Component onOverlayMessage(Component text, boolean overlay) {
         if (!overlay || !Utils.isOnSkyblock() ||  Utils.isInTheRift()) {
             return text;
         }
         update(text.getString(), false);
-        return Text.of(update(text.getString(), false));
+        return Component.nullToEmpty(update(text.getString(), false));
     }
 
     public static String update(String actionBar, boolean filterManaUse) {
@@ -127,17 +126,17 @@ public class StatusBarTracker {
     private static void updateSpeed() {
         // Black cat and racing helm are untested - I don't have the money to test atm, but no reason why they shouldn't work
         assert client.player != null;
-        int value = (int) (client.player.isSprinting() ? (client.player.getMovementSpeed() / 1.3f) * 1000 : client.player.getMovementSpeed() * 1000);
+        int value = (int) (client.player.isSprinting() ? (client.player.getSpeed() / 1.3f) * 1000 : client.player.getSpeed() * 1000);
         int max = 400; // hardcoded limit (except for with cactus knife, black cat, snail, racing helm, young drag)
-        if (client.player.getMainHandStack().getName().getString().contains("Cactus Knife") && Utils.getLocation() == Location.GARDEN) {
+        if (client.player.getMainHandItem().getHoverName().getString().contains("Cactus Knife") && Utils.getLocation() == Location.GARDEN) {
             max = 500;
         }
         Iterable<ItemStack> armor = ItemUtils.getArmor(client.player);
         int youngDragCount = 0;
         for (ItemStack armorPiece : armor) {
-            if (armorPiece.getName().getString().contains("Racing Helmet")) {
+            if (armorPiece.getHoverName().getString().contains("Racing Helmet")) {
                 max = 500;
-            } else if (armorPiece.getName().getString().contains("Young Dragon")) {
+            } else if (armorPiece.getHoverName().getString().contains("Young Dragon")) {
                 youngDragCount++;
             }
         }
@@ -150,8 +149,8 @@ public class StatusBarTracker {
 
     private static void updateAir() {
         assert client.player != null;
-        int max = client.player.getMaxAir();
-        int value = Math.clamp(client.player.getAir(), 0, max);
+        int max = client.player.getMaxAirSupply();
+        int value = Math.clamp(client.player.getAirSupply(), 0, max);
         air = new Resource(value, max, 0);
     }
 

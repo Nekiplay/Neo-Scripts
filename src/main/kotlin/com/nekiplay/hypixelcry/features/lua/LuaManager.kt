@@ -23,9 +23,9 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.fabricmc.loader.api.FabricLoader
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.command.CommandRegistryAccess
-import net.minecraft.text.Text
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.commands.CommandBuildContext
+import net.minecraft.network.chat.Component
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaError
 import org.luaj.vm2.LuaValue
@@ -743,7 +743,7 @@ class LuaManager() {
     private fun registerMinecraftCommand(commandName: String) {
         try {
             // Регистрируем команду в Minecraft
-            ClientCommandRegistrationCallback.EVENT.register(ClientCommandRegistrationCallback { dispatcher: CommandDispatcher<FabricClientCommandSource?>?, registryAccess: CommandRegistryAccess? ->
+            ClientCommandRegistrationCallback.EVENT.register(ClientCommandRegistrationCallback { dispatcher: CommandDispatcher<FabricClientCommandSource?>?, registryAccess: CommandBuildContext? ->
                 dispatcher!!.register(
                     ClientCommandManager.literal(commandName)
                         .executes(Command { context: CommandContext<FabricClientCommandSource?>? ->
@@ -772,7 +772,7 @@ class LuaManager() {
                 callback.call(LuaValue.valueOf(commandName), argsTable, LuaValue.valueOf(source?.player?.name?.string ?: ""))
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("Error executing Lua command: /$commandName", e)
-                source?.sendError(Text.literal("Error executing command: ${e.message}"))
+                source?.sendError(Component.literal("Error executing command: ${e.message}"))
             }
         }
     }
@@ -823,7 +823,7 @@ class LuaManager() {
         }
     }
 
-    fun on2DRenderTick(context: DrawContext?) {
+    fun on2DRenderTick(context: GuiGraphics?) {
         val callbacks = synchronized(callbacksLock) {
             render2DCallbacks.toTypedArray()
         }
@@ -855,7 +855,7 @@ class LuaManager() {
         }
     }
 
-    fun onChatMessageEvent(text: Text, overlay: Boolean): Boolean {
+    fun onChatMessageEvent(text: Component, overlay: Boolean): Boolean {
         val callbacks = synchronized(callbacksLock) {
             messageEventCallbacks.toTypedArray()
         }

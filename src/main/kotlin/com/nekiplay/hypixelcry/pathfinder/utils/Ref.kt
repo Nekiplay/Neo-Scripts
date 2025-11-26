@@ -1,10 +1,10 @@
 package com.nekiplay.hypixelcry.pathfinder.utils
 
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 
 val mc
-    get() = MinecraftClient.getInstance()
+    get() = Minecraft.getInstance()
 val player
     get() = mc.player
 val world
-    get() = mc.world
+    get() = mc.level

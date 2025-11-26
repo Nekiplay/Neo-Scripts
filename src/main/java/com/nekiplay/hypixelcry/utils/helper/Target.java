@@ -1,19 +1,19 @@
 package com.nekiplay.hypixelcry.utils.helper;
 
 import com.nekiplay.hypixelcry.utils.AngleUtils;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
 
 public class Target {
 
-    private Vec3d vec;
+    private Vec3 vec;
     private Entity entity;
     private BlockPos blockPos;
     private Angle angle;
     private float additionalY = (float) (1 + Math.random()) * 0.75f;
 
-    public Target(Vec3d vec) {
+    public Target(Vec3 vec) {
         this.vec = vec;
     }
 
@@ -40,7 +40,7 @@ public class Target {
         }
 
         if (entity != null) {
-            return AngleUtils.getRotation(entity.getEntityPos().add(0, additionalY, 0));
+            return AngleUtils.getRotation(entity.position().add(0, additionalY, 0));
         }
 
         return angle;

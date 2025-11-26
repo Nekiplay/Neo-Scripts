@@ -1,11 +1,9 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 
-import net.minecraft.block.Block
-import net.minecraft.block.BlockState
-import net.minecraft.block.FacingBlock
-import net.minecraft.block.PistonBlock
-import net.minecraft.block.PowderSnowBlock
-import net.minecraft.block.SnowyBlock
+import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.DoorBlock
+import net.minecraft.world.level.block.piston.PistonBaseBlock
+import net.minecraft.world.level.block.state.BlockState
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 
@@ -14,16 +12,16 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
     override fun get(key: LuaValue): LuaValue {
 
         return when (val field = key.tojstring()) {
-            "id" -> valueOf(Block.getRawIdFromState(blockState))
-            "name" -> valueOf(blockState.block.translationKey)
+            "id" -> valueOf(Block.getId(blockState))
+            "name" -> valueOf(blockState.block.descriptionId)
             "type" -> valueOf(blockState.toString())
-            "hardness" -> valueOf(blockState.block.hardness.toDouble())
-            "blast_resistance" -> valueOf(blockState.block.blastResistance.toDouble())
+            "hardness" -> valueOf(blockState.block.friction.toDouble())
+            "blast_resistance" -> valueOf(blockState.block.explosionResistance.toDouble())
             "is_solid" -> valueOf(blockState.isSolid)
-            "is_liquid" -> valueOf(blockState.isLiquid)
+            "is_liquid" -> valueOf(blockState.liquid())
             "is_air" -> valueOf(blockState.isAir)
             "facing" -> {
-                val facing = blockState.getOrEmpty(FacingBlock.FACING)
+                val facing = blockState.getOptionalValue(DoorBlock.FACING)
                 if (facing.isPresent) {
                     valueOf(facing.get().name)
                 } else {
@@ -31,7 +29,7 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
                 }
             }
             "extended" -> {
-                val extended = blockState.getOrEmpty(PistonBlock.EXTENDED)
+                val extended = blockState.getOptionalValue(PistonBaseBlock.EXTENDED)
                 if (extended.isPresent) {
                     valueOf(extended.get())
                 } else {
@@ -40,7 +38,7 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
             }
             "is_still" -> {
                 if (blockState.fluidState != null) {
-                    valueOf(blockState.fluidState.isStill)
+                    valueOf(blockState.fluidState.isSource)
                 } else {
                     LuaValue.NIL
                 }

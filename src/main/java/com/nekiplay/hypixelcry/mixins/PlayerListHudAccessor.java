@@ -1,8 +1,5 @@
 package com.nekiplay.hypixelcry.mixins;
 
-import net.minecraft.client.gui.hud.PlayerListHud;
-import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
@@ -10,20 +7,23 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 
 import java.util.Comparator;
 import java.util.List;
+import net.minecraft.client.gui.components.PlayerTabOverlay;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.network.chat.Component;
 
-@Mixin(PlayerListHud.class)
+@Mixin(PlayerTabOverlay.class)
 public interface PlayerListHudAccessor {
-    @Accessor("ENTRY_ORDERING")
-    static Comparator<PlayerListEntry> getEntryOrdering_hypixel_cry() {
+    @Accessor("PLAYER_COMPARATOR")
+    static Comparator<PlayerInfo> getEntryOrdering_hypixel_cry() {
         throw new AssertionError();
     }
 
-    @Invoker("collectPlayerEntries")
-    List<PlayerListEntry> collectPlayerEntries_hypixel_cry();
+    @Invoker("getPlayerInfos")
+    List<PlayerInfo> collectPlayerEntries_hypixel_cry();
 
     @Accessor("footer")
-    @Nullable Text getFooter_hypixel_cry();
+    @Nullable Component getFooter_hypixel_cry();
 
     @Accessor("header")
-    @Nullable Text getHeader_hypixel_cry();
+    @Nullable Component getHeader_hypixel_cry();
 }

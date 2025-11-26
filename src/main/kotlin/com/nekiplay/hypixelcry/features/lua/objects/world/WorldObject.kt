@@ -7,18 +7,17 @@ import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.RaycastUtils
 import com.nekiplay.hypixelcry.utils.Rotations
-import net.minecraft.block.Block
-import net.minecraft.block.BlockState
-import net.minecraft.util.hit.EntityHitResult
-import net.minecraft.util.hit.BlockHitResult
-import net.minecraft.util.hit.HitResult
-import net.minecraft.util.math.BlockPos
-import net.minecraft.util.math.Vec3d
-import net.minecraft.world.RaycastContext
+import net.minecraft.core.BlockPos
+import net.minecraft.world.level.ClipContext
+import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.BlockHitResult
+import net.minecraft.world.phys.EntityHitResult
+import net.minecraft.world.phys.HitResult
+import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
-import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 
 class WorldObject : LuaValue() {
@@ -81,7 +80,7 @@ class WorldObject : LuaValue() {
 
             // Получаем collision shape
             val collisionShape = try {
-                blockState.getOutlineShape(mc.world, blockPos)
+                blockState.getShape(mc.level, blockPos)
             } catch (e: Exception) {
                 return LuaValue.error("Error getting collision shape: ${e.message}")
             }
@@ -95,7 +94,7 @@ class WorldObject : LuaValue() {
             val result = LuaValue.tableOf()
 
             var index: Int = 1
-            collisionShape.boundingBoxes.forEach { voxel ->
+            collisionShape.toAabbs().forEach { voxel ->
                 val boxTable = LuaValue.tableOf()
                 boxTable.set("minX", LuaValue.valueOf(voxel.minX))
                 boxTable.set("minY", LuaValue.valueOf(voxel.minY))
@@ -146,7 +145,7 @@ class WorldObject : LuaValue() {
 
             // Получаем collision shape
             val collisionShape = try {
-                blockState.getCollisionShape(mc.world, blockPos)
+                blockState.getCollisionShape(mc.level, blockPos)
             } catch (e: Exception) {
                 return LuaValue.error("Error getting collision shape: ${e.message}")
             }
@@ -160,7 +159,7 @@ class WorldObject : LuaValue() {
             val result = LuaValue.tableOf()
 
             var index: Int = 1
-            collisionShape.boundingBoxes.forEach { voxel ->
+            collisionShape.toAabbs().forEach { voxel ->
                 val boxTable = LuaValue.tableOf()
                 boxTable.set("minX", LuaValue.valueOf(voxel.minX))
                 boxTable.set("minY", LuaValue.valueOf(voxel.minY))
@@ -188,28 +187,28 @@ class WorldObject : LuaValue() {
 
                 val include_fluid = arg.get("include_fluid").optboolean(false)
 
-                val startVec = Vec3d(startX, startY, startZ)
-                val endVec = Vec3d(endX, endY, endZ)
+                val startVec = Vec3(startX, startY, startZ)
+                val endVec = Vec3(endX, endY, endZ)
 
-                var context = RaycastContext(
+                var context = ClipContext(
                     startVec,
                     endVec,
-                    RaycastContext.ShapeType.OUTLINE,
-                    RaycastContext.FluidHandling.NONE,
+                    ClipContext.Block.OUTLINE,
+                    ClipContext.Fluid.NONE,
                     mc.player
                 )
 
                 if (include_fluid) {
-                    context = RaycastContext(
+                    context = ClipContext(
                         startVec,
                         endVec,
-                        RaycastContext.ShapeType.OUTLINE,
-                        RaycastContext.FluidHandling.ANY,
+                        ClipContext.Block.OUTLINE,
+                        ClipContext.Fluid.ANY,
                         mc.player
                     )
                 }
 
-                val hitResult = mc.world?.raycast(context)
+                val hitResult = mc.level?.clip(context)
                 return if (hitResult != null) {
                     processHitResult(hitResult)
                 } else {
@@ -231,8 +230,8 @@ class WorldObject : LuaValue() {
                 val endY = arg.get("endY").optdouble(0.0)
                 val endZ = arg.get("endZ").optdouble(0.0)
 
-                val startVec = Vec3d(startX, startY, startZ)
-                val endVec = Vec3d(endX, endY, endZ)
+                val startVec = Vec3(startX, startY, startZ)
+                val endVec = Vec3(endX, endY, endZ)
 
                 // Получаем список блоков для проверки (если указаны)
                 val blocksTable = arg.get("blocks")
@@ -241,7 +240,7 @@ class WorldObject : LuaValue() {
                     var i = 1
                     while (true) {
                         val blockName = blocksTable.get(i).optint(0)
-                        val state = Block.getStateFromRawId(blockName)
+                        val state = Block.stateById(blockName)
                         if (state != null) {
                             targetBlocks.add(state.block)
                         }
@@ -274,10 +273,10 @@ class WorldObject : LuaValue() {
                 val result = hitResult as BlockHitResult
                 val table = tableOf()
                 table.set("type", "block")
-                table.set("x", valueOf(result.pos.x))
-                table.set("y", valueOf(result.pos.y))
-                table.set("z", valueOf(result.pos.z))
-                table.set("side", valueOf(result.side.toString()))
+                table.set("x", valueOf(result.blockPos.x))
+                table.set("y", valueOf(result.blockPos.y))
+                table.set("z", valueOf(result.blockPos.z))
+                table.set("side", valueOf(result.direction.toString()))
 
                 val blockPos = tableOf()
                 blockPos.set("x", valueOf(result.blockPos.x))
@@ -302,8 +301,8 @@ class WorldObject : LuaValue() {
             arg3: LuaValue?
         ): LuaValue? {
             return if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
-                val yaw = Rotations.getYaw(Vec3d(arg1.todouble(), arg2.todouble(), arg3.todouble()))
-                val pitch = Rotations.getPitch(Vec3d(arg1.todouble(), arg2.todouble(), arg3.todouble()))
+                val yaw = Rotations.getYaw(Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble()))
+                val pitch = Rotations.getPitch(Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble()))
                 val table = tableOf()
                 table.set("yaw", valueOf(yaw))
                 table.set("pitch", valueOf(pitch))
@@ -325,18 +324,18 @@ class WorldObject : LuaValue() {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isnumber() == true) {
                 val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
                 val blockId = arg4.toint()
-                val blockState = Block.getStateFromRawId(blockId)
+                val blockState = Block.stateById(blockId)
 
-                mc.world?.setBlockState(blockPos, blockState)
+                mc.level?.setBlockAndUpdate(blockPos, blockState)
 
-                mc.worldRenderer.updateBlock(
-                    mc.world,
+                /*mc.worldRenderer.updateBlock(
+                --    mc.level,
                     blockPos,
-                    mc.world?.getBlockState(blockPos),
+                    mc.level?.getBlockState(blockPos),
                     blockState,
                     0
-                )
-                mc.world?.updateNeighbors(blockPos, blockState.block)
+                )*/
+                mc.level?.updateNeighborsAt(blockPos, blockState.block)
                 return TRUE
             }
             else if (arg1?.istable() ?: false) {
@@ -346,18 +345,18 @@ class WorldObject : LuaValue() {
                 val id: Int = if (arg1.get("id").isnumber()) arg1.get("id").toint() else 0
 
                 val blockPos = BlockPos(x, y, z)
-                val blockState = Block.getStateFromRawId(id)
+                val blockState = Block.stateById(id)
 
-                mc.world?.setBlockState(blockPos, blockState)
+                mc.level?.setBlockAndUpdate(blockPos, blockState)
 
-                mc.worldRenderer.updateBlock(
+                /*mc.worldRenderer.updateBlock(
                     mc.world,
                     blockPos,
                     mc.world?.getBlockState(blockPos),
                     blockState,
                     0
-                )
-                mc.world?.updateNeighbors(blockPos, blockState.block)
+                )*/
+                mc.level?.updateNeighborsAt(blockPos, blockState.block)
                 return TRUE
             }
             return NIL
@@ -372,7 +371,7 @@ class WorldObject : LuaValue() {
         ): LuaValue? {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
                 val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
-                val state = mc.world?.getBlockState(blockPos)
+                val state = mc.level?.getBlockState(blockPos)
                 if (state != null) {
                     return LuaBlockState(state);
                 }
@@ -382,7 +381,7 @@ class WorldObject : LuaValue() {
                 val y: Int = if (arg1.get("y").isnumber()) arg1.get("y").toint() else 0
                 val z: Int = if (arg1.get("z").isnumber()) arg1.get("z").toint() else 0
                 val blockPos = BlockPos(x, y, z)
-                val state = mc.world?.getBlockState(blockPos)
+                val state = mc.level?.getBlockState(blockPos)
                 if (state != null) {
                     return LuaBlockState(state);
                 }
@@ -399,14 +398,14 @@ class WorldObject : LuaValue() {
         ): LuaValue? {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
                 val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
-                return valueOf(mc.world?.isPosLoaded(blockPos) ?: false);
+                return valueOf(mc.level?.isLoaded(blockPos) ?: false);
             }
             else if (arg1?.istable() == true) {
                 val x: Int = if (arg1.get("x").isnumber()) arg1.get("x").toint() else 0
                 val y: Int = if (arg1.get("y").isnumber()) arg1.get("y").toint() else 0
                 val z: Int = if (arg1.get("z").isnumber()) arg1.get("z").toint() else 0
                 val blockPos = BlockPos(x, y, z)
-                return valueOf(mc.world?.isPosLoaded(blockPos) ?: false);
+                return valueOf(mc.level?.isLoaded(blockPos) ?: false);
             }
             return NIL
         }
@@ -428,7 +427,7 @@ class WorldObject : LuaValue() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
                 val entityId = arg.toint()
-                val entity = mc.world?.getEntityById(entityId)
+                val entity = mc.level?.getEntity(entityId)
                 if (entity != null) {
                     LuaEntity(entity)
                 }

@@ -1,54 +1,54 @@
 package com.nekiplay.hypixelcry.utils;
 
-import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
-import net.minecraft.client.gui.screen.ingame.InventoryScreen;
-import net.minecraft.screen.slot.SlotActionType;
-
 import static com.nekiplay.hypixelcry.HypixelCry.mc;
 
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.world.inventory.ClickType;
+
 public class InventoryUtils {
-    public static void clickSlotWithId(int slotId, int button, SlotActionType actionType, int syncId) {
-        if (mc.interactionManager != null && mc.player != null) {
-            mc.interactionManager.clickSlot(syncId, slotId, button, actionType, mc.player);
+    public static void clickSlotWithId(int slotId, int button, ClickType actionType, int syncId) {
+        if (mc.gameMode != null && mc.player != null) {
+            mc.gameMode.handleInventoryMouseClick(syncId, slotId, button, actionType, mc.player);
         }
     }
 
-    public static void clickSlot(int slot, int button, SlotActionType actionType) {
-        if (mc.player != null && mc.currentScreen != null) {
-            if (mc.currentScreen instanceof GenericContainerScreen) {
-                clickSlotWithId(slot, button, actionType, (((GenericContainerScreen)mc.currentScreen).getScreenHandler().syncId));
+    public static void clickSlot(int slot, int button, ClickType actionType) {
+        if (mc.player != null && mc.screen != null) {
+            if (mc.screen instanceof ContainerScreen) {
+                clickSlotWithId(slot, button, actionType, (((ContainerScreen)mc.screen).getMenu().containerId));
             }
-            else if (mc.currentScreen instanceof InventoryScreen) {
-                clickSlotWithId(slot, button, actionType, mc.player.playerScreenHandler.syncId);
+            else if (mc.screen instanceof InventoryScreen) {
+                clickSlotWithId(slot, button, actionType, mc.player.inventoryMenu.containerId);
             }
         }
     }
 
     public static void swapSlots(int slot, int hotbarSlot) {
-        if (mc.player != null && mc.currentScreen != null) {
-            if (mc.currentScreen instanceof GenericContainerScreen) {
-                clickSlotWithId(slot, hotbarSlot, SlotActionType.SWAP, (((GenericContainerScreen)mc.currentScreen).getScreenHandler().syncId));
+        if (mc.player != null && mc.screen != null) {
+            if (mc.screen instanceof ContainerScreen) {
+                clickSlotWithId(slot, hotbarSlot, ClickType.SWAP, (((ContainerScreen)mc.screen).getMenu().containerId));
             }
-            else if (mc.currentScreen instanceof InventoryScreen) {
-                clickSlotWithId(slot, hotbarSlot, SlotActionType.SWAP, mc.player.playerScreenHandler.syncId);
+            else if (mc.screen instanceof InventoryScreen) {
+                clickSlotWithId(slot, hotbarSlot, ClickType.SWAP, mc.player.inventoryMenu.containerId);
             }
         }
     }
 
     // Дополнительные полезные методы
     public static void leftClickSlot(int slot) {
-        clickSlot(slot, 0, SlotActionType.PICKUP);
+        clickSlot(slot, 0, ClickType.PICKUP);
     }
 
     public static void rightClickSlot(int slot) {
-        clickSlot(slot, 1, SlotActionType.PICKUP);
+        clickSlot(slot, 1, ClickType.PICKUP);
     }
 
     public static void dropSlot(int slot) {
-        clickSlot(slot, 0, SlotActionType.THROW);
+        clickSlot(slot, 0, ClickType.THROW);
     }
 
     public static void dropAllFromSlot(int slot) {
-        clickSlot(slot, 1, SlotActionType.THROW);
+        clickSlot(slot, 1, ClickType.THROW);
     }
 }
