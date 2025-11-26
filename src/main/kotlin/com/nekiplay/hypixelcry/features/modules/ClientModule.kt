@@ -5,9 +5,9 @@ import com.nekiplay.hypixelcry.pathfinder.utils.mc
 
 open class ClientModule {
     val player by lazy { mc.player }  // Инициализируется при первом обращении
-    val world by lazy { mc.world }
-    val screen by lazy { mc.currentScreen }
-    val interaction by lazy { mc.interactionManager }
+    val world by lazy { mc.level }
+    val screen by lazy { mc.screen }
+    val interaction by lazy { mc.gameMode }
 
     open fun init() {
 

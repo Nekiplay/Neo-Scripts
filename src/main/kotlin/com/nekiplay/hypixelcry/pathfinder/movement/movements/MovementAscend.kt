@@ -5,7 +5,7 @@ import com.nekiplay.hypixelcry.pathfinder.movement.CalculationContext
 import com.nekiplay.hypixelcry.pathfinder.movement.Movement
 import com.nekiplay.hypixelcry.pathfinder.movement.MovementHelper
 import com.nekiplay.hypixelcry.pathfinder.movement.MovementResult
-import net.minecraft.util.math.BlockPos
+import net.minecraft.core.BlockPos
 
 class MovementAscend(mm: HypixelCry, from: BlockPos, to: BlockPos) : Movement(mm, from, to) {
     override fun calculateCost(ctx: CalculationContext, res: MovementResult) {
@@ -57,14 +57,14 @@ class MovementAscend(mm: HypixelCry, from: BlockPos, to: BlockPos) : Movement(mm
 
             // Safe way to get sourceHeight
             val sourceHeight = try {
-                sourceState?.getCollisionShape(ctx.world, sourcePos)?.boundingBox?.maxY ?: y.toDouble()
+                sourceState?.getCollisionShape(ctx.world, sourcePos)?.bounds()?.maxY ?: y.toDouble()
             } catch (e: UnsupportedOperationException) {
                 y.toDouble()
             }
 
             // Safe way to get destHeight
             val destHeight = try {
-                destState?.getCollisionShape(ctx.world, destPos)?.boundingBox?.maxY ?: (y + 1.0)
+                destState?.getCollisionShape(ctx.world, destPos)?.bounds()?.maxY ?: (y + 1.0)
             } catch (e: UnsupportedOperationException) {
                 (y + 1.0)
             }

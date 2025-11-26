@@ -1,25 +1,27 @@
 package com.nekiplay.hypixelcry.pathfinder.movement
 
-import net.minecraft.block.BlockState
-import net.minecraft.block.Blocks
-import net.minecraft.block.CarpetBlock
-import net.minecraft.block.CauldronBlock
-import net.minecraft.block.DoorBlock
-import net.minecraft.block.FenceGateBlock
-import net.minecraft.block.FlowerBlock
-import net.minecraft.block.FluidBlock
-import net.minecraft.block.LadderBlock
-import net.minecraft.block.SkullBlock
-import net.minecraft.block.SlabBlock
-import net.minecraft.block.SnowBlock
-import net.minecraft.block.StainedGlassBlock
-import net.minecraft.block.StairsBlock
-import net.minecraft.block.TrapdoorBlock
-import net.minecraft.block.enums.BlockHalf
-import net.minecraft.block.enums.SlabType
-import net.minecraft.fluid.Fluids
-import net.minecraft.util.math.BlockPos
-import net.minecraft.util.math.Direction
+import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
+import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.level.block.CarpetBlock
+import net.minecraft.world.level.block.CauldronBlock
+import net.minecraft.world.level.block.DoorBlock
+import net.minecraft.world.level.block.FenceGateBlock
+import net.minecraft.world.level.block.FlowerBlock
+import net.minecraft.world.level.block.HalfTransparentBlock
+import net.minecraft.world.level.block.LadderBlock
+import net.minecraft.world.level.block.SkullBlock
+import net.minecraft.world.level.block.SlabBlock
+import net.minecraft.world.level.block.SnowLayerBlock
+import net.minecraft.world.level.block.StainedGlassBlock
+import net.minecraft.world.level.block.StairBlock
+import net.minecraft.world.level.block.TrapDoorBlock
+import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.state.properties.SlabType
+import net.minecraft.world.level.material.FlowingFluid
+import net.minecraft.world.level.material.FluidState
+import net.minecraft.world.level.material.Fluids
+import net.minecraft.world.level.material.WaterFluid
 import kotlin.math.abs
 
 object MovementHelper {
@@ -43,19 +45,19 @@ object MovementHelper {
         return when (block) {
             Blocks.AIR -> true
             is FlowerBlock -> true
-            Blocks.FIRE, Blocks.TRIPWIRE, Blocks.COBWEB, Blocks.END_PORTAL, Blocks.COCOA, is SkullBlock, is TrapdoorBlock -> false
+            Blocks.FIRE, Blocks.TRIPWIRE, Blocks.COBWEB, Blocks.END_PORTAL, Blocks.COCOA, is SkullBlock, is TrapDoorBlock -> false
             is DoorBlock, is FenceGateBlock -> {
                 // TODO this assumes that all doors in all mods are openable
                 if (block == Blocks.IRON_DOOR) {
                     false
                 } else {
-                    state.get(DoorBlock.OPEN) // Check if the door is open
+                    state.getValue(DoorBlock.OPEN) // Check if the door is open
                 }
             }
             is CarpetBlock -> null
-            is SnowBlock -> null
-            is FluidBlock -> { // Changed from BlockLiquid to FluidBlock
-                if (state.get(FluidBlock.LEVEL) != 0) { // Changed property access
+            is SnowLayerBlock -> null
+            is FlowingFluid -> { // Changed from BlockLiquid to FluidBlock
+                if (state.getValue(FlowingFluid.LEVEL) != 0) { // Changed property access
                     false
                 } else {
                     null
@@ -67,7 +69,7 @@ object MovementHelper {
                 try {
                     block == Blocks.AIR
                 } catch (exception: Throwable) {
-                    println("The block ${state?.block?.translationKey} requires a special case due to the exception ${exception.message}")
+                    println("The block ${state?.block?.descriptionId} requires a special case due to the exception ${exception.message}")
                     null
                 }
             }
@@ -87,28 +89,28 @@ object MovementHelper {
             return canStandOn(x, y - 1, z, ctx)
         }
 
-        if (block is SnowBlock) {
-            ctx.world?.isChunkLoaded(x shr 4, z shr 4)?.let {
+        if (block is SnowLayerBlock) {
+            ctx.world?.isLoaded(BlockPos(x shr 4, 1, z shr 4))?.let {
                 if (!it) {  // Updated chunk check
                     return true
                 }
             }
-            if (state.get(SnowBlock.LAYERS) >= 1) {  // Updated property access
+            if (state.getValue(SnowLayerBlock.LAYERS) >= 1) {  // Updated property access
                 return false
             }
             return canStandOn(x, y - 1, z, ctx)
         }
 
-        if (block is FluidBlock) {
+        if (block is FlowingFluid) {
             if (isFlowing(x, y, z, state, ctx)) {
                 return false
             }
 
             val up = ctx.world?.getBlockState(BlockPos(x, y + 1, z))
-            if (up?.block is FluidBlock || up?.block == Blocks.LILY_PAD) {  // Updated block names
+            if (up?.block is FlowingFluid || up?.block == Blocks.LILY_PAD) {  // Updated block names
                 return false
             }
-            return state.fluidState.fluid == Fluids.WATER  // Updated fluid check
+            return state.fluidState.type == Fluids.WATER  // Updated fluid check
         }
 
         return state?.isAir == true
@@ -117,12 +119,12 @@ object MovementHelper {
     fun canStandOn(x: Int, y: Int, z: Int, ctx: CalculationContext, state: BlockState? = ctx.world?.getBlockState(BlockPos(x, y, z))): Boolean {
         val block = state?.block ?: return false
         return when {
-            block.defaultState.isSolidBlock(null, null) -> true  // Replaces isNormalCube
+            block.defaultBlockState().isSolid() -> true  // Replaces isNormalCube
             block == Blocks.LADDER -> true
             block == Blocks.FARMLAND || block == Blocks.GRASS_BLOCK || block == Blocks.DIRT_PATH -> true
             block == Blocks.ENDER_CHEST || block == Blocks.CHEST || block == Blocks.TRAPPED_CHEST -> true
             block == Blocks.GLASS || block is StainedGlassBlock -> true
-            block is StairsBlock -> true  // Changed from BlockStairs to StairsBlock
+            block is StairBlock -> true  // Changed from BlockStairs to StairsBlock
             block == Blocks.SEA_LANTERN -> true
             isWater(state) -> {
                 val up = ctx.world?.getBlockState(BlockPos(x, y + 1, z))?.block
@@ -130,19 +132,19 @@ object MovementHelper {
             }
             isLava(state) -> false
             block is SlabBlock -> true  // Changed from BlockSlab to SlabBlock
-            block is SnowBlock -> true  // Changed from BlockSnow to SnowBlock
+            block is SnowLayerBlock -> true  // Changed from BlockSnow to SnowBlock
             else -> false
         }
     }
     fun possiblyFlowing(state: BlockState?): Boolean {
-        return state?.block is FluidBlock && state.get(FluidBlock.LEVEL) != 0
+        return state?.block is FlowingFluid && state.getValue(FlowingFluid.LEVEL) != 0
     }
 
     fun isFlowing(x: Int, y: Int, z: Int, state: BlockState, ctx: CalculationContext): Boolean {
-        if (state.block !is FluidBlock) {
+        if (state.block !is FlowingFluid) {
             return false
         }
-        if (state.get(FluidBlock.LEVEL) != 0) {
+        if (state.getValue(FlowingFluid.LEVEL) != 0) {
             return true
         }
         return possiblyFlowing(ctx.world?.getBlockState(BlockPos(x + 1, y, z))) ||
@@ -152,24 +154,22 @@ object MovementHelper {
     }
 
     fun isWater(state: BlockState?): Boolean {
-        return state?.fluidState?.fluid == Fluids.WATER
+        return state?.fluidState?.type == Fluids.WATER
     }
 
     fun isLava(state: BlockState): Boolean {
-        return state.fluidState.fluid == Fluids.LAVA
+        return state.fluidState.type == Fluids.LAVA
     }
 
     fun isBottomSlab(state: BlockState?): Boolean {
         return state?.block is SlabBlock &&
-                state.get(SlabBlock.TYPE) == SlabType.BOTTOM
+                state.getValue(SlabBlock.TYPE) == SlabType.BOTTOM
     }
 
     fun isValidStair(state: BlockState?, dx: Int, dz: Int): Boolean {
         if (dx == dz) return false
-        if (state?.block !is StairsBlock) return false
-        if (state.get(StairsBlock.HALF) != BlockHalf.BOTTOM) return false
-
-        val stairFacing = state.get(StairsBlock.FACING)
+        if (state?.block !is StairBlock) return false
+        val stairFacing = state.getValue(StairBlock.FACING)
 
         return when {
             dz == -1 -> stairFacing == Direction.NORTH
@@ -197,7 +197,7 @@ object MovementHelper {
     }
 
     fun canWalkIntoLadder(ladderState: BlockState?, dx: Int, dz: Int): Boolean {
-        return isLadder(ladderState) && ladderState?.get(LadderBlock.FACING) != getFacing(
+        return isLadder(ladderState) && ladderState?.getValue(LadderBlock.FACING) != getFacing(
             dx,
             dz
         )

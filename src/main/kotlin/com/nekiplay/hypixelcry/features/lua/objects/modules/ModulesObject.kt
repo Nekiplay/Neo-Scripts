@@ -20,12 +20,9 @@ class ModulesObject: LuaValue() {
 
     private inner class GetLoadedScriptsFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val playerList = mc.networkHandler?.playerList ?: return NIL
             val table = tableOf()
             var index = 1
             for (script in LUA_MANAGER.getLoadedScripts()) {
-
-
                 table.set(index, script)
                 index++
             }

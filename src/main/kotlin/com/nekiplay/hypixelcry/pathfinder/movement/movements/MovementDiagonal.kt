@@ -5,7 +5,7 @@ import com.nekiplay.hypixelcry.pathfinder.movement.CalculationContext
 import com.nekiplay.hypixelcry.pathfinder.movement.Movement
 import com.nekiplay.hypixelcry.pathfinder.movement.MovementHelper
 import com.nekiplay.hypixelcry.pathfinder.movement.MovementResult
-import net.minecraft.util.math.BlockPos
+import net.minecraft.core.BlockPos
 import kotlin.math.sqrt
 
 class MovementDiagonal(mm: HypixelCry, from: BlockPos, to: BlockPos) : Movement(mm, from, to) {
@@ -101,7 +101,7 @@ class MovementDiagonal(mm: HypixelCry, from: BlockPos, to: BlockPos) : Movement(
 
             // Safe way to get sourceMaxY
             val sourceMaxY = try {
-                sourceState?.getCollisionShape(ctx.world, BlockPos(x, y, z))?.boundingBox?.maxY ?: y.toDouble()
+                sourceState?.getCollisionShape(ctx.world, BlockPos(x, y, z))?.bounds()?.maxY ?: y.toDouble()
             } catch (e: UnsupportedOperationException) {
                 y.toDouble()
             }
@@ -109,7 +109,7 @@ class MovementDiagonal(mm: HypixelCry, from: BlockPos, to: BlockPos) : Movement(
             if (ascend) {
                 // Safe way to get destMaxY
                 val destMaxY = try {
-                    destState?.getCollisionShape(ctx.world, BlockPos(destX, y + 1, destZ))?.boundingBox?.maxY ?: (y + 1.0)
+                    destState?.getCollisionShape(ctx.world, BlockPos(destX, y + 1, destZ))?.bounds()?.maxY ?: (y + 1.0)
                 } catch (e: UnsupportedOperationException) {
                     (y + 1.0)
                 }
@@ -124,7 +124,7 @@ class MovementDiagonal(mm: HypixelCry, from: BlockPos, to: BlockPos) : Movement(
             if (descend) {
                 // Safe way to get destMaxY
                 val destMaxY = try {
-                    destState?.getCollisionShape(ctx.world, BlockPos(destX, y - 1, destZ))?.boundingBox?.maxY ?: (y - 1.0)
+                    destState?.getCollisionShape(ctx.world, BlockPos(destX, y - 1, destZ))?.bounds()?.maxY ?: (y - 1.0)
                 } catch (e: UnsupportedOperationException) {
                     (y - 1.0)
                 }

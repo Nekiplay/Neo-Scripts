@@ -15,11 +15,8 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
-import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket
-import net.minecraft.network.packet.s2c.play.PlayerRotationS2CPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
-import net.minecraft.util.ActionResult
 import net.minecraft.world.InteractionResult
 import org.luaj.vm2.LuaValue
 

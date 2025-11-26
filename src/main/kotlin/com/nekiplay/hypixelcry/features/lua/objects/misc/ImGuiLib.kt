@@ -14,7 +14,6 @@ import imgui.type.ImDouble
 import imgui.type.ImFloat
 import imgui.type.ImInt
 import imgui.type.ImString
-import net.minecraft.item.ItemStack
 import org.luaj.vm2.*
 import org.luaj.vm2.lib.*
 

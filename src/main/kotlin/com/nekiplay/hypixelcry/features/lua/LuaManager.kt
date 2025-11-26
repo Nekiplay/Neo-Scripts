@@ -24,6 +24,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.commands.CommandBuildContext
 import net.minecraft.network.chat.Component
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaError
@@ -742,7 +743,7 @@ class LuaManager() {
     private fun registerMinecraftCommand(commandName: String) {
         try {
             // Регистрируем команду в Minecraft
-            ClientCommandRegistrationCallback.EVENT.register(ClientCommandRegistrationCallback { dispatcher: CommandDispatcher<FabricClientCommandSource?>?, registryAccess: CommandRegistryAccess? ->
+            ClientCommandRegistrationCallback.EVENT.register(ClientCommandRegistrationCallback { dispatcher: CommandDispatcher<FabricClientCommandSource?>?, registryAccess: CommandBuildContext? ->
                 dispatcher!!.register(
                     ClientCommandManager.literal(commandName)
                         .executes(Command { context: CommandContext<FabricClientCommandSource?>? ->

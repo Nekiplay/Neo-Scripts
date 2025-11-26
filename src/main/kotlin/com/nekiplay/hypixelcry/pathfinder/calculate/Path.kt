@@ -5,8 +5,8 @@ import com.nekiplay.hypixelcry.pathfinder.movement.CalculationContext
 import com.nekiplay.hypixelcry.pathfinder.utils.BlockUtil
 import com.nekiplay.hypixelcry.pathfinder.utils.toVec3
 import com.nekiplay.hypixelcry.pathfinder.utils.world
-import net.minecraft.block.Blocks
-import net.minecraft.util.math.BlockPos
+import net.minecraft.core.BlockPos
+import net.minecraft.world.level.block.Blocks
 import java.util.LinkedList
 
 class Path(start: PathNode, end: PathNode, val goal: Goal, val ctx: CalculationContext) {

@@ -5,7 +5,7 @@ import com.nekiplay.hypixelcry.pathfinder.movement.CalculationContext
 import com.nekiplay.hypixelcry.pathfinder.movement.Movement
 import com.nekiplay.hypixelcry.pathfinder.movement.MovementHelper
 import com.nekiplay.hypixelcry.pathfinder.movement.MovementResult
-import net.minecraft.util.math.BlockPos
+import net.minecraft.core.BlockPos
 
 class MovementTraverse(mm: HypixelCry, from: BlockPos, to: BlockPos) : Movement(mm, from, to) {
 
@@ -67,14 +67,14 @@ class MovementTraverse(mm: HypixelCry, from: BlockPos, to: BlockPos) : Movement(
 
             // Safe way to get sourceHeight
             val sourceHeight = try {
-                sourceState?.getCollisionShape(ctx.world, BlockPos(x, y, z))?.boundingBox?.maxY ?: y.toDouble()
+                sourceState?.getCollisionShape(ctx.world, BlockPos(x, y, z))?.bounds()?.maxY ?: y.toDouble()
             } catch (e: UnsupportedOperationException) {
                 y.toDouble()
             }
 
             // Safe way to get destHeight
             val destHeight = try {
-                destState?.getCollisionShape(ctx.world, BlockPos(destX, y, destZ))?.boundingBox?.maxY ?: y.toDouble()
+                destState?.getCollisionShape(ctx.world, BlockPos(destX, y, destZ))?.bounds()?.maxY ?: y.toDouble()
             } catch (e: UnsupportedOperationException) {
                 y.toDouble()
             }

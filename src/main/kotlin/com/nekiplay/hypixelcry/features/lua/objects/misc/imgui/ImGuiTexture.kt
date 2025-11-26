@@ -1,11 +1,11 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc.imgui
 
+import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject.Companion.textureCache
 import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject.Companion.textureCounter
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
-import net.minecraft.client.texture.NativeImage
-import net.minecraft.client.texture.NativeImageBackedTexture
-import net.minecraft.util.Identifier
+import net.minecraft.client.renderer.texture.DynamicTexture
+import net.minecraft.resources.ResourceLocation
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
@@ -23,7 +23,7 @@ import kotlin.collections.set
 
 class ImGuiTexture : LuaUserdata(null) {
     private val _texture = AtomicInteger(-1)
-    private var _identifier: Identifier? = null
+    private var _identifier: ResourceLocation? = null
 
     public fun getTexture(): Int {
         return _texture.get()
@@ -77,16 +77,16 @@ class ImGuiTexture : LuaUserdata(null) {
 
                 // Generate unique identifier
                 val textureName = "texture_${file.nameWithoutExtension}_${System.currentTimeMillis()}"
-                _identifier = Identifier.of("hypixelcry", textureName)
+                _identifier = ResourceLocation.fromNamespaceAndPath("hypixelcry", textureName)
 
                 // Create texture
-                val texture = NativeImageBackedTexture(Supplier { textureName }, nativeImage)
+                val texture = DynamicTexture(Supplier { textureName }, nativeImage)
 
                 // Register texture
-                mc.textureManager.registerTexture(_identifier, texture)
+                mc.textureManager.register(_identifier, texture)
 
                 // Get OpenGL texture ID
-                val glTextureId = texture.glTexture.usage()
+                val glTextureId = texture.texture.usage()
                 _texture.set(glTextureId)
 
                 return glTextureId
@@ -102,7 +102,7 @@ class ImGuiTexture : LuaUserdata(null) {
         try {
             _identifier?.let { identifier ->
                 if (mc.textureManager.getTexture(identifier) != null) {
-                    mc.textureManager.destroyTexture(identifier)
+                    mc.textureManager.release(identifier)
                 }
             }
             _identifier = null

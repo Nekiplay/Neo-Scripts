@@ -1,7 +1,7 @@
 package com.nekiplay.hypixelcry.pathfinder.calculate
 
 import com.nekiplay.hypixelcry.pathfinder.goal.Goal
-import net.minecraft.util.math.BlockPos
+import net.minecraft.core.BlockPos
 
 class PathNode(var x: Int, var y: Int, var z: Int, val goal: Goal) {
     var costSoFar: Double = 1e6                             // gCost - INF_COST
