@@ -12,13 +12,13 @@ import com.nekiplay.hypixelcry.utils.Rotations
 import com.nekiplay.hypixelcry.utils.StatusBarTracker
 import com.nekiplay.hypixelcry.utils.Utils
 import com.nekiplay.hypixelcry.utils.trackers.ColdTracker
-import net.minecraft.client.toast.SystemToast
-import net.minecraft.text.Text
-import net.minecraft.util.Hand
-import net.minecraft.util.hit.BlockHitResult
-import net.minecraft.util.hit.EntityHitResult
-import net.minecraft.util.hit.HitResult
-import net.minecraft.util.math.Vec3d
+import net.minecraft.client.gui.components.toasts.SystemToast
+import net.minecraft.network.chat.Component
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.phys.BlockHitResult
+import net.minecraft.world.phys.EntityHitResult
+import net.minecraft.world.phys.HitResult
+import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
@@ -47,8 +47,8 @@ class PlayerObject : LuaValue() {
                 }
             }
             "fishHook" -> {
-                if (mc.player != null && mc.player?.fishHook != null) {
-                    LuaEntity(mc.player!!.fishHook!!)
+                if (mc.player != null && mc.player?.fishing != null) {
+                    LuaEntity(mc.player!!.fishing!!)
                 }
                 else {
                     NIL
@@ -98,12 +98,12 @@ class PlayerObject : LuaValue() {
     private inner class AddToastFunction : ThreeArgFunction() {
         override fun call(arg: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue? {
             if (arg?.isstring() == true && arg2?.isstring() == true && arg3?.isnumber() == true) {
-                val type = SystemToast.Type(arg3.tonumber().tolong())
+                val type = SystemToast.SystemToastId(arg3.tonumber().tolong())
                 SystemToast.add(
                     mc.toastManager,
                     type,
-                    Text.literal(arg.tojstring()),
-                    Text.literal(arg2.tojstring())
+                    Component.literal(arg.tojstring()),
+                    Component.literal(arg2.tojstring())
                 );
                 return TRUE
             }
@@ -135,14 +135,14 @@ class PlayerObject : LuaValue() {
         override fun call(arg: LuaValue?): LuaValue? {
             if (arg?.isboolean() == true) {
                 if (arg.toboolean()) {
-                    mc.player?.swingHand(Hand.OFF_HAND)
+                    mc.player?.swing(InteractionHand.OFF_HAND)
                 }
                 else {
-                    mc.player?.swingHand(Hand.MAIN_HAND)
+                    mc.player?.swing(InteractionHand.MAIN_HAND)
                 }
             }
             else {
-                mc.player?.swingHand(Hand.MAIN_HAND)
+                mc.player?.swing(InteractionHand.MAIN_HAND)
             }
             return TRUE
         }
@@ -224,10 +224,10 @@ class PlayerObject : LuaValue() {
                 val result = hitResult as BlockHitResult
                 val table = tableOf()
                 table.set("type", "block")
-                table.set("x", valueOf(result.pos.x))
-                table.set("y", valueOf(result.pos.y))
-                table.set("z", valueOf(result.pos.z))
-                table.set("side", valueOf(result.side.toString()))
+                table.set("x", valueOf(result.blockPos.x))
+                table.set("y", valueOf(result.blockPos.y))
+                table.set("z", valueOf(result.blockPos.z))
+                table.set("side", valueOf(result.direction.toString()))
 
                 val blockPos = tableOf()
                 blockPos.set("x", valueOf(result.blockPos.x))
@@ -248,7 +248,7 @@ class PlayerObject : LuaValue() {
     private inner class AddChatMessageFunction : OneArgFunction() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
-                mc.player?.sendMessage(Text.of(message.tojstring()), false)
+                mc.player?.displayClientMessage(Component.literal(message.tojstring()), false)
                 return valueOf(true)
             }
             return NIL
@@ -258,7 +258,7 @@ class PlayerObject : LuaValue() {
     private inner class SendChatMessageFunction : OneArgFunction() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
-                mc.networkHandler?.sendChatMessage(message.tojstring())
+                mc.connection?.sendChat(message.tojstring())
                 return valueOf(true)
             }
             return NIL
@@ -280,8 +280,8 @@ class PlayerObject : LuaValue() {
                     var pitch = arg2.tofloat()
                     pitch = pitch.coerceIn(-90f, 90f)
 
-                    player.yaw = yaw
-                    player.pitch = pitch
+                    player.xRot = yaw
+                    player.yRot = pitch
                     return TRUE
                 }
                 return FALSE
@@ -295,8 +295,8 @@ class PlayerObject : LuaValue() {
             val player = mc.player;
             return if (player != null) {
                 val table = tableOf()
-                table.set("yaw", valueOf(player.yaw.toDouble()))
-                table.set("pitch", valueOf(player.pitch.toDouble()))
+                table.set("yaw", valueOf(player.xRot.toDouble()))
+                table.set("pitch", valueOf(player.yRot.toDouble()))
                 table
             } else {
                 NIL
@@ -413,7 +413,7 @@ class PlayerObject : LuaValue() {
 
     private inner class IsPlayerSneakingFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return valueOf(mc.player?.isSneaking ?: false)
+            return valueOf(mc.player?.isShiftKeyDown ?: false)
         }
     }
 
@@ -425,7 +425,7 @@ class PlayerObject : LuaValue() {
 
     private inner class IsPlayerOnGroundFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return valueOf(mc.player?.isOnGround ?: false)
+            return valueOf(mc.player?.onGround() ?: false)
         }
     }
 
@@ -455,7 +455,7 @@ class PlayerObject : LuaValue() {
                 val targetZ = arg1.get("z").optdouble(0.0)
                 val distance = arg2.todouble()
 
-                val target = Vec3d(targetX, targetY, targetZ)
+                val target = Vec3(targetX, targetY, targetZ)
                 val endPos = PlayerUtils.getLookEndPos(target, distance.toFloat())
 
                 val table = tableOf()
