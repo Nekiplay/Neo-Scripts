@@ -78,8 +78,8 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
     private inner class GetWindowScaleFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val table = tableOf()
-            val width: Int = mc.window.width
-            val height: Int = mc.window.height
+            val width: Int = mc.window.guiScaledWidth
+            val height: Int = mc.window.guiScaledHeight
 
             table.set("width", width)
             table.set("height", height)
