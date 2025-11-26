@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.DoorBlock
+import net.minecraft.world.level.block.SnowLayerBlock
 import net.minecraft.world.level.block.piston.PistonBaseBlock
 import net.minecraft.world.level.block.state.BlockState
 import org.luaj.vm2.LuaUserdata
@@ -36,6 +37,14 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
                     LuaValue.NIL
                 }
             }
+            "layers" -> {
+                val layers = blockState.getOptionalValue(SnowLayerBlock.LAYERS)
+                if (layers.isPresent) {
+                    valueOf(layers.get())
+                } else {
+                    LuaValue.NIL
+                }
+            }
             "is_still" -> {
                 if (blockState.fluidState != null) {
                     valueOf(blockState.fluidState.isSource)
@@ -43,6 +52,7 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
                     LuaValue.NIL
                 }
             }
+
             else -> super.get(key)
         }
     }

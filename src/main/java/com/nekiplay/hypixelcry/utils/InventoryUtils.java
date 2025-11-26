@@ -4,6 +4,7 @@ import static com.nekiplay.hypixelcry.HypixelCry.mc;
 
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.ClickType;
 
 public class InventoryUtils {
@@ -15,8 +16,8 @@ public class InventoryUtils {
 
     public static void clickSlot(int slot, int button, ClickType actionType) {
         if (mc.player != null && mc.screen != null) {
-            if (mc.screen instanceof ContainerScreen) {
-                clickSlotWithId(slot, button, actionType, (((ContainerScreen)mc.screen).getMenu().containerId));
+            if (mc.player.containerMenu instanceof ChestMenu) {
+                clickSlotWithId(slot, button, actionType, mc.player.containerMenu.containerId);
             }
             else if (mc.screen instanceof InventoryScreen) {
                 clickSlotWithId(slot, button, actionType, mc.player.inventoryMenu.containerId);
@@ -26,8 +27,8 @@ public class InventoryUtils {
 
     public static void swapSlots(int slot, int hotbarSlot) {
         if (mc.player != null && mc.screen != null) {
-            if (mc.screen instanceof ContainerScreen) {
-                clickSlotWithId(slot, hotbarSlot, ClickType.SWAP, (((ContainerScreen)mc.screen).getMenu().containerId));
+            if (mc.player.containerMenu instanceof ChestMenu) {
+                clickSlotWithId(slot, hotbarSlot, ClickType.SWAP, mc.player.containerMenu.containerId);
             }
             else if (mc.screen instanceof InventoryScreen) {
                 clickSlotWithId(slot, hotbarSlot, ClickType.SWAP, mc.player.inventoryMenu.containerId);

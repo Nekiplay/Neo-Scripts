@@ -8,6 +8,7 @@ import com.nekiplay.hypixelcry.utils.InventoryUtils
 import com.nekiplay.hypixelcry.utils.itemlist.ItemRepository
 import net.minecraft.client.gui.screens.inventory.ContainerScreen
 import net.minecraft.client.gui.screens.inventory.SignEditScreen
+import net.minecraft.world.inventory.ChestMenu
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
@@ -162,10 +163,9 @@ class InventoryObject: LuaValue() {
     }
     private inner class GetContainerSlotsFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc.screen
-            if (screen is ContainerScreen) {
-                val container = screen.menu
-                val slots = container.slots.size
+            val screen = mc.player?.containerMenu
+            if (screen is ChestMenu) {
+                val slots = screen.slots.size
                 return valueOf(slots)
             }
             else {
@@ -192,10 +192,10 @@ class InventoryObject: LuaValue() {
     private inner class GetStackFromContainerFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
-                if (mc.player != null) {
-                    val screenHandler = mc.player?.containerMenu
-                    if (screenHandler != null) {
-                        val stack = screenHandler.getSlot(arg.toint()).item
+                if (mc.player != null && mc.player?.containerMenu != null) {
+                    val screen = mc.player!!.containerMenu
+                    if (screen is ChestMenu) {
+                        val stack = screen.getSlot(arg.toint()).item
                         if (stack == null || stack.isEmpty) return NIL
 
                         return LuaItemStack(stack)
