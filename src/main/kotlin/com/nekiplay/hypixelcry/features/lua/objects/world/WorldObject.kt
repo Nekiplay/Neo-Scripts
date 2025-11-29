@@ -2,15 +2,21 @@ package com.nekiplay.hypixelcry.features.lua.objects.world
 
 import com.nekiplay.hypixelcry.features.lua.customArgs.FourArgFunction
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBox
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaEntity
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.RaycastUtils
 import com.nekiplay.hypixelcry.utils.Rotations
 import net.minecraft.core.BlockPos
+import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.ClipContext
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.HitResult
@@ -18,7 +24,10 @@ import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
+import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
+import java.util.ArrayList
+import kotlin.collections.forEachIndexed
 
 class WorldObject : LuaValue() {
     override fun call(): LuaValue {
@@ -34,6 +43,7 @@ class WorldObject : LuaValue() {
             "isBlockLoaded" -> IsBlockLoadedFunction()
 
             "getEntities" -> GetEntitiesFunction()
+            "getEntitiesInBox" -> GetEntitieInBoxFunction()
             "getLivingEntities" -> GetLivingEntitiesFunction()
             "getEntityById" -> GetEntityByIdFunction()
             "getCollisionBoxes" -> GetCollisionBoxesFunction()
@@ -95,14 +105,7 @@ class WorldObject : LuaValue() {
 
             var index: Int = 1
             collisionShape.toAabbs().forEach { voxel ->
-                val boxTable = LuaValue.tableOf()
-                boxTable.set("minX", LuaValue.valueOf(voxel.minX))
-                boxTable.set("minY", LuaValue.valueOf(voxel.minY))
-                boxTable.set("minZ", LuaValue.valueOf(voxel.minZ))
-                boxTable.set("maxX", LuaValue.valueOf(voxel.maxX))
-                boxTable.set("maxY", LuaValue.valueOf(voxel.maxY))
-                boxTable.set("maxZ", LuaValue.valueOf(voxel.maxZ))
-                result.set(index, boxTable)
+                result.set(index, LuaBox(voxel))
                 index++
             }
 
@@ -160,14 +163,7 @@ class WorldObject : LuaValue() {
 
             var index: Int = 1
             collisionShape.toAabbs().forEach { voxel ->
-                val boxTable = LuaValue.tableOf()
-                boxTable.set("minX", LuaValue.valueOf(voxel.minX))
-                boxTable.set("minY", LuaValue.valueOf(voxel.minY))
-                boxTable.set("minZ", LuaValue.valueOf(voxel.minZ))
-                boxTable.set("maxX", LuaValue.valueOf(voxel.maxX))
-                boxTable.set("maxY", LuaValue.valueOf(voxel.maxY))
-                boxTable.set("maxZ", LuaValue.valueOf(voxel.maxZ))
-                result.set(index, boxTable)
+                result.set(index, LuaBox(voxel))
                 index++
             }
 
@@ -186,6 +182,7 @@ class WorldObject : LuaValue() {
                 val endZ = arg.get("endZ").optdouble(0.0)
 
                 val include_fluid = arg.get("include_fluid").optboolean(false)
+                val include_entity = arg.get("include_entity").optboolean(false)
 
                 val startVec = Vec3(startX, startY, startZ)
                 val endVec = Vec3(endX, endY, endZ)
@@ -208,7 +205,13 @@ class WorldObject : LuaValue() {
                     )
                 }
 
-                val hitResult = mc.level?.clip(context)
+                var hitResult: HitResult? = null
+
+                hitResult = if (!include_entity) {
+                    mc.level?.clip(context)
+                } else {
+                    RaycastUtils.fastRayTrace(mc.player, startVec, endVec, ArrayList())
+                }
                 return if (hitResult != null) {
                     processHitResult(hitResult)
                 } else {
@@ -406,6 +409,32 @@ class WorldObject : LuaValue() {
                 val z: Int = if (arg1.get("z").isnumber()) arg1.get("z").toint() else 0
                 val blockPos = BlockPos(x, y, z)
                 return valueOf(mc.level?.isLoaded(blockPos) ?: false);
+            }
+            return NIL
+        }
+    }
+
+    private inner class GetEntitieInBoxFunction : TwoArgFunction() {
+        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
+            val entity = when {
+                arg1?.isuserdata() == true && arg1.touserdata() is LuaEntity -> (arg1.touserdata() as LuaEntity).entity
+                arg1?.isuserdata() == true && arg1.touserdata() is Entity -> arg1.touserdata() as Entity
+                else -> null
+            }
+            val box = when {
+                arg2?.isuserdata() == true && arg2.touserdata() is LuaBox -> (arg2.touserdata() as LuaBox).box
+                arg2?.isuserdata() == true && arg2.touserdata() is AABB -> arg2.touserdata() as AABB
+                else -> null
+            }
+
+
+            if (box != null && entity != null) {
+                val entities = mc.level?.getEntities(entity, box, { true })
+                val entitiesTable = tableOf()
+                entities?.forEachIndexed { index, entity ->
+                    entitiesTable.set(index + 1, LuaEntity(entity))
+                }
+                return entitiesTable
             }
             return NIL
         }

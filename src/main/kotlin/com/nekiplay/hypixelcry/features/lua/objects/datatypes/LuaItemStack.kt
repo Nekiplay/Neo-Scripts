@@ -1,10 +1,12 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 
+import com.nekiplay.hypixelcry.HypixelCry.mc
 import com.nekiplay.hypixelcry.sugar.*
 import com.nekiplay.hypixelcry.utils.ItemUtils
 import net.minecraft.core.component.DataComponents
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.MapItem
 import net.minecraft.world.item.component.ItemLore
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
@@ -28,6 +30,16 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
             "is_recombobulated" -> valueOf(stack.isRecombobulated())
             "is_museum_donated" -> valueOf(stack.isMuseumDonated())
             "uuid" -> valueOf(stack.getItemUuid())
+
+            "map" -> {
+                if (stack.item is MapItem && mc.level != null) {
+                    val mapData = MapItem.getSavedData(stack, mc.level);
+                    if (mapData != null) {
+                        return LuaMapData(mapData)
+                    }
+                }
+                NIL
+            }
 
             "lore", "lores" -> {
                 val loreTable = tableOf()

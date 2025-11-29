@@ -8,11 +8,8 @@ import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.*;
+
 import java.util.List;
 
 import static com.nekiplay.hypixelcry.HypixelCry.mc;
@@ -20,6 +17,165 @@ import static com.nekiplay.hypixelcry.HypixelCry.mc;
 public class RaycastUtils {
     public static HitResult rayTraceToBlocks(Vec3 startVec, Vec3 endVec, List<Block> blocks) {
         return fastRayTrace(startVec, endVec, blocks);
+    }
+
+    public static HitResult fastRayTrace(Entity sourceEntity, Vec3 startVec, Vec3 endVec, List<Block> targetBlocks) {
+        // --- ЭТАП 1: Raytrace Блоков (Твой DDA алгоритм) ---
+
+        // Результат попадания в блок (по умолчанию - промах в конец луча)
+        HitResult resultBlockHit = BlockHitResult.miss(
+                endVec,
+                Direction.getApproximateNearest(
+                        endVec.x - startVec.x,
+                        endVec.y - startVec.y,
+                        endVec.z - startVec.z
+                ),
+                BlockPos.containing(endVec)
+        );
+
+        // Координаты для цикла
+        int startX = Mth.floor(startVec.x);
+        int startY = Mth.floor(startVec.y);
+        int startZ = Mth.floor(startVec.z);
+
+        int endX = Mth.floor(endVec.x);
+        int endY = Mth.floor(endVec.y);
+        int endZ = Mth.floor(endVec.z);
+
+        double currentX = startVec.x;
+        double currentY = startVec.y;
+        double currentZ = startVec.z;
+
+        // Проверка стартового блока
+        BlockPos startPos = new BlockPos(startX, startY, startZ);
+        BlockState startState = mc.level.getBlockState(startPos);
+
+        // Немного оптимизируем проверку стартового блока
+        if ((targetBlocks.isEmpty() && startState.isRedstoneConductor(mc.level, startPos)) || targetBlocks.contains(startState.getBlock())) {
+            BlockHitResult startHit = startState.getCollisionShape(mc.level, startPos).clip(startVec, endVec, startPos);
+            if (startHit != null) {
+                resultBlockHit = startHit;
+                // Если мы попали в блок прямо в старте, то дальше идти нет смысла,
+                // НО мы не возвращаем сразу, так как внутри блока может быть Entity (редко, но бывает)
+                // Однако для оптимизации можно считать, что блок перекрыл всё.
+                // Для точности - идем к ЭТАПУ 2, используя hit блока как конец.
+            }
+        }
+
+        // Если в стартовом блоке не застряли, идем по DDA
+        if (resultBlockHit.getType() == HitResult.Type.MISS) {
+            int maxSteps = 200;
+
+            // Вспомогательные переменные для DDA
+            int stepX = endX > startX ? 1 : -1;
+            int stepY = endY > startY ? 1 : -1;
+            int stepZ = endZ > startZ ? 1 : -1;
+
+            double dx = endVec.x - startVec.x;
+            double dy = endVec.y - startVec.y;
+            double dz = endVec.z - startVec.z;
+
+            // Текущие координаты в сетке
+            int currBlockX = startX;
+            int currBlockY = startY;
+            int currBlockZ = startZ;
+
+            while (maxSteps-- >= 0) {
+                if (currBlockX == endX && currBlockY == endY && currBlockZ == endZ) {
+                    break;
+                }
+
+                // Твоя логика расчета граней (чуть упрощенная для читаемости, но суть та же)
+                boolean xDifferent = currBlockX != endX;
+                boolean yDifferent = currBlockY != endY;
+                boolean zDifferent = currBlockZ != endZ;
+
+                double xExit = xDifferent ? (stepX > 0 ? currBlockX + 1.0 : currBlockX) : Double.MAX_VALUE;
+                double yExit = yDifferent ? (stepY > 0 ? currBlockY + 1.0 : currBlockY) : Double.MAX_VALUE;
+                double zExit = zDifferent ? (stepZ > 0 ? currBlockZ + 1.0 : currBlockZ) : Double.MAX_VALUE;
+
+                double xDist = xDifferent ? (xExit - currentX) / dx : Double.MAX_VALUE;
+                double yDist = yDifferent ? (yExit - currentY) / dy : Double.MAX_VALUE;
+                double zDist = zDifferent ? (zExit - currentZ) / dz : Double.MAX_VALUE;
+
+                // Защита от NaN/-0.0
+                if (xDist < 0) xDist = Double.MAX_VALUE;
+                if (yDist < 0) yDist = Double.MAX_VALUE;
+                if (zDist < 0) zDist = Double.MAX_VALUE;
+
+                Direction exitFace;
+
+                if (xDist < yDist && xDist < zDist) {
+                    exitFace = stepX > 0 ? Direction.WEST : Direction.EAST;
+                    currentX = xExit;
+                    currentY += dy * xDist;
+                    currentZ += dz * xDist;
+                    currBlockX += stepX;
+                } else if (yDist < zDist) {
+                    exitFace = stepY > 0 ? Direction.DOWN : Direction.UP;
+                    currentX += dx * yDist;
+                    currentY = yExit;
+                    currentZ += dz * yDist;
+                    currBlockY += stepY;
+                } else {
+                    exitFace = stepZ > 0 ? Direction.NORTH : Direction.SOUTH;
+                    currentX += dx * zDist;
+                    currentY += dy * zDist;
+                    currentZ = zExit;
+                    currBlockZ += stepZ;
+                }
+
+                BlockPos newPos = new BlockPos(currBlockX, currBlockY, currBlockZ);
+                BlockState newState = mc.level.getBlockState(newPos);
+                Block newBlock = newState.getBlock();
+
+                boolean shouldCheckBlock = targetBlocks.isEmpty()
+                        ? newState.isRedstoneConductor(mc.level, newPos) // Или другой предикат коллизии
+                        : targetBlocks.contains(newBlock);
+
+                if (shouldCheckBlock) {
+                    BlockHitResult hit = newState.getCollisionShape(mc.level, newPos).clip(startVec, endVec, newPos);
+                    if (hit != null) {
+                        resultBlockHit = hit;
+                        break; // Мы нашли блок, прерываем цикл
+                    }
+                }
+            }
+        }
+
+        // --- ЭТАП 2: Raytrace Сущностей ---
+
+        // Определяем максимальную дистанцию для проверки энтити.
+        // Если мы ударились в блок, мы не должны проверять энтити ЗА стеной.
+        Vec3 effectiveEndVec = resultBlockHit.getLocation();
+        double distToBlockSqr = startVec.distanceToSqr(effectiveEndVec);
+
+        // Создаем AABB вокруг всего пути луча, чтобы найти кандидатов
+        AABB area = new AABB(startVec, effectiveEndVec).inflate(1.0);
+
+        // Используем ванильный ProjectileUtil, он очень быстр и корректен
+        EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(
+                sourceEntity,
+                startVec,
+                effectiveEndVec,
+                area,
+                (e) -> !e.isSpectator() && e.isPickable(), // Предикат: можно ли попасть в энтити
+                distToBlockSqr
+        );
+
+        // --- ЭТАП 3: Выбор победителя ---
+
+        // Если энтити найден, ProjectileUtil уже гарантирует, что он ближе,
+        // чем переданная дистанция (distToBlockSqr), либо равен ей.
+        // Но на всякий случай проверяем null.
+
+        if (entityHit != null) {
+            // Дополнительная проверка: ProjectileUtil ищет ближайшего в направлении вектора,
+            // но ограничен дистанцией. Если он вернул результат, значит энтити ближе стены.
+            return entityHit;
+        }
+
+        return resultBlockHit;
     }
 
 

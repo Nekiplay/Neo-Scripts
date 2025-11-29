@@ -41,6 +41,8 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 t
             }
 
+            "box" -> LuaBox(entity.boundingBox)
+
             "velocity_x" -> valueOf(entity.forward.x)
             "velocity_y" -> valueOf(entity.forward.y)
             "velocity_z" -> valueOf(entity.forward.z)
@@ -70,7 +72,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "distance_to_player" -> {
                 val player = mc.player
                 if (player != null) {
-                    valueOf(entity.distanceToSqr(player).toDouble())
+                    valueOf(entity.distanceToSqr(player))
                 } else {
                     valueOf(0.0)
                 }

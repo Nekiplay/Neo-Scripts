@@ -5,6 +5,7 @@ import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
 import com.nekiplay.hypixelcry.HypixelCry
+import com.nekiplay.hypixelcry.features.lua.objects.misc.Creator
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ImGuiLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.JsonLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ThreadLib
@@ -110,6 +111,7 @@ class LuaManager() {
     private val imguiLib = ImGuiLib()
     private val jsonLib = JsonLib()
     private val httpLib = HttpClientLib()
+    private val creatorLib = Creator()
 
     private val threadLibs = ConcurrentHashMap<String, ThreadLib>()
 
@@ -129,6 +131,7 @@ class LuaManager() {
         globals.load(imguiLib)
         globals.load(jsonLib)
         globals.load(httpLib)
+        globals.load(creatorLib)
     }
 
     private fun registerRequire() {

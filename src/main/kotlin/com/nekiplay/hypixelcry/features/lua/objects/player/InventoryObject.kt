@@ -46,8 +46,6 @@ class InventoryObject: LuaValue() {
 
     private inner class GetStackFromIDFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-
-            // Arg 1: item ID as string, e.g. "minecraft:diamond_sword"
             if (!args.arg(1).isstring()) {
                 error("create item expects a string as 1st argument (item neu id)")
             }
