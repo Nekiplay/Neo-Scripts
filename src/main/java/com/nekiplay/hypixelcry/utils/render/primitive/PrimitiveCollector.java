@@ -13,7 +13,7 @@ public interface PrimitiveCollector {
 
     <S> void submitVanilla(S state, VanillaRenderer<S> renderer);
 
-    void submitFilledBoxWithBeaconBeam(BlockPos pos, float[] colourComponents, float alpha, boolean throughWalls);
+    void submitBeaconBeam(BlockPos pos, float[] colourComponents);
 
     void submitFilledBox(BlockPos pos, float[] colourComponents, float alpha, boolean throughWalls);
 

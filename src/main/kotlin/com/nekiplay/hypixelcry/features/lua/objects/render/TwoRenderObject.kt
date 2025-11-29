@@ -110,17 +110,18 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
 
 
                 val textRenderer: Font? = mc.font
-                if (scale != 1.0f) {
-                    context.pose().pushMatrix()
-                    context.pose().translate(x.toFloat(), y.toFloat())
-                    context.pose().scale(scale, scale)
+                if (textRenderer != null) {
+                    if (scale != 1.0f) {
+                        context.pose().pushMatrix()
+                        context.pose().translate(x.toFloat(), y.toFloat())
+                        context.pose().scale(scale, scale)
 
-                    context.drawString(textRenderer, Component.literal(text), 0, 0, color, isShadow)
+                        context.drawString(textRenderer, Component.literal(text), 0, 0, color, isShadow)
 
-                    context.pose().popMatrix()
-                }
-                else {
-                    context.drawString(textRenderer, Component.literal(text), x, y, color, isShadow)
+                        context.pose().popMatrix()
+                    } else {
+                        context.drawString(textRenderer, Component.literal(text), x, y, color, isShadow)
+                    }
                 }
             }
             return NIL

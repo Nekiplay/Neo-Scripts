@@ -32,8 +32,79 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             "renderLinesFromPoints" -> RenderLinesFromPointsFunction()
             "renderLineFromCursor" -> RenderLineFromCursorFunction()
             "renderImage" -> RenderImageFunction()
+            "renderBeaconBeam" -> RenderBeaconBeamFunction()
+            "renderQuad" -> SubmitQuadFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class SubmitQuadFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable() && context != null) {
+                val pointsArray = table.get("points")
+                val points = if (pointsArray.istable() && pointsArray.length() == 4) {
+                    Array(4) { index ->
+                        val point = pointsArray.get(index + 1)
+                        Vec3(
+                            point.get("x").optdouble(0.0),
+                            point.get("y").optdouble(0.0),
+                            point.get("z").optdouble(0.0)
+                        )
+                    }
+                } else {
+                    Array(4) { index ->
+                        val pointTable = table.get("point${index + 1}")
+                        Vec3(
+                            pointTable.get("x").optdouble(0.0),
+                            pointTable.get("y").optdouble(0.0),
+                            pointTable.get("z").optdouble(0.0)
+                        )
+                    }
+                }
+
+                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
+                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
+                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
+                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
+
+                val colorComponents = floatArrayOf(
+                    red.toFloat() / 255.0f,
+                    green.toFloat() / 255.0f,
+                    blue.toFloat() / 255.0f
+                )
+                val alphaComponent = alpha / 255.0f
+
+                val throughWalls = if (table.get("throughWalls").isboolean()) table.get("throughWalls").toboolean() else false
+
+                context.submitQuad(points, colorComponents, alphaComponent, throughWalls)
+                return TRUE
+            }
+            return NIL
+        }
+    }
+
+    private inner class RenderBeaconBeamFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable() && context != null) {
+                val x = if (table.get("x").isnumber()) table.get("x").toint() else 0
+                val y = if (table.get("y").isnumber()) table.get("y").toint() else 0
+                val z = if (table.get("z").isnumber()) table.get("z").toint() else 0
+
+                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
+                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
+                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
+
+                val colorComponents = floatArrayOf(
+                    red.toFloat() / 255.0f,
+                    green.toFloat() / 255.0f,
+                    blue.toFloat() / 255.0f
+                )
+
+                context.submitBeaconBeam(BlockPos(x, y, z), colorComponents)
+                return TRUE
+            }
+            return NIL
+        }
     }
 
     private inner class RenderFilledCircleFunction : OneArgFunction() {

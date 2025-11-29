@@ -62,12 +62,6 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
     }
 
     @Override
-    public void submitFilledBoxWithBeaconBeam(BlockPos pos, float[] colourComponents, float alpha, boolean throughWalls) {
-        submitFilledBox(pos, colourComponents, alpha, throughWalls);
-        submitBeaconBeam(pos, colourComponents);
-    }
-
-    @Override
     public void submitFilledBox(BlockPos pos, float[] colourComponents, float alpha, boolean throughWalls) {
         submitFilledBox(pos.getX(), pos.getY(), pos.getZ(), pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1, colourComponents, alpha, throughWalls);
     }
@@ -108,7 +102,8 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
         this.filledBoxStates.add(state);
     }
 
-    private void submitBeaconBeam(BlockPos pos, float[] colourComponents) {
+    @Override
+    public void submitBeaconBeam(BlockPos pos, float[] colourComponents) {
         ensureNotFrozen();
 
         // Ensure the beacon is in view
@@ -442,23 +437,6 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
             }
         }
 
-        if (this.texturedQuadStates != null) {
-            for (TexturedQuadRenderState state : this.texturedQuadStates) {
-                TexturedQuadRenderer.INSTANCE.submitPrimitives(state, cameraState);
-            }
-        }
-
-        if (this.blockHologramStates != null) {
-            for (BlockHologramRenderState state : this.blockHologramStates) {
-                BlockHologramRenderer.INSTANCE.submitPrimitives(state, cameraState);
-            }
-        }
-
-        if (this.textStates != null) {
-            for (TextRenderState state : this.textStates) {
-                TextPrimitiveRenderer.INSTANCE.submitPrimitives(state, cameraState);
-            }
-        }
 
         if (this.cylinderStates != null) {
             for (CylinderRenderState state : this.cylinderStates) {
@@ -481,6 +459,24 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
         if (this.outlinedCircleStates != null) {
             for (OutlinedCircleRenderState state : this.outlinedCircleStates) {
                 OutlinedCircleRenderer.INSTANCE.submitPrimitives(state, cameraState);
+            }
+        }
+
+        if (this.texturedQuadStates != null) {
+            for (TexturedQuadRenderState state : this.texturedQuadStates) {
+                TexturedQuadRenderer.INSTANCE.submitPrimitives(state, cameraState);
+            }
+        }
+
+        if (this.blockHologramStates != null) {
+            for (BlockHologramRenderState state : this.blockHologramStates) {
+                BlockHologramRenderer.INSTANCE.submitPrimitives(state, cameraState);
+            }
+        }
+
+        if (this.textStates != null) {
+            for (TextRenderState state : this.textStates) {
+                TextPrimitiveRenderer.INSTANCE.submitPrimitives(state, cameraState);
             }
         }
     }

@@ -32,6 +32,15 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 val pos = entity.getPosition(1f)
                 valueOf(pos.z)
             }
+            "pos", "position" -> {
+                val t = tableOf()
+                val pos = entity.getPosition(1f)
+                t.set("x", valueOf(pos.x))
+                t.set("y", valueOf(pos.y))
+                t.set("z", valueOf(entity.forward.z))
+                t
+            }
+
             "velocity_x" -> valueOf(entity.forward.x)
             "velocity_y" -> valueOf(entity.forward.y)
             "velocity_z" -> valueOf(entity.forward.z)
