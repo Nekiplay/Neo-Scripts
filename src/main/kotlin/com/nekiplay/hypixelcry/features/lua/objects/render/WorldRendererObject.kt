@@ -1,6 +1,8 @@
 package com.nekiplay.hypixelcry.features.lua.objects.render
 
 import com.mojang.blaze3d.platform.NativeImage
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBox
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
 import net.fabricmc.fabric.impl.client.indigo.renderer.helper.ColorHelper
@@ -8,6 +10,7 @@ import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaValue
@@ -182,7 +185,17 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
 
                 val alphaComponent = alpha.toFloat() / 255.0f
 
-                if (x2 != null && y2 != null && z2 != null) {
+                val boxObj = table.get("box")
+                val box = when {
+                    boxObj.isuserdata() && boxObj.touserdata() is LuaBox -> (boxObj.touserdata() as LuaBox).box
+                    boxObj.isuserdata() && boxObj.touserdata() is AABB -> boxObj.touserdata() as AABB
+                    else -> null
+                }
+
+                if (box != null) {
+                    context.submitFilledBox(box, colorComponents, alphaComponent, throughWalls)
+                }
+                else if (x2 != null && y2 != null && z2 != null) {
                     context.submitFilledBox(AABB(Vec3(x, y, z), Vec3(x2, y2, z2)), colorComponents, alphaComponent, throughWalls)
                 }
                 else {
@@ -221,7 +234,16 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                     alpha.toFloat() / 255.0f
                 )
 
-                if (x2 != null && y2 != null && z2 != null) {
+                val boxObj = table.get("box")
+                val box = when {
+                    boxObj.isuserdata() && boxObj.touserdata() is LuaBox -> (boxObj.touserdata() as LuaBox).box
+                    boxObj.isuserdata() && boxObj.touserdata() is AABB -> boxObj.touserdata() as AABB
+                    else -> null
+                }
+                if (box != null) {
+                    context.submitOutlinedBox(box, colorComponents, lineWidth, throughWalls)
+                }
+                else if (x2 != null && y2 != null && z2 != null) {
                     context.submitOutlinedBox(AABB(Vec3(x, y, z), Vec3(x2, y2, z2)), colorComponents, lineWidth, throughWalls)
                 }
                 else {
