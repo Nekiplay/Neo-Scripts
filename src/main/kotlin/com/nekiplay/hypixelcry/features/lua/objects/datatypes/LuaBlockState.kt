@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.DoorBlock
 import net.minecraft.world.level.block.SnowLayerBlock
@@ -24,7 +25,7 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
             "facing" -> {
                 val facing = blockState.getOptionalValue(DoorBlock.FACING)
                 if (facing.isPresent) {
-                    valueOf(facing.get().name)
+                    LuaDirection(facing.get())
                 } else {
                     LuaValue.NIL
                 }
@@ -56,7 +57,4 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
             else -> super.get(key)
         }
     }
-
-    fun getState(): BlockState = blockState
-
 }

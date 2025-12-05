@@ -439,7 +439,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
 
                 val itemStackObj = table.get("itemStack")
                 val itemStack = when {
-                    itemStackObj.isuserdata() && itemStackObj.touserdata() is LuaItemStack -> (itemStackObj.touserdata() as LuaItemStack).getItemStack()
+                    itemStackObj.isuserdata() && itemStackObj.touserdata() is LuaItemStack -> (itemStackObj.touserdata() as LuaItemStack).stack
                     itemStackObj.isuserdata() && itemStackObj.touserdata() is ItemStack -> itemStackObj.touserdata() as ItemStack
                     else -> null
                 }

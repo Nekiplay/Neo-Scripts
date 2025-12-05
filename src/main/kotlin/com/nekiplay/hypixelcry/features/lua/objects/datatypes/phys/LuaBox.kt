@@ -1,10 +1,11 @@
-package com.nekiplay.hypixelcry.features.lua.objects.datatypes
+package com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys
 
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
+import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.VarArgFunction
@@ -14,41 +15,41 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             // --- Fields (Getters) ---
-            "minX" -> LuaValue.valueOf(box.minX)
-            "minY" -> LuaValue.valueOf(box.minY)
-            "minZ" -> LuaValue.valueOf(box.minZ)
-            "maxX" -> LuaValue.valueOf(box.maxX)
-            "maxY" -> LuaValue.valueOf(box.maxY)
-            "maxZ" -> LuaValue.valueOf(box.maxZ)
+            "minX" -> valueOf(box.minX)
+            "minY" -> valueOf(box.minY)
+            "minZ" -> valueOf(box.minZ)
+            "maxX" -> valueOf(box.maxX)
+            "maxY" -> valueOf(box.maxY)
+            "maxZ" -> valueOf(box.maxZ)
 
             // Tables for min/max positions
             "min" -> {
-                val t = LuaValue.tableOf()
-                t.set("x", LuaValue.valueOf(box.minX))
-                t.set("y", LuaValue.valueOf(box.minY))
-                t.set("z", LuaValue.valueOf(box.minZ))
+                val t = tableOf()
+                t.set("x", valueOf(box.minX))
+                t.set("y", valueOf(box.minY))
+                t.set("z", valueOf(box.minZ))
                 t
             }
             "max" -> {
-                val t = LuaValue.tableOf()
-                t.set("x", LuaValue.valueOf(box.maxX))
-                t.set("y", LuaValue.valueOf(box.maxY))
-                t.set("z", LuaValue.valueOf(box.maxZ))
+                val t = tableOf()
+                t.set("x", valueOf(box.maxX))
+                t.set("y", valueOf(box.maxY))
+                t.set("z", valueOf(box.maxZ))
                 t
             }
 
             // --- Size Info ---
             "getSize" -> object : ZeroArgFunction() {
-                override fun call(): LuaValue = LuaValue.valueOf(box.size)
+                override fun call(): LuaValue = valueOf(box.size)
             }
             "getXSize" -> object : ZeroArgFunction() {
-                override fun call(): LuaValue = LuaValue.valueOf(box.xsize)
+                override fun call(): LuaValue = valueOf(box.xsize)
             }
             "getYSize" -> object : ZeroArgFunction() {
-                override fun call(): LuaValue = LuaValue.valueOf(box.ysize)
+                override fun call(): LuaValue = valueOf(box.ysize)
             }
             "getZSize" -> object : ZeroArgFunction() {
-                override fun call(): LuaValue = LuaValue.valueOf(box.zsize)
+                override fun call(): LuaValue = valueOf(box.zsize)
             }
             "getCenter" -> object : ZeroArgFunction() {
                 override fun call(): LuaValue = vec3ToTable(box.center)
@@ -85,7 +86,7 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
 
             // expand(x, y, z) or expand(Vec3Table)
             "expand" -> object : VarArgFunction() {
-                override fun invoke(args: org.luaj.vm2.Varargs): LuaValue {
+                override fun invoke(args: Varargs): LuaValue {
                     if (args.narg() == 1 && args.arg1().istable()) {
                         val vec = tableToVec3(args.arg1().checktable())
                         return LuaBox(box.expandTowards(vec))
@@ -98,7 +99,7 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
 
             // inflate(value) or inflate(x, y, z)
             "inflate" -> object : VarArgFunction() {
-                override fun invoke(args: org.luaj.vm2.Varargs): LuaValue {
+                override fun invoke(args: Varargs): LuaValue {
                     return if (args.narg() == 1) {
                         LuaBox(box.inflate(args.arg1().checkdouble()))
                     } else {
@@ -109,7 +110,7 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
 
             // deflate(value) or deflate(x, y, z)
             "deflate" -> object : VarArgFunction() {
-                override fun invoke(args: org.luaj.vm2.Varargs): LuaValue {
+                override fun invoke(args: Varargs): LuaValue {
                     return if (args.narg() == 1) {
                         LuaBox(box.deflate(args.arg1().checkdouble()))
                     } else {
@@ -140,7 +141,7 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
 
             // move(x, y, z) or move(Vec3Table)
             "move" -> object : VarArgFunction() {
-                override fun invoke(args: org.luaj.vm2.Varargs): LuaValue {
+                override fun invoke(args: Varargs): LuaValue {
                     if (args.narg() == 1 && args.arg1().istable()) {
                         val vec = tableToVec3(args.arg1().checktable())
                         return LuaBox(box.move(vec))
@@ -158,29 +159,29 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
 
             // intersects(LuaBox) or intersects(x1, y1, z1, x2, y2, z2)
             "intersects" -> object : VarArgFunction() {
-                override fun invoke(args: org.luaj.vm2.Varargs): LuaValue {
+                override fun invoke(args: Varargs): LuaValue {
                     if (args.narg() == 1 && args.arg1() is LuaBox) {
-                        return LuaValue.valueOf(box.intersects((args.arg1() as LuaBox).box))
+                        return valueOf(box.intersects((args.arg1() as LuaBox).box))
                     } else if (args.narg() >= 6) {
-                        return LuaValue.valueOf(box.intersects(
+                        return valueOf(box.intersects(
                             args.arg(1).checkdouble(), args.arg(2).checkdouble(), args.arg(3).checkdouble(),
                             args.arg(4).checkdouble(), args.arg(5).checkdouble(), args.arg(6).checkdouble()
                         ))
                     }
-                    return LuaValue.FALSE
+                    return FALSE
                 }
             }
 
             // contains(x, y, z) or contains(Vec3Table)
             "contains" -> object : VarArgFunction() {
-                override fun invoke(args: org.luaj.vm2.Varargs): LuaValue {
+                override fun invoke(args: Varargs): LuaValue {
                     if (args.narg() == 1 && args.arg1().istable()) {
                         val vec = tableToVec3(args.arg1().checktable())
-                        return LuaValue.valueOf(box.contains(vec))
+                        return valueOf(box.contains(vec))
                     } else if (args.narg() >= 3) {
-                        return LuaValue.valueOf(box.contains(args.arg(1).checkdouble(), args.arg(2).checkdouble(), args.arg(3).checkdouble()))
+                        return valueOf(box.contains(args.arg(1).checkdouble(), args.arg(2).checkdouble(), args.arg(3).checkdouble()))
                     }
-                    return LuaValue.FALSE
+                    return FALSE
                 }
             }
 
@@ -188,7 +189,7 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
 
             // clip(startVecTable, endVecTable) -> returns Optional hit Vec3Table or nil
             "clip" -> object : VarArgFunction() {
-                override fun invoke(args: org.luaj.vm2.Varargs): LuaValue {
+                override fun invoke(args: Varargs): LuaValue {
                     if (args.narg() >= 2) {
                         val start = tableToVec3(args.arg(1).checktable())
                         val end = tableToVec3(args.arg(2).checktable())
@@ -200,11 +201,6 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
                     return NIL
                 }
             }
-
-            "toString" -> object : ZeroArgFunction() {
-                override fun call(): LuaValue = LuaValue.valueOf(box.toString())
-            }
-
             else -> super.get(key)
         }
     }
@@ -212,10 +208,10 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
     // --- Helpers ---
 
     private fun vec3ToTable(vec: Vec3): LuaTable {
-        val t = LuaValue.tableOf()
-        t.set("x", LuaValue.valueOf(vec.x))
-        t.set("y", LuaValue.valueOf(vec.y))
-        t.set("z", LuaValue.valueOf(vec.z))
+        val t = tableOf()
+        t.set("x", valueOf(vec.x))
+        t.set("y", valueOf(vec.y))
+        t.set("z", valueOf(vec.z))
         return t
     }
 

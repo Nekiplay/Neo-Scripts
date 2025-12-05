@@ -41,8 +41,6 @@ val shadowModImpl by configurations.creating {
     configurations.modImplementation.get().extendsFrom(this)
 }
 
-
-
 dependencies {
     minecraft("com.mojang:minecraft:${property("minecraft_version")}")
     mappings(loom.officialMojangMappings())

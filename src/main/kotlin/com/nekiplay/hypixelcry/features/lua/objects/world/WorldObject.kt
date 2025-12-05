@@ -2,7 +2,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.world
 
 import com.nekiplay.hypixelcry.features.lua.customArgs.FourArgFunction
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBox
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
@@ -75,7 +75,7 @@ class WorldObject : LuaValue() {
             val blockState = when {
                 arg4.isuserdata(LuaBlockState::class.java) -> {
                     val luaBlockState = arg4.touserdata() as? LuaBlockState
-                    luaBlockState?.getState()
+                    luaBlockState?.blockState
                 }
                 arg4.isuserdata(BlockState::class.java) -> {
                     arg4.touserdata() as? BlockState
@@ -133,7 +133,7 @@ class WorldObject : LuaValue() {
             val blockState = when {
                 arg4.isuserdata(LuaBlockState::class.java) -> {
                     val luaBlockState = arg4.touserdata() as? LuaBlockState
-                    luaBlockState?.getState()
+                    luaBlockState?.blockState
                 }
                 arg4.isuserdata(BlockState::class.java) -> {
                     arg4.touserdata() as? BlockState

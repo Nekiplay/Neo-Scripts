@@ -1,8 +1,10 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBox
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.hypixelcry.utils.itemlist.ItemRepository
+import net.minecraft.core.Direction
 import net.minecraft.world.phys.AABB
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
@@ -15,9 +17,19 @@ class Creator : TwoArgFunction() {
         val library = LuaTable()
         library.set("createAABB", CreateBox())
         library.set("createBox", CreateBox())
+        library.set("createDirection", CreateDirection())
         library.set("createItemStackFromId", CreateStackFromID())
         env.set("creator", library)
         return library
+    }
+
+    inner class CreateDirection : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (args.arg(1).isstring()) {
+                return LuaDirection(Direction.valueOf(args.arg1().tojstring().uppercase()))
+            }
+            return NIL
+        }
     }
 
     inner class CreateBox : VarArgFunction() {

@@ -119,7 +119,4 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
             stack.remove(DataComponents.LORE)
         }
     }
-
-
-    fun getItemStack(): ItemStack = stack
 }

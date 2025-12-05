@@ -1,7 +1,7 @@
 package com.nekiplay.hypixelcry.features.lua.objects.render
 
 import com.mojang.blaze3d.platform.NativeImage
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBox
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector

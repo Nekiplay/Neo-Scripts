@@ -1,6 +1,7 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 
 import com.nekiplay.hypixelcry.HypixelCry.mc
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
@@ -215,6 +216,4 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             else -> super.get(key)
         }
     }
-
-    fun getEnt(): Entity = entity
 }

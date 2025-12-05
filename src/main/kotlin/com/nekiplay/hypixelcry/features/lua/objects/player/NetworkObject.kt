@@ -1,6 +1,8 @@
 package com.nekiplay.hypixelcry.features.lua.objects.player
 
 import com.nekiplay.hypixelcry.features.lua.customArgs.FourArgFunction
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.sugar.sendSequencedPacket
 import net.minecraft.core.BlockPos
@@ -69,15 +71,29 @@ class NetworkObject : LuaValue() {
             arg3: LuaValue?,
             arg4: LuaValue?
         ): LuaValue? {
-            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isstring() == true) {
-                mc.gameMode?.sendSequencedPacket { sequence ->
-                    ServerboundPlayerActionPacket(
-                        ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK,
-                        BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
-                        Direction.valueOf(arg4.tojstring()), sequence
-                    )
+            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
+                if (arg4?.isuserdata() == true && arg4.touserdata() is LuaDirection) {
+                    mc.gameMode?.sendSequencedPacket { sequence ->
+                        ServerboundPlayerActionPacket(
+                            ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK,
+                            BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
+                            (arg4.touserdata() as LuaDirection).direction, sequence
+                        )
+                    }
+                    return TRUE
                 }
-                return TRUE
+                else if (arg4?.isstring() == true) {
+                    mc.gameMode?.sendSequencedPacket { sequence ->
+                        arg4.tojstring()?.let {
+                            ServerboundPlayerActionPacket(
+                                ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK,
+                                BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
+                                Direction.valueOf(it), sequence
+                            )
+                        }
+                    }
+                    return TRUE
+                }
             }
             return FALSE
         }
@@ -90,15 +106,29 @@ class NetworkObject : LuaValue() {
             arg3: LuaValue?,
             arg4: LuaValue?
         ): LuaValue? {
-            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isstring() == true) {
-                mc.gameMode?.sendSequencedPacket { sequence ->
-                    ServerboundPlayerActionPacket(
-                        ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK,
-                        BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
-                        Direction.valueOf(arg4.tojstring()), sequence
-                    )
+            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
+                if (arg4?.isuserdata() == true && arg4.touserdata() is LuaDirection) {
+                    mc.gameMode?.sendSequencedPacket { sequence ->
+                        ServerboundPlayerActionPacket(
+                            ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK,
+                            BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
+                            (arg4.touserdata() as LuaDirection).direction, sequence
+                        )
+                    }
+                    return TRUE
                 }
-                return TRUE
+                else if (arg4?.isstring() == true) {
+                    mc.gameMode?.sendSequencedPacket { sequence ->
+                        arg4.tojstring()?.let {
+                            ServerboundPlayerActionPacket(
+                                ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK,
+                                BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
+                                Direction.valueOf(it), sequence
+                            )
+                        }
+                    }
+                    return TRUE
+                }
             }
             return FALSE
         }
@@ -111,15 +141,29 @@ class NetworkObject : LuaValue() {
             arg3: LuaValue?,
             arg4: LuaValue?
         ): LuaValue? {
-            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isstring() == true) {
-                mc.gameMode?.sendSequencedPacket { sequence ->
-                    ServerboundPlayerActionPacket(
-                        ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK,
-                        BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
-                        Direction.valueOf(arg4.tojstring()), sequence
-                    )
+            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
+                if (arg4?.isuserdata() == true && arg4.touserdata() is LuaDirection) {
+                    mc.gameMode?.sendSequencedPacket { sequence ->
+                        ServerboundPlayerActionPacket(
+                            ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK,
+                            BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
+                            (arg4.touserdata() as LuaDirection).direction, sequence
+                        )
+                    }
+                    return TRUE
                 }
-                return TRUE
+                else if (arg4?.isstring() == true) {
+                    mc.gameMode?.sendSequencedPacket { sequence ->
+                        arg4.tojstring()?.let {
+                            ServerboundPlayerActionPacket(
+                                ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK,
+                                BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
+                                Direction.valueOf(it), sequence
+                            )
+                        }
+                    }
+                    return TRUE
+                }
             }
             return FALSE
         }
