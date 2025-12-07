@@ -15,9 +15,15 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
+import net.fabricmc.fabric.api.event.player.UseBlockCallback
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
+import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.level.Level
+import net.minecraft.world.phys.BlockHitResult
+import net.minecraft.world.phys.HitResult
 import org.luaj.vm2.LuaValue
 
 
@@ -36,13 +42,36 @@ object LuaEvents: ClientModule() {
         })
 
         KeyEvent.EVENT.register(KeyEvent.KeyCallback { keyEvent ->
-            LUA_MANAGER.onKeyEvent(keyEvent.key, keyEvent.action)
-            InteractionResult.PASS
+            val allow = LUA_MANAGER.onKeyEvent(keyEvent.key, keyEvent.action)
+            if (allow) {
+                InteractionResult.PASS
+            }
+            else {
+                InteractionResult.FAIL
+            }
         })
 
         MouseButtonEvent.EVENT.register(MouseButtonEvent.KeyCallback { mouseButtonEvent ->
-            LUA_MANAGER.onKeyEvent(mouseButtonEvent.button, mouseButtonEvent.action)
-            InteractionResult.PASS
+            val allow =  LUA_MANAGER.onKeyEvent(mouseButtonEvent.button, mouseButtonEvent.action)
+            if (allow) {
+                InteractionResult.PASS
+            }
+            else {
+                InteractionResult.FAIL
+            }
+        })
+
+        UseBlockCallback.EVENT.register(UseBlockCallback { player: Player, world: Level, hand: InteractionHand, hitResult: BlockHitResult ->
+            var allow = true
+            if (hitResult.type == HitResult.Type.BLOCK || hitResult.type == HitResult.Type.MISS) {
+                allow = LUA_MANAGER.onUseBlock(hitResult.blockPos, hand)
+            }
+            if (allow) {
+                InteractionResult.PASS
+            }
+            else {
+                InteractionResult.FAIL
+            }
         })
 
         ClientReceiveMessageEvents.ALLOW_GAME.register(ClientReceiveMessageEvents.AllowGame { text, overlay ->

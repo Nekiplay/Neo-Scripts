@@ -26,7 +26,9 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.commands.CommandBuildContext
+import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
+import net.minecraft.world.InteractionHand
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaError
 import org.luaj.vm2.LuaValue
@@ -62,6 +64,7 @@ class LuaManager() {
     private val messageEventCallbacks = ArrayList<LuaValue>()
     private val onSendMessageEventCallbacks = ArrayList<LuaValue>()
     private val onSendCommandEventCallbacks = ArrayList<LuaValue>()
+    private val useBlockCallbacks = ArrayList<LuaValue>()
     private val locationChangeCallbacks = ArrayList<LuaValue>()
     private val imguiRenderCallbacks = ArrayList<LuaValue>()
 
@@ -213,6 +216,12 @@ class LuaManager() {
                 return LuaValue.TRUE
             }
         })
+        globals.set("registerUseBlock", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(addUseBlockCallback(callback))
+            }
+        })
+
         globals.set("registerCommand", object : TwoArgFunction() {
             override fun call(commandName: LuaValue, callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(addCommandCallback(commandName.checkjstring(), callback))
@@ -301,6 +310,11 @@ class LuaManager() {
             }
         })
 
+        globals.set("unregisterUseBlock", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(removeUseBlockCallback(callback))
+            }
+        })
         globals.set("unregisterClientTick", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(removeClientTickCallback(callback))
@@ -445,6 +459,20 @@ class LuaManager() {
     }
 
     // Methods for adding callbacks
+    fun addUseBlockCallback(callback: LuaValue): Boolean {
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
+            val result = useBlockCallbacks.add(callback)
+            if (result) {
+                currentExecutingScript.get()?.let { scriptName ->
+                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+                }
+            }
+            return result
+        }
+    }
+
+
     fun addClientTickCallback(callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
@@ -643,6 +671,11 @@ class LuaManager() {
     }
 
     // Methods for removing callbacks
+    fun removeUseBlockCallback(callback: LuaValue): Boolean {
+        synchronized(callbacksLock) {
+            return useBlockCallbacks.remove(callback)
+        }
+    }
     fun removeClientTickCallback(callback: LuaValue): Boolean {
         synchronized(callbacksLock) {
             return clientTickCallbacks.remove(callback)
@@ -783,6 +816,30 @@ class LuaManager() {
     // Methods to clear all callbacks
     // Callback methods
     // for multiple handlers
+    fun onUseBlock(pos: BlockPos, hand: InteractionHand): Boolean {
+        var allow = true
+        val callbacks = synchronized(callbacksLock) {
+            useBlockCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                val t = LuaValue.tableOf()
+                t.set("x", LuaValue.valueOf(pos.x))
+                t.set("y", LuaValue.valueOf(pos.y))
+                t.set("z", LuaValue.valueOf(pos.z))
+                t.set("hand", LuaValue.valueOf(hand.name))
+                val res = callback.call(t)
+                if (res.isboolean() && !res.toboolean()) {
+                    allow = false
+                }
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in client tick callback", e)
+            }
+        }
+        return allow
+    }
+
     fun onClientTick() {
         val callbacks = synchronized(callbacksLock) {
             clientTickCallbacks.toTypedArray()
@@ -844,18 +901,24 @@ class LuaManager() {
         }
     }
 
-    fun onKeyEvent(key: Int, type: KeyAction) {
+    fun onKeyEvent(key: Int, type: KeyAction): Boolean {
         val callbacks = synchronized(callbacksLock) {
             keyEventCallbacks.toTypedArray()
         }
-
+        var allow = true
         for (callback in callbacks) {
             try {
-                callback.call(LuaValue.valueOf(key), LuaValue.valueOf(type.name))
+                val res = callback.call(LuaValue.valueOf(key), LuaValue.valueOf(type.name))
+                if (res.isboolean()) {
+                    if (!res.toboolean()) {
+                        allow = false
+                    }
+                }
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in key callback: ${e.message}")
             }
         }
+        return allow
     }
 
     fun onChatMessageEvent(text: Component, overlay: Boolean): Boolean {
@@ -1095,6 +1158,7 @@ class LuaManager() {
             blockUpdateCallbacks.removeAll(callbacksToRemove.toSet())
             onSendCommandEventCallbacks.removeAll(callbacksToRemove.toSet())
             onSendMessageEventCallbacks.removeAll(callbacksToRemove.toSet())
+            useBlockCallbacks.removeAll(callbacksToRemove.toSet())
 
             // Packets
             serverSideRotationCallbacks.removeAll(callbacksToRemove.toSet())

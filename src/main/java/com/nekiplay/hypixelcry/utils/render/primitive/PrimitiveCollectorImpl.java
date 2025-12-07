@@ -24,6 +24,7 @@ import net.minecraft.world.phys.Vec3;
 import com.nekiplay.hypixelcry.utils.render.FrustumUtils;
 import com.nekiplay.hypixelcry.utils.render.RenderHelper;
 import com.nekiplay.hypixelcry.utils.render.state.*;
+import org.joml.Quaternionf;
 
 public final class PrimitiveCollectorImpl implements PrimitiveCollector {
     private static final Minecraft CLIENT = Minecraft.getInstance();
@@ -274,15 +275,20 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
 
     @Override
     public void submitText(Component text, Vec3 pos, float scale, float yOffset, boolean throughWalls) {
-        submitText(text.getVisualOrderText(), pos, scale, yOffset, CommonColors.WHITE, throughWalls);
+        submitText(text.getVisualOrderText(), pos, scale, yOffset, CommonColors.WHITE, null, throughWalls);
     }
 
     @Override
     public void submitText(Component text, Vec3 pos, int color, float scale, float yOffset, boolean throughWalls) {
-        submitText(text.getVisualOrderText(), pos, scale, yOffset, color, throughWalls);
+        submitText(text.getVisualOrderText(), pos, scale, yOffset, color, null, throughWalls);
     }
 
-    private void submitText(FormattedCharSequence text, Vec3 pos, float scale, float yOffset, int color, boolean throughWalls) {
+    @Override
+    public void submitText(Component text, Vec3 pos, int color, float scale, float yOffset, Quaternionf rotation, boolean throughWalls) {
+        submitText(text.getVisualOrderText(), pos, scale, yOffset, color, rotation, throughWalls);
+    }
+
+    private void submitText(FormattedCharSequence text, Vec3 pos, float scale, float yOffset, int color, Quaternionf rotation, boolean throughWalls) {
         ensureNotFrozen();
 
         if (this.textStates == null) {
@@ -299,6 +305,9 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
         state.scale = scale * 0.025f;
         state.yOffset = yOffset;
         state.throughWalls = throughWalls;
+        if (rotation != null) {
+            state.quaternion = rotation;
+        }
 
         this.textStates.add(state);
     }

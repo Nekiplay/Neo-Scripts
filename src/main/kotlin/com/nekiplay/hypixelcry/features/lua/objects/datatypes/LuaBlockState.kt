@@ -3,9 +3,11 @@ package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.DoorBlock
+import net.minecraft.world.level.block.RedStoneWireBlock
 import net.minecraft.world.level.block.SnowLayerBlock
 import net.minecraft.world.level.block.piston.PistonBaseBlock
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.redstone.Redstone
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 
@@ -22,6 +24,14 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
             "is_solid" -> valueOf(blockState.isSolid)
             "is_liquid" -> valueOf(blockState.liquid())
             "is_air" -> valueOf(blockState.isAir)
+            "power" -> {
+                val power = blockState.getOptionalValue(RedStoneWireBlock.POWER)
+                if (power.isPresent) {
+                    valueOf(power.get())
+                } else {
+                    LuaValue.NIL
+                }
+            }
             "facing" -> {
                 val facing = blockState.getOptionalValue(DoorBlock.FACING)
                 if (facing.isPresent) {

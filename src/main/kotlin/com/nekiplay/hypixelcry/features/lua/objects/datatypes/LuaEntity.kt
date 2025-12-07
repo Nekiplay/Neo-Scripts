@@ -69,6 +69,13 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "is_sprinting" -> valueOf(entity.isSprinting)
 
             // Дополнительные свойства
+            "passengers" -> {
+                val t = tableOf()
+                entity.passengers.forEachIndexed { index, entity ->
+                t.set(index + 1, LuaEntity(entity))
+            }
+                t
+            }
             "age" -> valueOf(entity.tickCount)
             "distance_to_player" -> {
                 val player = mc.player
@@ -118,7 +125,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     LuaValue.NIL
                 }
             }
-            "is_child" -> {
+            "is_child", "is_baby" -> {
                 if (entity is LivingEntity) {
                     valueOf(entity.isBaby)
                 } else {

@@ -8,6 +8,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Quaternionf;
 
 public interface PrimitiveCollector {
 
@@ -66,6 +67,7 @@ public interface PrimitiveCollector {
     void submitText(Component text, Vec3 pos, float scale, float yOffset, boolean throughWalls);
 
     void submitText(Component text, Vec3 pos, int color, float scale, float yOffset, boolean throughWalls);
+    void submitText(Component text, Vec3 pos, int color, float scale, float yOffset, Quaternionf rotation, boolean throughWalls);
 
     /**
      * Submits a cylinder without the top or bottom faces.

@@ -14,6 +14,9 @@ import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.vertex.BufferBuilder;
+import org.joml.Quaternionf;
+
+import java.util.Objects;
 
 public final class TextPrimitiveRenderer implements PrimitiveRenderer<TextRenderState> {
     protected static final TextPrimitiveRenderer INSTANCE = new TextPrimitiveRenderer();
@@ -25,9 +28,17 @@ public final class TextPrimitiveRenderer implements PrimitiveRenderer<TextRender
     @Override
     public void submitPrimitives(TextRenderState state, CameraRenderState cameraState) {
         RenderPipeline pipeline = state.throughWalls ? SEE_THROUGH : NORMAL;
-        Matrix4f positionMatrix = new Matrix4f()
-                .translate((float) (state.pos.x() - cameraState.pos.x()), (float) (state.pos.y() - cameraState.pos.y()), (float) (state.pos.z() - cameraState.pos.z()))
-                .rotate(cameraState.orientation)
+        final Quaternionf rotationQuaternion;
+
+        rotationQuaternion = Objects.requireNonNullElseGet(state.quaternion, () -> cameraState.orientation);
+
+        final Matrix4f positionMatrix = new Matrix4f()
+                .translate(
+                        (float) (state.pos.x() - cameraState.pos.x()),
+                        (float) (state.pos.y() - cameraState.pos.y()),
+                        (float) (state.pos.z() - cameraState.pos.z())
+                )
+                .rotate(rotationQuaternion)
                 .scale(state.scale, -state.scale, state.scale);
 
         state.glyphs.visit(new Font.GlyphVisitor() {

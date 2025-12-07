@@ -13,6 +13,7 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import org.joml.Quaternionf
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import java.io.File
@@ -263,46 +264,102 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
     }
 
     private inner class RenderTextFunction : OneArgFunction() {
+
+        // --- Приватные хелперы для безопасного извлечения данных из LuaTable ---
+
+        /** Безопасно извлекает Double по ключу, возвращая defaultValue, если не число. */
+        private fun LuaValue.getDoubleOrDefault(key: String, defaultValue: Double): Double {
+            val value = this.get(key)
+            return if (value.isnumber()) value.todouble() else defaultValue
+        }
+
+        /** Безопасно извлекает Float по ключу, возвращая defaultValue, если не число. */
+        private fun LuaValue.getFloatOrDefault(key: String, defaultValue: Float): Float {
+            val value = this.get(key)
+            return if (value.isnumber()) value.tofloat() else defaultValue
+        }
+
+        /** Безопасно извлекает Int по ключу, возвращая defaultValue, если не число. */
+        private fun LuaValue.getIntOrDefault(key: String, defaultValue: Int): Int {
+            val value = this.get(key)
+            return if (value.isnumber()) value.toint() else defaultValue
+        }
+
+        /** Безопасно извлекает String по ключу, возвращая defaultValue, если не строка. */
+        private fun LuaValue.getStringOrDefault(key: String, defaultValue: String): String {
+            val value = this.get(key)
+            return if (value.isstring()) value.tojstring() else defaultValue
+        }
+
+        /** Безопасно извлекает Boolean по ключу, возвращая defaultValue, если не булево. */
+        private fun LuaValue.getBooleanOrDefault(key: String, defaultValue: Boolean): Boolean {
+            val value = this.get(key)
+            return if (value.isboolean()) value.toboolean() else defaultValue
+        }
+
+        // ----------------------------------------------------------------------
+
         override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x: Double = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
-                val y: Double = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
-                val z: Double = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
-
-                val text = if (table.get("text").isstring()) table.get("text").tojstring() else "Empty"
-                val scale = if (table.get("scale").isnumber()) table.get("scale").tofloat() else 1f
-
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else -1
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else -1
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else -1
-
-                val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
-                val pos = Vec3(x, y, z)
-
-                if (red != -1 && green != -1 && blue != -1) {
-                    context.submitText(
-                        Component.literal(text),
-                        pos,
-                        ColorHelper.fromVanillaColor(getrgb(red, green, blue)),
-                        scale,
-                        0.5f,
-                        throughWalls
-                    );
-                    return TRUE
-                }
-                else {
-                    context.submitText(
-                        Component.literal(text),
-                        pos,
-                        -1,
-                        scale,
-                        0.5f,
-                        throughWalls
-                    );
-                    return TRUE
-                }
+            // 1. Guard Clauses (условия выхода)
+            if (!table.istable() || context == null) {
+                return NIL
             }
-            return NIL
+
+            // 2. Извлечение позиционных и текстовых параметров
+            val x = table.getDoubleOrDefault("x", 0.0)
+            val y = table.getDoubleOrDefault("y", 0.0)
+            val z = table.getDoubleOrDefault("z", 0.0)
+            val pos = Vec3(x, y, z)
+
+            val text = table.getStringOrDefault("text", "Empty")
+            val scale = table.getFloatOrDefault("scale", 1f)
+            val throughWalls = table.getBooleanOrDefault("through_walls", true)
+            val component = Component.literal(text)
+
+            // 3. Извлечение и обработка цвета
+            val red = table.getIntOrDefault("red", -1)
+            val green = table.getIntOrDefault("green", -1)
+            val blue = table.getIntOrDefault("blue", -1)
+
+            val color: Int = if (red != -1 && green != -1 && blue != -1) {
+                ColorHelper.fromVanillaColor(getrgb(red, green, blue))
+            } else {
+                -1 // Используем дефолтный цвет, если не задан
+            }
+
+            // 4. Извлечение и обработка вращения (Quaternion)
+            val qx = table.getDoubleOrDefault("qx", 0.0)
+            val qy = table.getDoubleOrDefault("qy", 0.0)
+            val qz = table.getDoubleOrDefault("qz", 0.0)
+            val qw = table.getDoubleOrDefault("qw", 0.0)
+
+            val hasRotation = (qx != 0.0 || qy != 0.0 || qz != 0.0 || qw != 0.0)
+
+            // 5. Выполнение логики (Минимум ветвления)
+
+            if (hasRotation) {
+                val quaternion = Quaternionf(qx, qy, qz, qw)
+                context.submitText(
+                    component,
+                    pos,
+                    color,
+                    scale,
+                    0.5f,
+                    quaternion,
+                    throughWalls
+                )
+            } else {
+                context.submitText(
+                    component,
+                    pos,
+                    color,
+                    scale,
+                    0.5f,
+                    throughWalls
+                )
+            }
+
+            return TRUE
         }
     }
 

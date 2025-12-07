@@ -147,8 +147,7 @@ public class StatusBarTracker {
 
         // Append the rest of the message to the string builder
         matcher.appendTail(sb);
-        String res = sb.toString().trim();
-        return res.isEmpty() ? null : res;
+        return actionBar;
     }
 
     private static void updateHealth(Matcher matcher) {

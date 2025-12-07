@@ -21,9 +21,11 @@ object EntityUtils {
      fun GetAllLivingEntities(): LuaValue {
         val entitiesTable = LuaValue.tableOf()
 
-        mc.level?.entitiesForRendering()?.forEachIndexed { index, entity ->
+        var index = 0
+        mc.level?.entitiesForRendering()?.forEach { entity ->
             if (entity is LivingEntity) {
                 entitiesTable.set(index + 1, LuaEntity(entity))
+                index++
             }
         }
 
