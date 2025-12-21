@@ -4,6 +4,7 @@ import com.nekiplay.hypixelcry.pathfinder.movement.CalculationContext
 import com.nekiplay.hypixelcry.pathfinder.movement.MovementHelper
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.util.Mth
 import net.minecraft.world.level.block.SnowLayerBlock
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
@@ -21,12 +22,12 @@ object BlockUtil {
     fun bresenham(ctx: CalculationContext, start: Vec3, end: Vec3): Boolean {
         var currentPos = start
 
-        val x1 = floor(end.x).toInt()
-        val y1 = floor(end.y).toInt()
-        val z1 = floor(end.z).toInt()
-        var x0 = floor(currentPos.x).toInt()
-        var y0 = floor(currentPos.y).toInt()
-        var z0 = floor(currentPos.z).toInt()
+        val x1 = Mth.floor(end.x)
+        val y1 = Mth.floor(end.y)
+        val z1 = Mth.floor(end.z)
+        var x0 = Mth.floor(currentPos.x)
+        var y0 = Mth.floor(currentPos.y)
+        var z0 = Mth.floor(currentPos.z)
 
         var lastState: BlockState? = world?.getBlockState(BlockPos(x0, y0, z0))
         var lastPos = BlockPos(x0, y0, z0)
