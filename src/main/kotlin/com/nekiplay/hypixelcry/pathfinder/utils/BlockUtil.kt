@@ -8,7 +8,6 @@ import net.minecraft.util.Mth
 import net.minecraft.world.level.block.SnowLayerBlock
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
-import kotlin.math.floor
 
 object BlockUtil {
     fun bresenham(ctx: CalculationContext, start: BlockPos, end: BlockPos): Boolean {
@@ -97,9 +96,9 @@ object BlockUtil {
                 currentPos = Vec3(currentPos.x + dx * stepZ, currentPos.y + dy * stepZ, newZ)
             }
 
-            x0 = floor(currentPos.x).toInt() - (if (direction == Direction.EAST) 1 else 0)
-            y0 = floor(currentPos.y).toInt() - (if (direction == Direction.UP) 1 else 0)
-            z0 = floor(currentPos.z).toInt() - (if (direction == Direction.SOUTH) 1 else 0)
+            x0 = Mth.floor(currentPos.x) - (if (direction == Direction.EAST) 1 else 0)
+            y0 = Mth.floor(currentPos.y) - (if (direction == Direction.UP) 1 else 0)
+            z0 = Mth.floor(currentPos.z) - (if (direction == Direction.SOUTH) 1 else 0)
 
             var currState: BlockState? = world?.getBlockState(BlockPos(x0, y0, z0))
             var i = 0

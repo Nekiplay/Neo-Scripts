@@ -119,35 +119,24 @@ public class StatusBarTracker {
     }
 
     public static String update(String actionBar, boolean filterManaUse) {
-        var sb = new StringBuilder();
-
         // Match health and don't add it to the string builder
         // Append healing to the string builder if there is any healing
         Matcher matcher = STATUS_HEALTH.matcher(actionBar);
-        if (!matcher.find()) return actionBar;
-        updateHealth(matcher);
-        if (matcher.group("healing") != null) {
-            sb.append("§c❤");
+        if (matcher.find()) {
+            updateHealth(matcher);
         }
-        matcher.appendReplacement(sb, "$3");
 
         // Match defense or mana use and don't add it to the string builder
         if (matcher.usePattern(DEFENSE_STATUS).find()) {
             defense = RegexUtils.parseIntFromMatcher(matcher, "defense");
-            matcher.appendReplacement(sb, "");
-        } else if (filterManaUse && matcher.usePattern(MANA_USE).find()) {
-            matcher.appendReplacement(sb, "");
         }
 
         // Match mana and don't add it to the string builder
         if (matcher.usePattern(MANA_STATUS).find()) {
             updateMana(matcher);
-            matcher.appendReplacement(sb, "");
         }
 
-        // Append the rest of the message to the string builder
-        matcher.appendTail(sb);
-        return actionBar;
+        return null;
     }
 
     private static void updateHealth(Matcher matcher) {
