@@ -4,6 +4,7 @@ import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.DoorBlock
 import net.minecraft.world.level.block.RedStoneWireBlock
+import net.minecraft.world.level.block.RepeaterBlock
 import net.minecraft.world.level.block.SnowLayerBlock
 import net.minecraft.world.level.block.piston.PistonBaseBlock
 import net.minecraft.world.level.block.state.BlockState
@@ -24,6 +25,14 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
             "is_solid" -> valueOf(blockState.isSolid)
             "is_liquid" -> valueOf(blockState.liquid())
             "is_air" -> valueOf(blockState.isAir)
+            "delay" -> {
+                val delay = blockState.getOptionalValue(RepeaterBlock.DELAY)
+                if (delay.isPresent) {
+                    valueOf(delay.get())
+                } else {
+                    LuaValue.NIL
+                }
+            }
             "power" -> {
                 val power = blockState.getOptionalValue(RedStoneWireBlock.POWER)
                 if (power.isPresent) {

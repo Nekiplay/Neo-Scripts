@@ -35,6 +35,8 @@ public class HypixelCry implements ClientModInitializer {
     public static Minecraft mc = Minecraft.getInstance();
     private static HypixelCry INSTANCE;
 
+    public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    public static final Gson GSON_COMPACT = new GsonBuilder().create();
 
     /**
      * Do not instantiate this class. Use {@link #getInstance()} instead.

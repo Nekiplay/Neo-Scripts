@@ -14,8 +14,10 @@ import imgui.type.ImDouble
 import imgui.type.ImFloat
 import imgui.type.ImInt
 import imgui.type.ImString
+import net.minecraft.world.item.ItemStack
 import org.luaj.vm2.*
 import org.luaj.vm2.lib.*
+import java.util.concurrent.atomic.AtomicInteger
 
 class ImGuiLib : TwoArgFunction() {
     override fun call(modname: LuaValue, env: LuaValue): LuaValue {
@@ -523,24 +525,30 @@ class ImGuiLib : TwoArgFunction() {
 
     inner class createImageObject : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return ImGuiTexture()
+            return ImGuiTexture(AtomicInteger(0))
         }
     }
 
-    inner class image : ThreeArgFunction() {
-        override fun call(
-            arg1: LuaValue?,
-            arg2: LuaValue?,
-            arg3: LuaValue?
-        ): LuaValue? {
-            if (arg1?.isuserdata() == true && arg2?.isnumber() == true  && arg3?.isnumber() == true ) {
+    inner class image : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (args.isvalue(1) && args.isvalue(2) && args.isvalue(3)) {
                 val image = when {
-                    arg1.isuserdata() && arg1.touserdata() is ImGuiTexture -> arg1.touserdata() as ImGuiTexture
+                    args.arg(1).isuserdata() && args.arg(1).touserdata() is ImGuiTexture -> (args.arg(1).touserdata() as ImGuiTexture).texture.get()
+                    args.arg(1).isuserdata() && args.arg(1).touserdata() is AtomicInteger -> (args.arg(1).touserdata() as AtomicInteger).get()
+                    args.arg(1).isnumber() -> args.arg(1).toint()
                     else -> null
                 }
 
-                if (image != null) {
-                    ImGui.image(image.getTexture(), arg2.tofloat(), arg3.tofloat())
+                if (image != null && image > 0) {
+                    if (args.narg() == 7) {
+                        ImGui.image(image, args.arg(2).tofloat(), args.arg(3).tofloat(), args.arg(4).tofloat(), args.arg(5).tofloat(), args.arg(6).tofloat(), args.arg(7).tofloat())
+                    }
+                    else if (args.narg() == 5) {
+                        ImGui.image(image, args.arg(2).tofloat(), args.arg(3).tofloat(), args.arg(4).tofloat(), args.arg(5).tofloat())
+                    }
+                    else {
+                        ImGui.image(image, args.arg(2).tofloat(), args.arg(53).tofloat())
+                    }
                     return TRUE
                 }
             }

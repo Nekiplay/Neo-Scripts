@@ -23,8 +23,10 @@ import net.minecraft.world.item.component.CustomModelData;
 import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.item.component.ResolvableProfile;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class ItemUtils {
@@ -210,6 +212,24 @@ public class ItemUtils {
         }
 
         return PetInfo.EMPTY;
+    }
+
+    public static List<String> getLoreStrings(ItemStack stack) {
+        return ItemUtils.getLore(stack).stream().map(Component::getString).toList();
+    }
+
+    /**
+     * Gets the first line of the lore that matches the specified predicate.
+     * @return The first line of the lore that matches the predicate, or {@code null} if no line matches.
+     */
+    public static @Nullable String getLoreLineIf(ItemStack stack, Predicate<String> predicate) {
+        for (String line : ItemUtils.getLoreStrings(stack)) {
+            if (predicate.test(line)) {
+                return line;
+            }
+        }
+
+        return null;
     }
 
     public static @NotNull String getNeuId(ItemStack stack) {

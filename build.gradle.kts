@@ -22,6 +22,22 @@ repositories {
     maven { url = uri("https://repo1.maven.org/maven2/") }
     maven { url = uri("https://repo.nea.moe/releases") }
     maven { url = uri("https://maven.azureaaron.net/releases") }
+    maven {
+        url = uri("https://maven.azureaaron.net/releases")
+
+        content {
+            includeGroup("net.azureaaron")
+        }
+    }
+
+    maven {
+        url = uri("https://maven.azureaaron.net/snapshots")
+
+        content {
+            includeGroup("net.azureaaron")
+        }
+    }
+
 }
 
 java {
@@ -60,6 +76,9 @@ dependencies {
 
     // NEU RepoParser
     include(implementation("moe.nea:neurepoparser:${property("repoparser_version")}")!!)
+
+    // Networth Calculator (https://github.com/AzureAaron/networth-calculator)
+    include(implementation("net.azureaaron:networth-calculator:${property("networth_calculator_version")}")!!)
 
     // JGit used pull data from the NEU item repo
     include(implementation("org.eclipse.jgit:org.eclipse.jgit:${property("jgit_version")}")!!)

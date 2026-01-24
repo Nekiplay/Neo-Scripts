@@ -1,8 +1,11 @@
 package com.nekiplay.hypixelcry.utils;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.nekiplay.hypixelcry.annotations.Init;
 import com.nekiplay.hypixelcry.events.SkyblockEvents;
 import com.nekiplay.hypixelcry.utils.purse.PurseChangeCause;
+import com.nekiplay.hypixelcry.utils.scheduler.MessageScheduler;
 import com.nekiplay.hypixelcry.utils.scheduler.Scheduler;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -16,6 +19,7 @@ import net.azureaaron.hmapi.network.packet.s2c.HelloS2CPacket;
 import net.azureaaron.hmapi.network.packet.s2c.HypixelS2CPacket;
 import net.azureaaron.hmapi.network.packet.v1.s2c.LocationUpdateS2CPacket;
 import net.azureaaron.hmapi.network.packet.v1.s2c.PlayerInfoS2CPacket;
+import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
@@ -45,6 +49,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collections;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -57,7 +62,9 @@ public class Utils {
     private static final HolderLookup.Provider LOOKUP = VanillaRegistries.createLookup();
     private static final String ALTERNATE_HYPIXEL_ADDRESS = System.getProperty("skyblocker.alternateHypixelAddress", "");
     private static final String PROFILE_PREFIX = "Profile: ";
-
+    private static final String PROFILE_MESSAGE_PREFIX = "§aYou are playing on profile: §e";
+    public static final String PROFILE_ID_PREFIX = "Profile ID: ";
+    private static final String PROFILE_ID_SUGGEST_PREFIX = "CLICK THIS TO SUGGEST IT IN CHAT";
     private static final Pattern PURSE = Pattern.compile("(Purse|Piggy): (?<purse>[0-9,.]+)( \\((?<change>[+\\-][0-9,.]+)\\))?");
 
     private static boolean isOnHypixel = false;
@@ -82,6 +89,7 @@ public class Utils {
     @Init
     public static void init() {
         //Register Mod API stuff
+        ClientReceiveMessageEvents.ALLOW_GAME.register(Utils::onChatMessage);
         HypixelNetworking.registerToEvents(Util.make(new Object2IntOpenHashMap<>(), map -> map.put(LocationUpdateS2CPacket.ID, 1)));
         HypixelPacketEvents.HELLO.register(Utils::onPacket);
         HypixelPacketEvents.LOCATION_UPDATE.register(Utils::onPacket);
@@ -136,7 +144,7 @@ public class Utils {
 
     @NotNull
     private static String profile = "";
-
+    private static String profileId = "";
     @NotNull
     public static Location getLocation() {
         return location;
@@ -209,6 +217,15 @@ public class Utils {
 
     @NotNull
     private static int profileIdRequest = 0;
+    private static int profileSuggestionMessages = Integer.MAX_VALUE / 2;
+
+    public static String getProfile() {
+        return profile;
+    }
+
+    public static String getProfileId() {
+        return profileId;
+    }
 
     private static boolean firstProfileUpdate = true;
 
@@ -219,6 +236,10 @@ public class Utils {
     @NotNull
     public static Area getArea() {
         return area;
+    }
+
+    public static RankType getRank() {
+        return rank;
     }
 
     public static String getIslandArea() {
@@ -232,6 +253,9 @@ public class Utils {
             LOGGER.error("[HypixelCry] Failed to get location from sidebar", e);
         }
         return "Unknown";
+    }
+    public static UUID getUuid() {
+        return Minecraft.getInstance().getUser().getProfileId();
     }
 
     public static void update() {
@@ -333,6 +357,22 @@ public class Utils {
         if (!oldArea.equals(area)) SkyblockEvents.AREA_CHANGE.invoker().onSkyblockAreaChange(area);
     }
 
+    public static int getBits() {
+        int bits = 0;
+        String bitsString = null;
+        try {
+            for (String sidebarLine : STRING_SCOREBOARD) {
+                if (sidebarLine.contains("Bits")) bitsString = sidebarLine;
+            }
+            if (bitsString != null) {
+                bits = Integer.parseInt(bitsString.replaceAll("[^0-9.]", "").strip());
+            }
+        } catch (IndexOutOfBoundsException e) {
+            LOGGER.error("[Hypixel Cry] Failed to get bits from sidebar", e);
+        }
+        return bits;
+    }
+
     private static void tickProfileId() {
         profileIdRequest++;
 
@@ -341,7 +381,10 @@ public class Utils {
 
             @Override
             public void run() {
-                //if (requestId == profileIdRequest) MessageScheduler.INSTANCE.sendMessageAfterCooldown("/profileid", true);
+                if (requestId == profileIdRequest) {
+                    MessageScheduler.INSTANCE.sendMessageAfterCooldown("/profileid", true);
+                    profileSuggestionMessages = 0;
+                }
             }
         }, 20 * 8); //8 seconds
     }
@@ -394,6 +437,72 @@ public class Utils {
             default -> {} //Do Nothing
         }
     }
+
+    /**
+     * Parses the /locraw reply from the server and updates the player's profile id
+     *
+     * @return not display the message in chat if the command is sent by the mod
+     */
+    public static boolean onChatMessage(Component text, boolean overlay) {
+        if (overlay) return true;
+        String message = text.getString();
+
+        if (message.startsWith("{\"server\":") && message.endsWith("}")) {
+            parseLocRaw(message);
+        }
+
+        if (isOnSkyblock) {
+            if (message.startsWith(PROFILE_MESSAGE_PREFIX)) {
+                profile = message.substring(PROFILE_MESSAGE_PREFIX.length()).split("§b")[0];
+            } else if (message.startsWith(PROFILE_ID_PREFIX)) {
+                String prevProfileId = profileId;
+                profileId = message.substring(PROFILE_ID_PREFIX.length());
+                profileIdRequest++;
+
+                if (!prevProfileId.equals(profileId)) {
+                    SkyblockEvents.PROFILE_CHANGE.invoker().onSkyblockProfileChange(prevProfileId, profileId);
+                }
+            } else if (ChatFormatting.stripFormatting(message).startsWith(PROFILE_ID_SUGGEST_PREFIX)) {
+                int suggestions = profileSuggestionMessages;
+                profileSuggestionMessages++;
+
+                return suggestions >= 2;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Parses /locraw chat message and updates {@link #server}, {@link #gameType}, {@link #locationRaw}, {@link #map}
+     * and {@link #location}
+     *
+     * @param message json message from chat
+     * @deprecated Retained just in case the mod api doesn't work or gets disabled.
+     */
+    @Deprecated
+    private static void parseLocRaw(String message) {
+        JsonObject locRaw = JsonParser.parseString(message).getAsJsonObject();
+
+        if (locRaw.has("server")) {
+            server = locRaw.get("server").getAsString();
+        }
+        if (locRaw.has("gametype")) {
+            gameType = locRaw.get("gametype").getAsString();
+            isOnSkyblock = gameType.equals("SKYBLOCK");
+        }
+        if (locRaw.has("mode")) {
+            locationRaw = locRaw.get("mode").getAsString();
+            location = Location.from(locationRaw);
+        } else {
+            location = Location.UNKNOWN;
+        }
+        if (locRaw.has("map")) {
+            map = locRaw.get("map").getAsString();
+        }
+    }
+
+
     public static HolderLookup.Provider getRegistryWrapperLookup() {
         Minecraft client = Minecraft.getInstance();
         // Null check on client for tests

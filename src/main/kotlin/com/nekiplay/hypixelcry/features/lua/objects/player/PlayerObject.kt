@@ -12,6 +12,7 @@ import com.nekiplay.hypixelcry.utils.Rotations
 import com.nekiplay.hypixelcry.utils.StatusBarTracker
 import com.nekiplay.hypixelcry.utils.Utils
 import com.nekiplay.hypixelcry.utils.trackers.ColdTracker
+import com.nekiplay.hypixelcry.utils.trackers.PetCache
 import net.minecraft.client.gui.components.toasts.SystemToast
 import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
@@ -63,7 +64,11 @@ class PlayerObject : LuaValue() {
             "getRotation" -> GetPlayerRotationFunction()
             "setRotation" -> SetPlayerRotationFunction()
             "getName" -> GetPlayerNameFunction()
+            "getArea" -> GetPlayerAreaFunction()
             "getLocation" -> GetPlayerLocationFunction()
+            "getProfile" -> GetPlayerProfileFunction()
+            "getProfileId" -> GetPlayerProfileIdFunction()
+            "getBits" -> GetPlayerBitsFunction()
             "getPurse" -> GetPlayerPurseFunction()
             "getHealth" -> GetPlayerHealthFunction()
             "getMaxHealth" -> GetPlayerMaxHealthFunction()
@@ -73,7 +78,9 @@ class PlayerObject : LuaValue() {
             "getSpeed" -> GetPlayerSpeedFunction()
             "getCold" -> GetPlayerColdFunction()
             "getAir" -> GetPlayerAirFunction()
+            "getPet" -> GetPlayerPetFunction()
             "getMaxAir" -> GetPlayerMaxAirFunction()
+            "getRank" -> GetPlayerRankFunction()
             "isSneaking" -> IsPlayerSneakingFunction()
             "isSprinting" -> IsPlayerSprintingFunction()
             "isOnGround" -> IsPlayerOnGroundFunction()
@@ -111,6 +118,38 @@ class PlayerObject : LuaValue() {
         }
     }
 
+    private inner class GetPlayerPetFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return if (Utils.isOnSkyblock()) {
+                val pet = PetCache.getCurrentPet()
+                if (pet != null) {
+                    val table = tableOf()
+                    if (pet.name.isPresent) {
+                        table.set("name", valueOf(pet.name.get()))
+                    }
+                    table.set("type", valueOf(pet.type))
+                    table.set("exp", valueOf(pet.exp))
+                    if (pet.item.isPresent) {
+                        table.set("item", valueOf(pet.item.get()))
+                    }
+                    if (pet.skin.isPresent) {
+                        table.set("skin", valueOf(pet.skin.get()))
+                    }
+                    table.set("tier", valueOf(pet.tier.name))
+                    if (pet.uuid.isPresent) {
+                        table.set("uuid", valueOf(pet.uuid.get()))
+                    }
+                    table
+                }
+                else {
+                    NIL
+                }
+            } else {
+                NIL
+            }
+        }
+    }
+
     private inner class GetPlayerAirFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             return if (Utils.isOnSkyblock()) {
@@ -125,6 +164,16 @@ class PlayerObject : LuaValue() {
         override fun call(): LuaValue {
             return if (Utils.isOnSkyblock()) {
                 valueOf(StatusBarTracker.getAir().max)
+            } else {
+                valueOf(0)
+            }
+        }
+    }
+
+    private inner class GetPlayerRankFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return if (Utils.isOnSkyblock()) {
+                valueOf(Utils.getRank().toString())
             } else {
                 valueOf(0)
             }
@@ -325,9 +374,45 @@ class PlayerObject : LuaValue() {
         }
     }
 
+    private inner class GetPlayerAreaFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return valueOf(Utils.getArea().name)
+        }
+    }
+
     private inner class GetPlayerLocationFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             return valueOf(Utils.getLocation().name)
+        }
+    }
+
+    private inner class GetPlayerProfileFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return if (Utils.isOnSkyblock()) {
+                valueOf(Utils.getProfile())
+            } else {
+                NIL
+            }
+        }
+    }
+
+    private inner class GetPlayerProfileIdFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return if (Utils.isOnSkyblock()) {
+                valueOf(Utils.getProfileId())
+            } else {
+                NIL
+            }
+        }
+    }
+
+    private inner class GetPlayerBitsFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return if (Utils.isOnSkyblock()) {
+                valueOf(Utils.getBits())
+            } else {
+                valueOf(0.0)
+            }
         }
     }
 

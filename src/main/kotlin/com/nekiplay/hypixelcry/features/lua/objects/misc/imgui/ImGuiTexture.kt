@@ -1,51 +1,48 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc.imgui
 
+import com.mojang.blaze3d.opengl.GlTextureView
 import com.mojang.blaze3d.platform.NativeImage
-import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject.Companion.textureCache
-import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject.Companion.textureCounter
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
+import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.resources.ResourceLocation
-import org.luaj.vm2.LuaTable
+import net.minecraft.world.entity.Entity
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
-import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 import java.io.File
 import java.io.FileInputStream
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
 import java.util.function.Supplier
-import kotlin.collections.set
 
 
-class ImGuiTexture : LuaUserdata(null) {
-    private val _texture = AtomicInteger(-1)
+class ImGuiTexture(val texture: AtomicInteger) : LuaUserdata(AtomicInteger(0)) {
     private var _identifier: ResourceLocation? = null
-
-    public fun getTexture(): Int {
-        return _texture.get()
-    }
-
-    private val loadImageInstance = LoadImage()
 
     override fun get(key: LuaValue): LuaValue {
         return when (val field = key.tojstring()) {
-            "loadImage" -> loadImageInstance
+            "loadImage" -> LoadImage()
+            "release" -> Release()
+            "getId" -> GetID()
             else -> super.get(key)
         } as LuaValue
+    }
+
+    private inner class GetID : OneArgFunction() {
+        override fun call(path: LuaValue): LuaValue {
+            return LuaValue.valueOf(texture.get())
+        }
     }
 
     private inner class LoadImage : OneArgFunction() {
         override fun call(path: LuaValue): LuaValue {
             if (path.isstring()) {
                 val textureId = loadTexture(path.tojstring())
-                _texture.set(textureId)
-                return LuaValue.valueOf(1)
+                texture.set(textureId)
+                return TRUE
             }
-            return LuaValue.valueOf(0)
+            return FALSE
         }
     }
 
@@ -64,12 +61,12 @@ class ImGuiTexture : LuaUserdata(null) {
             val file = File(path)
             if (!file.exists() || !file.isFile) {
                 println("File does not exist or is not a file: $path")
-                return -1
+                return 0
             }
 
             if (!file.canRead()) {
                 println("Cannot read file: $path")
-                return -1
+                return 0
             }
 
             FileInputStream(file).use { inputStream ->
@@ -85,16 +82,13 @@ class ImGuiTexture : LuaUserdata(null) {
                 // Register texture
                 mc.textureManager.register(_identifier, texture)
 
-                // Get OpenGL texture ID
-                val glTextureId = texture.texture.usage()
-                _texture.set(glTextureId)
-
-                return glTextureId
+                val texture2 = mc.textureManager.getTexture(_identifier).getTextureView() as GlTextureView
+                return texture2.texture().glId()
             }
         } catch (e: Exception) {
             println("Failed to load texture from $path: ${e.message}")
             e.printStackTrace()
-            return -1
+            return 0
         }
     }
 
@@ -106,7 +100,7 @@ class ImGuiTexture : LuaUserdata(null) {
                 }
             }
             _identifier = null
-            _texture.set(-1)
+            texture.set(0)
         } catch (e: Exception) {
             println("Error releasing texture: ${e.message}")
         }
