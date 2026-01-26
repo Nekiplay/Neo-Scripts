@@ -7,6 +7,7 @@ import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.utils.InventoryUtils
 import com.nekiplay.hypixelcry.utils.itemlist.ItemRepository
 import net.minecraft.client.gui.screens.inventory.ContainerScreen
+import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.minecraft.client.gui.screens.inventory.SignEditScreen
 import net.minecraft.world.inventory.ChestMenu
 import org.luaj.vm2.LuaValue
@@ -40,8 +41,22 @@ class InventoryObject: LuaValue() {
             "rightClick" -> RightClickFunction()
 
             "closeScreen" -> CloseScreenFunction()
+            "openInventory" -> OpenInventoryFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class OpenInventoryFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            if (mc.player != null) {
+                mc.setScreen(InventoryScreen(mc.player))
+                mc.player!!.sendOpenInventory()
+                return TRUE
+            }
+            else {
+                return FALSE
+            }
+        }
     }
 
     private inner class GetStackFromIDFunction : VarArgFunction() {

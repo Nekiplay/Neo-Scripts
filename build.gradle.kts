@@ -69,22 +69,24 @@ dependencies {
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_version")}")
     modImplementation("net.fabricmc:fabric-language-kotlin:${property("fabric_kotlin_version")}")
 
-    include(modImplementation("net.azureaaron:hm-api:${property("hm_api_version")}")!!)  // HM API (Hypixel Mod API Library)
+    // HM-API (https://github.com/AzureAaron/hm-api/releases)
+    include(modImplementation(files("libs/hm-api-1.0.1+1.21.2.jar"))!!)
+    //include(modImplementation("net.azureaaron:hm-api:${property("hm_api_version")}")!!)  // HM API (Hypixel Mod API Library)
 
     // Occlusion Culling
     include(implementation("com.logisticscraft:occlusionculling:${property("occlusionculling_version")}")!!)
 
-    // NEU RepoParser
-    include(implementation("moe.nea:neurepoparser:${property("repoparser_version")}")!!)
+    // NEU RepoParser (https://repo.nea.moe/#/releases/moe/nea/neurepoparser)
+    include(implementation(files("libs/neurepoparser-1.8.0.jar"))!!)
 
-    // Networth Calculator (https://github.com/AzureAaron/networth-calculator)
-    include(implementation("net.azureaaron:networth-calculator:${property("networth_calculator_version")}")!!)
+    // Networth Calculator (https://maven.azureaaron.net/#/releases/net/azureaaron/networth-calculator)
+    include(implementation(files("libs/networth-calculator-1.0.5.jar"))!!)
 
     // JGit used pull data from the NEU item repo
     include(implementation("org.eclipse.jgit:org.eclipse.jgit:${property("jgit_version")}")!!)
 
-    // Legacy Item DFU
-    include(implementation("net.azureaaron:legacy-item-dfu:${property("legacy_item_dfu_version")}")!!)
+    // Legacy Item DFU (https://maven.azureaaron.net/releases/net/azureaaron/legacy-item-dfu)
+    include(implementation(files("libs/legacy-item-dfu-1.0.3+1.21.5.jar"))!!)
 
     // ImGUI
     val imguiVersion = property("imgui_version") as String
