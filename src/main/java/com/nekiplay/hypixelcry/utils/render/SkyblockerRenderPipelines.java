@@ -65,5 +65,8 @@ public class SkyblockerRenderPipelines {
             .build());
 
     @Init
-    public static void init() {} //Ensure that pipelines are pre-compiled instead of compiled on demand
+    public static void init() {
+        Renderer.excludePipelineFromBatching(CIRCLE);
+        Renderer.excludePipelineFromBatching(CIRCLE_THROUGH_WALLS);
+    } //Ensure that pipelines are pre-compiled instead of compiled on demand
 }

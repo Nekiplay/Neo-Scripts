@@ -297,10 +297,12 @@ class PlayerObject : LuaValue() {
     private inner class AddChatMessageFunction : OneArgFunction() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
-                mc.player?.displayClientMessage(Component.literal(message.tojstring()), false)
-                return valueOf(true)
+                mc.execute {
+                    mc.player?.displayClientMessage(Component.literal(message.tojstring()), false)
+                }
+                return TRUE
             }
-            return NIL
+            return FALSE
         }
     }
 
@@ -308,9 +310,9 @@ class PlayerObject : LuaValue() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
                 mc.connection?.sendChat(message.tojstring())
-                return valueOf(true)
+                return TRUE
             }
-            return NIL
+            return FALSE
         }
     }
 
