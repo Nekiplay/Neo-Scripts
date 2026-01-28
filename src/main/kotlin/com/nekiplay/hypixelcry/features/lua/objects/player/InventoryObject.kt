@@ -50,7 +50,7 @@ class InventoryObject: LuaValue() {
         override fun call(): LuaValue {
             if (mc.player != null) {
                 mc.setScreen(InventoryScreen(mc.player))
-                mc.player!!.sendOpenInventory()
+                mc.player?.sendOpenInventory()
                 return TRUE
             }
             else {
