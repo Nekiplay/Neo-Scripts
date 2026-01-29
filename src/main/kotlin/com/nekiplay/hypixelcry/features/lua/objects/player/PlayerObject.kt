@@ -65,6 +65,7 @@ class PlayerObject : LuaValue() {
             "setRotation" -> SetPlayerRotationFunction()
             "getName" -> GetPlayerNameFunction()
             "getArea" -> GetPlayerAreaFunction()
+            "getRawLocation" -> GetPlayerRawLocationFunction()
             "getLocation" -> GetPlayerLocationFunction()
             "getProfile" -> GetPlayerProfileFunction()
             "getProfileId" -> GetPlayerProfileIdFunction()
@@ -378,7 +379,13 @@ class PlayerObject : LuaValue() {
 
     private inner class GetPlayerAreaFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return valueOf(Utils.getArea().name)
+            return valueOf(Utils.getArea())
+        }
+    }
+
+    private inner class GetPlayerRawLocationFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return valueOf(Utils.getRawLocation())
         }
     }
 

@@ -140,7 +140,7 @@ public class Utils {
     private static Location location = Location.UNKNOWN;
 
     @NotNull
-    private static Area area = Area.UNKNOWN;
+    private static String area = "";
 
     @NotNull
     private static String profile = "";
@@ -148,6 +148,10 @@ public class Utils {
     @NotNull
     public static Location getLocation() {
         return location;
+    }
+    @NotNull
+    public static String getRawLocation() {
+        return locationRaw;
     }
 
     public static boolean isOnHypixel() {
@@ -234,7 +238,7 @@ public class Utils {
     }
 
     @NotNull
-    public static Area getArea() {
+    public static String getArea() {
         return area;
     }
 
@@ -351,10 +355,9 @@ public class Utils {
 
     private static void updateArea() {
         String areaName = getIslandArea().replaceAll("[⏣ф]", "").strip();
-        Area oldArea = area;
-        area = Area.from(areaName);
+        area = areaName;
 
-        if (!oldArea.equals(area)) SkyblockEvents.AREA_CHANGE.invoker().onSkyblockAreaChange(area);
+        if (!areaName.equals(area)) SkyblockEvents.AREA_CHANGE.invoker().onSkyblockAreaChange(areaName);
     }
 
     public static int getBits() {

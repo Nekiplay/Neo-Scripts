@@ -1,6 +1,5 @@
 package com.nekiplay.hypixelcry.events;
 
-import com.nekiplay.hypixelcry.utils.Area;
 import com.nekiplay.hypixelcry.utils.Location;
 import com.nekiplay.hypixelcry.utils.purse.PurseChangeCause;
 import net.fabricmc.api.EnvType;
@@ -84,7 +83,7 @@ public final class SkyblockEvents {
     @Environment(EnvType.CLIENT)
     @FunctionalInterface
     public interface SkyblockAreaChange {
-        void onSkyblockAreaChange(Area area);
+        void onSkyblockAreaChange(String area);
     }
 
     @Environment(EnvType.CLIENT)
