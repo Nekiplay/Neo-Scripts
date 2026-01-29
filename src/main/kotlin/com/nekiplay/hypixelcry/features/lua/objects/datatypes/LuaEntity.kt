@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 
 import com.nekiplay.hypixelcry.HypixelCry.mc
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
+import com.nekiplay.hypixelcry.sugar.getFormattedString
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
@@ -17,7 +18,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "id" -> valueOf(entity.id.toDouble())
             "uuid" -> valueOf(entity.stringUUID)
             "name" -> valueOf(entity.name.string)
-            "display_name" -> valueOf(entity.displayName?.string ?: "")
+            "display_name" -> valueOf(entity.displayName?.getFormattedString()) ?: NIL
             "type" -> valueOf(entity.type.toString())
 
             // Позиция и движение
@@ -38,7 +39,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 val pos = entity.getPosition(1f)
                 t.set("x", valueOf(pos.x))
                 t.set("y", valueOf(pos.y))
-                t.set("z", valueOf(entity.forward.z))
+                t.set("z", valueOf(pos.z))
                 t
             }
 
