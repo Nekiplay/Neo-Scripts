@@ -11,5 +11,5 @@
 - /lua - Lua API control
 
 ### Misc:
-- [Lua API](https://skillshop.gitbook.io/hypixelcry/), [Lua Scripts Library](https://github.com/Nekiplay/Hypixel-Cry-Scripts)
+- [Lua API](https://skillshop.gitbook.io/hypixelcry/), [Lua Scripts Library](https://github.com/Nekiplay/Hypixel-Cry-Scripts), more lua in [Discord](https://discord.gg/zSefVGvKsW)
 
