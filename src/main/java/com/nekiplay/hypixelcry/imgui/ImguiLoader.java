@@ -26,19 +26,13 @@ public class ImguiLoader {
         imGuiGlfw.init(handle, true);
         imGuiGl3.init();
         windowHandle = handle;
-        //HypixelCry.LOGGER.info("TextureID: " + HypixelCry.texture);
     }
 
     public static void onFrameRender() {
         if (windowHandle != -1) {
             imGuiGlfw.newFrame();
-
             ImGui.newFrame();
-            //ImGui.begin("Minecraft Cry");
-
             HypixelCry.LUA_MANAGER.omImGuiRenderEvent();
-
-            //ImGui.end();
             ImGui.render();
             imGuiGl3.renderDrawData(ImGui.getDrawData());
 

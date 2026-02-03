@@ -22,7 +22,6 @@ import net.minecraft.client.renderer.state.CameraRenderState;
 public final class BlockHologramRenderer implements PrimitiveRenderer<BlockHologramRenderState> {
     protected static final BlockHologramRenderer INSTANCE = new BlockHologramRenderer();
     private static final Minecraft CLIENT = Minecraft.getInstance();
-    private static final boolean SODIUM_LOADED = FabricLoader.getInstance().isModLoaded("sodium");
 
     private BlockHologramRenderer() {}
 

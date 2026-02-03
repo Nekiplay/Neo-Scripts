@@ -5,6 +5,7 @@ import com.mojang.blaze3d.platform.DepthTestFunction;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.nekiplay.hypixelcry.annotations.Init;
+import com.nekiplay.hypixelcry.compatibility.IrisCompatibility;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 
@@ -12,7 +13,6 @@ public class SkyblockerRenderPipelines {
     /** Similar to {@link RenderPipelines#DEBUG_FILLED_BOX} */
     public static final RenderPipeline FILLED_THROUGH_WALLS = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
             .withLocation(Identifier.fromNamespaceAndPath("hypixelcry", "pipeline/debug_filled_box_through_walls"))
-            .withVertexFormat(DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.TRIANGLE_STRIP)
             .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
             .build());
     /** Similar to {@link RenderPipelines#LINES} */
@@ -68,5 +68,6 @@ public class SkyblockerRenderPipelines {
     public static void init() {
         Renderer.excludePipelineFromBatching(CIRCLE);
         Renderer.excludePipelineFromBatching(CIRCLE_THROUGH_WALLS);
-    } //Ensure that pipelines are pre-compiled instead of compiled on demand
+        IrisCompatibility.assignPipelines();
+    }
 }
