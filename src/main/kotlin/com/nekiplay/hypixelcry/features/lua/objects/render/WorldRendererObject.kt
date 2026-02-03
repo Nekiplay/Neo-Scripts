@@ -7,7 +7,9 @@ import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.TextColor
 import net.minecraft.resources.Identifier
+import net.minecraft.util.CommonColors
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
@@ -36,7 +38,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             "renderImage" -> RenderImageFunction()
             "renderBeaconBeam" -> RenderBeaconBeamFunction()
             "renderQuad" -> SubmitQuadFunction()
-            "renderBlock" -> RenderBlockFunction()
+            "renderHologramBlock" -> RenderBlockFunction()
             else -> NIL
         } as LuaValue
     }
@@ -338,11 +340,11 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             val green = table.getIntOrDefault("green", -1)
             val blue = table.getIntOrDefault("blue", -1)
 
-            val color: Int = if (red != -1 && green != -1 && blue != -1) {
-                // Full opacity (alpha = 255) + RGB components
-                (255 shl 24) or (red.coerceIn(0, 255) shl 16) or (green.coerceIn(0, 255) shl 8) or blue.coerceIn(0, 255)
+            val color: Int = if (red in 0..255 && green in 0..255 && blue in 0..255) {
+                // Формат: 0xAARRGGBB → альфа=255 (0xFF) + RGB компоненты
+                (255 shl 24) or (red shl 16) or (green shl 8) or blue
             } else {
-                -1 // Default color indicator
+                CommonColors.WHITE
             }
 
             // 4. Извлечение и обработка вращения (Quaternion)
