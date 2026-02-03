@@ -6,59 +6,59 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.nekiplay.hypixelcry.annotations.Init;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public class SkyblockerRenderPipelines {
     /** Similar to {@link RenderPipelines#DEBUG_FILLED_BOX} */
     public static final RenderPipeline FILLED_THROUGH_WALLS = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
-            .withLocation(ResourceLocation.fromNamespaceAndPath("hypixelcry", "pipeline/debug_filled_box_through_walls"))
+            .withLocation(Identifier.fromNamespaceAndPath("hypixelcry", "pipeline/debug_filled_box_through_walls"))
             .withVertexFormat(DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.TRIANGLE_STRIP)
             .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
             .build());
     /** Similar to {@link RenderPipelines#LINES} */
     public static final RenderPipeline LINES_THROUGH_WALLS = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.LINES_SNIPPET)
-            .withLocation(ResourceLocation.fromNamespaceAndPath("hypixelcry", "pipeline/lines_through_walls"))
+            .withLocation(Identifier.fromNamespaceAndPath("hypixelcry", "pipeline/lines_through_walls"))
             .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
             .build());
     /** Similar to {@link RenderPipelines#DEBUG_QUADS}  */
     public static final RenderPipeline QUADS_THROUGH_WALLS = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
-            .withLocation(ResourceLocation.fromNamespaceAndPath("hypixelcry", "pipeline/debug_quads_through_walls"))
+            .withLocation(Identifier.fromNamespaceAndPath("hypixelcry", "pipeline/debug_quads_through_walls"))
             .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
             .withCull(false)
             .build());
     /** Similar to {@link RenderPipelines#GUI_TEXTURED} */
     public static final RenderPipeline TEXTURE = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
-            .withLocation(ResourceLocation.fromNamespaceAndPath("hypixelcry", "pipeline/texture"))
+            .withLocation(Identifier.fromNamespaceAndPath("hypixelcry", "pipeline/texture"))
             .withCull(false)
             .build());
     public static final RenderPipeline TEXTURE_THROUGH_WALLS = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
-            .withLocation(ResourceLocation.fromNamespaceAndPath("hypixelcry", "pipeline/texture_through_walls"))
+            .withLocation(Identifier.fromNamespaceAndPath("hypixelcry", "pipeline/texture_through_walls"))
             .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
             .withCull(false)
             .build());
     public static final RenderPipeline CYLINDER = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
-            .withLocation(ResourceLocation.fromNamespaceAndPath("hypixelcry", "pipeline/cylinder"))
+            .withLocation(Identifier.fromNamespaceAndPath("hypixelcry", "pipeline/cylinder"))
             .withVertexFormat(DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.TRIANGLE_STRIP)
             .withCull(false)
             .build());
     public static final RenderPipeline CIRCLE = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
-            .withLocation(ResourceLocation.fromNamespaceAndPath("hypixelcry", "pipeline/circle"))
+            .withLocation(Identifier.fromNamespaceAndPath("hypixelcry", "pipeline/circle"))
             .withVertexFormat(DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.TRIANGLE_FAN)
             .withCull(false)
             .build());
     public static final RenderPipeline CIRCLE_LINES = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
-            .withLocation(ResourceLocation.fromNamespaceAndPath("hypixelcry", "pipeline/circle_lines"))
+            .withLocation(Identifier.fromNamespaceAndPath("hypixelcry", "pipeline/circle_lines"))
             .withVertexFormat(DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.QUADS)
             .withCull(false)
             .build());
     public static final RenderPipeline CIRCLE_THROUGH_WALLS = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
-            .withLocation(ResourceLocation.fromNamespaceAndPath("hypixelcry", "pipeline/circle_through_walls"))
+            .withLocation(Identifier.fromNamespaceAndPath("hypixelcry", "pipeline/circle_through_walls"))
             .withVertexFormat(DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.TRIANGLE_FAN)
             .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
             .withCull(false)
             .build());
     public static final RenderPipeline CIRCLE_LINES_THROUGH_WALLS = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
-            .withLocation(ResourceLocation.fromNamespaceAndPath("hypixelcry", "pipeline/circle_lines_through_walls"))
+            .withLocation(Identifier.fromNamespaceAndPath("hypixelcry", "pipeline/circle_lines_through_walls"))
             .withVertexFormat(DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.QUADS)
             .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
             .withCull(false)

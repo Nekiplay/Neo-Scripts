@@ -3,10 +3,8 @@ package com.nekiplay.hypixelcry.features.lua.objects.misc.imgui
 import com.mojang.blaze3d.opengl.GlTextureView
 import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
-import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.texture.DynamicTexture
-import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.entity.Entity
+import net.minecraft.resources.Identifier
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
@@ -18,7 +16,7 @@ import java.util.function.Supplier
 
 
 class ImGuiTexture(val texture: AtomicInteger) : LuaUserdata(AtomicInteger(0)) {
-    private var _identifier: ResourceLocation? = null
+    private var _identifier: Identifier? = null
 
     override fun get(key: LuaValue): LuaValue {
         return when (val field = key.tojstring()) {
@@ -31,7 +29,7 @@ class ImGuiTexture(val texture: AtomicInteger) : LuaUserdata(AtomicInteger(0)) {
 
     private inner class GetID : OneArgFunction() {
         override fun call(path: LuaValue): LuaValue {
-            return LuaValue.valueOf(texture.get())
+            return valueOf(texture.get())
         }
     }
 
@@ -74,16 +72,19 @@ class ImGuiTexture(val texture: AtomicInteger) : LuaUserdata(AtomicInteger(0)) {
 
                 // Generate unique identifier
                 val textureName = "texture_${file.nameWithoutExtension}_${System.currentTimeMillis()}"
-                _identifier = ResourceLocation.fromNamespaceAndPath("hypixelcry", textureName)
+                _identifier = Identifier.fromNamespaceAndPath("hypixelcry", textureName)
+                val indf = _identifier
+                if (indf != null) {
+                    // Create texture
+                    val texture = DynamicTexture(Supplier { textureName }, nativeImage)
 
-                // Create texture
-                val texture = DynamicTexture(Supplier { textureName }, nativeImage)
+                    // Register texture
+                    mc.textureManager.register(indf, texture)
 
-                // Register texture
-                mc.textureManager.register(_identifier, texture)
-
-                val texture2 = mc.textureManager.getTexture(_identifier).getTextureView() as GlTextureView
-                return texture2.texture().glId()
+                    val texture2 = mc.textureManager.getTexture(indf).getTextureView() as GlTextureView
+                    return texture2.texture().glId()
+                }
+                return 0
             }
         } catch (e: Exception) {
             println("Failed to load texture from $path: ${e.message}")

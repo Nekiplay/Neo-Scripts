@@ -4,15 +4,13 @@ import com.nekiplay.hypixelcry.features.lua.customArgs.FourArgFunction
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaEntity
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.RaycastUtils
 import com.nekiplay.hypixelcry.utils.Rotations
+import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.Entity
-import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.ClipContext
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
@@ -61,6 +59,7 @@ class WorldObject : LuaValue() {
             if (arg1?.isnumber() != true || arg2?.isnumber() != true || arg3?.isnumber() != true) {
                 return LuaValue.error("Expected three number arguments for coordinates")
             }
+            val level: ClientLevel = mc.level ?: return LuaValue.error("No world loaded")
 
             // Проверяем blockState аргумент
             if (arg4 == null) {
@@ -90,7 +89,7 @@ class WorldObject : LuaValue() {
 
             // Получаем collision shape
             val collisionShape = try {
-                blockState.getShape(mc.level, blockPos)
+                blockState.getShape(level, blockPos)
             } catch (e: Exception) {
                 return LuaValue.error("Error getting collision shape: ${e.message}")
             }
@@ -124,6 +123,7 @@ class WorldObject : LuaValue() {
             if (arg4 == null) {
                 return LuaValue.error("BlockState argument is required")
             }
+            val level: ClientLevel = mc.level ?: return LuaValue.error("No world loaded")
 
             val x = arg1.toint()
             val y = arg2.toint()
@@ -148,7 +148,7 @@ class WorldObject : LuaValue() {
 
             // Получаем collision shape
             val collisionShape = try {
-                blockState.getCollisionShape(mc.level, blockPos)
+                blockState.getCollisionShape(level, blockPos)
             } catch (e: Exception) {
                 return LuaValue.error("Error getting collision shape: ${e.message}")
             }
@@ -187,34 +187,42 @@ class WorldObject : LuaValue() {
                 val startVec = Vec3(startX, startY, startZ)
                 val endVec = Vec3(endX, endY, endZ)
 
-                var context = ClipContext(
-                    startVec,
-                    endVec,
-                    ClipContext.Block.OUTLINE,
-                    ClipContext.Fluid.NONE,
-                    mc.player
-                )
+                val player = mc.player;
 
-                if (include_fluid) {
-                    context = ClipContext(
+                if (player != null) {
+
+                    var context = ClipContext(
                         startVec,
                         endVec,
                         ClipContext.Block.OUTLINE,
-                        ClipContext.Fluid.ANY,
-                        mc.player
+                        ClipContext.Fluid.NONE,
+                        player
                     )
-                }
 
-                var hitResult: HitResult? = null
+                    if (include_fluid) {
+                        context = ClipContext(
+                            startVec,
+                            endVec,
+                            ClipContext.Block.OUTLINE,
+                            ClipContext.Fluid.ANY,
+                            player
+                        )
+                    }
 
-                hitResult = if (!include_entity) {
-                    mc.level?.clip(context)
-                } else {
-                    RaycastUtils.fastRayTrace(mc.player, startVec, endVec, ArrayList())
+                    var hitResult: HitResult? = null
+
+                    hitResult = if (!include_entity) {
+                        mc.level?.clip(context)
+                    } else {
+                        RaycastUtils.fastRayTrace(mc.player, startVec, endVec, ArrayList())
+                    }
+                    return if (hitResult != null) {
+                        processHitResult(hitResult)
+                    } else {
+                        NIL
+                    }
                 }
-                return if (hitResult != null) {
-                    processHitResult(hitResult)
-                } else {
+                else {
                     NIL
                 }
             } else {

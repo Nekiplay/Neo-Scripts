@@ -1,6 +1,8 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
+import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.ImGuiDrawListLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.ImGuiIO
 import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.ImGuiTexture
 import imgui.ImGui
 import imgui.flag.ImGuiCol
@@ -263,25 +265,10 @@ class ImGuiLib : TwoArgFunction() {
         
         library.set("constants", constants)
 
-        val dl = LuaTable()
-        dl.set("addLine", addLine())
-        dl.set("addRect", addRect())
-        dl.set("addRectFilled", addRectFilled())
-        dl.set("addCircle", addCircle())
-        dl.set("addCircleFilled", addCircleFilled())
-        dl.set("addTriangle", addTriangle())
-        dl.set("addTriangleFilled", addTriangleFilled())
-        dl.set("addText", addText())
-        dl.set("addBezierCubic", addBezierCubic())
-        dl.set("addBezierQuadratic", addBezierQuadratic())
-        dl.set("addQuad", addQuad())
-        dl.set("addQuadFilled", addQuadFilled())
-        dl.set("pathClear", pathClear())
-        dl.set("pathLineTo", pathLineTo())
-        dl.set("pathStroke", pathStroke())
-
-
-        library.set("dl", dl)
+        library.set("dl", ImGuiDrawListLib())
+        library.set("DL", ImGuiDrawListLib())
+        library.set("io", ImGuiIO())
+        library.set("IO", ImGuiIO())
 
         env.set("imgui", library)
         return library
@@ -293,7 +280,6 @@ class ImGuiLib : TwoArgFunction() {
             val column = args.checkint(2)
             val flags = args.checkint(3)
             ImGui.beginTable(name, column, flags)
-
             return LuaValue.NIL
         }
     }
@@ -345,181 +331,6 @@ class ImGuiLib : TwoArgFunction() {
             val width = args.checkdouble(1).toFloat()
 
             return LuaValue.NIL
-        }
-    }
-
-    // DrawList functions implementation
-    inner class addLine : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val x1 = args.checkdouble(1).toFloat()
-            val y1 = args.checkdouble(2).toFloat()
-            val x2 = args.checkdouble(3).toFloat()
-            val y2 = args.checkdouble(4).toFloat()
-            val color = args.checkint(5)
-            val thickness = if (args.narg() > 5) args.checkdouble(6).toFloat() else 1.0f
-            ImGui.getBackgroundDrawList().addLine(x1, y1, x2, y2, color, thickness)
-            return LuaValue.TRUE
-        }
-    }
-
-    inner class addRect : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val x1 = args.checkdouble(1).toFloat()
-            val y1 = args.checkdouble(2).toFloat()
-            val x2 = args.checkdouble(3).toFloat()
-            val y2 = args.checkdouble(4).toFloat()
-            val color = args.checkint(5)
-            val rounding = if (args.narg() > 5) args.checkdouble(6).toFloat() else 0.0f
-            val flags = if (args.narg() > 6) args.checkint(7) else 0
-            val thickness = if (args.narg() > 7) args.checkdouble(8).toFloat() else 1.0f
-            ImGui.getBackgroundDrawList().addRect(x1, y1, x2, y2, color, rounding, flags, thickness)
-            return LuaValue.TRUE
-        }
-    }
-
-    inner class addRectFilled : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val x1 = args.checkdouble(1).toFloat()
-            val y1 = args.checkdouble(2).toFloat()
-            val x2 = args.checkdouble(3).toFloat()
-            val y2 = args.checkdouble(4).toFloat()
-            val color = args.checkint(5)
-            val rounding = if (args.narg() > 5) args.checkdouble(6).toFloat() else 0.0f
-            val flags = if (args.narg() > 6) args.checkint(7) else 0
-            ImGui.getBackgroundDrawList().addRectFilled(x1, y1, x2, y2, color, rounding, flags)
-            return LuaValue.TRUE
-        }
-    }
-
-    inner class addCircle : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val centerX = args.checkdouble(1).toFloat()
-            val centerY = args.checkdouble(2).toFloat()
-            val radius = args.checkdouble(3).toFloat()
-            val color = args.checkint(4)
-            val segments = if (args.narg() > 4) args.checkint(5) else 0
-            val thickness = if (args.narg() > 5) args.checkdouble(6).toFloat() else 1.0f
-            ImGui.getBackgroundDrawList().addCircle(centerX, centerY, radius, color, segments, thickness)
-            return LuaValue.TRUE
-        }
-    }
-
-    inner class addCircleFilled : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val centerX = args.checkdouble(1).toFloat()
-            val centerY = args.checkdouble(2).toFloat()
-            val radius = args.checkdouble(3).toFloat()
-            val color = args.checkint(4)
-            val segments = if (args.narg() > 4) args.checkint(5) else 0
-            ImGui.getBackgroundDrawList().addCircleFilled(centerX, centerY, radius, color, segments)
-            return LuaValue.TRUE
-        }
-    }
-
-    inner class addTriangle : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val x1 = args.checkdouble(1).toFloat()
-            val y1 = args.checkdouble(2).toFloat()
-            val x2 = args.checkdouble(3).toFloat()
-            val y2 = args.checkdouble(4).toFloat()
-            val x3 = args.checkdouble(5).toFloat()
-            val y3 = args.checkdouble(6).toFloat()
-            val color = args.checkint(7)
-            val thickness = if (args.narg() > 7) args.checkdouble(8).toFloat() else 1.0f
-            ImGui.getBackgroundDrawList().addTriangle(x1, y1, x2, y2, x3, y3, color, thickness)
-            return LuaValue.TRUE
-        }
-    }
-
-    inner class addTriangleFilled : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val x1 = args.checkdouble(1).toFloat()
-            val y1 = args.checkdouble(2).toFloat()
-            val x2 = args.checkdouble(3).toFloat()
-            val y2 = args.checkdouble(4).toFloat()
-            val x3 = args.checkdouble(5).toFloat()
-            val y3 = args.checkdouble(6).toFloat()
-            val color = args.checkint(7)
-            ImGui.getBackgroundDrawList().addTriangleFilled(x1, y1, x2, y2, x3, y3, color)
-            return LuaValue.TRUE
-        }
-    }
-
-    inner class addText : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val x = args.checkdouble(1).toFloat()
-            val y = args.checkdouble(2).toFloat()
-            val color = args.checkint(3)
-            val text = args.checkjstring(4)
-            ImGui.getBackgroundDrawList().addText(x, y, color, text)
-            return LuaValue.TRUE
-        }
-    }
-
-    inner class addBezierCubic : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val x1 = args.checkdouble(1).toFloat()
-            val y1 = args.checkdouble(2).toFloat()
-            val x2 = args.checkdouble(3).toFloat()
-            val y2 = args.checkdouble(4).toFloat()
-            val x3 = args.checkdouble(5).toFloat()
-            val y3 = args.checkdouble(6).toFloat()
-            val x4 = args.checkdouble(7).toFloat()
-            val y4 = args.checkdouble(8).toFloat()
-            val color = args.checkint(9)
-            val thickness = if (args.narg() > 9) args.checkdouble(10).toFloat() else 1.0f
-            val segments = if (args.narg() > 10) args.checkint(11) else 0
-            ImGui.getBackgroundDrawList().addBezierCubic(x1, y1, x2, y2, x3, y3, x4, y4, color, thickness, segments)
-            return LuaValue.TRUE
-        }
-    }
-
-    inner class addBezierQuadratic : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val x1 = args.checkdouble(1).toFloat()
-            val y1 = args.checkdouble(2).toFloat()
-            val x2 = args.checkdouble(3).toFloat()
-            val y2 = args.checkdouble(4).toFloat()
-            val x3 = args.checkdouble(5).toFloat()
-            val y3 = args.checkdouble(6).toFloat()
-            val color = args.checkint(7)
-            val thickness = if (args.narg() > 7) args.checkdouble(8).toFloat() else 1.0f
-            val segments = if (args.narg() > 8) args.checkint(9) else 0
-            ImGui.getBackgroundDrawList().addBezierQuadratic(x1, y1, x2, y2, x3, y3, color, thickness, segments)
-            return LuaValue.TRUE
-        }
-    }
-
-    inner class addQuad : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val x1 = args.checkdouble(1).toFloat()
-            val y1 = args.checkdouble(2).toFloat()
-            val x2 = args.checkdouble(3).toFloat()
-            val y2 = args.checkdouble(4).toFloat()
-            val x3 = args.checkdouble(5).toFloat()
-            val y3 = args.checkdouble(6).toFloat()
-            val x4 = args.checkdouble(7).toFloat()
-            val y4 = args.checkdouble(8).toFloat()
-            val color = args.checkint(9)
-            val thickness = if (args.narg() > 9) args.checkdouble(10).toFloat() else 1.0f
-            ImGui.getBackgroundDrawList().addQuad(x1, y1, x2, y2, x3, y3, x4, y4, color, thickness)
-            return LuaValue.TRUE
-        }
-    }
-
-    inner class addQuadFilled : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val x1 = args.checkdouble(1).toFloat()
-            val y1 = args.checkdouble(2).toFloat()
-            val x2 = args.checkdouble(3).toFloat()
-            val y2 = args.checkdouble(4).toFloat()
-            val x3 = args.checkdouble(5).toFloat()
-            val y3 = args.checkdouble(6).toFloat()
-            val x4 = args.checkdouble(7).toFloat()
-            val y4 = args.checkdouble(8).toFloat()
-            val color = args.checkint(9)
-            ImGui.getBackgroundDrawList().addQuadFilled(x1, y1, x2, y2, x3, y3, x4, y4, color)
-            return LuaValue.TRUE
         }
     }
 

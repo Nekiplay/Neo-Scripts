@@ -1,6 +1,6 @@
 package com.nekiplay.hypixelcry.utils.misc.input;
 
-import net.fabricmc.fabric.mixin.client.keybinding.KeyBindingAccessor;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
 
@@ -20,7 +20,7 @@ public class Input {
     }
 
     public static int getKey(KeyMapping bind) {
-        return ((KeyBindingAccessor) bind).fabric_getBoundKey().getValue();
+        return KeyBindingHelper.getBoundKeyOf(bind).getValue();
     }
 
     public static void setKeyState(KeyMapping bind, boolean pressed) {

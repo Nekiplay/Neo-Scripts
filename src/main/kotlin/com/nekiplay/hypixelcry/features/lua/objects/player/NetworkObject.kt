@@ -71,31 +71,49 @@ class NetworkObject : LuaValue() {
             arg3: LuaValue?,
             arg4: LuaValue?
         ): LuaValue? {
-            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
-                if (arg4?.isuserdata() == true && arg4.touserdata() is LuaDirection) {
-                    mc.gameMode?.sendSequencedPacket { sequence ->
-                        ServerboundPlayerActionPacket(
-                            ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK,
-                            BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
-                            (arg4.touserdata() as LuaDirection).direction, sequence
-                        )
-                    }
-                    return TRUE
-                }
-                else if (arg4?.isstring() == true) {
-                    mc.gameMode?.sendSequencedPacket { sequence ->
-                        arg4.tojstring()?.let {
-                            ServerboundPlayerActionPacket(
-                                ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK,
-                                BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
-                                Direction.valueOf(it), sequence
-                            )
-                        }
-                    }
-                    return TRUE
-                }
+            val gamemode = mc.gameMode
+            // Validate numeric coordinates and game mode availability
+            if (arg1?.isnumber() != true || arg2?.isnumber() != true || arg3?.isnumber() != true || gamemode == null) {
+                return FALSE
             }
-            return FALSE
+
+            // Parse block position once (avoids repeated toint() calls)
+            val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
+
+            // Parse direction from either LuaDirection userdata or string
+            val direction: Direction? = when {
+                arg4?.isuserdata() == true && arg4.touserdata() is LuaDirection -> {
+                    (arg4.touserdata() as LuaDirection).direction
+                }
+                arg4?.isstring() == true -> {
+                    val dirStr = arg4.tojstring()?.uppercase() // Normalize case for enum matching
+                    try {
+                        dirStr?.let { Direction.valueOf(it) }
+                    } catch (e: IllegalArgumentException) {
+                        // Invalid direction name - return FALSE instead of crashing
+                        println("Lua warning: Invalid direction '$dirStr'. Valid values: ${Direction.values().joinToString { it.name }}")
+                        null
+                    }
+                }
+                else -> null
+            }
+
+            // Fail early if direction couldn't be resolved
+            if (direction == null) {
+                return FALSE
+            }
+
+            // Safe packet sending - lambda now guaranteed to return non-null packet
+            gamemode.sendSequencedPacket { sequence ->
+                ServerboundPlayerActionPacket(
+                    ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK,
+                    blockPos,
+                    direction,
+                    sequence
+                )
+            }
+
+            return TRUE
         }
     }
 
@@ -106,31 +124,49 @@ class NetworkObject : LuaValue() {
             arg3: LuaValue?,
             arg4: LuaValue?
         ): LuaValue? {
-            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
-                if (arg4?.isuserdata() == true && arg4.touserdata() is LuaDirection) {
-                    mc.gameMode?.sendSequencedPacket { sequence ->
-                        ServerboundPlayerActionPacket(
-                            ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK,
-                            BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
-                            (arg4.touserdata() as LuaDirection).direction, sequence
-                        )
-                    }
-                    return TRUE
-                }
-                else if (arg4?.isstring() == true) {
-                    mc.gameMode?.sendSequencedPacket { sequence ->
-                        arg4.tojstring()?.let {
-                            ServerboundPlayerActionPacket(
-                                ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK,
-                                BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
-                                Direction.valueOf(it), sequence
-                            )
-                        }
-                    }
-                    return TRUE
-                }
+            val gamemode = mc.gameMode
+            // Validate numeric coordinates and game mode availability
+            if (arg1?.isnumber() != true || arg2?.isnumber() != true || arg3?.isnumber() != true || gamemode == null) {
+                return FALSE
             }
-            return FALSE
+
+            // Parse block position once (avoids repeated toint() calls)
+            val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
+
+            // Parse direction from either LuaDirection userdata or string
+            val direction: Direction? = when {
+                arg4?.isuserdata() == true && arg4.touserdata() is LuaDirection -> {
+                    (arg4.touserdata() as LuaDirection).direction
+                }
+                arg4?.isstring() == true -> {
+                    val dirStr = arg4.tojstring()?.uppercase() // Normalize case for enum matching
+                    try {
+                        dirStr?.let { Direction.valueOf(it) }
+                    } catch (e: IllegalArgumentException) {
+                        // Invalid direction name - return FALSE instead of crashing
+                        println("Lua warning: Invalid direction '$dirStr'. Valid values: ${Direction.values().joinToString { it.name }}")
+                        null
+                    }
+                }
+                else -> null
+            }
+
+            // Fail early if direction couldn't be resolved
+            if (direction == null) {
+                return FALSE
+            }
+
+            // Safe packet sending - lambda now guaranteed to return non-null packet
+            gamemode.sendSequencedPacket { sequence ->
+                ServerboundPlayerActionPacket(
+                    ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK,
+                    blockPos,
+                    direction,
+                    sequence
+                )
+            }
+
+            return TRUE
         }
     }
 
@@ -141,31 +177,49 @@ class NetworkObject : LuaValue() {
             arg3: LuaValue?,
             arg4: LuaValue?
         ): LuaValue? {
-            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
-                if (arg4?.isuserdata() == true && arg4.touserdata() is LuaDirection) {
-                    mc.gameMode?.sendSequencedPacket { sequence ->
-                        ServerboundPlayerActionPacket(
-                            ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK,
-                            BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
-                            (arg4.touserdata() as LuaDirection).direction, sequence
-                        )
-                    }
-                    return TRUE
-                }
-                else if (arg4?.isstring() == true) {
-                    mc.gameMode?.sendSequencedPacket { sequence ->
-                        arg4.tojstring()?.let {
-                            ServerboundPlayerActionPacket(
-                                ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK,
-                                BlockPos(arg1.toint(), arg2.toint(), arg3.toint()),
-                                Direction.valueOf(it), sequence
-                            )
-                        }
-                    }
-                    return TRUE
-                }
+            val gamemode = mc.gameMode
+            // Validate numeric coordinates and game mode availability
+            if (arg1?.isnumber() != true || arg2?.isnumber() != true || arg3?.isnumber() != true || gamemode == null) {
+                return FALSE
             }
-            return FALSE
+
+            // Parse block position once (avoids repeated toint() calls)
+            val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
+
+            // Parse direction from either LuaDirection userdata or string
+            val direction: Direction? = when {
+                arg4?.isuserdata() == true && arg4.touserdata() is LuaDirection -> {
+                    (arg4.touserdata() as LuaDirection).direction
+                }
+                arg4?.isstring() == true -> {
+                    val dirStr = arg4.tojstring()?.uppercase() // Normalize case for enum matching
+                    try {
+                        dirStr?.let { Direction.valueOf(it) }
+                    } catch (e: IllegalArgumentException) {
+                        // Invalid direction name - return FALSE instead of crashing
+                        println("Lua warning: Invalid direction '$dirStr'. Valid values: ${Direction.values().joinToString { it.name }}")
+                        null
+                    }
+                }
+                else -> null
+            }
+
+            // Fail early if direction couldn't be resolved
+            if (direction == null) {
+                return FALSE
+            }
+
+            // Safe packet sending - lambda now guaranteed to return non-null packet
+            gamemode.sendSequencedPacket { sequence ->
+                ServerboundPlayerActionPacket(
+                    ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK,
+                    blockPos,
+                    direction,
+                    sequence
+                )
+            }
+
+            return TRUE
         }
     }
 

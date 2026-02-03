@@ -48,9 +48,10 @@ class InventoryObject: LuaValue() {
 
     private inner class OpenInventoryFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            if (mc.player != null) {
-                mc.setScreen(InventoryScreen(mc.player))
-                mc.player?.sendOpenInventory()
+            val player = mc.player
+            if (player != null) {
+                mc.setScreen(InventoryScreen(player))
+                player.sendOpenInventory()
                 return TRUE
             }
             else {

@@ -12,7 +12,7 @@ import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.client.renderer.state.LevelRenderState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.CommonColors;
 import net.minecraft.util.FormattedCharSequence;
@@ -113,7 +113,7 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
         }
 
         int colour = ARGB.colorFromFloat(1f, colourComponents[0], colourComponents[1], colourComponents[2]);
-        float length = (float) RenderHelper.getCamera().getPosition().subtract(pos.getCenter()).horizontalDistance();
+        float length = (float) RenderHelper.getCamera().position().subtract(pos.getCenter()).horizontalDistance();
         BeaconRenderState state = new BeaconRenderState();
         state.blockPos = pos;
         state.blockState = Blocks.BEACON.defaultBlockState();
@@ -222,7 +222,7 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
     }
 
     @Override
-    public void submitTexturedQuad(Vec3 pos, float width, float height, float textureWidth, float textureHeight, Vec3 renderOffset, ResourceLocation texture, float[] shaderColour, float alpha, boolean throughWalls) {
+    public void submitTexturedQuad(Vec3 pos, float width, float height, float textureWidth, float textureHeight, Vec3 renderOffset, Identifier texture, float[] shaderColour, float alpha, boolean throughWalls) {
         ensureNotFrozen();
 
         if (this.texturedQuadStates == null) {
@@ -297,7 +297,7 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
 
         Font textRenderer = CLIENT.font;
         float xOffset = -textRenderer.width(text) / 2f;
-        Font.PreparedText glyphs = textRenderer.prepareText(text, xOffset, yOffset, ARGB.fromABGR(color), false, 0);
+        Font.PreparedText glyphs = textRenderer.prepareText(text, xOffset, yOffset, CommonColors.WHITE, false, false, 0);
 
         TextRenderState state = new TextRenderState();
         state.glyphs = glyphs;
@@ -416,6 +416,12 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
             throw new IllegalStateException("Cannot dispatch primitives until the collection phase has ended!");
         }
 
+        if (this.blockHologramStates != null) {
+            for (BlockHologramRenderState state : this.blockHologramStates) {
+                BlockHologramRenderer.INSTANCE.submitPrimitives(state, cameraState);
+            }
+        }
+
         if (this.filledBoxStates != null) {
             for (FilledBoxRenderState state : this.filledBoxStates) {
                 FilledBoxRenderer.INSTANCE.submitPrimitives(state, cameraState);
@@ -474,12 +480,6 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
         if (this.texturedQuadStates != null) {
             for (TexturedQuadRenderState state : this.texturedQuadStates) {
                 TexturedQuadRenderer.INSTANCE.submitPrimitives(state, cameraState);
-            }
-        }
-
-        if (this.blockHologramStates != null) {
-            for (BlockHologramRenderState state : this.blockHologramStates) {
-                BlockHologramRenderer.INSTANCE.submitPrimitives(state, cameraState);
             }
         }
 

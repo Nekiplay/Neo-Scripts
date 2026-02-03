@@ -38,6 +38,7 @@ import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.jse.CoerceJavaToLua
 import org.luaj.vm2.lib.jse.JsePlatform
+import org.luaj.vm2.lib.jse.LuajavaLib
 import java.io.BufferedReader
 import java.io.File
 import java.io.StringReader
@@ -779,21 +780,22 @@ class LuaManager() {
     private fun registerMinecraftCommand(commandName: String) {
         try {
             // Регистрируем команду в Minecraft
-            ClientCommandRegistrationCallback.EVENT.register(ClientCommandRegistrationCallback { dispatcher: CommandDispatcher<FabricClientCommandSource?>?, registryAccess: CommandBuildContext? ->
-                dispatcher!!.register(
+            ClientCommandRegistrationCallback.EVENT.register { dispatcher: CommandDispatcher<FabricClientCommandSource>, registryAccess: CommandBuildContext ->
+                dispatcher.register(
                     ClientCommandManager.literal(commandName)
-                        .executes(Command { context: CommandContext<FabricClientCommandSource?>? ->
-                            executeLuaCommand(commandName, emptyArray(), context?.source)
+                        .executes { context: CommandContext<FabricClientCommandSource> ->
+                            executeLuaCommand(commandName, emptyArray(), context.source)
                             1
-                        }).then(ClientCommandManager.argument("args", StringArgumentType.greedyString())
-                            .executes { context ->
+                        }
+                        .then(ClientCommandManager.argument("args", StringArgumentType.greedyString())
+                            .executes { context: CommandContext<FabricClientCommandSource> ->
                                 val args = StringArgumentType.getString(context, "args").split(" ").toTypedArray()
                                 executeLuaCommand(commandName, args, context.source)
                                 1
                             }
                         )
                 )
-            })
+            }
         } catch (e: Exception) {
             HypixelCry.LOGGER.error("Failed to register Minecraft command: /$commandName", e)
         }

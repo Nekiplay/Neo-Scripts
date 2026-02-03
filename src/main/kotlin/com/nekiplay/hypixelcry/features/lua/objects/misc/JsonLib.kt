@@ -2,15 +2,13 @@ package com.nekiplay.hypixelcry.features.lua.objects.misc
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.nekiplay.hypixelcry.HypixelCry
 import org.luaj.vm2.*
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.VarArgFunction
 
 class JsonLib : TwoArgFunction() {
-    private val gson = Gson()
-    private val gsonPretty = GsonBuilder().setPrettyPrinting().create()
-
     override fun call(modname: LuaValue, env: LuaValue): LuaValue {
         val library = LuaValue.tableOf().apply {
             set("parse", SimpleParseFunction())
@@ -23,7 +21,7 @@ class JsonLib : TwoArgFunction() {
     inner class SimpleParseFunction : OneArgFunction() {
         override fun call(jsonString: LuaValue): LuaValue {
             return try {
-                val result: Any? = gson.fromJson(jsonString.tojstring(), Any::class.java)
+                val result: Any? = HypixelCry.GSON_COMPACT.fromJson(jsonString.tojstring(), Any::class.java)
                 when (result) {
                     null -> LuaValue.NIL
                     is Map<*, *> -> convertMap(result)
@@ -90,13 +88,13 @@ class JsonLib : TwoArgFunction() {
                 val javaObj = convertToJava(luaValue)
                 val jsonString = if (indent.isnil()) {
                     // По умолчанию - форматированный JSON
-                    gsonPretty.toJson(javaObj)
+                    HypixelCry.GSON.toJson(javaObj)
                 } else {
                     // Если указан indent = 0 или false - неформатированный
                     if (indent.isnumber() && indent.todouble() == 0.0 || indent.isboolean() && !indent.toboolean()) {
-                        gson.toJson(javaObj)
+                        HypixelCry.GSON_COMPACT.toJson(javaObj)
                     } else {
-                        gsonPretty.toJson(javaObj)
+                        HypixelCry.GSON.toJson(javaObj)
                     }
                 }
                 LuaValue.valueOf(jsonString)

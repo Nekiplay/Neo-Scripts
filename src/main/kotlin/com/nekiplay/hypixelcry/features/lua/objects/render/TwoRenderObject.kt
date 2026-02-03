@@ -8,7 +8,7 @@ import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
+import net.minecraft.resources.Identifier
 import net.minecraft.world.item.ItemStack
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
@@ -22,7 +22,7 @@ import java.util.function.Supplier
 class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: String? = null): LuaValue() {
     // Кэш для загруженных текстур с разделением по скриптам
     companion object {
-        val textureCache = ConcurrentHashMap<String, MutableMap<String, ResourceLocation>>()
+        val textureCache = ConcurrentHashMap<String, MutableMap<String, Identifier>>()
         val textureCounter = AtomicInteger(0)
 
         // Очистка кэша для конкретного скрипта
@@ -173,7 +173,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
     /**
      * Загружает текстуру из файла и возвращает её Identifier
      */
-    private fun loadTexture(path: String): ResourceLocation? {
+    private fun loadTexture(path: String): Identifier? {
         val scriptCacheId = scriptId ?: "2d_global"
 
         // Проверяем кэш для текущего скрипта
@@ -199,7 +199,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
                 )
 
                 // Создаем идентификатор
-                val identifier = ResourceLocation.fromNamespaceAndPath("hypixelcry", "texture_${scriptCacheId}_${textureCounter.get()}")
+                val identifier = Identifier.fromNamespaceAndPath("hypixelcry", "texture_${scriptCacheId}_${textureCounter.get()}")
                 mc.textureManager.register(identifier, texture)
 
                 // Сохраняем в кэш текущего скрипта

@@ -109,7 +109,12 @@ class MovementDiagonal(mm: HypixelCry, from: BlockPos, to: BlockPos) : Movement(
             if (ascend) {
                 // Safe way to get destMaxY
                 val destMaxY = try {
-                    destState?.getCollisionShape(ctx.world, BlockPos(destX, y + 1, destZ))?.bounds()?.maxY ?: (y + 1.0)
+                    val level = ctx.world
+                    if (level != null) {
+                        destState?.getCollisionShape(level, BlockPos(destX, y + 1, destZ))?.bounds()?.maxY ?: (y + 1.0)
+                    } else {
+                        (y + 1.0)
+                    }
                 } catch (e: UnsupportedOperationException) {
                     (y + 1.0)
                 }
@@ -124,7 +129,14 @@ class MovementDiagonal(mm: HypixelCry, from: BlockPos, to: BlockPos) : Movement(
             if (descend) {
                 // Safe way to get destMaxY
                 val destMaxY = try {
-                    destState?.getCollisionShape(ctx.world, BlockPos(destX, y - 1, destZ))?.bounds()?.maxY ?: (y - 1.0)
+                    val level = ctx.world
+                    if (level != null) {
+                        destState?.getCollisionShape(level, BlockPos(destX, y - 1, destZ))?.bounds()?.maxY
+                            ?: (y - 1.0)
+                    }
+                    else {
+                        (y - 1.0)
+                    }
                 } catch (e: UnsupportedOperationException) {
                     (y - 1.0)
                 }

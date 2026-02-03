@@ -165,11 +165,21 @@ object BlockUtil {
                     }
                 } else {
                     if (sourceHeight == -1.0) {
-                        sourceHeight = lastState?.getCollisionShape(world, lastPos)?.max(Direction.Axis.Y) ?: 0.0
+                        val level = world
+                        sourceHeight = if (level != null) {
+                            lastState?.getCollisionShape(level, lastPos)?.max(Direction.Axis.Y) ?: 0.0
+                        } else {
+                            0.0
+                        }
                     }
                     if (destHeight == -1.0) {
-                        destHeight =
-                            currState?.getCollisionShape(world, BlockPos(x0, y0 + i, z0))?.max(Direction.Axis.Y) ?: 0.0
+                        val level = world
+                        destHeight = if (level != null) {
+                            currState?.getCollisionShape(level, BlockPos(x0, y0 + i, z0))?.max(Direction.Axis.Y)
+                                ?: 0.0
+                        } else {
+                            0.0
+                        }
                     }
                     if (destHeight - sourceHeight > -0.5) {
                         return false

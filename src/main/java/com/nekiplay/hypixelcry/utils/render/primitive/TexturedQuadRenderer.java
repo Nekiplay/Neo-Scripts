@@ -1,5 +1,7 @@
 package com.nekiplay.hypixelcry.utils.render.primitive;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.nekiplay.hypixelcry.utils.render.RenderHelper;
 import com.nekiplay.hypixelcry.utils.render.Renderer;
@@ -17,7 +19,7 @@ public final class TexturedQuadRenderer implements PrimitiveRenderer<TexturedQua
 
     @Override
     public void submitPrimitives(TexturedQuadRenderState state, CameraRenderState cameraState) {
-        TextureSetup textureSetup = RenderHelper.singleTexture(Minecraft.getInstance().getTextureManager().getTexture(state.texture).getTextureView());
+        TextureSetup textureSetup = TextureSetup.singleTexture(Minecraft.getInstance().getTextureManager().getTexture(state.texture).getTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
         BufferBuilder buffer = Renderer.getBuffer(state.throughWalls ? SkyblockerRenderPipelines.TEXTURE_THROUGH_WALLS : SkyblockerRenderPipelines.TEXTURE, textureSetup);
         Matrix4f positionMatrix = new Matrix4f()
                 .translate((float) (state.pos.x() - cameraState.pos.x()), (float) (state.pos.y() - cameraState.pos.y()), (float) (state.pos.z() - cameraState.pos.z()))

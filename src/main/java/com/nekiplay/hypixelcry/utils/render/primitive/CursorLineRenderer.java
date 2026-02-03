@@ -10,13 +10,13 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 public final class CursorLineRenderer implements PrimitiveRenderer<CursorLineRenderState> {
-    protected static final CursorLineRenderer INSTANCE = new CursorLineRenderer();
+    static final CursorLineRenderer INSTANCE = new CursorLineRenderer();
 
     private CursorLineRenderer() {}
 
     @Override
     public void submitPrimitives(CursorLineRenderState state, CameraRenderState cameraState) {
-        BufferBuilder buffer = Renderer.getBuffer(SkyblockerRenderPipelines.LINES_THROUGH_WALLS, state.lineWidth);
+        BufferBuilder buffer = Renderer.getBuffer(SkyblockerRenderPipelines.LINES_THROUGH_WALLS);
         Matrix4f positionMatrix = new Matrix4f()
                 .translate((float) -cameraState.pos.x, (float) -cameraState.pos.y, (float) -cameraState.pos.z);
 
@@ -27,10 +27,12 @@ public final class CursorLineRenderer implements PrimitiveRenderer<CursorLineRen
 
         buffer.addVertex(positionMatrix, (float) cameraPoint.x, (float) cameraPoint.y, (float) cameraPoint.z)
                 .setColor(state.colourComponents[0], state.colourComponents[1], state.colourComponents[2], state.alpha)
-                .setNormal(normal.x(), normal.y(), normal.z());
+                .setNormal(normal.x(), normal.y(), normal.z())
+                .setLineWidth(state.lineWidth);
 
         buffer.addVertex(positionMatrix, (float) point.x(), (float) point.y(), (float) point.z())
                 .setColor(state.colourComponents[0], state.colourComponents[1], state.colourComponents[2], state.alpha)
-                .setNormal(normal.x(), normal.y(), normal.z());
+                .setNormal(normal.x(), normal.y(), normal.z())
+                .setLineWidth(state.lineWidth);
     }
 }

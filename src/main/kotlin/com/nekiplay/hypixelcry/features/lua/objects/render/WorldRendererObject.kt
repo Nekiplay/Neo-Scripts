@@ -2,15 +2,13 @@ package com.nekiplay.hypixelcry.features.lua.objects.render
 
 import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
-import net.fabricmc.fabric.impl.client.indigo.renderer.helper.ColorHelper
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.item.ItemStack
+import net.minecraft.resources.Identifier
+import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.joml.Quaternionf
@@ -38,8 +36,27 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             "renderImage" -> RenderImageFunction()
             "renderBeaconBeam" -> RenderBeaconBeamFunction()
             "renderQuad" -> SubmitQuadFunction()
+            "renderBlock" -> RenderBlockFunction()
             else -> NIL
         } as LuaValue
+    }
+
+
+    private inner class RenderBlockFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable() && context != null) {
+                val x = if (table.get("x").isnumber()) table.get("x").toint() else 0
+                val y = if (table.get("y").isnumber()) table.get("y").toint() else 0
+                val z = if (table.get("z").isnumber()) table.get("z").toint() else 0
+                val id = if (table.get("id").isnumber()) table.get("id").toint() else 1
+
+                val blockState = Block.stateById(id)
+
+                context.submitBlockHologram(BlockPos(x, y, z), blockState)
+                return TRUE
+            }
+            return NIL
+        }
     }
 
     private inner class SubmitQuadFunction : OneArgFunction() {
@@ -322,9 +339,10 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             val blue = table.getIntOrDefault("blue", -1)
 
             val color: Int = if (red != -1 && green != -1 && blue != -1) {
-                ColorHelper.fromVanillaColor(getrgb(red, green, blue))
+                // Full opacity (alpha = 255) + RGB components
+                (255 shl 24) or (red.coerceIn(0, 255) shl 16) or (green.coerceIn(0, 255) shl 8) or blue.coerceIn(0, 255)
             } else {
-                -1 // Используем дефолтный цвет, если не задан
+                -1 // Default color indicator
             }
 
             // 4. Извлечение и обработка вращения (Quaternion)
@@ -508,7 +526,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
     /**
      * Загружает текстуру из файла и возвращает её Identifier
      */
-    private fun loadTexture(path: String): ResourceLocation? {
+    private fun loadTexture(path: String): Identifier? {
         val scriptCacheId = "wd_global"
 
         // Проверяем кэш для текущего скрипта
@@ -534,7 +552,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 )
 
                 // Создаем идентификатор
-                val identifier = ResourceLocation.fromNamespaceAndPath("hypixelcry", "texture_${scriptCacheId}_${TwoRenderObject.Companion.textureCounter.get()}")
+                val identifier = Identifier.fromNamespaceAndPath("hypixelcry", "texture_${scriptCacheId}_${TwoRenderObject.Companion.textureCounter.get()}")
                 mc.textureManager.register(identifier, texture)
 
                 // Сохраняем в кэш текущего скрипта

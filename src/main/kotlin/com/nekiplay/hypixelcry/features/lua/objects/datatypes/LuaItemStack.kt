@@ -33,7 +33,8 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
 
             "map" -> {
                 if (stack.item is MapItem && mc.level != null) {
-                    val mapData = MapItem.getSavedData(stack, mc.level);
+                    val level = mc.level ?: return NIL
+                    val mapData = MapItem.getSavedData(stack, level);
                     if (mapData != null) {
                         return LuaMapData(mapData)
                     }

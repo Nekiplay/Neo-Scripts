@@ -3,11 +3,11 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     java
     `maven-publish`
-    id("fabric-loom") version "1.13-SNAPSHOT"
+    id("fabric-loom") version "1.15-SNAPSHOT"
     id("org.jetbrains.kotlin.jvm") version "2.2.21"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.21"
     id("com.nekiplay.hypixelcry.annotation-processor")
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "9.3.0"
 }
 
 repositories {

@@ -1,5 +1,7 @@
 package com.nekiplay.hypixelcry.utils.render.primitive;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.FilterMode;
 import com.nekiplay.hypixelcry.utils.compatibility.CaxtonCompatibility;
 import com.nekiplay.hypixelcry.utils.render.RenderHelper;
 import com.nekiplay.hypixelcry.utils.render.Renderer;
@@ -28,22 +30,14 @@ public final class TextPrimitiveRenderer implements PrimitiveRenderer<TextRender
     @Override
     public void submitPrimitives(TextRenderState state, CameraRenderState cameraState) {
         RenderPipeline pipeline = state.throughWalls ? SEE_THROUGH : NORMAL;
-        final Quaternionf rotationQuaternion;
-
-        rotationQuaternion = Objects.requireNonNullElseGet(state.quaternion, () -> cameraState.orientation);
-
-        final Matrix4f positionMatrix = new Matrix4f()
-                .translate(
-                        (float) (state.pos.x() - cameraState.pos.x()),
-                        (float) (state.pos.y() - cameraState.pos.y()),
-                        (float) (state.pos.z() - cameraState.pos.z())
-                )
-                .rotate(rotationQuaternion)
+        Matrix4f positionMatrix = new Matrix4f()
+                .translate((float) (state.pos.x() - cameraState.pos.x()), (float) (state.pos.y() - cameraState.pos.y()), (float) (state.pos.z() - cameraState.pos.z()))
+                .rotate(cameraState.orientation)
                 .scale(state.scale, -state.scale, state.scale);
 
         state.glyphs.visit(new Font.GlyphVisitor() {
             @Override
-            public void acceptGlyph(TextRenderable glyph) {
+            public void acceptGlyph(TextRenderable.Styled glyph) {
                 this.draw(glyph);
             }
 
@@ -53,7 +47,7 @@ public final class TextPrimitiveRenderer implements PrimitiveRenderer<TextRender
             }
 
             private void draw(TextRenderable glyph) {
-                TextureSetup textureSetup = RenderHelper.textureWithLightmap(glyph.textureView());
+                TextureSetup textureSetup = TextureSetup.singleTextureWithLightmap(glyph.textureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
                 BufferBuilder buffer = Renderer.getBuffer(pipeline, textureSetup);
 
                 glyph.render(positionMatrix, buffer, LightTexture.FULL_BRIGHT, false);

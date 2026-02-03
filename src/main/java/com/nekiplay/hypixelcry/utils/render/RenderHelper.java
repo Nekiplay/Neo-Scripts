@@ -85,31 +85,13 @@ public class RenderHelper {
      * @param pos   The position of the block.
      * @return The bounding box of the block.
      */
-    @Nullable
-    public static AABB getBlockBoundingBox(ClientLevel world, BlockPos pos) {
+    public static @Nullable AABB getBlockBoundingBox(ClientLevel world, BlockPos pos) {
         return getBlockBoundingBox(world, world.getBlockState(pos), pos);
     }
 
-    @Nullable
-    public static AABB getBlockBoundingBox(ClientLevel world, BlockState state, BlockPos pos) {
+    public static @Nullable AABB getBlockBoundingBox(ClientLevel world, BlockState state, BlockPos pos) {
         VoxelShape shape = state.getShape(world, pos).singleEncompassing();
 
         return shape.isEmpty() ? null : shape.bounds().move(pos);
-    }
-
-    //The method names for TextureSetup are very... odd and misleading...
-
-    /**
-     * Returns a {@code TextureSetup} with a single texture input only.
-     */
-    public static TextureSetup singleTexture(GpuTextureView texture) {
-        return TextureSetup.singleTexture(texture);
-    }
-
-    /**
-     * Returns a {@code TextureSetup} with the texture input and a lightmap.
-     */
-    public static TextureSetup textureWithLightmap(GpuTextureView texture) {
-        return TextureSetup.singleTextureWithLightmap(texture);
     }
 }

@@ -8,7 +8,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.component.DataComponentHolder;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class Attributes {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final ResourceLocation ATTRIBUTES_FILE = ResourceLocation.fromNamespaceAndPath("hypixelcry", "hunting/attributes.json");
+    private static final Identifier ATTRIBUTES_FILE = Identifier.fromNamespaceAndPath("hypixelcry", "hunting/attributes.json");
     private static List<Attribute> attributes = List.of();
 
     @Init

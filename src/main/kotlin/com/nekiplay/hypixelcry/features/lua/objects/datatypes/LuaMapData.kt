@@ -17,7 +17,7 @@ class LuaMapData(val mapData: MapItemSavedData) : LuaUserdata(mapData) {
             "locked" -> valueOf(mapData.locked)
             "tracking_position" -> valueOf(mapData.trackingPosition)
             "unlimited_tracking" -> valueOf(mapData.unlimitedTracking)
-            "dimension" -> valueOf(mapData.dimension.location().toString())
+            "dimension" -> valueOf(mapData.dimension.identifier().toString())
             "center_x" -> valueOf(mapData.centerX.toDouble())
             "center_z" -> valueOf(mapData.centerZ.toDouble())
             "is_exploration_map" -> valueOf(mapData.isExplorationMap)
@@ -58,7 +58,7 @@ class LuaMapData(val mapData: MapItemSavedData) : LuaUserdata(mapData) {
 
         mapData.decorations.forEach { decoration ->
             val decorationTable = tableOf()
-            decorationTable.set("type", decoration.type().unwrapKey().get().location().toString())
+            decorationTable.set("type", decoration.type().unwrapKey().get().identifier().toString())
             decorationTable.set("x", decoration.x().toDouble())
             decorationTable.set("y", decoration.y().toDouble())
             decorationTable.set("rot", decoration.rot().toDouble())

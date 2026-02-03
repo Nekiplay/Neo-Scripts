@@ -5,6 +5,9 @@ import com.nekiplay.hypixelcry.utils.render.MatrixHelper;
 import com.nekiplay.hypixelcry.utils.render.RenderHelper;
 import com.nekiplay.hypixelcry.utils.render.Renderer;
 import com.nekiplay.hypixelcry.utils.render.state.BlockHologramRenderState;
+import net.minecraft.client.gui.render.TextureSetup;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import org.joml.Matrix4f;
 
 import net.fabricmc.fabric.api.renderer.v1.render.RenderLayerHelper;
@@ -30,7 +33,7 @@ public final class BlockHologramRenderer implements PrimitiveRenderer<BlockHolog
         PoseStack matrices = MatrixHelper.toStack(positionMatrix);
         BlockStateModel model = CLIENT.getBlockRenderer().getBlockModel(state.state);
 
-        MultiBufferSource consumers = SODIUM_LOADED ? CLIENT.renderBuffers().bufferSource() : _layer -> Renderer.getBuffer(RenderPipelines.TRANSLUCENT, RenderHelper.singleTexture(ChunkSectionLayer.TRANSLUCENT.textureView()), true);
-        CLIENT.getBlockRenderer().getModelRenderer().render(CLIENT.level, model, state.state, state.pos, matrices, RenderLayerHelper.movingDelegate(consumers), true, state.state.getSeed(state.pos), 0);
+        MultiBufferSource bufferSource = _type -> Renderer.getBuffer(RenderPipelines.TRANSLUCENT_MOVING_BLOCK, TextureSetup.singleTextureWithLightmap(CLIENT.getTextureManager().getTexture(TextureAtlas.LOCATION_BLOCKS).getTextureView(), RenderTypes.MOVING_BLOCK_SAMPLER.get()), true);
+        CLIENT.getBlockRenderer().getModelRenderer().render(CLIENT.level, model, state.state, state.pos, matrices, RenderLayerHelper.movingDelegate(bufferSource), true, state.state.getSeed(state.pos), 0);
     }
 }
