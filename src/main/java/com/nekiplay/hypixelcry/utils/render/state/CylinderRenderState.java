@@ -8,4 +8,5 @@ public class CylinderRenderState {
     public float height;
     public int segments;
     public int colour;
+    public boolean throughWalls;
 }

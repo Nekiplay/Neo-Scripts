@@ -14,7 +14,7 @@ public final class SphereRenderer implements PrimitiveRenderer<SphereRenderState
 
     @Override
     public void submitPrimitives(SphereRenderState state, CameraRenderState cameraState) {
-        BufferBuilder buffer = Renderer.getBuffer(SkyblockerRenderPipelines.CYLINDER);
+        BufferBuilder buffer = Renderer.getBuffer(state.throughWalls ? SkyblockerRenderPipelines.CYLINDER_THROUGH_WALLS : SkyblockerRenderPipelines.CYLINDER);
         Matrix4f positionMatrix = new Matrix4f()
                 .translate((float) -cameraState.pos.x, (float) -cameraState.pos.y, (float) -cameraState.pos.z);
 

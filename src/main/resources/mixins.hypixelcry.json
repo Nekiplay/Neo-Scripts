@@ -14,6 +14,7 @@
     "WindowMixin",
     "entity.ClientPlayerEntityMixin",
     "entity.PlayerEntityRendererMixin",
+    "gui.AbstractContainerMenuMixin",
     "gui.AbstractContainerScreenMixin",
     "gui.AbstractSignEditScreenAccessor",
     "minecraft.ClientConnectionMixin",
@@ -22,7 +23,8 @@
   "client": [
     "BeaconBlockEntityRendererInvoker",
     "FrustumInvoker",
-    "WorldChunkMixin"
+    "WorldChunkMixin",
+    "firmament.ModAnnouncerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

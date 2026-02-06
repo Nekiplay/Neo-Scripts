@@ -44,7 +44,6 @@ class HttpClientLib : TwoArgFunction() {
         return http
     }
 
-    // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
     private fun parseHeaders(headersTable: LuaValue): MutableMap<String?, String?> {
         val headers: MutableMap<String?, String?> = HashMap<String?, String?>()
         if (headersTable.istable()) {
@@ -127,7 +126,6 @@ class HttpClientLib : TwoArgFunction() {
     }
 
     private val function: TwoArgFunction
-        // ==================== СИНХРОННЫЕ ФУНКЦИИ ====================
         get() = object : TwoArgFunction() {
             override fun call(url: LuaValue, timeout: LuaValue): LuaValue? {
                 try {
@@ -191,7 +189,6 @@ class HttpClientLib : TwoArgFunction() {
     }
 
     private val asyncCallbackFunction: TwoArgFunction
-        // ==================== АСИНХРОННЫЕ ФУНКЦИИ С КОЛЛБЭКАМИ ====================
         get() = object : TwoArgFunction() {
             override fun call(url: LuaValue, callback: LuaValue): LuaValue? {
                 if (!callback.isfunction()) {
@@ -291,7 +288,6 @@ class HttpClientLib : TwoArgFunction() {
         }
     }
 
-    // ==================== АСИНХРОННЫЕ ФУНКЦИИ С ВОЗВРАТОМ PROMISE ====================
     private class AsyncResult {
         private val future = CompletableFuture<LuaValue?>()
 
@@ -449,7 +445,6 @@ class HttpClientLib : TwoArgFunction() {
         }
     }
 
-    // ==================== ОЧИСТКА РЕСУРСОВ ====================
     fun shutdown() {
         asyncExecutor.shutdown()
     }

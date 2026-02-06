@@ -13,9 +13,7 @@ import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 
 class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
-
     override fun get(key: LuaValue): LuaValue {
-
         return when (val field = key.tojstring()) {
             "id" -> valueOf(Block.getId(blockState))
             "name" -> valueOf(blockState.block.descriptionId)

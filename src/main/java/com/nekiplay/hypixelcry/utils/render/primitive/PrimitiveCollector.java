@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.utils.render.primitive;
 
+import com.logisticscraft.occlusionculling.util.Vec3d;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -58,6 +59,8 @@ public interface PrimitiveCollector {
     void submitTexturedQuad(Vec3 pos, float width, float height, float textureWidth, float textureHeight, Vec3 renderOffset, Identifier texture, float[] shaderColour, float alpha, boolean throughWalls);
 
     void submitBlockHologram(BlockPos pos, BlockState state);
+    void submitBlock(BlockPos pos, BlockState state);
+    void submitItem(Vec3d pos, Identifier identifier);
 
     void submitText(Component text, Vec3 pos, boolean throughWalls);
 
@@ -76,7 +79,7 @@ public interface PrimitiveCollector {
      * @param height   The total height of the cylinder with {@code pos} as the midpoint.
      * @param segments The number of triangles used to approximate the circle.
      */
-    void submitCylinder(Vec3 centre, float radius, float height, int segments, int colour);
+    void submitCylinder(Vec3 centre, float radius, float height, int segments, int colour, boolean throughWalls);
 
     /**
      * Submits a circle filled in using the triangle fan draw mode.
@@ -95,7 +98,7 @@ public interface PrimitiveCollector {
      * @param rings    The number of rings to subdivide the sphere.
      * @param segments The number of triangles used to approximate the circle.
      */
-    void submitSphere(Vec3 centre, float radius, int segments, int rings, int colour);
+    void submitSphere(Vec3 centre, float radius, int segments, int rings, int colour, boolean throughWalls);
 
     /**
      * Submits a circle outline in using quads

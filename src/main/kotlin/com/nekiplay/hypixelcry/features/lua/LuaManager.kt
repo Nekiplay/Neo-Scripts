@@ -5,6 +5,8 @@ import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
 import com.nekiplay.hypixelcry.HypixelCry
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
+import com.nekiplay.hypixelcry.features.lua.objects.misc.CatboostLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.Creator
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ImGuiLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.JsonLib
@@ -29,6 +31,7 @@ import net.minecraft.commands.CommandBuildContext
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
+import net.minecraft.world.item.ItemStack
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaError
 import org.luaj.vm2.LuaValue
@@ -68,6 +71,7 @@ class LuaManager() {
     private val useBlockCallbacks = ArrayList<LuaValue>()
     private val locationChangeCallbacks = ArrayList<LuaValue>()
     private val imguiRenderCallbacks = ArrayList<LuaValue>()
+    private val inventoryItemAddCallbacks = ArrayList<LuaValue>()
 
     // Script events
     private val scriptUnloadCallbacks: MutableMap<String, MutableList<LuaValue>> = mutableMapOf()
@@ -115,6 +119,7 @@ class LuaManager() {
     private val imguiLib = ImGuiLib()
     private val jsonLib = JsonLib()
     private val httpLib = HttpClientLib()
+    private val catboostLib = CatboostLib()
     private val creatorLib = Creator()
 
     private val threadLibs = ConcurrentHashMap<String, ThreadLib>()
@@ -136,6 +141,7 @@ class LuaManager() {
         globals.load(jsonLib)
         globals.load(httpLib)
         globals.load(creatorLib)
+        globals.load(catboostLib)
     }
 
     private fun registerRequire() {
@@ -217,6 +223,13 @@ class LuaManager() {
                 return LuaValue.TRUE
             }
         })
+
+        globals.set("registerInventoryItemAdd", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(addInventoryItemAddCallback(callback))
+            }
+        })
+
         globals.set("registerUseBlock", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(addUseBlockCallback(callback))
@@ -308,6 +321,12 @@ class LuaManager() {
         globals.set("registerServerSideTeleportEvent", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(addServerSideTeleportCallback(callback))
+            }
+        })
+
+        globals.set("unregisterInventoryItemAdd", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(removeInventoryItemAddCallback(callback))
             }
         })
 
@@ -460,6 +479,20 @@ class LuaManager() {
     }
 
     // Methods for adding callbacks
+    fun addInventoryItemAddCallback(callback: LuaValue): Boolean {
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
+            val result = inventoryItemAddCallbacks.add(callback)
+            if (result) {
+                currentExecutingScript.get()?.let { scriptName ->
+                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
+                }
+            }
+            return result
+        }
+    }
+
+
     fun addUseBlockCallback(callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
@@ -472,7 +505,6 @@ class LuaManager() {
             return result
         }
     }
-
 
     fun addClientTickCallback(callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
@@ -671,6 +703,12 @@ class LuaManager() {
         }
     }
 
+    fun removeInventoryItemAddCallback(callback: LuaValue): Boolean {
+        synchronized(callbacksLock) {
+            return inventoryItemAddCallbacks.remove(callback)
+        }
+    }
+
     // Methods for removing callbacks
     fun removeUseBlockCallback(callback: LuaValue): Boolean {
         synchronized(callbacksLock) {
@@ -818,6 +856,25 @@ class LuaManager() {
     // Methods to clear all callbacks
     // Callback methods
     // for multiple handlers
+    fun onInventoryItemAdd(slot: Int, stack: ItemStack): Boolean {
+        var allow = true
+        val callbacks = synchronized(callbacksLock) {
+            inventoryItemAddCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(LuaValue.valueOf(slot), LuaItemStack(stack))
+                if (res.isboolean() && !res.toboolean()) {
+                    allow = false
+                }
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in inventory add item callback", e)
+            }
+        }
+        return allow
+    }
+
     fun onUseBlock(pos: BlockPos, hand: InteractionHand): Boolean {
         var allow = true
         val callbacks = synchronized(callbacksLock) {
@@ -1149,6 +1206,7 @@ class LuaManager() {
         }
 
         synchronized(callbacksLock) {
+            inventoryItemAddCallbacks.removeAll(callbacksToRemove.toSet())
             clientTickCallbacks.removeAll(callbacksToRemove.toSet())
             renderWorldCallbacks.removeAll(callbacksToRemove.toSet())
             render2DCallbacks.removeAll(callbacksToRemove.toSet())

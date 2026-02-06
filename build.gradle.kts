@@ -23,6 +23,7 @@ repositories {
     maven { url = uri("https://maven.azureaaron.net/releases") }
     maven { url = uri("https://repo1.maven.org/maven2/") }
     maven { url = uri("https://repo.nea.moe/releases") }
+    maven { url = uri("https://api.modrinth.com/maven") }
 }
 
 java {
@@ -74,22 +75,21 @@ dependencies {
 
     // ImGUI
     val imguiVersion = property("imgui_version") as String
-
-    // Основные зависимости ImGUI
     implementation("io.github.spair:imgui-java-binding:$imguiVersion")
     implementation("io.github.spair:imgui-java-lwjgl3:$imguiVersion")
-
-    // Нативные библиотеки для всех платформ
     implementation("io.github.spair:imgui-java-natives-windows:$imguiVersion")
     implementation("io.github.spair:imgui-java-natives-linux:$imguiVersion")
     implementation("io.github.spair:imgui-java-natives-macos:$imguiVersion")
-
-    // Включите все в финальный JAR
     include("io.github.spair:imgui-java-binding:$imguiVersion")
     include("io.github.spair:imgui-java-lwjgl3:$imguiVersion")
     include("io.github.spair:imgui-java-natives-windows:$imguiVersion")
     include("io.github.spair:imgui-java-natives-linux:$imguiVersion")
     include("io.github.spair:imgui-java-natives-macos:$imguiVersion")
+
+    // Catboost
+    include(implementation("ai.catboost:catboost-prediction:${property("catboost_version")}")!!)
+
+    modRuntimeOnly(files("libs/firmament.jar"))
 }
 
 tasks {

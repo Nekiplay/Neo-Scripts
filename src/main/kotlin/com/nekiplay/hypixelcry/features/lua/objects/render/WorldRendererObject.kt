@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.objects.render
 
+import com.logisticscraft.occlusionculling.util.Vec3d
 import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
@@ -32,19 +33,105 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             "renderFilledCircle" -> RenderFilledCircleFunction()
             "renderOutline" -> RenderOutlineFunction()
             "renderOutlineCircle" -> RenderOutlineCircleFunction()
+            "renderCylinder" -> RenderCylinderFunction()
+            "renderSphere" -> RenderSphereFunction()
             "renderText" -> RenderTextFunction()
             "renderLinesFromPoints" -> RenderLinesFromPointsFunction()
             "renderLineFromCursor" -> RenderLineFromCursorFunction()
             "renderImage" -> RenderImageFunction()
             "renderBeaconBeam" -> RenderBeaconBeamFunction()
             "renderQuad" -> SubmitQuadFunction()
-            "renderHologramBlock" -> RenderBlockFunction()
+            "renderHologramBlock" -> RenderHologramBlockFunction()
+            "renderBlock" -> RenderBlockFunction()
+            "renderItem" -> RenderItemFunction()
             else -> NIL
         } as LuaValue
     }
 
+    private inner class RenderSphereFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable() && context != null) {
+                val x = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
+                val y = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
+                val z = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
+                val radius = if (table.get("radius").isnumber()) table.get("radius").todouble() else 1.0
+                val segments = if (table.get("segments").isnumber()) table.get("segments").toint() else 1
+                val rings = if (table.get("rings").isnumber()) table.get("rings").toint() else 4
+
+                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
+                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
+                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
+                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
+
+                val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
+
+                context.submitSphere(Vec3(x, y, z), radius.toFloat(), segments, rings, getArgb(alpha, red, green, blue), throughWalls)
+                return TRUE
+            }
+            return NIL
+        }
+    }
+
+    private inner class RenderCylinderFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable() && context != null) {
+                val x = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
+                val y = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
+                val z = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
+                val radius = if (table.get("radius").isnumber()) table.get("radius").todouble() else 1.0
+                val height = if (table.get("height").isnumber()) table.get("height").todouble() else 1.0
+                val segments = if (table.get("segments").isnumber()) table.get("segments").toint() else 1
+
+                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
+                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
+                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
+                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
+
+                val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
+
+                context.submitCylinder(Vec3(x, y, z), radius.toFloat(), height.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
+                return TRUE
+            }
+            return NIL
+        }
+    }
+
+    private inner class RenderItemFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable() && context != null) {
+                val x = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
+                val y = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
+                val z = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
+                val id = if (table.get("id").isstring()) table.get("id").tojstring() else "minecraft:stone"
+
+                val identifier = Identifier.bySeparator(id, ':')
+
+                context.submitItem(Vec3d(x, y, z), identifier)
+                return TRUE
+            }
+            return NIL
+        }
+    }
 
     private inner class RenderBlockFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable() && context != null) {
+                val x = if (table.get("x").isnumber()) table.get("x").toint() else 0
+                val y = if (table.get("y").isnumber()) table.get("y").toint() else 0
+                val z = if (table.get("z").isnumber()) table.get("z").toint() else 0
+                val id = if (table.get("id").isnumber()) table.get("id").toint() else 1
+
+                val blockState = Block.stateById(id)
+
+                context.submitBlock(BlockPos(x, y, z), blockState)
+                return TRUE
+            }
+            return NIL
+        }
+    }
+
+
+    private inner class RenderHologramBlockFunction : OneArgFunction() {
         override fun call(table: LuaValue): LuaValue {
             if (table.istable() && context != null) {
                 val x = if (table.get("x").isnumber()) table.get("x").toint() else 0

@@ -35,6 +35,7 @@ public class IrisCompatibility {
             assignPipeline(SkyblockerRenderPipelines.TEXTURE, "TEXTURED");
             assignPipeline(SkyblockerRenderPipelines.TEXTURE_THROUGH_WALLS, "TEXTURED");
             assignPipeline(SkyblockerRenderPipelines.CYLINDER, "BASIC");
+            assignPipeline(SkyblockerRenderPipelines.CYLINDER_THROUGH_WALLS, "BASIC");
             assignPipeline(SkyblockerRenderPipelines.CIRCLE, "BASIC");
             assignPipeline(SkyblockerRenderPipelines.CIRCLE_THROUGH_WALLS, "BASIC");
             assignPipeline(SkyblockerRenderPipelines.CIRCLE_LINES, "BASIC");

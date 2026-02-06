@@ -41,6 +41,12 @@ public class SkyblockerRenderPipelines {
             .withVertexFormat(DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.TRIANGLE_STRIP)
             .withCull(false)
             .build());
+    public static final RenderPipeline CYLINDER_THROUGH_WALLS = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
+            .withLocation(Identifier.fromNamespaceAndPath("hypixelcry", "pipeline/cylinder"))
+            .withVertexFormat(DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.TRIANGLE_STRIP)
+            .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+            .withCull(false)
+            .build());
     public static final RenderPipeline CIRCLE = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
             .withLocation(Identifier.fromNamespaceAndPath("hypixelcry", "pipeline/circle"))
             .withVertexFormat(DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.TRIANGLE_FAN)
@@ -66,6 +72,8 @@ public class SkyblockerRenderPipelines {
 
     @Init
     public static void init() {
+        Renderer.excludePipelineFromBatching(CYLINDER);
+        Renderer.excludePipelineFromBatching(CYLINDER_THROUGH_WALLS);
         Renderer.excludePipelineFromBatching(CIRCLE);
         Renderer.excludePipelineFromBatching(CIRCLE_THROUGH_WALLS);
         IrisCompatibility.assignPipelines();

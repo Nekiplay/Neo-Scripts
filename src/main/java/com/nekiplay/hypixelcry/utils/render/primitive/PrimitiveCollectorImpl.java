@@ -2,6 +2,8 @@ package com.nekiplay.hypixelcry.utils.render.primitive;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import com.logisticscraft.occlusionculling.util.Vec3d;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.LightTexture;
@@ -39,6 +41,8 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
     private List<QuadRenderState> quadStates = null;
     private List<TexturedQuadRenderState> texturedQuadStates = null;
     private List<BlockHologramRenderState> blockHologramStates = null;
+    private List<BlockHologramRenderState> blockStates = null;
+    private List<ItemRenderState> itemStates = null;
     private List<TextRenderState> textStates = null;
     private List<CylinderRenderState> cylinderStates = null;
     private List<FilledCircleRenderState> filledCircleStates = null;
@@ -263,6 +267,47 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
         this.blockHologramStates.add(renderState);
     }
 
+
+
+    @Override
+    public void submitBlock(BlockPos pos, BlockState state) {
+        ensureNotFrozen();
+
+        if (!FrustumUtils.isVisible(this.frustum, pos.getX(), pos.getY(), pos.getZ(), pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1)) {
+            return;
+        }
+
+        if (this.blockStates == null) {
+            this.blockStates = new ArrayList<>();
+        }
+
+        BlockHologramRenderState renderState = new BlockHologramRenderState();
+        renderState.pos = pos;
+        renderState.state = state;
+
+        this.blockStates.add(renderState);
+    }
+
+    @Override
+    public void submitItem(Vec3d pos, Identifier identifier) {
+        ensureNotFrozen();
+
+        if (!FrustumUtils.isVisible(this.frustum, pos.getX(), pos.getY(), pos.getZ(), pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1)) {
+            return;
+        }
+
+        if (this.itemStates == null) {
+            this.itemStates = new ArrayList<>();
+        }
+
+        ItemRenderState renderState = new ItemRenderState();
+        renderState.position = pos;
+        renderState.identifier = identifier;
+
+        this.itemStates.add(renderState);
+    }
+
+
     @Override
     public void submitText(Component text, Vec3 pos, boolean throughWalls) {
         submitText(text, pos, 1, throughWalls);
@@ -313,7 +358,7 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
     }
 
     @Override
-    public void submitCylinder(Vec3 centre, float radius, float height, int segments, int colour) {
+    public void submitCylinder(Vec3 centre, float radius, float height, int segments, int colour, boolean throughWalls) {
         ensureNotFrozen();
 
         if (this.cylinderStates == null) {
@@ -326,6 +371,7 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
         state.height = height;
         state.segments = segments;
         state.colour = colour;
+        state.throughWalls = throughWalls;
 
         this.cylinderStates.add(state);
     }
@@ -349,7 +395,7 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
     }
 
     @Override
-    public void submitSphere(Vec3 centre, float radius, int segments, int rings, int colour) {
+    public void submitSphere(Vec3 centre, float radius, int segments, int rings, int colour, boolean throughWalls) {
         ensureNotFrozen();
 
         if (this.sphereStates == null) {
@@ -362,6 +408,7 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
         state.segments = segments;
         state.rings = rings;
         state.colour = colour;
+        state.throughWalls = throughWalls;
 
         this.sphereStates.add(state);
     }
@@ -419,6 +466,12 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
         if (this.blockHologramStates != null) {
             for (BlockHologramRenderState state : this.blockHologramStates) {
                 BlockHologramRenderer.INSTANCE.submitPrimitives(state, cameraState);
+            }
+        }
+
+        if (this.blockStates != null) {
+            for (BlockHologramRenderState state : this.blockStates) {
+                BlockRenderer.INSTANCE.submitPrimitives(state, cameraState);
             }
         }
 
@@ -486,6 +539,12 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
         if (this.textStates != null) {
             for (TextRenderState state : this.textStates) {
                 TextPrimitiveRenderer.INSTANCE.submitPrimitives(state, cameraState);
+            }
+        }
+
+        if (this.itemStates != null) {
+            for (ItemRenderState state : this.itemStates) {
+                //ItemRenderer.INSTANCE.submitPrimitives(state, cameraState);
             }
         }
     }

@@ -8,4 +8,5 @@ public class SphereRenderState {
     public int segments;
     public int rings;
     public int colour;
+    public boolean throughWalls;
 }

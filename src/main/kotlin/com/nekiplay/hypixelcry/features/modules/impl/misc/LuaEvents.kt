@@ -5,6 +5,7 @@ import com.nekiplay.hypixelcry.events.KeyEvent
 import com.nekiplay.hypixelcry.events.MouseButtonEvent
 import com.nekiplay.hypixelcry.events.SkyblockEvents
 import com.nekiplay.hypixelcry.events.network.PacketEvent
+import com.nekiplay.hypixelcry.events.player.AddItemInventoryEvent
 import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent
 import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent.BlockUpdateCallback
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
@@ -134,6 +135,12 @@ object LuaEvents: ClientModule() {
                 }
                 else -> true
             }
+
+            if (allow) InteractionResult.PASS else InteractionResult.FAIL
+        }
+
+        AddItemInventoryEvent.EVENT.register { event ->
+            val allow = LUA_MANAGER.onInventoryItemAdd(event.slot, event.item)
 
             if (allow) InteractionResult.PASS else InteractionResult.FAIL
         }
