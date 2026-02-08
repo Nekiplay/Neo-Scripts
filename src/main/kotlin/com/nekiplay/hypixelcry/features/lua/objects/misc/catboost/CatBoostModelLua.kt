@@ -70,8 +70,7 @@ class CatBoostModelLua(val model: CatBoostModel) : LuaUserdata(model) {
                 }
             }
 
-            CatBoostPredictionsLua(model.predict(features.toFloatArray(), labelsFeatures.toTypedArray()))
-            return LuaValue.NIL
+            return CatBoostPredictionsLua(model.predict(features.toFloatArray(), labelsFeatures.toTypedArray()))
         }
     }
 }
