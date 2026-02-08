@@ -20,8 +20,6 @@ class CatBoostPredictionsLua(val predictions: CatBoostPredictions) : LuaUserdata
             val onjectIndex = args.checkint(1)
             val predictionIndex = args.checkint(2)
 
-            predictions.objectCount
-
             return LuaValue.valueOf(predictions.get(onjectIndex, predictionIndex))
         }
     }
