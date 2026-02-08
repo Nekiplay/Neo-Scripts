@@ -43,12 +43,6 @@ val shadowModImpl by configurations.creating {
     configurations.modImplementation.get().extendsFrom(this)
 }
 
-val catboostDeps by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-}
-
-
 dependencies {
     minecraft("com.mojang:minecraft:${property("minecraft_version")}")
     mappings(loom.officialMojangMappings())
@@ -94,16 +88,16 @@ dependencies {
 
     // Catboost
     val catboostDep = "ai.catboost:catboost-prediction:${property("catboost_version")}"
-    catboostDeps(catboostDep)
     include(implementation(catboostDep)!!)
-    include(catboostDeps.resolvedConfiguration.resolvedArtifacts.map { it.file })
+
+    val catboostTransitive = "ai.catboost:catboost-common:${property("catboost_version")}"
+    include(implementation(catboostTransitive)!!)
 
     modRuntimeOnly(files("libs/firmament.jar"))
 }
 
 tasks {
     shadowJar {
-        from(catboostDeps)
         from(sourceSets.main.get().output)
         configurations = listOf(shadowModImpl)
         archiveClassifier.set("shadow")
