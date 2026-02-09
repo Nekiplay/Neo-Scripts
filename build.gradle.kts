@@ -15,7 +15,6 @@ repositories {
         dirs("libs/legacy-item-dfu")
         dirs("libs/networth-calculator")
         dirs("libs/neurepoparser")
-        dirs("libs")
     }
     mavenLocal()
     mavenCentral()
