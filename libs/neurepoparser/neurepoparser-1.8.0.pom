@@ -1,0 +1,46 @@
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <!--
+     This module was also published with a richer model, Gradle metadata,
+    -->
+    <!--
+     which should be used instead. Do not delete the following line which
+    -->
+    <!--
+     is to indicate to Gradle or any Gradle module metadata file consumer
+    -->
+    <!-- that they should prefer consuming it instead. -->
+    <!-- do_not_remove: published-with-gradle-metadata -->
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>moe.nea</groupId>
+    <artifactId>neurepoparser</artifactId>
+    <version>1.8.0</version>
+    <name>NEU Repo Parsing</name>
+    <description>
+        A library for standardized parsing of the NotEnoughUpdates item repository
+    </description>
+    <url>https://github.com/NotEnoughUpdates/RepoParser</url>
+    <licenses>
+        <license>
+            <name>BSD 2-Clause</name>
+            <url>
+                https://github.com/NotEnoughUpdates/RepoParser/blob/master/LICENSE
+            </url>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>Linnea Gräf</name>
+        </developer>
+    </developers>
+    <scm>
+        <url>https://github.com/NotEnoughUpdates/RepoParser</url>
+    </scm>
+    <dependencies>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.9.0</version>
+            <scope>runtime</scope>
+        </dependency>
+    </dependencies>
+</project>

@@ -1,0 +1,89 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "moe.nea",
+    "module": "neurepoparser",
+    "version": "1.8.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.7"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "neurepoparser-1.8.0.jar",
+          "url": "neurepoparser-1.8.0.jar",
+          "size": 79624,
+          "sha512": "41304af3be553ed7f930fda9c77fbf6bbe2606c9fab306c94e0f8a489d94959e064f43b1a1f434e85623202d6129c06f6895f5a96f1070778a797b5e370303e9",
+          "sha256": "25040a7b0996dce6830247e0d124b0c7e7764ceabd73d33886b3784c10ad92b4",
+          "sha1": "39d83f46e079e281261f1cb8556c24cd7a97e906",
+          "md5": "157ea6152c6cf3a4e50fd09963d07512"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "com.google.code.gson",
+          "module": "gson",
+          "version": {
+            "requires": "2.9.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "neurepoparser-1.8.0.jar",
+          "url": "neurepoparser-1.8.0.jar",
+          "size": 79624,
+          "sha512": "41304af3be553ed7f930fda9c77fbf6bbe2606c9fab306c94e0f8a489d94959e064f43b1a1f434e85623202d6129c06f6895f5a96f1070778a797b5e370303e9",
+          "sha256": "25040a7b0996dce6830247e0d124b0c7e7764ceabd73d33886b3784c10ad92b4",
+          "sha1": "39d83f46e079e281261f1cb8556c24cd7a97e906",
+          "md5": "157ea6152c6cf3a4e50fd09963d07512"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "neurepoparser-1.8.0-javadoc.jar",
+          "url": "neurepoparser-1.8.0-javadoc.jar",
+          "size": 272430,
+          "sha512": "1651e525d19071b29d316fc18e37bc71a0731ffa016dbc1b95c135301a782d170e258c3ce2b0b714d8e01aa221b12201e41412f84ac6ca23884c124aead4c726",
+          "sha256": "d4ea96106cfadad26108cd75338de108290c5866ac0b269aebb99f1eb6520041",
+          "sha1": "25e2310242e7f4d4330aeb93a6e58671a59b80be",
+          "md5": "41f01e32322a1d7ba6fe2ebe337b5686"
+        }
+      ]
+    }
+  ]
+}
