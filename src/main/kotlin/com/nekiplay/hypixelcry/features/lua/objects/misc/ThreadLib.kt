@@ -21,13 +21,10 @@ class ThreadLib : TwoArgFunction() {
         library.set("joinThread", JoinThread())
         library.set("isAlive", IsAlive())
         library.set("interruptThread", InterruptThread())
+        library.set("stopThread", StopThread())
         library.set("sleep", Sleep())
-        library.set("cleanupFinishedThreads", CleanupFinishedThreads())
         library.set("getThreadCount", GetThreadCount())
         env.set("threads", library)
-
-        // Запускаем фоновую задачу для очистки завершенных потоков
-        startCleanupTask()
 
         return library
     }
@@ -44,8 +41,10 @@ class ThreadLib : TwoArgFunction() {
                     func.call()
                 } catch (e: Exception) {
                     e.printStackTrace()
+                } finally {
+                    // Автоматическое удаление потока из списка после завершения
+                    threads.remove(threadId)
                 }
-                // Завершение потока обрабатывается в cleanupFinishedThreads()
             }.apply {
                 isDaemon = true // Потоки-демоны не препятствуют завершению JVM
             }
@@ -97,6 +96,20 @@ class ThreadLib : TwoArgFunction() {
         }
     }
 
+    inner class StopThread : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            val threadId = arg.checkint()
+            val info = threads[threadId] ?: return LuaValue.FALSE
+            
+            // Прерываем поток
+            info.thread.interrupt()
+            
+            // Удаляем поток из списка без ожидания завершения
+            threads.remove(threadId)
+            return LuaValue.TRUE
+        }
+    }
+
     inner class Sleep : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val ms = arg.checklong()
@@ -135,25 +148,6 @@ class ThreadLib : TwoArgFunction() {
         println("ThreadLib: Удалено $removedCount завершенных потоков")
     }
 
-    private fun startCleanupTask() {
-        val cleanupThread = Thread {
-            while (!Thread.currentThread().isInterrupted) {
-                try {
-                    Thread.sleep(30000) // Проверяем каждые 30 секунд
-                    cleanupFinishedThreads()
-                } catch (e: InterruptedException) {
-                    Thread.currentThread().interrupt()
-                    break
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-        }.apply {
-            isDaemon = true
-            name = "ThreadLib-Cleanup"
-        }
-        cleanupThread.start()
-    }
 
     fun stopAllThreads() {
         // Прерываем все потоки
