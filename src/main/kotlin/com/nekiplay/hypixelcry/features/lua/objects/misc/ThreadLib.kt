@@ -153,16 +153,7 @@ class ThreadLib : TwoArgFunction() {
         // Прерываем все потоки
         threads.values.forEach { it.thread.interrupt() }
 
-        // Даем время на завершение
-        threads.values.forEach { info ->
-            try {
-                info.thread.join(2000) // Ждем до 2 секунд
-            } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
-            }
-        }
-
-        // Очищаем все записи
+        // Моментально удаляем все записи без ожидания завершения
         threads.clear()
         println("ThreadLib: Все потоки остановлены")
     }
