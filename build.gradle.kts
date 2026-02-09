@@ -106,6 +106,9 @@ tasks {
         configurations = listOf(shadowModImpl)
         archiveClassifier.set("shadow")
         mergeServiceFiles()
+        
+        // Exclude fabric.mod.json files from embedded dependencies to prevent mod ID conflicts
+        exclude("**/META-INF/jars/**/fabric.mod.json")
     }
 
     remapJar {
