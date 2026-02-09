@@ -8,9 +8,11 @@ import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.objects.misc.CatboostLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.Creator
+import com.nekiplay.hypixelcry.features.lua.objects.misc.EncodingLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ImGuiLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.JsonLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ThreadLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.TCPLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
 import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesObject
 import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
@@ -121,6 +123,8 @@ class LuaManager() {
     private val httpLib = HttpClientLib()
     private val catboostLib = CatboostLib()
     private val creatorLib = Creator()
+    private val tcpLibs = ConcurrentHashMap<String, TCPLib>()
+    private val encodingLib = EncodingLib()
 
     private val threadLibs = ConcurrentHashMap<String, ThreadLib>()
 
@@ -142,6 +146,10 @@ class LuaManager() {
         globals.load(httpLib)
         globals.load(creatorLib)
         globals.load(catboostLib)
+        tcpLibs[scriptName]?.let { tcpLib ->
+            globals.load(tcpLib)
+        }
+        globals.load(encodingLib)
     }
 
     private fun registerRequire() {
@@ -1145,6 +1153,10 @@ class LuaManager() {
             // Устанавливаем текущий исполняемый скрипт
             currentExecutingScript.set(scriptName)
 
+            // Create script-specific TCP library
+            val tcpLib = TCPLib()
+            tcpLibs[scriptName] = tcpLib
+
             // Set up script-specific require
             globals.set("require", createScriptRequireFunction(scriptName))
 
@@ -1155,6 +1167,7 @@ class LuaManager() {
             threadLibs[scriptName] = threadLib
 
             globals.load(threadLib)
+            globals.load(tcpLib)
 
             val chunk = loadChunk(file, scriptName)
             val result = chunk.call()
@@ -1248,6 +1261,10 @@ class LuaManager() {
 
         threadLibs[scriptName]?.stopAllThreads()
         threadLibs.remove(scriptName)
+
+        // Clean up TCP connections for this script
+        tcpLibs[scriptName]?.cleanup(scriptName)
+        tcpLibs.remove(scriptName)
 
         // Clean up stored data
         scriptPersistentGlobals.remove(scriptName)
