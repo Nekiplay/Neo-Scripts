@@ -15,7 +15,6 @@ repositories {
         dirs("libs/legacy-item-dfu")
         dirs("libs/networth-calculator")
         dirs("libs/neurepoparser")
-        dirs("libs/hm-api")
         dirs("libs")
     }
     mavenLocal()
@@ -60,7 +59,7 @@ dependencies {
     modImplementation("net.fabricmc:fabric-language-kotlin:${property("fabric_kotlin_version")}")
 
     // HM-API (https://github.com/AzureAaron/hm-api/releases)
-    include(modImplementation(":hm-api:${property("hm_api_version")}")!!)  // HM API (Hypixel Mod API Library)
+    include(modImplementation("maven.modrinth:hypixel-mod-api:${property("hm_api_version")}")!!)  // HM API (Hypixel Mod API Library)
 
     // Occlusion Culling
     include(implementation("com.logisticscraft:occlusionculling:${property("occlusionculling_version")}")!!)
