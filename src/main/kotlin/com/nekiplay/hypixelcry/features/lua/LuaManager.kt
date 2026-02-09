@@ -1246,7 +1246,7 @@ class LuaManager() {
             scriptCommands.remove(scriptName)
         }
 
-        threadLibs[scriptName]?.stopThreads()
+        threadLibs[scriptName]?.stopAllThreads()
         threadLibs.remove(scriptName)
 
         // Clean up stored data
