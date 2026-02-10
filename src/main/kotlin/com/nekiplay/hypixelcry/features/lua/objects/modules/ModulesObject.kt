@@ -23,7 +23,7 @@ class ModulesObject: LuaValue() {
             val table = tableOf()
             var index = 1
             for (script in LUA_MANAGER.getLoadedScripts()) {
-                table.set(index, script)
+                table.set(index, script.name)
                 index++
             }
             return table

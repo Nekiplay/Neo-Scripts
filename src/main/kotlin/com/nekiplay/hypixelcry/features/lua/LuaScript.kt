@@ -1,5 +1,8 @@
 package com.nekiplay.hypixelcry.features.lua
 
+import com.mojang.brigadier.CommandDispatcher
+import com.mojang.brigadier.arguments.StringArgumentType
+import com.mojang.brigadier.context.CommandContext
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.objects.misc.TCPLib
@@ -9,17 +12,28 @@ import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.utils.Location
 import com.nekiplay.hypixelcry.utils.misc.input.KeyAction
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.commands.CommandBuildContext
 import net.minecraft.core.BlockPos
+import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.item.ItemStack
+import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
+import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.VarArgFunction
+import org.luaj.vm2.lib.jse.CoerceJavaToLua
+import org.luaj.vm2.lib.jse.JsePlatform
+import org.luaj.vm2.lib.jse.LuajavaLib
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicReference
 
-class LuaScript(private val scriptName: String, private val luaManager: LuaManager) {
+class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
+    private val INSTANCE: LuaScript = this
+
     // Events
     private val clientTickCallbacks = ArrayList<LuaValue>()
     private val clientPreTickCallbacks = ArrayList<LuaValue>()
@@ -48,51 +62,32 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
     // Synchronize only when needed
     private val callbacksLock = Any()
 
-    // Precompute system globals
-    private val systemGlobals = setOf(
-        "print", "require", "registerClientTick", "registerWorldRenderer",
-        "unregisterClientTick", "unregisterWorldRenderer", "player", "world", "modules"
-    )
-
-    // Script-specific globals
-    private val persistentGlobals = ConcurrentHashMap<String, LuaValue>()
-
     // Script-specific libraries
     private val tcpLib: TCPLib
     private val threadLib: ThreadLib
 
-    // Current executing script reference
-    private val currentExecutingScript = AtomicReference<String?>()
-
     // Dependency tracking for nested requires
-    private val dependencies = ConcurrentHashMap<String, MutableSet<String>>()
-    private val dependencyTree = ConcurrentHashMap<String, MutableMap<String, Set<String>>>()
+    private val dependencies = ConcurrentHashMap<String, MutableList<String>>()
+
+    // Script-specific globals
+    val scriptGlobals: Globals = JsePlatform.standardGlobals()
 
     init {
+        // Register standard libraries
+        scriptGlobals.load(LuajavaLib())
+        
         registerCustomFunctions()
-        registerScriptEvents()
         
         // Initialize script-specific libraries
         tcpLib = TCPLib()
         threadLib = ThreadLib()
         
-        // Load libraries into globals
-        luaManager.globals.load(threadLib)
-        luaManager.globals.load(tcpLib)
-    }
-
-    private fun registerScriptEvents() {
-        // Note: registerUnloadCallback is handled by LuaManager directly
-        // as it needs access to the current executing script
-    }
-
-    // Helper methods to access LuaManager's objects
-    fun worldRendererObject(context: PrimitiveCollector?): Any {
-        return WorldRendererObject(context)
-    }
-
-    fun twoRenderObject(context: GuiGraphics?, scriptName: String): Any {
-        return TwoRenderObject(context, scriptName)
+        // Load libraries into script-specific globals
+        scriptGlobals.load(threadLib)
+        scriptGlobals.load(tcpLib)
+        
+        // Register global objects
+        registerGlobalObjects()
     }
 
     val logger = HypixelCry.LOGGER
@@ -109,101 +104,110 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
         
         // Register require function with module loading prevention
         registerRequireFunction()
+        
+        // Register other custom functions
+        registerOtherCustomFunctions()
     }
 
     private fun registerEventRegistrationFunctions() {
-        luaManager.globals.set("registerInventoryItemAdd", object : VarArgFunction() {
+        scriptGlobals.set("registerUnloadCallback", object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                return LuaValue.valueOf(addScriptUnloadCallback(callback))
+            }
+        })
+
+        scriptGlobals.set("registerInventoryItemAdd", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(addInventoryItemAddCallback(callback))
             }
         })
 
-        luaManager.globals.set("registerUseBlock", object : VarArgFunction() {
+        scriptGlobals.set("registerUseBlock", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(addUseBlockCallback(callback))
             }
         })
 
-        luaManager.globals.set("registerClientTick", object : VarArgFunction() {
+        scriptGlobals.set("registerClientTick", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(addClientTickCallback(callback))
             }
         })
 
-        luaManager.globals.set("registerClientTickPost", object : VarArgFunction() {
+        scriptGlobals.set("registerClientTickPost", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(addClientTickCallback(callback))
             }
         })
 
-        luaManager.globals.set("registerClientTickPre", object : VarArgFunction() {
+        scriptGlobals.set("registerClientTickPre", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(addPreClientTickCallback(callback))
             }
         })
 
-        luaManager.globals.set("registerBlockUpdate", object : VarArgFunction() {
+        scriptGlobals.set("registerBlockUpdate", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(addBlockUpdateCallback(callback))
             }
         })
 
-        luaManager.globals.set("registerWorldRenderer", object : VarArgFunction() {
+        scriptGlobals.set("registerWorldRenderer", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(addWorldRendererCallback(callback))
             }
         })
 
-        luaManager.globals.set("register2DRenderer", object : VarArgFunction() {
+        scriptGlobals.set("register2DRenderer", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(add2DRendererCallback(callback))
             }
         })
 
-        luaManager.globals.set("registerKeyEvent", object : VarArgFunction() {
+        scriptGlobals.set("registerKeyEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(addKeyEventCallback(callback))
             }
         })
 
-        luaManager.globals.set("registerMessageEvent", object : VarArgFunction() {
+        scriptGlobals.set("registerMessageEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(addMessageCallback(callback))
             }
         })
 
-        luaManager.globals.set("registerSendMessageEvent", object : VarArgFunction() {
+        scriptGlobals.set("registerSendMessageEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(addSendMessageCallback(callback))
             }
         })
 
-        luaManager.globals.set("registerSendCommandEvent", object : VarArgFunction() {
+        scriptGlobals.set("registerSendCommandEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(addSendCommandCallback(callback))
             }
         })
 
-        luaManager.globals.set("registerLocationChangeEvent", object : VarArgFunction() {
+        scriptGlobals.set("registerLocationChangeEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(addLocationChangeCallback(callback))
             }
         })
 
-        luaManager.globals.set("registerImGuiRenderEvent", object : VarArgFunction() {
+        scriptGlobals.set("registerImGuiRenderEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(addImguiRenderCallback(callback))
@@ -211,14 +215,14 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
         })
 
         // Packet events
-        luaManager.globals.set("registerServerSideRotationEvent", object : VarArgFunction() {
+        scriptGlobals.set("registerServerSideRotationEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(addServerSideRotationCallback(callback))
             }
         })
 
-        luaManager.globals.set("registerServerSideTeleportEvent", object : VarArgFunction() {
+        scriptGlobals.set("registerServerSideTeleportEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(addServerSideTeleportCallback(callback))
@@ -227,98 +231,98 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
     }
 
     private fun registerEventUnregistrationFunctions() {
-        luaManager.globals.set("unregisterInventoryItemAdd", object : VarArgFunction() {
+        scriptGlobals.set("unregisterInventoryItemAdd", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(removeInventoryItemAddCallback(callback))
             }
         })
 
-        luaManager.globals.set("unregisterUseBlock", object : VarArgFunction() {
+        scriptGlobals.set("unregisterUseBlock", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(removeUseBlockCallback(callback))
             }
         })
 
-        luaManager.globals.set("unregisterClientTick", object : VarArgFunction() {
+        scriptGlobals.set("unregisterClientTick", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(removeClientTickCallback(callback))
             }
         })
 
-        luaManager.globals.set("unregisterClientTickPost", object : VarArgFunction() {
+        scriptGlobals.set("unregisterClientTickPost", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(removeClientTickCallback(callback))
             }
         })
 
-        luaManager.globals.set("unregisterClientTickPre", object : VarArgFunction() {
+        scriptGlobals.set("unregisterClientTickPre", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(removeClientPreTickCallback(callback))
             }
         })
 
-        luaManager.globals.set("unregisterBlockUpdate", object : VarArgFunction() {
+        scriptGlobals.set("unregisterBlockUpdate", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(removeBlockUpdateCallback(callback))
             }
         })
 
-        luaManager.globals.set("unregisterWorldRenderer", object : VarArgFunction() {
+        scriptGlobals.set("unregisterWorldRenderer", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(removeWorldRendererCallback(callback))
             }
         })
 
-        luaManager.globals.set("unregister2DRenderer", object : VarArgFunction() {
+        scriptGlobals.set("unregister2DRenderer", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(remove2DRendererCallback(callback))
             }
         })
 
-        luaManager.globals.set("unregisterKeyEvent", object : VarArgFunction() {
+        scriptGlobals.set("unregisterKeyEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(removeKeyEventCallback(callback))
             }
         })
 
-        luaManager.globals.set("unregisterMessageEvent", object : VarArgFunction() {
+        scriptGlobals.set("unregisterMessageEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(removeMessageEventCallback(callback))
             }
         })
 
-        luaManager.globals.set("unregisterSendMessageEvent", object : VarArgFunction() {
+        scriptGlobals.set("unregisterSendMessageEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(removeSendMessageEventCallback(callback))
             }
         })
 
-        luaManager.globals.set("unregisterSendCommandEvent", object : VarArgFunction() {
+        scriptGlobals.set("unregisterSendCommandEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(removeSendCommandEventCallback(callback))
             }
         })
 
-        luaManager.globals.set("unregisterLocationChangeEvent", object : VarArgFunction() {
+        scriptGlobals.set("unregisterLocationChangeEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(removeLocationChangeEventCallback(callback))
             }
         })
 
-        luaManager.globals.set("unregisterImGuiRenderEvent", object : VarArgFunction() {
+        scriptGlobals.set("unregisterImGuiRenderEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(removeImGuiRenderEventCallback(callback))
@@ -326,14 +330,14 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
         })
 
         // Packet events
-        luaManager.globals.set("unregisterServerSideRotationEvent", object : VarArgFunction() {
+        scriptGlobals.set("unregisterServerSideRotationEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(removeServerSideRotationEventCallback(callback))
             }
         })
 
-        luaManager.globals.set("unregisterServerSideTeleportEvent", object : VarArgFunction() {
+        scriptGlobals.set("unregisterServerSideTeleportEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 return LuaValue.valueOf(removeServerSideTeleportEventCallback(callback))
@@ -342,7 +346,7 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
     }
 
     private fun registerCommandFunctions() {
-        luaManager.globals.set("registerCommand", object : VarArgFunction() {
+        scriptGlobals.set("registerCommand", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val commandName = args.arg(1).checkjstring()
                 val callback = args.arg(2)
@@ -350,7 +354,7 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
             }
         })
 
-        luaManager.globals.set("unregisterCommand", object : VarArgFunction() {
+        scriptGlobals.set("unregisterCommand", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val commandName = args.arg(1).checkjstring()
                 return LuaValue.valueOf(removeCommandCallback(commandName))
@@ -359,19 +363,62 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
     }
 
     private fun registerRequireFunction() {
-        luaManager.globals.set("require", object : VarArgFunction() {
+        scriptGlobals.set("require", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val moduleName = args.arg(1).checkjstring()
 
                 // Загружаем модуль через LuaManager
-                val result = luaManager.requireModule(moduleName, scriptName)
-                
+                val result = luaManager.requireModule(moduleName, INSTANCE)
+
                 // Добавляем в зависимости только при первом требовании
                 addDependency(moduleName)
-                
+
                 return result
             }
         })
+    }
+
+    private fun registerOtherCustomFunctions() {
+        // Register HypixelCry global
+        scriptGlobals.set("HypixelCry", CoerceJavaToLua.coerce(HypixelCry.getInstance()))
+
+        // Register print function
+        scriptGlobals.set("print", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val message = StringBuilder()
+
+                // Обрабатываем все переданные аргументы
+                for (i in 1..args.narg()) {
+                    if (i > 1) message.append(" ")
+                    message.append(args.arg(i).tojstring())
+                }
+                val messageStr = message.toString()
+                HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + messageStr)
+                return NIL
+            }
+        })
+
+        // Register registerUnloadCallback function
+        scriptGlobals.set("registerUnloadCallback", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                return LuaValue.valueOf(addScriptUnloadCallback(callback))
+            }
+        })
+    }
+
+    private fun registerGlobalObjects() {
+        // Register global objects
+        scriptGlobals.set("player", luaManager.playerObj)
+        scriptGlobals.set("world", luaManager.worldObj)
+        scriptGlobals.set("modules", luaManager.modulesObj)
+
+        scriptGlobals.load(luaManager.imguiLib)
+        scriptGlobals.load(luaManager.jsonLib)
+        scriptGlobals.load(luaManager.httpLib)
+        scriptGlobals.load(luaManager.catboostLib)
+        scriptGlobals.load(luaManager.creatorLib)
+        scriptGlobals.load(luaManager.encodingLib)
     }
 
     // Methods for adding callbacks
@@ -487,6 +534,44 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
         }
     }
 
+    fun registerMinecraftCommand(commandName: String) {
+        try {
+            // Регистрируем команду в Minecraft
+            ClientCommandRegistrationCallback.EVENT.register { dispatcher: CommandDispatcher<FabricClientCommandSource>, registryAccess: CommandBuildContext ->
+                dispatcher.register(
+                    ClientCommandManager.literal(commandName)
+                        .executes { context: CommandContext<FabricClientCommandSource> ->
+                            executeLuaCommand(commandName, emptyArray(), context.source)
+                            1
+                        }
+                        .then(ClientCommandManager.argument("args", StringArgumentType.greedyString())
+                            .executes { context: CommandContext<FabricClientCommandSource> ->
+                                val args = StringArgumentType.getString(context, "args").split(" ").toTypedArray()
+                                executeLuaCommand(commandName, args, context.source)
+                                1
+                            }
+                        )
+                )
+            }
+        } catch (e: Exception) {
+            HypixelCry.LOGGER.error("Failed to register Minecraft command: /$commandName", e)
+        }
+    }
+
+    private fun executeLuaCommand(commandName: String, args: Array<String>, source: FabricClientCommandSource?) {
+        val callback = commandCallbacks[commandName]
+        if (callback != null && callback.isfunction()) {
+            try {
+                // Преобразуем аргументы в Lua таблицу
+                val argsTable = LuaValue.listOf(args.map { LuaValue.valueOf(it) }.toTypedArray())
+                callback.call(LuaValue.valueOf(commandName), argsTable, LuaValue.valueOf(source?.player?.name?.string ?: ""))
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error("Error executing Lua command: /$commandName", e)
+                source?.sendError(Component.literal("Error executing command: ${e.message}"))
+            }
+        }
+    }
+
     fun addCommandCallback(commandName: String, callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
         if (commandName.isBlank()) return false
@@ -500,7 +585,7 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
             commandCallbacks[commandName] = callback
 
             // Регистрируем команду в Minecraft
-            luaManager.registerMinecraftCommand(commandName)
+            registerMinecraftCommand(commandName)
 
             return true
         }
@@ -599,13 +684,7 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
 
     fun removeCommandCallback(commandName: String): Boolean {
         synchronized(callbacksLock) {
-            val removed = commandCallbacks.remove(commandName) != null
-
-            if (removed) {
-                luaManager.removeCommandCallback(commandName)
-            }
-
-            return removed
+            return commandCallbacks.remove(commandName) != null
         }
     }
 
@@ -886,21 +965,13 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
 
     // Dependency tracking methods
     fun addDependency(moduleName: String) {
-        dependencies.getOrPut(scriptName) { mutableSetOf() }.add(moduleName)
-    }
-    
-    fun updateNestedDependencies(moduleName: String, nestedDeps: Set<String>) {
-        val currentTree = dependencyTree.getOrPut(scriptName) { mutableMapOf() }
-        currentTree[moduleName] = nestedDeps
+        dependencies.getOrPut(scriptName) { mutableListOf() }.add(moduleName)
     }
     
     fun getDependencies(): List<String> {
         return dependencies[scriptName]?.toList() ?: emptyList()
     }
-    
-    fun getDependencyTree(): Map<String, Set<String>> {
-        return dependencyTree[scriptName] ?: emptyMap()
-    }
+
 
     // Cleanup method
     fun cleanup() {
@@ -915,6 +986,7 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
 
         // Очищаем все коллбэки
         synchronized(callbacksLock) {
+            scriptUnloadCallbacks.clear()
             inventoryItemAddCallbacks.clear()
             useBlockCallbacks.clear()
             clientTickCallbacks.clear()
@@ -933,12 +1005,8 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
             commandCallbacks.clear()
         }
 
-        // Очищаем persistent globals
-        persistentGlobals.clear()
-        
         // Очищаем зависимости
         dependencies.clear()
-        dependencyTree.clear()
         
         // Очищаем библиотеки
         threadLib.stopAllThreads()
