@@ -55,6 +55,10 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
     // Command events
     private val commandCallbacks = ConcurrentHashMap<String, LuaValue>()
+    
+    // Command registration tracking (for dynamic registration)
+    private val pendingCommands = ArrayList<String>()
+    private val registeredCommands = ArrayList<String>()
 
     // Script events
     private val scriptUnloadCallbacks = ArrayList<LuaValue>()
@@ -564,9 +568,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
 
             commandCallbacks[commandName] = callback
+            pendingCommands.add(commandName)
 
-            // Регистрируем команду в централизованной системе
-            return luaManager.addPendingCommand(commandName, callback)
+            return true
         }
     }
 
@@ -665,8 +669,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         synchronized(callbacksLock) {
             val removed = commandCallbacks.remove(commandName) != null
             if (removed) {
-                // Also remove from centralized system
-                luaManager.unregisterCommand(commandName)
+                // Clean up tracking lists
+                pendingCommands.remove(commandName)
+                registeredCommands.remove(commandName)
             }
             return removed
         }
@@ -954,6 +959,37 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     
     fun getDependencies(): List<String> {
         return dependencies[scriptName]?.toList() ?: emptyList()
+    }
+
+    // Command tracking methods for dynamic registration
+    fun getPendingCommands(): List<String> {
+        synchronized(callbacksLock) {
+            return pendingCommands.toList()
+        }
+    }
+
+    fun getRegisteredCommands(): List<String> {
+        synchronized(callbacksLock) {
+            return registeredCommands.toList()
+        }
+    }
+
+    fun getCommandCallback(commandName: String): LuaValue? {
+        return commandCallbacks[commandName]
+    }
+
+    fun markCommandAsRegistered(commandName: String) {
+        synchronized(callbacksLock) {
+            if (pendingCommands.remove(commandName)) {
+                registeredCommands.add(commandName)
+            }
+        }
+    }
+
+    fun markCommandAsUnregistered(commandName: String) {
+        synchronized(callbacksLock) {
+            registeredCommands.remove(commandName)
+        }
     }
 
 

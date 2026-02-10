@@ -29,11 +29,17 @@ object LuaCommandsHandler {
         currentRegistryAccess = registryAccess
         
         // Register all pending commands from Lua scripts
-        val commandsToRegister = HypixelCry.LUA_MANAGER.registerPendingCommands()
+        val commandsToRegister = getAllPendingCommands()
         
         commandsToRegister.forEach { (commandName, callback) ->
             try {
-                registerCommandInternal(commandName, callback, dispatcher, registryAccess)
+                registerCommandInternal(dispatcher, commandName, callback)
+                // Mark command as registered in the script
+                HypixelCry.LUA_MANAGER.scripts.values.forEach { script ->
+                    if (script.getPendingCommands().contains(commandName)) {
+                        script.markCommandAsRegistered(commandName)
+                    }
+                }
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Failed to register Lua command: /$commandName", e)
             }
@@ -50,11 +56,17 @@ object LuaCommandsHandler {
             return
         }
         
-        val commandsToRegister = HypixelCry.LUA_MANAGER.registerPendingCommands()
+        val commandsToRegister = getAllPendingCommands()
         
         commandsToRegister.forEach { (commandName, callback) ->
             try {
-                registerCommandInternal(commandName, callback, dispatcher, registryAccess)
+                registerCommandInternal(dispatcher, commandName, callback)
+                // Mark command as registered in the script
+                HypixelCry.LUA_MANAGER.scripts.values.forEach { script ->
+                    if (script.getPendingCommands().contains(commandName)) {
+                        script.markCommandAsRegistered(commandName)
+                    }
+                }
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Failed to register Lua command dynamically: /$commandName", e)
             }
@@ -62,36 +74,64 @@ object LuaCommandsHandler {
     }
 
     // Internal method to register a single command
-    private fun registerCommandInternal(
-        commandName: String, 
-        callback: org.luaj.vm2.LuaValue, 
-        dispatcher: CommandDispatcher<FabricClientCommandSource>, 
-        registryAccess: CommandBuildContext
-    ) {
+    private fun registerCommandInternal(dispatcher: CommandDispatcher<FabricClientCommandSource>, commandName: String, callback: LuaValue) {
         val command = ClientCommandManager.literal(commandName)
             .executes { context ->
-                executeLuaCommand(commandName, emptyArray(), context.source, callback)
-                1
+                try {
+                    val argsTable = LuaValue.listOf(arrayOf<LuaValue>())
+                    callback.call(LuaValue.valueOf(commandName), argsTable, LuaValue.valueOf(context.source.player?.name?.string ?: ""))
+                    1
+                } catch (e: Exception) {
+                    HypixelCry.LOGGER.error("Error executing Lua command: /$commandName", e)
+                    context.source.sendError(Component.literal("Error executing command: ${e.message}"))
+                    0
+                }
             }
             .then(ClientCommandManager.argument("args", StringArgumentType.greedyString())
                 .executes { context ->
-                    val args = StringArgumentType.getString(context, "args").split(" ").toTypedArray()
-                    executeLuaCommand(commandName, args, context.source, callback)
-                    1
+                    try {
+                        val argsString = StringArgumentType.getString(context, "args")
+                        val args = argsString.split(" ").map { LuaValue.valueOf(it) }.toTypedArray()
+                        val argsTable = LuaValue.listOf(args)
+                        callback.call(LuaValue.valueOf(commandName), argsTable, LuaValue.valueOf(context.source.player?.name?.string ?: ""))
+                        1
+                    } catch (e: Exception) {
+                        HypixelCry.LOGGER.error("Error executing Lua command: /$commandName", e)
+                        context.source.sendError(Component.literal("Error executing command: ${e.message}"))
+                        0
+                    }
                 }
             )
         
         dispatcher.register(command)
-        HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}Registered Lua command: /$commandName")
+    }
+
+    // Get all pending commands from all loaded scripts
+    private fun getAllPendingCommands(): Map<String, LuaValue> {
+        val pendingCommands = mutableMapOf<String, LuaValue>()
+        
+        HypixelCry.LUA_MANAGER.scripts.values.forEach { script ->
+            script.getPendingCommands().forEach { commandName ->
+                script.getCommandCallback(commandName)?.let { callback ->
+                    if (!pendingCommands.containsKey(commandName)) {
+                        pendingCommands[commandName] = callback
+                    }
+                }
+            }
+        }
+        
+        return pendingCommands
     }
 
     private fun suggestRegisteredCommands(builder: SuggestionsBuilder): CompletableFuture<Suggestions> {
-        val registeredCommands = HypixelCry.LUA_MANAGER.getRegisteredCommands()
         val input = builder.remainingLowerCase
 
-        registeredCommands.keys.forEach { commandName ->
-            if (commandName.lowercase().startsWith(input)) {
-                builder.suggest(commandName)
+        // Get all registered commands from all scripts
+        HypixelCry.LUA_MANAGER.scripts.values.forEach { script ->
+            script.getRegisteredCommands().forEach { commandName ->
+                if (commandName.lowercase().startsWith(input)) {
+                    builder.suggest(commandName)
+                }
             }
         }
 
