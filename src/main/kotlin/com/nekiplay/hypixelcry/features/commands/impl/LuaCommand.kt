@@ -14,13 +14,11 @@ import java.io.File
 import java.util.concurrent.CompletableFuture
 
 object LuaCommand {
-    // Провайдер для предложений скриптов
-    private val SCRIPT_SUGGESTION_PROVIDER = SuggestionProvider<FabricClientCommandSource> { context, builder ->
+    private val SCRIPT_SUGGESTION_PROVIDER = SuggestionProvider<FabricClientCommandSource> { _, builder ->
         suggestScriptFiles(builder)
     }
-    
-    // Провайдер для предложений загруженных скриптов
-    private val LOADED_SCRIPT_SUGGESTION_PROVIDER = SuggestionProvider<FabricClientCommandSource> { context, builder ->
+
+    private val LOADED_SCRIPT_SUGGESTION_PROVIDER = SuggestionProvider<FabricClientCommandSource> { _, builder ->
         suggestLoadedScripts(builder)
     }
 
@@ -28,7 +26,7 @@ object LuaCommand {
         val luaCommand = ClientCommandManager.literal("lua")
             .then(ClientCommandManager.literal("load")
                 .then(ClientCommandManager.argument("filename", StringArgumentType.string())
-                    .suggests(SCRIPT_SUGGESTION_PROVIDER) // Добавляем авто-дополнение
+                    .suggests(SCRIPT_SUGGESTION_PROVIDER)
                     .executes { context ->
                         val filename = StringArgumentType.getString(context, "filename")
                         executeLuaFile(filename, context.source)
@@ -38,7 +36,7 @@ object LuaCommand {
             )
             .then(ClientCommandManager.literal("unload")
                 .then(ClientCommandManager.argument("filename", StringArgumentType.string())
-                    .suggests(LOADED_SCRIPT_SUGGESTION_PROVIDER) // Добавляем авто-дополнение для загруженных скриптов
+                    .suggests(LOADED_SCRIPT_SUGGESTION_PROVIDER)
                     .executes { context ->
                         val filename = StringArgumentType.getString(context, "filename")
                         unloadLuaScript(filename, context.source)
@@ -62,41 +60,39 @@ object LuaCommand {
         dispatcher.register(luaCommand)
     }
 
-    // Функция для предложения файлов скриптов
     private fun suggestScriptFiles(builder: SuggestionsBuilder): CompletableFuture<Suggestions> {
         val scriptsDir = File("config/hypixelcry/scripts")
-        
+
         if (!scriptsDir.exists()) {
             return builder.buildFuture()
         }
-        
+
         val input = builder.remainingLowerCase
         val scriptFiles = scriptsDir.listFiles { file ->
             file.isFile && (file.name.endsWith(".lua") || file.name.endsWith(".luac"))
         } ?: emptyArray()
-        
+
         scriptFiles.forEach { file ->
             val fileNameWithoutExtension = file.nameWithoutExtension
             if (fileNameWithoutExtension.lowercase().startsWith(input)) {
                 builder.suggest(fileNameWithoutExtension)
             }
         }
-        
+
         return builder.buildFuture()
     }
-    
-    // Функция для предложения загруженных скриптов
+
     private fun suggestLoadedScripts(builder: SuggestionsBuilder): CompletableFuture<Suggestions> {
         val luaManager = HypixelCry.LUA_MANAGER
         val loadedScripts = luaManager.getLoadedScripts()
         val input = builder.remainingLowerCase
-        
+
         loadedScripts.forEach { scriptName ->
             if (scriptName.lowercase().startsWith(input)) {
                 builder.suggest(scriptName)
             }
         }
-        
+
         return builder.buildFuture()
     }
 
@@ -110,15 +106,7 @@ object LuaCommand {
             return
         }
 
-        // Check for both .lua and .luac extensions
-        val scriptFile = when {
-            filename.endsWith(".lua") || filename.endsWith(".luac") -> File(scriptsDir, filename)
-            else -> {
-                // Try both extensions, preferring .lua first
-                val luaFile = File(scriptsDir, "$filename.lua")
-                if (luaFile.exists()) luaFile else File(scriptsDir, "$filename.luac")
-            }
-        }
+        val scriptFile = resolveScriptFile(scriptsDir, filename)
 
         if (!scriptFile.exists()) {
             source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§cScript ${scriptFile.name} not found"))
@@ -126,20 +114,11 @@ object LuaCommand {
         }
 
         try {
-            val scriptFile = when {
-                filename.endsWith(".lua") || filename.endsWith(".luac") -> File(scriptsDir, filename)
-                else -> {
-                    // Try both extensions, preferring .lua first
-                    val luaFile = File(scriptsDir, "$filename.lua")
-                    if (luaFile.exists()) luaFile else File(scriptsDir, "$filename.luac")
-                }
-            }
             val loaded = luaManager.unloadScript(scriptFile.nameWithoutExtension)
             val result = luaManager.executeScript(scriptFile)
             if (!loaded) {
                 source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§aScript '${scriptFile.nameWithoutExtension}' executed successfully, result: '${result}'"))
-            }
-            else {
+            } else {
                 source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§aScript '${scriptFile.nameWithoutExtension}' restarted successfully, result: '${result}'"))
             }
         } catch (e: Exception) {
@@ -148,9 +127,18 @@ object LuaCommand {
         }
     }
 
+    private fun resolveScriptFile(scriptsDir: File, filename: String): File {
+        return when {
+            filename.endsWith(".lua") || filename.endsWith(".luac") -> File(scriptsDir, filename)
+            else -> {
+                val luaFile = File(scriptsDir, "$filename.lua")
+                if (luaFile.exists()) luaFile else File(scriptsDir, "$filename.luac")
+            }
+        }
+    }
+
     private fun unloadLuaScript(filename: String, source: FabricClientCommandSource) {
         val luaManager = HypixelCry.LUA_MANAGER
-        // Remove either .lua or .luac extension for script name
         val scriptName = when {
             filename.endsWith(".lua") -> filename.removeSuffix(".lua")
             filename.endsWith(".luac") -> filename.removeSuffix(".luac")
@@ -198,52 +186,53 @@ object LuaCommand {
         }
 
         source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§6Loaded scripts with dependency tree:"))
-        
-        // Собираем все зависимости для каждого скрипта
+
         loadedScripts.forEach { scriptName ->
             val dependencyTree = luaManager.getScriptDependencyTree(scriptName)
             if (dependencyTree.isNotEmpty()) {
-                printScriptTree(source, scriptName, dependencyTree, 0)
+                printDependencyTree(source, scriptName, dependencyTree)
             } else {
-                // Если нет зависимостей, просто показываем имя скрипта
-                source.sendFeedback(Component.literal("§a$scriptName"))
+                source.sendFeedback(Component.literal("§a$scriptName §7(no dependencies)"))
             }
         }
     }
-    
-    private fun printScriptTree(source: FabricClientCommandSource, scriptName: String, dependencyTree: Map<String, Set<String>>, depth: Int) {
-        val indent = "   ".repeat(depth)
-        val prefix = if (depth == 0) "├ " else "└ "
-        
-        source.sendFeedback(Component.literal("$indent$prefix§a$scriptName"))
-        
-        if (dependencyTree.isNotEmpty()) {
-            var index = 0
-            dependencyTree.forEach { moduleName, nestedDeps ->
-                val isLast = index == dependencyTree.size - 1
-                val nextIndent = if (depth == 0) "│ " else "  "
-                val nextPrefix = if (isLast) "└ " else "├ "
-                
-                source.sendFeedback(Component.literal("$indent$nextIndent$nextPrefix§7$moduleName"))
-                
-                // Check if this module has nested dependencies
-                if (nestedDeps.isNotEmpty()) {
-                    printNestedDependencies(source, nestedDeps, depth + 2, isLast)
+
+    /**
+     * Печатает дерево зависимостей в формате:
+     *
+     * §a<scriptName>
+     * ├── §7module_a
+     * │   ├── §8nested_dep_1
+     * │   └── §8nested_dep_2
+     * └── §7module_b
+     *     └── §8nested_dep_3
+     */
+    private fun printDependencyTree(
+        source: FabricClientCommandSource,
+        scriptName: String,
+        dependencyTree: Map<String, Set<String>>
+    ) {
+        // Корневой узел — имя скрипта
+        source.sendFeedback(Component.literal("§a$scriptName"))
+
+        val entries = dependencyTree.entries.toList()
+        for (i in entries.indices) {
+            val (moduleName, nestedDeps) = entries[i]
+            val isLastModule = (i == entries.lastIndex)
+
+            val branchChar = if (isLastModule) "└── " else "├── "
+            source.sendFeedback(Component.literal("§7$branchChar§7$moduleName"))
+
+            // Вложенные зависимости
+            if (nestedDeps.isNotEmpty()) {
+                val continuationPrefix = if (isLastModule) "    " else "│   "
+                val depList = nestedDeps.toList()
+                for (j in depList.indices) {
+                    val isLastDep = (j == depList.lastIndex)
+                    val depBranch = if (isLastDep) "└── " else "├── "
+                    source.sendFeedback(Component.literal("§7$continuationPrefix$depBranch§8${depList[j]}"))
                 }
-                index++
             }
-        }
-    }
-    
-    private fun printNestedDependencies(source: FabricClientCommandSource, dependencies: Set<String>, depth: Int, isLastParent: Boolean) {
-        var index = 0
-        dependencies.forEach { dep ->
-            val isLast = index == dependencies.size - 1
-            val indent = if (depth > 0) "   ".repeat(depth - 1) + (if (isLastParent) "  " else "│ ") else ""
-            val prefix = if (isLast) "└ " else "├ "
-            
-            source.sendFeedback(Component.literal("$indent$prefix§8$dep"))
-            index++
         }
     }
 }
