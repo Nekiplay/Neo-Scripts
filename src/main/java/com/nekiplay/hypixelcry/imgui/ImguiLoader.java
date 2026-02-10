@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.imgui;
 
 import com.nekiplay.hypixelcry.HypixelCry;
 import com.nekiplay.hypixelcry.features.lua.LuaManager;
+import com.nekiplay.hypixelcry.features.lua.LuaScript;
 import imgui.ImGui;
 import imgui.ImGuiIO;
 import imgui.flag.ImGuiBackendFlags;
@@ -32,7 +33,7 @@ public class ImguiLoader {
         if (windowHandle != -1) {
             imGuiGlfw.newFrame();
             ImGui.newFrame();
-            HypixelCry.LUA_MANAGER.omImGuiRenderEvent();
+            HypixelCry.LUA_MANAGER.getScripts().values().forEach(LuaScript::onImGuiRenderEvent);
             ImGui.render();
             imGuiGl3.renderDrawData(ImGui.getDrawData());
 

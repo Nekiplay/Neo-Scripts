@@ -10,6 +10,7 @@ import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent
 import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent.BlockUpdateCallback
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.modules.ClientModule
+import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.utils.render.WorldRenderExtractionCallback
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
@@ -31,33 +32,67 @@ import org.luaj.vm2.LuaValue
 object LuaEvents: ClientModule() {
     override fun init() {
         ClientTickEvents.END_CLIENT_TICK.register { _ ->
-            LUA_MANAGER.onClientTick()
+            LUA_MANAGER.scripts.values.forEach { script ->
+                try {
+                    script.onClientTick()
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
         }
 
         ClientTickEvents.START_CLIENT_TICK.register { _ ->
-            LUA_MANAGER.onClientTickPre()
+            LUA_MANAGER.scripts.values.forEach { script ->
+                try {
+                    script.onClientTickPre()
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
         }
 
         WorldRenderExtractionCallback.EVENT.register( { context: PrimitiveCollector? ->
-            LUA_MANAGER.onRenderTick(context)
+            LUA_MANAGER.scripts.values.forEach { script ->
+                try {
+                    script.onRenderTick(context)
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
         })
 
         KeyEvent.EVENT.register(KeyEvent.KeyCallback { keyEvent ->
-            val allow = LUA_MANAGER.onKeyEvent(keyEvent.key, keyEvent.action)
+            var allow = true
+            LUA_MANAGER.scripts.values.forEach { script ->
+                try {
+                    if (!script.onKeyEvent(keyEvent.key, keyEvent.action)) {
+                        allow = false
+                    }
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
             if (allow) {
                 InteractionResult.PASS
-            }
-            else {
+            } else {
                 InteractionResult.FAIL
             }
         })
 
         MouseButtonEvent.EVENT.register(MouseButtonEvent.KeyCallback { mouseButtonEvent ->
-            val allow =  LUA_MANAGER.onKeyEvent(mouseButtonEvent.button, mouseButtonEvent.action)
+            var allow = true
+            LUA_MANAGER.scripts.values.forEach { script ->
+                try {
+                    if (!script.onKeyEvent(mouseButtonEvent.button, mouseButtonEvent.action)) {
+                        allow = false
+                    }
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
             if (allow) {
                 InteractionResult.PASS
-            }
-            else {
+            } else {
                 InteractionResult.FAIL
             }
         })
@@ -65,34 +100,83 @@ object LuaEvents: ClientModule() {
         UseBlockCallback.EVENT.register(UseBlockCallback { player: Player, world: Level, hand: InteractionHand, hitResult: BlockHitResult ->
             var allow = true
             if (hitResult.type == HitResult.Type.BLOCK || hitResult.type == HitResult.Type.MISS) {
-                allow = LUA_MANAGER.onUseBlock(hitResult.blockPos, hand)
+                LUA_MANAGER.scripts.values.forEach { script ->
+                    try {
+                        if (!script.onUseBlock(hitResult.blockPos, hand)) {
+                            allow = false
+                        }
+                    } catch (e: Exception) {
+                        // Обработка ошибок
+                    }
+                }
             }
             if (allow) {
                 InteractionResult.PASS
-            }
-            else {
+            } else {
                 InteractionResult.FAIL
             }
         })
 
         ClientReceiveMessageEvents.ALLOW_GAME.register(ClientReceiveMessageEvents.AllowGame { text, overlay ->
-            LUA_MANAGER.onChatMessageEvent(text, overlay)
+            var allow = true
+            LUA_MANAGER.scripts.values.forEach { script ->
+                try {
+                    if (!script.onChatMessageEvent(text.getFormattedString(), overlay)) {
+                        allow = false
+                    }
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
+            allow
         })
 
         ClientSendMessageEvents.ALLOW_CHAT.register(ClientSendMessageEvents.AllowChat { text ->
-            LUA_MANAGER.onSendChatMessageEvent(text)
-        });
+            var allow = true
+            LUA_MANAGER.scripts.values.forEach { script ->
+                try {
+                    if (!script.onSendChatMessageEvent(text)) {
+                        allow = false
+                    }
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
+            allow
+        })
 
         ClientSendMessageEvents.ALLOW_COMMAND.register(ClientSendMessageEvents.AllowCommand { command ->
-            LUA_MANAGER.onSendChatCommandEvent(command)
-        });
+            var allow = true
+            LUA_MANAGER.scripts.values.forEach { script ->
+                try {
+                    if (!script.onSendChatCommandEvent(command)) {
+                        allow = false
+                    }
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
+            allow
+        })
 
         HudRenderCallback.EVENT.register(HudRenderCallback { context, _ ->
-            LUA_MANAGER.on2DRenderTick(context)
+            LUA_MANAGER.scripts.values.forEach { script ->
+                try {
+                    script.on2DRenderTick(context)
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
         })
 
         SkyblockEvents.LOCATION_CHANGE.register { location ->
-            LUA_MANAGER.onLocationChangeEvent(location)
+            LUA_MANAGER.scripts.values.forEach { script ->
+                try {
+                    script.onLocationChangeEvent(location)
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
         }
 
         BlockUpdateEvent.EVENT.register(BlockUpdateCallback { event ->
@@ -112,8 +196,17 @@ object LuaEvents: ClientModule() {
                 table.set("new", LuaBlockState(newState))
             }
 
+            var allow = true
+            LUA_MANAGER.scripts.values.forEach { script ->
+                try {
+                    if (!script.onBlockUpdateEvent(table)) {
+                        allow = false
+                    }
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
 
-            val allow = LUA_MANAGER.onBlockUpdateEvent(table)
             if (allow) {
                 InteractionResult.PASS
             } else {
@@ -123,14 +216,40 @@ object LuaEvents: ClientModule() {
 
         PacketEvent.RECEIVE.register { event ->
             val allow = when (val packet = event.packet) {
-                is ClientboundPlayerRotationPacket -> LUA_MANAGER.onServerSideRotationEvent(packet.xRot, packet.yRot)
+                is ClientboundPlayerRotationPacket -> {
+                    var rotationAllowed = true
+                    LUA_MANAGER.scripts.values.forEach { script ->
+                        try {
+                            if (!script.onServerSideRotationEvent(packet.xRot, packet.yRot)) {
+                                rotationAllowed = false
+                            }
+                        } catch (e: Exception) {
+                            // Обработка ошибок
+                        }
+                    }
+                    rotationAllowed
+                }
                 is ClientboundPlayerPositionPacket -> {
-                    val rotationAllowed = LUA_MANAGER.onServerSideRotationEvent(packet.change.xRot(), packet.change.yRot())
-                    val teleportAllowed = LUA_MANAGER.onServerSideTeleportEvent(
-                        packet.change.position.x,
-                        packet.change.position.y,
-                        packet.change.position.z
-                    )
+                    var rotationAllowed = true
+                    var teleportAllowed = true
+                    
+                    LUA_MANAGER.scripts.values.forEach { script ->
+                        try {
+                            if (!script.onServerSideRotationEvent(packet.change.xRot(), packet.change.yRot())) {
+                                rotationAllowed = false
+                            }
+                            if (!script.onServerSideTeleportEvent(
+                                packet.change.position.x,
+                                packet.change.position.y,
+                                packet.change.position.z
+                            )) {
+                                teleportAllowed = false
+                            }
+                        } catch (e: Exception) {
+                            // Обработка ошибок
+                        }
+                    }
+                    
                     rotationAllowed && teleportAllowed
                 }
                 else -> true
@@ -140,7 +259,16 @@ object LuaEvents: ClientModule() {
         }
 
         AddItemInventoryEvent.EVENT.register { event ->
-            val allow = LUA_MANAGER.onInventoryItemAdd(event.slot, event.item)
+            var allow = true
+            LUA_MANAGER.scripts.values.forEach { script ->
+                try {
+                    if (!script.onInventoryItemAdd(event.slot, event.item)) {
+                        allow = false
+                    }
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
 
             if (allow) InteractionResult.PASS else InteractionResult.FAIL
         }

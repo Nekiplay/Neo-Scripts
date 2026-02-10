@@ -197,9 +197,53 @@ object LuaCommand {
             return
         }
 
-        source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§6Loaded scripts:"))
+        source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§6Loaded scripts with dependency tree:"))
+        
+        // Собираем все зависимости для каждого скрипта
         loadedScripts.forEach { scriptName ->
-            source.sendFeedback(Component.literal("§7- §a$scriptName"))
+            val dependencyTree = luaManager.getScriptDependencyTree(scriptName)
+            if (dependencyTree.isNotEmpty()) {
+                printScriptTree(source, scriptName, dependencyTree, 0)
+            } else {
+                // Если нет зависимостей, просто показываем имя скрипта
+                source.sendFeedback(Component.literal("§a$scriptName"))
+            }
+        }
+    }
+    
+    private fun printScriptTree(source: FabricClientCommandSource, scriptName: String, dependencyTree: Map<String, Set<String>>, depth: Int) {
+        val indent = "  ".repeat(depth)
+        val prefix = if (depth == 0) "├ " else "└ "
+        
+        source.sendFeedback(Component.literal("$indent$prefix§a$scriptName"))
+        
+        if (dependencyTree.isNotEmpty()) {
+            var index = 0
+            dependencyTree.forEach { moduleName, nestedDeps ->
+                val isLast = index == dependencyTree.size - 1
+                val nextIndent = if (depth == 0) "│ " else "  "
+                val nextPrefix = if (isLast) "└ " else "├ "
+                
+                source.sendFeedback(Component.literal("$indent$nextIndent$nextPrefix§7$moduleName"))
+                
+                // Check if this module has nested dependencies
+                if (nestedDeps.isNotEmpty()) {
+                    printNestedDependencies(source, nestedDeps, depth + 2, isLast)
+                }
+                index++
+            }
+        }
+    }
+    
+    private fun printNestedDependencies(source: FabricClientCommandSource, dependencies: Set<String>, depth: Int, isLastParent: Boolean) {
+        var index = 0
+        dependencies.forEach { dep ->
+            val isLast = index == dependencies.size - 1
+            val indent = if (depth > 0) "  ".repeat(depth - 1) + (if (isLastParent) "  " else "│ ") else ""
+            val prefix = if (isLast) "└ " else "├ "
+            
+            source.sendFeedback(Component.literal("$indent$prefix§8$dep"))
+            index++
         }
     }
 }

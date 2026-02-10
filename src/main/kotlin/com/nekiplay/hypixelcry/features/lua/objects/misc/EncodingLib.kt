@@ -4,6 +4,7 @@ import org.luaj.vm2.*
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.VarArgFunction
+import org.luaj.vm2.lib.ZeroArgFunction
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.util.*
@@ -210,18 +211,18 @@ class EncodingLib : TwoArgFunction() {
             return try {
                 val hexString = arg.checkjstring()
                 if (hexString.length % 2 != 0) {
-                    return LuaValue.varargsOf(arrayOf(LuaValue.NIL, LuaValue.valueOf("Hex string must have even length")))
+                    return varargsOf(arrayOf(NIL, valueOf("Hex string must have even length"))) as LuaValue
                 }
-                
+
                 val bytes = hexString.chunked(2)
                     .map { it.toInt(16).toByte() }
                     .toByteArray()
-                
+
                 val result = String(bytes)
-                LuaValue.varargsOf(arrayOf(LuaValue.valueOf(result), LuaValue.NIL))
+                varargsOf(arrayOf(valueOf(result), NIL))
             } catch (e: Exception) {
-                LuaValue.varargsOf(arrayOf(LuaValue.NIL, LuaValue.valueOf(e.message ?: "Hex decode failed")))
-            }
+                varargsOf(arrayOf(NIL, valueOf(e.message ?: "Hex decode failed")))
+            } as LuaValue
         }
     }
 
@@ -244,10 +245,10 @@ class EncodingLib : TwoArgFunction() {
                 val base64String = arg.checkjstring()
                 val bytes = Base64.getDecoder().decode(base64String)
                 val result = String(bytes)
-                LuaValue.varargsOf(arrayOf(LuaValue.valueOf(result), LuaValue.NIL))
+                varargsOf(arrayOf(valueOf(result), NIL))
             } catch (e: Exception) {
-                LuaValue.varargsOf(arrayOf(LuaValue.NIL, LuaValue.valueOf(e.message ?: "Base64 decode failed")))
-            }
+                varargsOf(arrayOf(NIL, valueOf(e.message ?: "Base64 decode failed")))
+            } as LuaValue
         }
     }
 

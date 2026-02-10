@@ -8,5 +8,5 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(GameRenderer.class)
 public interface GameRendererAccessor {
     @Invoker("getFov")
-    float getFov(Camera camera, float tickProgress, boolean changingFov);
+    float invokeFov(Camera camera, float tickProgress, boolean changingFov);
 }

@@ -54,37 +54,17 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicReference
 
 class LuaManager() {
-    private val globals: Globals = JsePlatform.standardGlobals()
+    val globals: Globals = JsePlatform.standardGlobals()
     private val persistentGlobals = ConcurrentHashMap<String, LuaValue>()
 
-    private val scriptDependencies = ConcurrentHashMap<String, MutableSet<String>>()
-    private val moduleDependents = ConcurrentHashMap<String, MutableSet<String>>()
-
-    // Events
-    private val clientTickCallbacks = ArrayList<LuaValue>()
-    private val clientPreTickCallbacks = ArrayList<LuaValue>()
-    private val blockUpdateCallbacks = ArrayList<LuaValue>()
-    private val renderWorldCallbacks = ArrayList<LuaValue>()
-    private val render2DCallbacks = ArrayList<LuaValue>()
-    private val keyEventCallbacks = ArrayList<LuaValue>()
-    private val messageEventCallbacks = ArrayList<LuaValue>()
-    private val onSendMessageEventCallbacks = ArrayList<LuaValue>()
-    private val onSendCommandEventCallbacks = ArrayList<LuaValue>()
-    private val useBlockCallbacks = ArrayList<LuaValue>()
-    private val locationChangeCallbacks = ArrayList<LuaValue>()
-    private val imguiRenderCallbacks = ArrayList<LuaValue>()
-    private val inventoryItemAddCallbacks = ArrayList<LuaValue>()
-
-    // Script events
-    private val scriptUnloadCallbacks: MutableMap<String, MutableList<LuaValue>> = mutableMapOf()
-
-    // Packet events
-    private val serverSideRotationCallbacks = ArrayList<LuaValue>()
-    private val serverSideTeleportCallbacks = ArrayList<LuaValue>()
-
-    // Command events
+    // Command management
     private val commandCallbacks = ConcurrentHashMap<String, LuaValue>()
     private val scriptCommands = ConcurrentHashMap<String, MutableSet<String>>()
+    private val scriptCallbacks = ConcurrentHashMap<String, MutableList<LuaValue>>()
+    private val scriptPersistentGlobals = ConcurrentHashMap<String, ConcurrentHashMap<String, LuaValue>>()
+
+    // Script management
+    public val scripts = ConcurrentHashMap<String, LuaScript>()
 
     // Synchronize only when needed
     @Volatile private var callbacksLock = Any()
@@ -123,13 +103,8 @@ class LuaManager() {
     private val httpLib = HttpClientLib()
     private val catboostLib = CatboostLib()
     private val creatorLib = Creator()
-    private val tcpLibs = ConcurrentHashMap<String, TCPLib>()
     private val encodingLib = EncodingLib()
 
-    private val threadLibs = ConcurrentHashMap<String, ThreadLib>()
-
-    private val scriptCallbacks = ConcurrentHashMap<String, MutableList<LuaValue>>()
-    private val scriptPersistentGlobals = ConcurrentHashMap<String, ConcurrentHashMap<String, LuaValue>>()
 
     private val currentExecutingScript = AtomicReference<String?>()
 
@@ -146,9 +121,6 @@ class LuaManager() {
         globals.load(httpLib)
         globals.load(creatorLib)
         globals.load(catboostLib)
-        tcpLibs[scriptName]?.let { tcpLib ->
-            globals.load(tcpLib)
-        }
         globals.load(encodingLib)
     }
 
@@ -224,203 +196,11 @@ class LuaManager() {
             override fun call(callback: LuaValue): LuaValue {
                 val scriptName = currentExecutingScript.get()
                 if (scriptName == null || !callback.isfunction()) return LuaValue.FALSE
-                synchronized(scriptUnloadCallbacks) {
-                    val list = scriptUnloadCallbacks.getOrPut(scriptName) { mutableListOf() }
-                    list.add(callback)
-                }
-                return LuaValue.TRUE
+                val script = scripts[scriptName] ?: return LuaValue.FALSE
+                return LuaValue.valueOf(script.addScriptUnloadCallback(callback))
             }
         })
 
-        globals.set("registerInventoryItemAdd", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addInventoryItemAddCallback(callback))
-            }
-        })
-
-        globals.set("registerUseBlock", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addUseBlockCallback(callback))
-            }
-        })
-
-        globals.set("registerCommand", object : TwoArgFunction() {
-            override fun call(commandName: LuaValue, callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addCommandCallback(commandName.checkjstring(), callback))
-            }
-        })
-
-        globals.set("unregisterCommand", object : OneArgFunction() {
-            override fun call(commandName: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeCommandCallback(commandName.checkjstring()))
-            }
-        })
-
-        globals.set("registerClientTick", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addClientTickCallback(callback))
-            }
-        })
-        globals.set("registerClientTickPost", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addClientTickCallback(callback))
-            }
-        })
-        globals.set("registerClientTickPre", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addPreClientTickCallback(callback))
-            }
-        })
-        globals.set("registerBlockUpdate", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addBlockUpdateCallback(callback))
-            }
-        })
-        globals.set("registerWorldRenderer", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addWorldRendererCallback(callback))
-            }
-        })
-        globals.set("register2DRenderer", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(add2DRendererCallback(callback))
-            }
-        })
-        globals.set("registerKeyEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addKeyEventCallback(callback))
-            }
-        })
-
-        globals.set("registerMessageEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addMessageCallback(callback))
-            }
-        })
-
-        globals.set("registerSendMessageEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addSendMessageCallback(callback))
-            }
-        })
-
-        globals.set("registerSendCommandEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addSendCommandCallback(callback))
-            }
-        })
-
-        globals.set("registerLocationChangeEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addLocationChangeCallback(callback))
-            }
-        })
-        globals.set("registerImGuiRenderEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addImguiRenderCallback(callback))
-            }
-        })
-        // Packets
-        globals.set("registerServerSideRotationEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addServerSideRotationCallback(callback))
-            }
-        })
-        globals.set("registerServerSideTeleportEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(addServerSideTeleportCallback(callback))
-            }
-        })
-
-        globals.set("unregisterInventoryItemAdd", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeInventoryItemAddCallback(callback))
-            }
-        })
-
-        globals.set("unregisterUseBlock", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeUseBlockCallback(callback))
-            }
-        })
-        globals.set("unregisterClientTick", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeClientTickCallback(callback))
-            }
-        })
-
-        globals.set("unregisterClientTickPost", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeClientTickCallback(callback))
-            }
-        })
-
-        globals.set("unregisterClientTickPre", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeClientPreTickCallback(callback))
-            }
-        })
-        globals.set("unregisterBlockUpdate", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeBlockUpdateCallback(callback))
-            }
-        })
-        globals.set("unregisterWorldRenderer", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeWorldRendererCallback(callback))
-            }
-        })
-        globals.set("unregister2DRenderer", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(remove2DRendererCallback(callback))
-            }
-        })
-        globals.set("unregisterKeyEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeKeyEventCallback(callback))
-            }
-        })
-
-        globals.set("unregisterMessageEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeMessageEventCallback(callback))
-            }
-        })
-
-        globals.set("unregisterSendMessageEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeSendMessageEventCallback(callback))
-            }
-        })
-
-        globals.set("unregisterSendMessageEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeSendCommandEventCallback(callback))
-            }
-        })
-
-        globals.set("unregisterLocationChangeEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeLocationChangeEventCallback(callback))
-            }
-        })
-        globals.set("unregisterImGuiRenderEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeImGuiRenderEventCallback(callback))
-            }
-        })
-
-        // Packets
-        globals.set("unregisterServerSideRotationEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeServerSideRotationEventCallback(callback))
-            }
-        })
-        globals.set("unregisterServerSideTeleportEvent", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                return LuaValue.valueOf(removeServerSideTeleportEventCallback(callback))
-            }
-        })
 
         registerRequire()
     }
@@ -450,6 +230,51 @@ class LuaManager() {
             throw LuaError("error loading module '$moduleName': ${e.message}")
         }
     }
+    
+    private fun requireModuleWithTracking(moduleName: String, callingScript: String?, currentDepth: Int = 0): LuaValue {
+        val moduleFile = findModuleFile(moduleName) ?: throw LuaError("module '$moduleName' not found")
+
+        try {
+            // Track the current require depth to prevent infinite recursion
+            if (currentDepth > 100) {
+                throw LuaError("Maximum require depth exceeded for module '$moduleName'")
+            }
+
+            val chunk = loadChunk(moduleFile, moduleName)
+            
+            // Create a temporary require function that tracks nested dependencies
+            val originalRequire = globals.get("require")
+            val nestedDependencies = mutableSetOf<String>()
+            
+            globals.set("require", object : OneArgFunction() {
+                override fun call(modname: LuaValue): LuaValue {
+                    val nestedModuleName = modname.checkjstring()
+                    nestedDependencies.add(nestedModuleName)
+                    
+                    // Recursively track nested dependencies
+                    return requireModuleWithTracking(nestedModuleName, callingScript, currentDepth + 1)
+                }
+            })
+            
+            try {
+                val result = chunk.call()
+                
+                // Update the dependency tree with nested dependencies
+                callingScript?.let { scriptName ->
+                    updateNestedDependencies(scriptName, moduleName, nestedDependencies.toSet())
+                }
+                
+                return result
+            } finally {
+                // Restore original require
+                globals.set("require", originalRequire)
+            }
+        } catch (e: FileNotFoundException) {
+            throw LuaError("module '$moduleName' not found: ${e.message}")
+        } catch (e: Exception) {
+            throw LuaError("error loading module '$moduleName': ${e.message}")
+        }
+    }
 
     private fun loadChunk(file: File, name: String): LuaValue {
         return if (file.extension.equals("luac", ignoreCase = true)) {
@@ -462,8 +287,18 @@ class LuaManager() {
     }
 
     private fun updateDependencies(scriptName: String, moduleName: String) {
-        scriptDependencies.getOrPut(scriptName) { mutableSetOf() }.add(moduleName)
-        moduleDependents.getOrPut(moduleName) { mutableSetOf() }.add(scriptName)
+        val script = scripts[scriptName]
+        script?.addDependency(moduleName)
+    }
+    
+    private fun updateNestedDependencies(scriptName: String, moduleName: String, nestedDeps: Set<String>) {
+        val script = scripts[scriptName]
+        script?.updateNestedDependencies(moduleName, nestedDeps)
+    }
+    
+    fun getScriptDependencyTree(scriptName: String): Map<String, Set<String>> {
+        val script = scripts[scriptName]
+        return script?.getDependencyTree() ?: emptyMap()
     }
 
     // Optimized module file finding
@@ -486,202 +321,6 @@ class LuaManager() {
         return null
     }
 
-    // Methods for adding callbacks
-    fun addInventoryItemAddCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            val result = inventoryItemAddCallbacks.add(callback)
-            if (result) {
-                currentExecutingScript.get()?.let { scriptName ->
-                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
-                }
-            }
-            return result
-        }
-    }
-
-
-    fun addUseBlockCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            val result = useBlockCallbacks.add(callback)
-            if (result) {
-                currentExecutingScript.get()?.let { scriptName ->
-                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
-                }
-            }
-            return result
-        }
-    }
-
-    fun addClientTickCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            val result = clientTickCallbacks.add(callback)
-            if (result) {
-                currentExecutingScript.get()?.let { scriptName ->
-                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
-                }
-            }
-            return result
-        }
-    }
-
-    fun addPreClientTickCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            val result = clientPreTickCallbacks.add(callback)
-            if (result) {
-                currentExecutingScript.get()?.let { scriptName ->
-                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
-                }
-            }
-            return result
-        }
-    }
-
-    fun addBlockUpdateCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            val result = blockUpdateCallbacks.add(callback)
-            if (result) {
-                currentExecutingScript.get()?.let { scriptName ->
-                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
-                }
-            }
-            return result
-        }
-    }
-
-    fun addWorldRendererCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            val result = renderWorldCallbacks.add(callback)
-            if (result) {
-                currentExecutingScript.get()?.let { scriptName ->
-                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
-                }
-            }
-            return result
-        }
-    }
-
-    fun add2DRendererCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            val result = render2DCallbacks.add(callback)
-            if (result) {
-                currentExecutingScript.get()?.let { scriptName ->
-                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
-                }
-            }
-            return result
-        }
-    }
-
-    fun addKeyEventCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            val result = keyEventCallbacks.add(callback)
-            if (result) {
-                currentExecutingScript.get()?.let { scriptName ->
-                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
-                }
-            }
-            return result
-        }
-    }
-
-    fun addMessageCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            val result = messageEventCallbacks.add(callback)
-            if (result) {
-                currentExecutingScript.get()?.let { scriptName ->
-                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
-                }
-            }
-            return result
-        }
-    }
-
-    fun addSendMessageCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            val result = onSendMessageEventCallbacks.add(callback)
-            if (result) {
-                currentExecutingScript.get()?.let { scriptName ->
-                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
-                }
-            }
-            return result
-        }
-    }
-
-    fun addSendCommandCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            val result = onSendCommandEventCallbacks.add(callback)
-            if (result) {
-                currentExecutingScript.get()?.let { scriptName ->
-                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
-                }
-            }
-            return result
-        }
-    }
-
-    fun addLocationChangeCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            val result = locationChangeCallbacks.add(callback)
-            if (result) {
-                currentExecutingScript.get()?.let { scriptName ->
-                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
-                }
-            }
-            return result
-        }
-    }
-
-    fun addImguiRenderCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            val result = imguiRenderCallbacks.add(callback)
-            if (result) {
-                currentExecutingScript.get()?.let { scriptName ->
-                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
-                }
-            }
-            return result
-        }
-    }
-
-    fun addServerSideRotationCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            val result = serverSideRotationCallbacks.add(callback)
-            if (result) {
-                currentExecutingScript.get()?.let { scriptName ->
-                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
-                }
-            }
-            return result
-        }
-    }
-
-    fun addServerSideTeleportCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            val result = serverSideTeleportCallbacks.add(callback)
-            if (result) {
-                currentExecutingScript.get()?.let { scriptName ->
-                    scriptCallbacks.getOrPut(scriptName) { mutableListOf() }.add(callback)
-                }
-            }
-            return result
-        }
-    }
 
     fun addCommandCallback(commandName: String, callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
@@ -711,91 +350,6 @@ class LuaManager() {
         }
     }
 
-    fun removeInventoryItemAddCallback(callback: LuaValue): Boolean {
-        synchronized(callbacksLock) {
-            return inventoryItemAddCallbacks.remove(callback)
-        }
-    }
-
-    // Methods for removing callbacks
-    fun removeUseBlockCallback(callback: LuaValue): Boolean {
-        synchronized(callbacksLock) {
-            return useBlockCallbacks.remove(callback)
-        }
-    }
-    fun removeClientTickCallback(callback: LuaValue): Boolean {
-        synchronized(callbacksLock) {
-            return clientTickCallbacks.remove(callback)
-        }
-    }
-    fun removeClientPreTickCallback(callback: LuaValue): Boolean {
-        synchronized(callbacksLock) {
-            return clientPreTickCallbacks.remove(callback)
-        }
-    }
-    fun removeBlockUpdateCallback(callback: LuaValue): Boolean {
-        synchronized(callbacksLock) {
-            return blockUpdateCallbacks.remove(callback)
-        }
-    }
-    fun removeWorldRendererCallback(callback: LuaValue): Boolean {
-        synchronized(callbacksLock) {
-            return renderWorldCallbacks.remove(callback)
-        }
-    }
-    fun remove2DRendererCallback(callback: LuaValue): Boolean {
-        synchronized(callbacksLock) {
-            return render2DCallbacks.remove(callback)
-        }
-    }
-
-    fun removeKeyEventCallback(callback: LuaValue): Boolean {
-        synchronized(callbacksLock) {
-            return keyEventCallbacks.remove(callback)
-        }
-    }
-
-    fun removeMessageEventCallback(callback: LuaValue): Boolean {
-        synchronized(callbacksLock) {
-            return messageEventCallbacks.remove(callback)
-        }
-    }
-
-    fun removeSendMessageEventCallback(callback: LuaValue): Boolean {
-        synchronized(callbacksLock) {
-            return onSendMessageEventCallbacks.remove(callback)
-        }
-    }
-
-    fun removeSendCommandEventCallback(callback: LuaValue): Boolean {
-        synchronized(callbacksLock) {
-            return onSendCommandEventCallbacks.remove(callback)
-        }
-    }
-
-    fun removeLocationChangeEventCallback(callback: LuaValue): Boolean {
-        synchronized(callbacksLock) {
-            return locationChangeCallbacks.remove(callback)
-        }
-    }
-
-    fun removeImGuiRenderEventCallback(callback: LuaValue): Boolean {
-        synchronized(callbacksLock) {
-            return imguiRenderCallbacks.remove(callback)
-        }
-    }
-
-    fun removeServerSideRotationEventCallback(callback: LuaValue): Boolean {
-        synchronized(callbacksLock) {
-            return serverSideRotationCallbacks.remove(callback)
-        }
-    }
-
-    fun removeServerSideTeleportEventCallback(callback: LuaValue): Boolean {
-        synchronized(callbacksLock) {
-            return serverSideTeleportCallbacks.remove(callback)
-        }
-    }
 
     fun removeCommandCallback(commandName: String): Boolean {
         synchronized(callbacksLock) {
@@ -823,7 +377,7 @@ class LuaManager() {
         }
     }
 
-    private fun registerMinecraftCommand(commandName: String) {
+    fun registerMinecraftCommand(commandName: String) {
         try {
             // Регистрируем команду в Minecraft
             ClientCommandRegistrationCallback.EVENT.register { dispatcher: CommandDispatcher<FabricClientCommandSource>, registryAccess: CommandBuildContext ->
@@ -861,285 +415,6 @@ class LuaManager() {
         }
     }
 
-    // Methods to clear all callbacks
-    // Callback methods
-    // for multiple handlers
-    fun onInventoryItemAdd(slot: Int, stack: ItemStack): Boolean {
-        var allow = true
-        val callbacks = synchronized(callbacksLock) {
-            inventoryItemAddCallbacks.toTypedArray()
-        }
-
-        for (callback in callbacks) {
-            try {
-                val res = callback.call(LuaValue.valueOf(slot), LuaItemStack(stack))
-                if (res.isboolean() && !res.toboolean()) {
-                    allow = false
-                }
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in inventory add item callback", e)
-            }
-        }
-        return allow
-    }
-
-    fun onUseBlock(pos: BlockPos, hand: InteractionHand): Boolean {
-        var allow = true
-        val callbacks = synchronized(callbacksLock) {
-            useBlockCallbacks.toTypedArray()
-        }
-
-        for (callback in callbacks) {
-            try {
-                val t = LuaValue.tableOf()
-                t.set("x", LuaValue.valueOf(pos.x))
-                t.set("y", LuaValue.valueOf(pos.y))
-                t.set("z", LuaValue.valueOf(pos.z))
-                t.set("hand", LuaValue.valueOf(hand.name))
-                val res = callback.call(t)
-                if (res.isboolean() && !res.toboolean()) {
-                    allow = false
-                }
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in client tick callback", e)
-            }
-        }
-        return allow
-    }
-
-    fun onClientTick() {
-        val callbacks = synchronized(callbacksLock) {
-            clientTickCallbacks.toTypedArray()
-        }
-
-        for (callback in callbacks) {
-            try {
-                callback.call()
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in client tick callback", e)
-            }
-        }
-    }
-
-    fun onClientTickPre() {
-        val callbacks = synchronized(callbacksLock) {
-            clientPreTickCallbacks.toTypedArray()
-        }
-
-        for (callback in callbacks) {
-            try {
-                callback.call()
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in client tick callback", e)
-            }
-        }
-    }
-
-    fun onRenderTick(context: PrimitiveCollector?) {
-        val callbacks = synchronized(callbacksLock) {
-            renderWorldCallbacks.toTypedArray()
-        }
-
-        val renderContext = WorldRendererObject(context)
-        for (callback in callbacks) {
-            try {
-                callback.call(renderContext)
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in world render callback: ${e.message}")
-            }
-        }
-    }
-
-    fun on2DRenderTick(context: GuiGraphics?) {
-        val callbacks = synchronized(callbacksLock) {
-            render2DCallbacks.toTypedArray()
-        }
-
-        // Используем текущий исполняемый скрипт для создания контекста рендерера
-        val currentScript = currentExecutingScript.get()
-        val renderContext = TwoRenderObject(context, currentScript)
-
-        for (callback in callbacks) {
-            try {
-                callback.call(renderContext)
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in 2D render callback: ${e.message}")
-            }
-        }
-    }
-
-    fun onKeyEvent(key: Int, type: KeyAction): Boolean {
-        val callbacks = synchronized(callbacksLock) {
-            keyEventCallbacks.toTypedArray()
-        }
-        var allow = true
-        for (callback in callbacks) {
-            try {
-                val res = callback.call(LuaValue.valueOf(key), LuaValue.valueOf(type.name))
-                if (res.isboolean()) {
-                    if (!res.toboolean()) {
-                        allow = false
-                    }
-                }
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in key callback: ${e.message}")
-            }
-        }
-        return allow
-    }
-
-    fun onChatMessageEvent(text: Component, overlay: Boolean): Boolean {
-        val callbacks = synchronized(callbacksLock) {
-            messageEventCallbacks.toTypedArray()
-        }
-        var allow = true
-        for (callback in callbacks) {
-            try {
-                val res = callback.call(LuaValue.valueOf(text.getFormattedString()), LuaValue.valueOf(overlay))
-                if (res.isboolean()) {
-                    if (!res.toboolean()) {
-                        allow = false
-                    }
-                }
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in message callback: ${e.message}")
-            }
-        }
-        return allow
-    }
-
-    fun onSendChatMessageEvent(text: String): Boolean {
-        val callbacks = synchronized(callbacksLock) {
-            onSendMessageEventCallbacks.toTypedArray()
-        }
-        var allow = true
-        for (callback in callbacks) {
-            try {
-                val res = callback.call(LuaValue.valueOf(text))
-                if (res.isboolean()) {
-                    if (!res.toboolean()) {
-                        allow = false
-                    }
-                }
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in send message callback: ${e.message}")
-            }
-        }
-        return allow
-    }
-
-    fun onSendChatCommandEvent(text: String): Boolean {
-        val callbacks = synchronized(callbacksLock) {
-            onSendCommandEventCallbacks.toTypedArray()
-        }
-        var allow = true
-        for (callback in callbacks) {
-            try {
-                val res = callback.call(LuaValue.valueOf(text))
-                if (res.isboolean()) {
-                    if (!res.toboolean()) {
-                        allow = false
-                    }
-                }
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in send command callback: ${e.message}")
-            }
-        }
-        return allow
-    }
-
-    fun onBlockUpdateEvent(table: LuaValue): Boolean {
-        val callbacks = synchronized(callbacksLock) {
-            blockUpdateCallbacks.toTypedArray()
-        }
-        var allow = true
-        for (callback in callbacks) {
-            try {
-                val res = callback.call(table)
-                if (res.isboolean()) {
-                    if (!res.toboolean()) {
-                        allow = false
-                    }
-                }
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in block update callback: ${e.message}")
-            }
-        }
-        return allow
-    }
-
-    fun onLocationChangeEvent(location: Location): Boolean {
-        val callbacks = synchronized(callbacksLock) {
-            locationChangeCallbacks.toTypedArray()
-        }
-
-        for (callback in callbacks) {
-            try {
-                callback.call(LuaValue.valueOf(location.toString()))
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in location change callback: ${e.message}")
-            }
-        }
-        return true
-    }
-
-    fun omImGuiRenderEvent(): Boolean {
-        val callbacks = synchronized(callbacksLock) {
-            imguiRenderCallbacks.toTypedArray()
-        }
-
-        for (callback in callbacks) {
-            try {
-                callback.call()
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in imgui callback: ${e.message}")
-            }
-        }
-        return true
-    }
-
-    // Packets
-    fun onServerSideRotationEvent(yaw: Float, pitch: Float): Boolean {
-        var allow = true
-        val callbacks = synchronized(callbacksLock) {
-            serverSideRotationCallbacks.toTypedArray()
-        }
-
-        for (callback in callbacks) {
-            try {
-                val res = callback.call(LuaValue.valueOf(yaw.toDouble()), LuaValue.valueOf(pitch.toDouble()))
-                if (res.isboolean()) {
-                    if (!res.toboolean()) {
-                        allow = false
-                    }
-                }
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in server side rotation callback: ${e.message}")
-            }
-        }
-        return allow
-    }
-
-    fun onServerSideTeleportEvent(x: Double, y: Double, z: Double): Boolean {
-        var allow = true
-        val callbacks = synchronized(callbacksLock) {
-            serverSideTeleportCallbacks.toTypedArray()
-        }
-
-        for (callback in callbacks) {
-            try {
-                val res = callback.call(LuaValue.valueOf(x), LuaValue.valueOf(y), LuaValue.valueOf(z))
-                if (res.isboolean()) {
-                    if (!res.toboolean()) {
-                        allow = false
-                    }
-                }
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error(HypixelCry.LOG_PREFIX + "Error in server side rotation callback: ${e.message}")
-            }
-        }
-        return allow
-    }
 
     fun executeScript(file: File): Any {
         if (!file.exists() || !file.isFile) {
@@ -1150,24 +425,17 @@ class LuaManager() {
         val originalRequire = globals.get("require")
 
         try {
+            // Создаем новый экземпляр LuaScript для этого скрипта
+            val script = LuaScript(scriptName, this)
+            scripts[scriptName] = script
+
             // Устанавливаем текущий исполняемый скрипт
             currentExecutingScript.set(scriptName)
-
-            // Create script-specific TCP library
-            val tcpLib = TCPLib()
-            tcpLibs[scriptName] = tcpLib
 
             // Set up script-specific require
             globals.set("require", createScriptRequireFunction(scriptName))
 
             saveCurrentGlobals()
-
-            val threadLib = ThreadLib()
-
-            threadLibs[scriptName] = threadLib
-
-            globals.load(threadLib)
-            globals.load(tcpLib)
 
             val chunk = loadChunk(file, scriptName)
             val result = chunk.call()
@@ -1200,56 +468,17 @@ class LuaManager() {
                     val chunk = globals.load(code, moduleName)
                     chunk.call()
                 } else {
-                    requireModule(moduleName, scriptName)
+                    requireModuleWithTracking(moduleName, scriptName)
                 }
             }
         }
     }
 
     fun unloadScript(scriptName: String): Boolean {
-        val callbacksToRemove = scriptCallbacks[scriptName] ?: return false
+        val script = scripts[scriptName] ?: return false
 
-        val callbacks = scriptUnloadCallbacks[scriptName]
-        if (callbacks != null) {
-            callbacks.forEach { callback ->
-                try { callback.call() }
-                catch (e: Exception) { /* логировать ошибку */ }
-            }
-            scriptUnloadCallbacks.remove(scriptName)
-        }
-
-        synchronized(callbacksLock) {
-            inventoryItemAddCallbacks.removeAll(callbacksToRemove.toSet())
-            clientTickCallbacks.removeAll(callbacksToRemove.toSet())
-            renderWorldCallbacks.removeAll(callbacksToRemove.toSet())
-            render2DCallbacks.removeAll(callbacksToRemove.toSet())
-            keyEventCallbacks.removeAll(callbacksToRemove.toSet())
-            messageEventCallbacks.removeAll(callbacksToRemove.toSet())
-            clientPreTickCallbacks.removeAll(callbacksToRemove.toSet())
-            locationChangeCallbacks.removeAll(callbacksToRemove.toSet())
-            imguiRenderCallbacks.removeAll(callbacksToRemove.toSet())
-            blockUpdateCallbacks.removeAll(callbacksToRemove.toSet())
-            onSendCommandEventCallbacks.removeAll(callbacksToRemove.toSet())
-            onSendMessageEventCallbacks.removeAll(callbacksToRemove.toSet())
-            useBlockCallbacks.removeAll(callbacksToRemove.toSet())
-
-            // Packets
-            serverSideRotationCallbacks.removeAll(callbacksToRemove.toSet())
-            serverSideTeleportCallbacks.removeAll(callbacksToRemove.toSet())
-        }
-
-        // Clean up dependencies
-        scriptDependencies[scriptName]?.let { dependencies ->
-            for (moduleName in dependencies) {
-                moduleDependents[moduleName]?.remove(scriptName)
-
-                // Unload unused modules
-                if (moduleDependents[moduleName].isNullOrEmpty()) {
-                    moduleDependents.remove(moduleName)
-                }
-            }
-            scriptDependencies.remove(scriptName)
-        }
+        // Вызываем cleanup у скрипта, который сам обработает все свои callback'и
+        script.cleanup()
 
         scriptCommands[scriptName]?.let { commands ->
             for (commandName in commands) {
@@ -1259,19 +488,15 @@ class LuaManager() {
             scriptCommands.remove(scriptName)
         }
 
-        threadLibs[scriptName]?.stopAllThreads()
-        threadLibs.remove(scriptName)
-
-        // Clean up TCP connections for this script
-        tcpLibs[scriptName]?.cleanup(scriptName)
-        tcpLibs.remove(scriptName)
-
         // Clean up stored data
         scriptPersistentGlobals.remove(scriptName)
         scriptCallbacks.remove(scriptName)
 
         // Очищаем кэш текстур для этого скрипта
         TwoRenderObject.clearScriptCache(scriptName)
+
+        // Удаляем сам скрипт из списка
+        scripts.remove(scriptName)
 
         return true
     }
@@ -1287,7 +512,12 @@ class LuaManager() {
     }
 
     fun getLoadedScripts(): List<String> {
-        return scriptCallbacks.keys.toList()
+        return scripts.keys.toList()
+    }
+    
+    fun getScriptDependencies(scriptName: String): List<String> {
+        val script = scripts[scriptName]
+        return script?.getDependencies() ?: emptyList()
     }
 
     fun restoreGlobals() {

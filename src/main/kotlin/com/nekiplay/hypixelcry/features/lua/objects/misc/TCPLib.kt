@@ -4,6 +4,7 @@ import org.luaj.vm2.*
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.VarArgFunction
+import org.luaj.vm2.lib.ZeroArgFunction
 import java.io.*
 import java.net.*
 import java.util.concurrent.ConcurrentHashMap
@@ -12,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class TCPLib : TwoArgFunction() {
     private val connections = ConcurrentHashMap<Int, TCPConnection>()
     private val nextId = AtomicInteger(1)
-    private val scriptConnections = ConcurrentHashMap<String, MutableSet<Int>>()
+    private val scriptConnections = ArrayList<Int>()
 
     data class TCPConnection(
         val socket: Socket,
@@ -38,10 +39,6 @@ class TCPLib : TwoArgFunction() {
         library.set("getSocketCount", GetSocketCount())
         env.set("tcp", library)
 
-        // Store script identifier for connection tracking
-        val scriptId = modname.tojstring()
-        scriptConnections.putIfAbsent(scriptId, mutableSetOf())
-
         return library
     }
 
@@ -60,18 +57,18 @@ class TCPLib : TwoArgFunction() {
                 val writer = BufferedWriter(OutputStreamWriter(socket.getOutputStream(), Charsets.UTF_8))
                 
                 val connectionId = nextId.getAndIncrement()
-                val connection = TCPConnection(socket, reader, writer)
+                val connection = TCPConnection(
+                    socket,
+                    socket.getInputStream(),
+                    socket.getOutputStream(),
+                    reader,
+                    writer
+                )
                 connections[connectionId] = connection
-                
-                // Associate connection with current script
-                val scriptId = modname.tojstring()
-                val scriptConnectionsSet = scriptConnections.getOrDefault(scriptId, mutableSetOf())
-                scriptConnectionsSet.add(connectionId)
-                scriptConnections[scriptId] = scriptConnectionsSet
-                
-                LuaValue.varargsOf(arrayOf(LuaValue.valueOf(connectionId), LuaValue.NIL))
+
+                varargsOf(arrayOf(valueOf(connectionId), NIL))
             } catch (e: Exception) {
-                LuaValue.varargsOf(arrayOf(LuaValue.NIL, LuaValue.valueOf(e.message ?: "Connection failed")))
+                varargsOf(arrayOf(NIL, valueOf(e.message ?: "Connection failed")))
             }
         }
     }
@@ -79,16 +76,16 @@ class TCPLib : TwoArgFunction() {
     inner class Disconnect : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val connectionId = arg.checkint()
-            val connection = connections[connectionId] ?: return LuaValue.FALSE
+            val connection = connections[connectionId] ?: return FALSE
 
             return try {
                 connection.reader.close()
                 connection.writer.close()
                 connection.socket.close()
                 connections.remove(connectionId)
-                LuaValue.TRUE
+                TRUE
             } catch (e: Exception) {
-                LuaValue.FALSE
+                FALSE
             }
         }
     }
@@ -99,8 +96,8 @@ class TCPLib : TwoArgFunction() {
             val message = args.arg(2).checkjstring()
             val newline = if (args.narg() > 2) args.arg(3).toboolean() else true
 
-            val connection = connections[connectionId] ?: return LuaValue.varargsOf(
-                arrayOf(LuaValue.FALSE, LuaValue.valueOf("Connection not found"))
+            val connection = connections[connectionId] ?: return varargsOf(
+                arrayOf(FALSE, valueOf("Connection not found"))
             )
 
             return try {
@@ -111,9 +108,9 @@ class TCPLib : TwoArgFunction() {
                     connection.writer.write(message)
                 }
                 connection.writer.flush()
-                LuaValue.varargsOf(arrayOf(LuaValue.TRUE, LuaValue.NIL))
+                varargsOf(arrayOf(TRUE, NIL))
             } catch (e: Exception) {
-                LuaValue.varargsOf(arrayOf(LuaValue.FALSE, LuaValue.valueOf(e.message ?: "Send failed")))
+                varargsOf(arrayOf(FALSE, valueOf(e.message ?: "Send failed")))
             }
         }
     }
@@ -124,8 +121,8 @@ class TCPLib : TwoArgFunction() {
             val bytesTable = args.arg(2).checktable()
             val length = bytesTable.length()
 
-            val connection = connections[connectionId] ?: return LuaValue.varargsOf(
-                arrayOf(LuaValue.FALSE, LuaValue.valueOf("Connection not found"))
+            val connection = connections[connectionId] ?: return varargsOf(
+                arrayOf(FALSE, valueOf("Connection not found"))
             )
 
             return try {
@@ -133,16 +130,16 @@ class TCPLib : TwoArgFunction() {
                 for (i in 1..length) {
                     val byteValue = bytesTable.get(i).checkint()
                     if (byteValue < 0 || byteValue > 255) {
-                        return LuaValue.varargsOf(arrayOf(LuaValue.FALSE, LuaValue.valueOf("Invalid byte value: $byteValue")))
+                        return varargsOf(arrayOf(FALSE, valueOf("Invalid byte value: $byteValue")))
                     }
                     byteArray[i - 1] = byteValue.toByte()
                 }
                 
                 connection.outputStream.write(byteArray)
                 connection.outputStream.flush()
-                LuaValue.varargsOf(arrayOf(LuaValue.TRUE, LuaValue.NIL))
+                varargsOf(arrayOf(TRUE, NIL))
             } catch (e: Exception) {
-                LuaValue.varargsOf(arrayOf(LuaValue.FALSE, LuaValue.valueOf(e.message ?: "Send bytes failed")))
+                varargsOf(arrayOf(FALSE, valueOf(e.message ?: "Send bytes failed")))
             }
         }
     }
@@ -152,8 +149,8 @@ class TCPLib : TwoArgFunction() {
             val connectionId = args.arg(1).checkint()
             val timeout = if (args.narg() > 1) args.arg(2).checkint() else -1
 
-            val connection = connections[connectionId] ?: return LuaValue.varargsOf(
-                arrayOf(LuaValue.NIL, LuaValue.valueOf("Connection not found"))
+            val connection = connections[connectionId] ?: return varargsOf(
+                arrayOf(NIL, valueOf("Connection not found"))
             )
 
             return try {
@@ -163,14 +160,14 @@ class TCPLib : TwoArgFunction() {
 
                 val line = connection.reader.readLine()
                 if (line == null) {
-                    LuaValue.varargsOf(arrayOf(LuaValue.NIL, LuaValue.valueOf("Connection closed")))
+                    varargsOf(arrayOf(NIL, valueOf("Connection closed")))
                 } else {
-                    LuaValue.varargsOf(arrayOf(LuaValue.valueOf(line), LuaValue.NIL))
+                    varargsOf(arrayOf(valueOf(line), NIL))
                 }
             } catch (e: SocketTimeoutException) {
-                LuaValue.varargsOf(arrayOf(LuaValue.NIL, LuaValue.valueOf("Timeout")))
+                varargsOf(arrayOf(NIL, valueOf("Timeout")))
             } catch (e: Exception) {
-                LuaValue.varargsOf(arrayOf(LuaValue.NIL, LuaValue.valueOf(e.message ?: "Receive failed")))
+                varargsOf(arrayOf(NIL, valueOf(e.message ?: "Receive failed")))
             }
         }
     }
@@ -181,8 +178,8 @@ class TCPLib : TwoArgFunction() {
             val timeout = if (args.narg() > 1) args.arg(2).checkint() else -1
             val maxBytes = if (args.narg() > 2) args.arg(3).checkint() else 1024
 
-            val connection = connections[connectionId] ?: return LuaValue.varargsOf(
-                arrayOf(LuaValue.NIL, LuaValue.valueOf("Connection not found"))
+            val connection = connections[connectionId] ?: return varargsOf(
+                arrayOf(NIL, valueOf("Connection not found"))
             )
 
             return try {
@@ -194,18 +191,18 @@ class TCPLib : TwoArgFunction() {
                 val bytesRead = connection.inputStream.read(buffer)
                 
                 if (bytesRead == -1) {
-                    LuaValue.varargsOf(arrayOf(LuaValue.NIL, LuaValue.valueOf("Connection closed")))
+                    varargsOf(arrayOf(NIL, valueOf("Connection closed")))
                 } else {
-                    val bytesTable = LuaValue.tableOf()
+                    val bytesTable = tableOf()
                     for (i in 0 until bytesRead) {
-                        bytesTable.set(i + 1, LuaValue.valueOf(buffer[i].toInt() and 0xFF))
+                        bytesTable.set(i + 1, valueOf(buffer[i].toInt() and 0xFF))
                     }
-                    LuaValue.varargsOf(arrayOf(bytesTable, LuaValue.NIL))
+                    varargsOf(arrayOf(bytesTable, NIL))
                 }
             } catch (e: SocketTimeoutException) {
-                LuaValue.varargsOf(arrayOf(LuaValue.NIL, LuaValue.valueOf("Timeout")))
+                varargsOf(arrayOf(NIL, valueOf("Timeout")))
             } catch (e: Exception) {
-                LuaValue.varargsOf(arrayOf(LuaValue.NIL, LuaValue.valueOf(e.message ?: "Receive bytes failed")))
+                varargsOf(arrayOf(NIL, valueOf(e.message ?: "Receive bytes failed")))
             }
         }
     }
@@ -213,24 +210,24 @@ class TCPLib : TwoArgFunction() {
     inner class IsConnected : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val connectionId = arg.checkint()
-            val connection = connections[connectionId] ?: return LuaValue.FALSE
+            val connection = connections[connectionId] ?: return FALSE
 
-            return LuaValue.valueOf(connection.socket.isConnected && !connection.socket.isClosed)
+            return valueOf(connection.socket.isConnected && !connection.socket.isClosed)
         }
     }
 
     inner class GetLocalAddress : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val connectionId = arg.checkint()
-            val connection = connections[connectionId] ?: return LuaValue.NIL
+            val connection = connections[connectionId] ?: return NIL
 
             val localAddress = connection.socket.localAddress
             val localPort = connection.socket.localPort
 
-            val table = LuaValue.tableOf()
-            table.set("address", LuaValue.valueOf(localAddress.hostAddress))
-            table.set("port", LuaValue.valueOf(localPort))
-            table.set("hostname", LuaValue.valueOf(localAddress.hostName))
+            val table = tableOf()
+            table.set("address", valueOf(localAddress.hostAddress))
+            table.set("port", valueOf(localPort))
+            table.set("hostname", valueOf(localAddress.hostName))
 
             return table
         }
@@ -239,15 +236,15 @@ class TCPLib : TwoArgFunction() {
     inner class GetRemoteAddress : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val connectionId = arg.checkint()
-            val connection = connections[connectionId] ?: return LuaValue.NIL
+            val connection = connections[connectionId] ?: return NIL
 
             val remoteAddress = connection.socket.inetAddress
             val remotePort = connection.socket.port
 
-            val table = LuaValue.tableOf()
-            table.set("address", LuaValue.valueOf(remoteAddress.hostAddress))
-            table.set("port", LuaValue.valueOf(remotePort))
-            table.set("hostname", LuaValue.valueOf(remoteAddress.hostName))
+            val table = tableOf()
+            table.set("address", valueOf(remoteAddress.hostAddress))
+            table.set("port", valueOf(remotePort))
+            table.set("hostname", valueOf(remoteAddress.hostName))
 
             return table
         }
@@ -258,15 +255,15 @@ class TCPLib : TwoArgFunction() {
             val connectionId = args.arg(1).checkint()
             val blocking = args.arg(2).toboolean()
 
-            val connection = connections[connectionId] ?: return LuaValue.varargsOf(
-                arrayOf(LuaValue.FALSE, LuaValue.valueOf("Connection not found"))
+            val connection = connections[connectionId] ?: return varargsOf(
+                arrayOf(FALSE, valueOf("Connection not found"))
             )
 
             return try {
                 connection.socket.soTimeout = if (blocking) 0 else 1000
-                LuaValue.varargsOf(arrayOf(LuaValue.TRUE, LuaValue.NIL))
+                varargsOf(arrayOf(TRUE, NIL))
             } catch (e: Exception) {
-                LuaValue.varargsOf(arrayOf(LuaValue.FALSE, LuaValue.valueOf(e.message ?: "Set blocking failed")))
+                varargsOf(arrayOf(FALSE, valueOf(e.message ?: "Set blocking failed")))
             }
         }
     }
@@ -276,44 +273,25 @@ class TCPLib : TwoArgFunction() {
             val connectionId = args.arg(1).checkint()
             val timeout = args.arg(2).checkint()
 
-            val connection = connections[connectionId] ?: return LuaValue.varargsOf(
-                arrayOf(LuaValue.FALSE, LuaValue.valueOf("Connection not found"))
+            val connection = connections[connectionId] ?: return varargsOf(
+                arrayOf(FALSE, valueOf("Connection not found"))
             )
 
             return try {
                 connection.socket.soTimeout = timeout
-                LuaValue.varargsOf(arrayOf(LuaValue.TRUE, LuaValue.NIL))
+                varargsOf(arrayOf(TRUE, NIL))
             } catch (e: Exception) {
-                LuaValue.varargsOf(arrayOf(LuaValue.FALSE, LuaValue.valueOf(e.message ?: "Set timeout failed")))
+                varargsOf(arrayOf(FALSE, valueOf(e.message ?: "Set timeout failed")))
             }
         }
     }
 
     inner class GetSocketCount : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return LuaValue.valueOf(connections.size)
+            return valueOf(connections.size)
         }
     }
 
-    fun cleanup(scriptId: String) {
-        // Закрываем только соединения, связанные с этим скриптом
-        val connectionsToRemove = scriptConnections[scriptId] ?: return
-        
-        connectionsToRemove.forEach { connectionId ->
-            val connection = connections[connectionId] ?: return@forEach
-            try {
-                connection.reader.close()
-                connection.writer.close()
-                connection.socket.close()
-                connections.remove(connectionId)
-            } catch (e: Exception) {
-                // Игнорируем ошибки при закрытии
-            }
-        }
-        
-        scriptConnections.remove(scriptId)
-    }
-    
     fun cleanup() {
         // Закрываем все соединения при остановке
         connections.values.forEach { connection ->
