@@ -23,9 +23,6 @@ object LuaCommandsHandler {
     // Store the dispatcher for dynamic registration
     private var currentDispatcher: CommandDispatcher<FabricClientCommandSource>? = null
     private var currentRegistryAccess: CommandBuildContext? = null
-    
-    // Track registered commands for proper unregistration
-    private val registeredCommands = mutableMapOf<String, Any>()
 
     fun register(dispatcher: CommandDispatcher<FabricClientCommandSource>, registryAccess: CommandBuildContext) {
         // Store references for dynamic registration
@@ -114,34 +111,7 @@ object LuaCommandsHandler {
         
         dispatcher.register(command)
     }
-
-    // Internal method to unregister a single command
-    private fun unregisterCommandInternal(dispatcher: CommandDispatcher<FabricClientCommandSource>, commandName: String) {
-        try {
-            // Use reflection to access the command map and remove the command
-            val rootCommandField = dispatcher.javaClass.getDeclaredField("root")
-            rootCommandField.isAccessible = true
-            val rootCommand = rootCommandField.get(dispatcher)
-            
-            val childrenField = rootCommand.javaClass.getDeclaredField("children")
-            childrenField.isAccessible = true
-            val children = childrenField.get(rootCommand) as MutableMap<String, Any>
-            
-            // Remove the command from the children map
-            children.remove(commandName)
-            
-            // Also remove from our tracking map
-            registeredCommands.remove(commandName)
-            
-            HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}Successfully unregistered Lua command: /$commandName")
-        } catch (e: Exception) {
-            HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Failed to unregister command /$commandName using reflection", e)
-            
-            // Fallback: mark as unregistered but don't actually remove from dispatcher
-            registeredCommands.remove(commandName)
-        }
-    }
-
+    
     // Get all pending commands from all loaded scripts
     private fun getAllPendingCommands(): Map<String, LuaValue> {
         val pendingCommands = mutableMapOf<String, LuaValue>()
