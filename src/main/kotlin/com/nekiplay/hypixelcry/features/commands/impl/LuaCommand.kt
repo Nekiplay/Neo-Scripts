@@ -73,9 +73,9 @@ object LuaCommand {
         } ?: emptyArray()
 
         scriptFiles.forEach { file ->
-            val fileNameWithoutExtension = file.nameWithoutExtension
-            if (fileNameWithoutExtension.lowercase().startsWith(input)) {
-                builder.suggest(fileNameWithoutExtension)
+            val name = file.nameWithoutExtension
+            if (name.lowercase().startsWith(input)) {
+                builder.suggest(name)
             }
         }
 
@@ -172,7 +172,7 @@ object LuaCommand {
         source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§6Available scripts:"))
         scriptFiles.forEach { file ->
             val fileType = if (file.name.endsWith(".luac")) "§9[compiled]§7" else "§a[source]§7"
-            source.sendFeedback(Component.literal("§7- §e${file.nameWithoutExtension} §7(${file.length()} bytes) $fileType"))
+            source.sendFeedback(Component.literal("  §7- §e${file.nameWithoutExtension} §7(${file.length()} bytes) $fileType"))
         }
     }
 
@@ -185,55 +185,71 @@ object LuaCommand {
             return
         }
 
-        source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§6Loaded scripts with dependency tree:"))
+        source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§6Loaded scripts:"))
+        source.sendFeedback(Component.literal(""))
 
-        loadedScripts.forEach { scriptName ->
+        loadedScripts.forEachIndexed { scriptIndex, scriptName ->
             val dependencyTree = luaManager.getScriptDependencyTree(scriptName)
-            printDependencyTree(source, scriptName, dependencyTree)
+            val isLastScript = (scriptIndex == loadedScripts.lastIndex)
+            printDependencyTree(source, scriptName, dependencyTree, isLastScript)
+
+            // Пустая строка между скриптами (кроме последнего)
+            if (!isLastScript) {
+                source.sendFeedback(Component.literal(""))
+            }
         }
     }
 
     /**
      * Результат в чате:
      *
-     * §ascriptName
-     * ├ §7module_a
-     * │     ├ §8nested_1
-     * │     └ §8nested_2
-     * └ §7module_b
-     *       └ §8nested_3
+     * §6▶ §a§lcomposter
+     * §8  ┣━ §eminecraft §7(module)
+     * §8  ┃    ┣━ §7player
+     * §8  ┃    ┗━ §7world
+     * §8  ┗━ §eutils §7(module)
+     * §8       ┗━ §7math_helper
+     *
+     * §6▶ §a§lautoload
+     * §8  ┗━ §econfig §7(module)
      */
     private fun printDependencyTree(
         source: FabricClientCommandSource,
         scriptName: String,
-        dependencyTree: Map<String, Set<String>>
+        dependencyTree: Map<String, Set<String>>,
+        isLastScript: Boolean
     ) {
-        // Корень дерева
-        source.sendFeedback(Component.literal("§a$scriptName"))
+        // Заголовок скрипта
+        val depCount = dependencyTree.size
+        val depInfo = if (depCount > 0) " §8(§7$depCount deps§8)" else ""
+        source.sendFeedback(Component.literal("  §6▶ §a§l$scriptName$depInfo"))
 
-        if (dependencyTree.isEmpty()) return
+        if (dependencyTree.isEmpty()) {
+            source.sendFeedback(Component.literal("  §8  §7No dependencies"))
+            return
+        }
 
         val entries = dependencyTree.entries.toList()
-        val indent = "      " // 6 пробелов для отступа
 
         for (i in entries.indices) {
             val (moduleName, nestedDeps) = entries[i]
             val isLastModule = (i == entries.lastIndex)
 
-            // Ветка первого уровня
-            val branch = if (isLastModule) "└ " else "├ "
-            source.sendFeedback(Component.literal("§7$branch§7$moduleName"))
+            // Символ ветки для модуля
+            val moduleBranch = if (isLastModule) "┗━" else "┣━"
+            source.sendFeedback(Component.literal("  §8  $moduleBranch §e$moduleName"))
 
             // Вложенные зависимости
             if (nestedDeps.isNotEmpty()) {
-                val continuation = if (isLastModule) " " else "│"
                 val depList = nestedDeps.toList()
+                // Линия продолжения от родителя
+                val parentLine = if (isLastModule) "  " else "┃ "
 
                 for (j in depList.indices) {
                     val isLastDep = (j == depList.lastIndex)
-                    val depBranch = if (isLastDep) "└ " else "├ "
+                    val depBranch = if (isLastDep) "┗━" else "┣━"
                     source.sendFeedback(
-                        Component.literal("§7$continuation$indent$depBranch§8${depList[j]}")
+                        Component.literal("  §8  $parentLine   $depBranch §7${depList[j]}")
                     )
                 }
             }
