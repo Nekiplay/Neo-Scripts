@@ -12,6 +12,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.commands.CommandBuildContext
 import net.minecraft.network.chat.Component
+import org.luaj.vm2.LuaValue
 import java.util.concurrent.CompletableFuture
 
 object LuaCommandsHandler {
@@ -31,7 +32,9 @@ object LuaCommandsHandler {
         // Register all pending commands from Lua scripts
         val commandsToRegister = getAllPendingCommands()
         
-        commandsToRegister.forEach { (commandName, callback) ->
+        commandsToRegister.forEach { entry ->
+            val commandName = entry.key
+            val callback = entry.value
             try {
                 registerCommandInternal(dispatcher, commandName, callback)
                 // Mark command as registered in the script
@@ -58,7 +61,9 @@ object LuaCommandsHandler {
         
         val commandsToRegister = getAllPendingCommands()
         
-        commandsToRegister.forEach { (commandName, callback) ->
+        commandsToRegister.forEach { entry ->
+            val commandName = entry.key
+            val callback = entry.value
             try {
                 registerCommandInternal(dispatcher, commandName, callback)
                 // Mark command as registered in the script
@@ -138,14 +143,4 @@ object LuaCommandsHandler {
         return builder.buildFuture()
     }
 
-    private fun executeLuaCommand(commandName: String, args: Array<String>, source: FabricClientCommandSource, callback: org.luaj.vm2.LuaValue) {
-        try {
-            // Преобразуем аргументы в Lua таблицу
-            val argsTable = org.luaj.vm2.LuaValue.listOf(args.map { org.luaj.vm2.LuaValue.valueOf(it) }.toTypedArray())
-            callback.call(org.luaj.vm2.LuaValue.valueOf(commandName), argsTable, org.luaj.vm2.LuaValue.valueOf(source.player?.name?.string ?: ""))
-        } catch (e: Exception) {
-            HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error executing Lua command: /$commandName", e)
-            source.sendError(Component.literal("Error executing command: ${e.message}"))
-        }
-    }
 }
