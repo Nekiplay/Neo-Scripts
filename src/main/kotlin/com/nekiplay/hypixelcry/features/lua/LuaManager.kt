@@ -23,6 +23,10 @@ import java.util.concurrent.CopyOnWriteArrayList
 class LuaManager() {
     // Script management
     val scripts = ConcurrentHashMap<String, LuaScript>()
+    
+    // Command management
+    private val pendingCommands = ConcurrentHashMap<String, LuaValue>()
+    private val registeredCommands = ConcurrentHashMap<String, LuaValue>()
 
     // Cache module file extensions
     private val luaExtensions = arrayOf(".lua", ".luac")
@@ -140,5 +144,50 @@ class LuaManager() {
 
     fun getLoadedScripts(): List<String> {
         return scripts.keys.toList()
+    }
+
+    // Command management methods
+    fun addPendingCommand(commandName: String, callback: LuaValue): Boolean {
+        if (commandName.isBlank() || !callback.isfunction()) {
+            return false
+        }
+        
+        // Check if command is already registered
+        if (registeredCommands.containsKey(commandName)) {
+            return false
+        }
+        
+        pendingCommands[commandName] = callback
+        return true
+    }
+
+    fun removePendingCommand(commandName: String): Boolean {
+        return pendingCommands.remove(commandName) != null
+    }
+
+    fun registerPendingCommands(): Map<String, LuaValue> {
+        val commandsToRegister = HashMap<String, LuaValue>()
+        
+        // Move pending commands to registered
+        pendingCommands.forEach { (name, callback) ->
+            if (!registeredCommands.containsKey(name)) {
+                commandsToRegister[name] = callback
+                registeredCommands[name] = callback
+            }
+        }
+        
+        // Clear pending commands
+        pendingCommands.clear()
+        
+        return commandsToRegister
+    }
+
+    fun unregisterCommand(commandName: String): Boolean {
+        val removed = registeredCommands.remove(commandName)
+        return removed != null
+    }
+
+    fun getRegisteredCommands(): Map<String, LuaValue> {
+        return HashMap(registeredCommands)
     }
 }

@@ -535,27 +535,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     fun registerMinecraftCommand(commandName: String) {
-        try {
-            // Регистрируем команду в Minecraft
-            ClientCommandRegistrationCallback.EVENT.register { dispatcher: CommandDispatcher<FabricClientCommandSource>, registryAccess: CommandBuildContext ->
-                dispatcher.register(
-                    ClientCommandManager.literal(commandName)
-                        .executes { context: CommandContext<FabricClientCommandSource> ->
-                            executeLuaCommand(commandName, emptyArray(), context.source)
-                            1
-                        }
-                        .then(ClientCommandManager.argument("args", StringArgumentType.greedyString())
-                            .executes { context: CommandContext<FabricClientCommandSource> ->
-                                val args = StringArgumentType.getString(context, "args").split(" ").toTypedArray()
-                                executeLuaCommand(commandName, args, context.source)
-                                1
-                            }
-                        )
-                )
-            }
-        } catch (e: Exception) {
-            HypixelCry.LOGGER.error("Failed to register Minecraft command: /$commandName", e)
-        }
+        // Команда будет зарегистрирована централизованно через LuaManager
+        // Это заглушка для совместимости, реальная регистрация происходит в HypixelCry.onInitializeClient()
     }
 
     private fun executeLuaCommand(commandName: String, args: Array<String>, source: FabricClientCommandSource?) {
@@ -584,10 +565,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
             commandCallbacks[commandName] = callback
 
-            // Регистрируем команду в Minecraft
-            registerMinecraftCommand(commandName)
-
-            return true
+            // Регистрируем команду в централизованной системе
+            return luaManager.addPendingCommand(commandName, callback)
         }
     }
 
@@ -684,7 +663,12 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
     fun removeCommandCallback(commandName: String): Boolean {
         synchronized(callbacksLock) {
-            return commandCallbacks.remove(commandName) != null
+            val removed = commandCallbacks.remove(commandName) != null
+            if (removed) {
+                // Also remove from centralized system
+                luaManager.unregisterCommand(commandName)
+            }
+            return removed
         }
     }
 

@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.nekiplay.hypixelcry.annotations.Init;
 import com.nekiplay.hypixelcry.features.commands.impl.LuaCommand;
+import com.nekiplay.hypixelcry.features.commands.impl.LuaCommandsHandler;
 import com.nekiplay.hypixelcry.features.modules.ModuleManager;
 import com.nekiplay.hypixelcry.utils.Utils;
 import com.nekiplay.hypixelcry.utils.scheduler.Scheduler;
@@ -75,6 +76,7 @@ public class HypixelCry implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(this::tick);
         ClientCommandRegistrationCallback.EVENT.register(LuaCommand.INSTANCE::register);
+        ClientCommandRegistrationCallback.EVENT.register(LuaCommandsHandler.INSTANCE::register);
 
         init();
 

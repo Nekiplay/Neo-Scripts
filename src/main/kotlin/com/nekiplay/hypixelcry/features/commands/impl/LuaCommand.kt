@@ -6,6 +6,7 @@ import com.mojang.brigadier.suggestion.SuggestionProvider
 import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import com.nekiplay.hypixelcry.HypixelCry
+import com.nekiplay.hypixelcry.features.commands.impl.LuaCommandsHandler
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.commands.CommandBuildContext
@@ -119,6 +120,9 @@ object LuaCommand {
             
             // Затем загружаем скрипт
             val result = luaManager.executeScript(scriptFile)
+            
+            // Регистрируем новые команды, если они были добавлены
+            LuaCommandsHandler.registerPendingCommandsDynamically()
             
             if (wasLoaded) {
                 source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§aScript '${scriptFile.nameWithoutExtension}' restarted successfully, result: '${result}'"))
