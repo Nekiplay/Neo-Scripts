@@ -61,7 +61,7 @@ class HttpClientLib : TwoArgFunction() {
         return headers
     }
 
-    private fun executeGetRequest(url: String, timeoutSeconds: Int, headers: MutableMap<String?, String?>): String {
+    private fun executeGetRequest(url: String, timeoutSeconds: Int, headers: MutableMap<String?, String?>): ByteArray {
         try {
             val requestBuilder = HttpRequest.newBuilder()
                 .uri(URI(url))
@@ -70,16 +70,16 @@ class HttpClientLib : TwoArgFunction() {
 
             headers.forEach { (name: String?, value: String?) -> requestBuilder.header(name, value) }
 
-            val response = HTTP_CLIENT.send<String?>(
+            val response = HTTP_CLIENT.send<ByteArray?>(
                 requestBuilder.build(),
-                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
+                HttpResponse.BodyHandlers.ofByteArray()
             )
 
             if (response.statusCode() >= 400) {
                 throw RuntimeException("HTTP error " + response.statusCode())
             }
 
-            return response.body()
+            return response.body() ?: ByteArray(0)
         } catch (e: URISyntaxException) {
             throw RuntimeException("Invalid URL: " + url, e)
         } catch (e: InterruptedException) {
@@ -95,7 +95,7 @@ class HttpClientLib : TwoArgFunction() {
         timeoutSeconds: Int,
         headers: MutableMap<String?, String?>,
         body: String
-    ): String {
+    ): ByteArray {
         try {
             val requestBuilder = HttpRequest.newBuilder()
                 .uri(URI(url))
@@ -105,16 +105,16 @@ class HttpClientLib : TwoArgFunction() {
 
             headers.forEach { (name: String?, value: String?) -> requestBuilder.header(name, value) }
 
-            val response = HTTP_CLIENT.send<String?>(
+            val response = HTTP_CLIENT.send<ByteArray?>(
                 requestBuilder.build(),
-                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
+                HttpResponse.BodyHandlers.ofByteArray()
             )
 
             if (response.statusCode() >= 400) {
                 throw RuntimeException("HTTP error " + response.statusCode())
             }
 
-            return response.body()
+            return response.body() ?: ByteArray(0)
         } catch (e: URISyntaxException) {
             throw RuntimeException("Invalid URL: " + url, e)
         } catch (e: InterruptedException) {
@@ -131,7 +131,14 @@ class HttpClientLib : TwoArgFunction() {
                 try {
                     val timeoutSec = if (timeout.isnil()) 5 else timeout.toint()
                     val response = executeGetRequest(url.checkjstring(), timeoutSec, mutableMapOf<String?, String?>())
-                    return valueOf(response)
+                    
+                    // Convert bytes to Lua table
+                    val bytesTable = LuaValue.tableOf()
+                    for (i in response.indices) {
+                        bytesTable.set(i + 1, LuaValue.valueOf(response[i].toInt() and 0xFF))
+                    }
+                    
+                    return bytesTable
                 } catch (e: Exception) {
                     throw LuaError("HTTP GET error: " + e.message)
                 }
@@ -144,7 +151,14 @@ class HttpClientLib : TwoArgFunction() {
                 try {
                     val headers = parseHeaders(headersTable)
                     val response = executeGetRequest(url.checkjstring(), 5, headers)
-                    return valueOf(response)
+                    
+                    // Convert bytes to Lua table
+                    val bytesTable = LuaValue.tableOf()
+                    for (i in response.indices) {
+                        bytesTable.set(i + 1, LuaValue.valueOf(response[i].toInt() and 0xFF))
+                    }
+                    
+                    return bytesTable
                 } catch (e: Exception) {
                     throw LuaError("HTTP GET with headers error: " + e.message)
                 }
@@ -162,7 +176,14 @@ class HttpClientLib : TwoArgFunction() {
                         headers,
                         body.checkjstring()
                     )
-                    return valueOf(response)
+                    
+                    // Convert bytes to Lua table
+                    val bytesTable = LuaValue.tableOf()
+                    for (i in response.indices) {
+                        bytesTable.set(i + 1, LuaValue.valueOf(response[i].toInt() and 0xFF))
+                    }
+                    
+                    return bytesTable
                 } catch (e: Exception) {
                     throw LuaError("HTTP POST error: " + e.message)
                 }
@@ -180,7 +201,14 @@ class HttpClientLib : TwoArgFunction() {
                         mutableMapOf<String?, String?>(),
                         body.checkjstring()
                     )
-                    return valueOf(response)
+                    
+                    // Convert bytes to Lua table
+                    val bytesTable = LuaValue.tableOf()
+                    for (i in response.indices) {
+                        bytesTable.set(i + 1, LuaValue.valueOf(response[i].toInt() and 0xFF))
+                    }
+                    
+                    return bytesTable
                 } catch (e: Exception) {
                     throw LuaError("HTTP POST error: " + e.message)
                 }
@@ -198,7 +226,14 @@ class HttpClientLib : TwoArgFunction() {
                 asyncExecutor.submit(Runnable {
                     try {
                         val response = executeGetRequest(url.checkjstring(), 5, mutableMapOf<String?, String?>())
-                        callback.call(valueOf(response), NIL)
+                        
+                        // Convert bytes to Lua table
+                        val bytesTable = LuaValue.tableOf()
+                        for (i in response.indices) {
+                            bytesTable.set(i + 1, LuaValue.valueOf(response[i].toInt() and 0xFF))
+                        }
+                        
+                        callback.call(bytesTable, NIL)
                     } catch (e: Exception) {
                         callback.call(NIL, valueOf("Error: " + e.message))
                     }
@@ -219,7 +254,14 @@ class HttpClientLib : TwoArgFunction() {
                     try {
                         val headers = parseHeaders(headersTable)
                         val response = executeGetRequest(url.checkjstring(), 5, headers)
-                        callback.call(valueOf(response), NIL)
+                        
+                        // Convert bytes to Lua table
+                        val bytesTable = LuaValue.tableOf()
+                        for (i in response.indices) {
+                            bytesTable.set(i + 1, LuaValue.valueOf(response[i].toInt() and 0xFF))
+                        }
+                        
+                        callback.call(bytesTable, NIL)
                     } catch (e: Exception) {
                         callback.call(NIL, valueOf("Error: " + e.message))
                     }
@@ -245,7 +287,14 @@ class HttpClientLib : TwoArgFunction() {
                             headers,
                             ""
                         )
-                        callback.call(valueOf(response), NIL)
+                        
+                        // Convert bytes to Lua table
+                        val bytesTable = LuaValue.tableOf()
+                        for (i in response.indices) {
+                            bytesTable.set(i + 1, LuaValue.valueOf(response[i].toInt() and 0xFF))
+                        }
+                        
+                        callback.call(bytesTable, NIL)
                     } catch (e: Exception) {
                         callback.call(NIL, valueOf("Error: " + e.message))
                     }
@@ -277,7 +326,14 @@ class HttpClientLib : TwoArgFunction() {
                             headers,
                             body.checkjstring()
                         )
-                        callback.call(valueOf(response), NIL)
+                        
+                        // Convert bytes to Lua table
+                        val bytesTable = LuaValue.tableOf()
+                        for (i in response.indices) {
+                            bytesTable.set(i + 1, LuaValue.valueOf(response[i].toInt() and 0xFF))
+                        }
+                        
+                        callback.call(bytesTable, NIL)
                     } catch (e: Exception) {
                         callback.call(NIL, valueOf("Error: " + e.message))
                     }
@@ -325,18 +381,26 @@ class HttpClientLib : TwoArgFunction() {
                 val timeoutSec = if (timeout.isnil()) 5 else timeout.toint()
                 val urlString = url.checkjstring()
 
-                HTTP_CLIENT.sendAsync<String?>(
+                HTTP_CLIENT.sendAsync<ByteArray?>(
                     HttpRequest.newBuilder()
                         .uri(URI.create(urlString))
                         .timeout(Duration.ofSeconds(timeoutSec.toLong()))
                         .GET()
                         .build(),
-                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
-                ).thenAccept(Consumer { response: HttpResponse<String?>? ->
+                    HttpResponse.BodyHandlers.ofByteArray()
+                ).thenAccept(Consumer { response: HttpResponse<ByteArray?>? ->
                     if (response!!.statusCode() >= 400) {
                         result.onError(valueOf("HTTP error " + response.statusCode()))
                     } else {
-                        result.onSuccess(valueOf(response.body()))
+                        val responseBody = response.body() ?: ByteArray(0)
+                        
+                        // Convert bytes to Lua table
+                        val bytesTable = LuaValue.tableOf()
+                        for (i in responseBody.indices) {
+                            bytesTable.set(i + 1, LuaValue.valueOf(responseBody[i].toInt() and 0xFF))
+                        }
+                        
+                        result.onSuccess(bytesTable)
                     }
                 }).exceptionally(Function { ex: Throwable? ->
                     result.onError(valueOf("Request failed: " + ex!!.message))
@@ -361,14 +425,22 @@ class HttpClientLib : TwoArgFunction() {
 
                 headers.forEach { (name: String?, value: String?) -> requestBuilder.header(name, value) }
 
-                HTTP_CLIENT.sendAsync<String?>(
+                HTTP_CLIENT.sendAsync<ByteArray?>(
                     requestBuilder.build(),
-                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
-                ).thenAccept(Consumer { response: HttpResponse<String?>? ->
+                    HttpResponse.BodyHandlers.ofByteArray()
+                ).thenAccept(Consumer { response: HttpResponse<ByteArray?>? ->
                     if (response!!.statusCode() >= 400) {
                         result.onError(valueOf("HTTP error " + response.statusCode()))
                     } else {
-                        result.onSuccess(valueOf(response.body()))
+                        val responseBody = response.body() ?: ByteArray(0)
+                        
+                        // Convert bytes to Lua table
+                        val bytesTable = LuaValue.tableOf()
+                        for (i in responseBody.indices) {
+                            bytesTable.set(i + 1, LuaValue.valueOf(responseBody[i].toInt() and 0xFF))
+                        }
+                        
+                        result.onSuccess(bytesTable)
                     }
                 }).exceptionally(Function { ex: Throwable? ->
                     result.onError(valueOf("Request failed: " + ex!!.message))
@@ -395,14 +467,22 @@ class HttpClientLib : TwoArgFunction() {
 
                 headers.forEach { (name: String?, value: String?) -> requestBuilder.header(name, value) }
 
-                HTTP_CLIENT.sendAsync<String?>(
+                HTTP_CLIENT.sendAsync<ByteArray?>(
                     requestBuilder.build(),
-                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
-                ).thenAccept(Consumer { response: HttpResponse<String?>? ->
+                    HttpResponse.BodyHandlers.ofByteArray()
+                ).thenAccept(Consumer { response: HttpResponse<ByteArray?>? ->
                     if (response!!.statusCode() >= 400) {
                         result.onError(valueOf("HTTP error " + response.statusCode()))
                     } else {
-                        result.onSuccess(valueOf(response.body()))
+                        val responseBody = response.body() ?: ByteArray(0)
+                        
+                        // Convert bytes to Lua table
+                        val bytesTable = LuaValue.tableOf()
+                        for (i in responseBody.indices) {
+                            bytesTable.set(i + 1, LuaValue.valueOf(responseBody[i].toInt() and 0xFF))
+                        }
+                        
+                        result.onSuccess(bytesTable)
                     }
                 }).exceptionally(Function { ex: Throwable? ->
                     result.onError(valueOf("Request failed: " + ex!!.message))
@@ -421,19 +501,27 @@ class HttpClientLib : TwoArgFunction() {
                 val urlString = url.checkjstring()
                 val bodyStr = body.checkjstring()
 
-                HTTP_CLIENT.sendAsync<String?>(
+                HTTP_CLIENT.sendAsync<ByteArray?>(
                     HttpRequest.newBuilder()
                         .uri(URI.create(urlString))
                         .timeout(Duration.ofSeconds(5))
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(bodyStr, StandardCharsets.UTF_8))
                         .build(),
-                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
-                ).thenAccept(Consumer { response: HttpResponse<String?>? ->
+                    HttpResponse.BodyHandlers.ofByteArray()
+                ).thenAccept(Consumer { response: HttpResponse<ByteArray?>? ->
                     if (response!!.statusCode() >= 400) {
                         result.onError(valueOf("HTTP error " + response.statusCode()))
                     } else {
-                        result.onSuccess(valueOf(response.body()))
+                        val responseBody = response.body() ?: ByteArray(0)
+                        
+                        // Convert bytes to Lua table
+                        val bytesTable = LuaValue.tableOf()
+                        for (i in responseBody.indices) {
+                            bytesTable.set(i + 1, LuaValue.valueOf(responseBody[i].toInt() and 0xFF))
+                        }
+                        
+                        result.onSuccess(bytesTable)
                     }
                 }).exceptionally(Function { ex: Throwable? ->
                     result.onError(valueOf("Request failed: " + ex!!.message))
