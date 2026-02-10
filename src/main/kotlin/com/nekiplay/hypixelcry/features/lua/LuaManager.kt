@@ -22,7 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 class LuaManager() {
     // Script management
-    val scripts = ConcurrentHashMap<File, LuaScript>()
+    val scripts = ConcurrentHashMap<String, LuaScript>()
 
     // Cache module file extensions
     private val luaExtensions = arrayOf(".lua", ".luac")
@@ -116,7 +116,7 @@ class LuaManager() {
         try {
             // Создаем новый экземпляр LuaScript для этого скрипта
             val script = LuaScript(scriptName, this)
-            scripts[file] = script
+            scripts[scriptName] = script
 
             val scriptGlobals = script.scriptGlobals
             val chunk = loadChunk(file, scriptName, scriptGlobals)
@@ -128,22 +128,17 @@ class LuaManager() {
     }
 
 
-    fun unloadScript(file: File): Boolean {
-        val script = scripts[file]
-        if (script != null) {
-            // Вызываем cleanup у скрипта, который сам обработает все свои callback'и
-            script.cleanup()
-            // Очищаем кэш текстур для этого скрипта
-            TwoRenderObject.clearScriptCache(file.nameWithoutExtension)
-
-            // Удаляем сам скрипт из списка
-            scripts.remove(file)
-            return true
-        }
-        return false
+    fun unloadScript(scriptName: String): Boolean {
+        val script = scripts[scriptName] ?: return false
+        script.cleanup()
+        // Очищаем кэш текстур для этого скрипта
+        TwoRenderObject.clearScriptCache(scriptName)
+        // Удаляем сам скрипт из списка
+        scripts.remove(scriptName)
+        return true
     }
 
-    fun getLoadedScripts(): List<File> {
+    fun getLoadedScripts(): List<String> {
         return scripts.keys.toList()
     }
 }

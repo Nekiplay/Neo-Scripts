@@ -51,7 +51,7 @@ public class HypixelCry implements ClientModInitializer {
     }
 
     public static void saveConfig() {
-        for (File script : LUA_MANAGER.getLoadedScripts()) {
+        for (String script : LUA_MANAGER.getLoadedScripts()) {
             LUA_MANAGER.unloadScript(script);
         }
     }

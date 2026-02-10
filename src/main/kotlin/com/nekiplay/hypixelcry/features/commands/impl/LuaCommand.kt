@@ -87,9 +87,9 @@ object LuaCommand {
         val loadedScripts = luaManager.getLoadedScripts()
         val input = builder.remainingLowerCase
 
-        loadedScripts.forEach { file ->
-            if (file.nameWithoutExtension.lowercase().startsWith(input)) {
-                builder.suggest(file.nameWithoutExtension)
+        loadedScripts.forEach { scriptName ->
+            if (scriptName.lowercase().startsWith(input)) {
+                builder.suggest(scriptName)
             }
         }
 
@@ -115,7 +115,7 @@ object LuaCommand {
 
         try {
             // Сначала выгружаем существующий скрипт, если он загружен
-            val wasLoaded = luaManager.unloadScript(scriptFile)
+            val wasLoaded = luaManager.unloadScript(scriptFile.nameWithoutExtension)
             
             // Затем загружаем скрипт
             val result = luaManager.executeScript(scriptFile)
@@ -143,20 +143,20 @@ object LuaCommand {
 
     private fun unloadLuaScript(filename: String, source: FabricClientCommandSource) {
         val luaManager = HypixelCry.LUA_MANAGER
-        val scriptsDir = File("config/hypixelcry/scripts")
+        val scriptName = when {
+            filename.endsWith(".lua") -> filename.removeSuffix(".lua")
+            filename.endsWith(".luac") -> filename.removeSuffix(".luac")
+            else -> filename
 
-        if (!scriptsDir.exists()) {
-            scriptsDir.mkdirs()
-            source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§cDirectory for scripts: ${scriptsDir.path}"))
-            return
+
         }
 
-        val scriptFile = resolveScriptFile(scriptsDir, filename)
+        if (luaManager.unloadScript(scriptName)) {
+            source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§aScript '$scriptName' unloaded successfully"))
 
-        if (luaManager.unloadScript(scriptFile)) {
-            source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§aScript '${scriptFile.name}' unloaded successfully"))
+
         } else {
-            source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§cScript '${scriptFile.name}' is not loaded or not found"))
+            source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§cScript '$scriptName' is not loaded or not found"))
         }
     }
 
