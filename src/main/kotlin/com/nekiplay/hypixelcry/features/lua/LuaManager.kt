@@ -137,8 +137,8 @@ class LuaManager() {
         return true
     }
 
-    fun getLoadedScripts(): List<String> {
-        return scripts.keys.toList()
+    fun getLoadedScripts(): List<LuaScript> {
+        return scripts.values.toList()
     }
 
 }

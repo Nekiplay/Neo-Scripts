@@ -15,6 +15,7 @@ import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.commands.CommandBuildContext
 import net.minecraft.core.BlockPos
@@ -33,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val INSTANCE: LuaScript = this
+
 
     // Events
     private val clientTickCallbacks = ArrayList<LuaValue>()
@@ -55,10 +57,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
     // Command events
     private val commandCallbacks = ConcurrentHashMap<String, LuaValue>()
-    
-    // Command registration tracking (for dynamic registration)
-    private val pendingCommands = ArrayList<String>()
-    private val registeredCommands = ArrayList<String>()
 
     // Script events
     private val scriptUnloadCallbacks = ArrayList<LuaValue>()
@@ -538,9 +536,45 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         }
     }
 
-    fun registerMinecraftCommand(commandName: String) {
-        // Команда будет зарегистрирована централизованно через LuaManager
-        // Это заглушка для совместимости, реальная регистрация происходит в HypixelCry.onInitializeClient()
+    fun addCommandCallback(commandName: String, callback: LuaValue): Boolean {
+        if (!callback.isfunction()) return false
+        if (commandName.isBlank()) return false
+
+        synchronized(callbacksLock) {
+            // Проверяем, не зарегистрирована ли уже команда с таким именем
+            if (commandCallbacks.containsKey(commandName)) {
+                return false
+            }
+            registerMinecraftCommand(commandName)
+            commandCallbacks[commandName] = callback
+
+            return true
+        }
+    }
+
+
+    private fun registerMinecraftCommand(commandName: String) {
+        try {
+            // Регистрируем команду в Minecraft
+            ClientCommandRegistrationCallback.EVENT.register { dispatcher: CommandDispatcher<FabricClientCommandSource>, registryAccess: CommandBuildContext ->
+                dispatcher.register(
+                    ClientCommandManager.literal(commandName)
+                        .executes { context: CommandContext<FabricClientCommandSource> ->
+                            executeLuaCommand(commandName, emptyArray(), context.source)
+                            1
+                        }
+                        .then(ClientCommandManager.argument("args", StringArgumentType.greedyString())
+                            .executes { context: CommandContext<FabricClientCommandSource> ->
+                                val args = StringArgumentType.getString(context, "args").split(" ").toTypedArray()
+                                executeLuaCommand(commandName, args, context.source)
+                                1
+                            }
+                        )
+                )
+            }
+        } catch (e: Exception) {
+            HypixelCry.LOGGER.error("Failed to register Minecraft command: /$commandName", e)
+        }
     }
 
     private fun executeLuaCommand(commandName: String, args: Array<String>, source: FabricClientCommandSource?) {
@@ -551,26 +585,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 val argsTable = LuaValue.listOf(args.map { LuaValue.valueOf(it) }.toTypedArray())
                 callback.call(LuaValue.valueOf(commandName), argsTable, LuaValue.valueOf(source?.player?.name?.string ?: ""))
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error executing Lua command: /$commandName", e)
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error executing Lua command: /$commandName", e)
                 source?.sendError(Component.literal("Error executing command: ${e.message}"))
             }
-        }
-    }
-
-    fun addCommandCallback(commandName: String, callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        if (commandName.isBlank()) return false
-
-        synchronized(callbacksLock) {
-            // Проверяем, не зарегистрирована ли уже команда с таким именем
-            if (commandCallbacks.containsKey(commandName)) {
-                return false
-            }
-
-            commandCallbacks[commandName] = callback
-            pendingCommands.add(commandName)
-
-            return true
         }
     }
 
@@ -667,13 +684,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
     fun removeCommandCallback(commandName: String): Boolean {
         synchronized(callbacksLock) {
-            val removed = commandCallbacks.remove(commandName) != null
-            if (removed) {
-                // Clean up tracking lists
-                pendingCommands.remove(commandName)
-                registeredCommands.remove(commandName)
-            }
-            return removed
+            return commandCallbacks.remove(commandName) != null
         }
     }
 
@@ -691,7 +702,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     allow = false
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in inventory add item callback", e)
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in inventory add item callback in ${scriptName}", e)
             }
         }
         return allow
@@ -715,7 +726,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     allow = false
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in use block callback", e)
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in use block callback in ${scriptName}", e)
             }
         }
         return allow
@@ -730,7 +741,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call()
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in client tick callback", e)
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in client tick callback in ${scriptName}", e)
             }
         }
     }
@@ -744,7 +755,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call()
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in client pre tick callback", e)
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in client pre tick callback in ${scriptName}", e)
             }
         }
     }
@@ -759,7 +770,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call(renderContext)
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in world render callback: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in world render callback in ${scriptName}: ${e.message}")
             }
         }
     }
@@ -774,7 +785,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call(renderContext)
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in 2D render callback: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in 2D render callback in ${scriptName}: ${e.message}")
             }
         }
     }
@@ -793,7 +804,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in key callback: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in key callback in ${scriptName}: ${e.message}")
             }
         }
         return allow
@@ -813,7 +824,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in message callback: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in message callback in ${scriptName}: ${e.message}")
             }
         }
         return allow
@@ -833,7 +844,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in send message callback: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in send message callback in ${scriptName}: ${e.message}")
             }
         }
         return allow
@@ -853,7 +864,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in send command callback: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in send command callback in ${scriptName}: ${e.message}")
             }
         }
         return allow
@@ -873,7 +884,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in block update callback: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in block update callback in ${scriptName}: ${e.message}")
             }
         }
         return allow
@@ -888,7 +899,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call(LuaValue.valueOf(location.toString()))
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in location change callback: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in location change callback in ${scriptName}: ${e.message}")
             }
         }
         return true
@@ -903,7 +914,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call()
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in imgui callback: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in imgui callback in ${scriptName}: ${e.message}")
             }
         }
         return true
@@ -925,7 +936,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in server side rotation callback: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in server side rotation callback in ${scriptName}: ${e.message}")
             }
         }
         return allow
@@ -946,7 +957,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in server side rotation callback: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in server side rotation callback in ${scriptName}: ${e.message}")
             }
         }
         return allow
@@ -961,38 +972,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         return dependencies[scriptName]?.toList() ?: emptyList()
     }
 
-    // Command tracking methods for dynamic registration
-    fun getPendingCommands(): List<String> {
-        synchronized(callbacksLock) {
-            return pendingCommands.toList()
-        }
-    }
-
-    fun getRegisteredCommands(): List<String> {
-        synchronized(callbacksLock) {
-            return registeredCommands.toList()
-        }
-    }
-
-    fun getCommandCallback(commandName: String): LuaValue? {
-        return commandCallbacks[commandName]
-    }
-
-    fun markCommandAsRegistered(commandName: String) {
-        synchronized(callbacksLock) {
-            if (pendingCommands.remove(commandName)) {
-                registeredCommands.add(commandName)
-            }
-        }
-    }
-
-    fun markCommandAsUnregistered(commandName: String) {
-        synchronized(callbacksLock) {
-            registeredCommands.remove(commandName)
-        }
-    }
-
-
     // Cleanup method
     fun cleanup() {
         // Вызываем все callback'и выгрузки скрипта
@@ -1000,7 +979,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call()
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("Error in script unload callback", e)
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in script unload callback in ${scriptName}", e)
             }
         }
 
@@ -1023,9 +1002,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             serverSideRotationCallbacks.clear()
             serverSideTeleportCallbacks.clear()
             commandCallbacks.clear()
-            // Очищаем списки команд
-            pendingCommands.clear()
-            registeredCommands.clear()
         }
 
         // Очищаем зависимости

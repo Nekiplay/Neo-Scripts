@@ -6,7 +6,6 @@ import com.mojang.brigadier.suggestion.SuggestionProvider
 import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import com.nekiplay.hypixelcry.HypixelCry
-import com.nekiplay.hypixelcry.features.commands.impl.LuaCommandsHandler
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.commands.CommandBuildContext
@@ -89,8 +88,8 @@ object LuaCommand {
         val input = builder.remainingLowerCase
 
         loadedScripts.forEach { scriptName ->
-            if (scriptName.lowercase().startsWith(input)) {
-                builder.suggest(scriptName)
+            if (scriptName.scriptName.lowercase().startsWith(input)) {
+                builder.suggest(scriptName.scriptName)
             }
         }
 
@@ -120,10 +119,7 @@ object LuaCommand {
             
             // Затем загружаем скрипт
             val result = luaManager.executeScript(scriptFile)
-            
-            // Регистрируем новые команды, если они были добавлены
-            LuaCommandsHandler.registerPendingCommandsDynamically()
-            
+
             if (wasLoaded) {
                 source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§aScript '${scriptFile.nameWithoutExtension}' restarted successfully, result: '${result}'"))
             } else {
@@ -198,8 +194,8 @@ object LuaCommand {
         }
 
         source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§6Loaded scripts:"))
-        loadedScripts.forEach { file ->
-            source.sendFeedback(Component.literal("§7- §a${file}"))
+        loadedScripts.forEach { script ->
+            source.sendFeedback(Component.literal("§7- §a${script.scriptName} §7(${script.getDependencies().size} deps)"))
         }
     }
 }
