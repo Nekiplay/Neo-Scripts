@@ -1023,6 +1023,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             serverSideRotationCallbacks.clear()
             serverSideTeleportCallbacks.clear()
             commandCallbacks.clear()
+            // Очищаем списки команд
+            pendingCommands.clear()
+            registeredCommands.clear()
         }
 
         // Очищаем зависимости
