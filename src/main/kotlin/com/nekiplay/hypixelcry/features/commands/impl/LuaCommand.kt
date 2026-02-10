@@ -212,7 +212,7 @@ object LuaCommand {
     }
     
     private fun printScriptTree(source: FabricClientCommandSource, scriptName: String, dependencyTree: Map<String, Set<String>>, depth: Int) {
-        val indent = "  ".repeat(depth)
+        val indent = "   ".repeat(depth)
         val prefix = if (depth == 0) "├ " else "└ "
         
         source.sendFeedback(Component.literal("$indent$prefix§a$scriptName"))
@@ -239,7 +239,7 @@ object LuaCommand {
         var index = 0
         dependencies.forEach { dep ->
             val isLast = index == dependencies.size - 1
-            val indent = if (depth > 0) "  ".repeat(depth - 1) + (if (isLastParent) "  " else "│ ") else ""
+            val indent = if (depth > 0) "   ".repeat(depth - 1) + (if (isLastParent) "  " else "│ ") else ""
             val prefix = if (isLast) "└ " else "├ "
             
             source.sendFeedback(Component.literal("$indent$prefix§8$dep"))
