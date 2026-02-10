@@ -195,7 +195,7 @@ object LuaCommand {
 
         source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§6Loaded scripts:"))
         loadedScripts.forEach { file ->
-            source.sendFeedback(Component.literal("§7- §a${file.nameWithoutExtension}"))
+            source.sendFeedback(Component.literal("§7- §a${file}"))
         }
     }
 }
