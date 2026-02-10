@@ -212,7 +212,7 @@ class LuaManager() {
         globals.set("modules", modulesObj)
     }
 
-    private fun requireModule(moduleName: String, callingScript: String? = null): LuaValue {
+    fun requireModule(moduleName: String, callingScript: String? = null): LuaValue {
         val moduleFile = findModuleFile(moduleName) ?: throw LuaError("module '$moduleName' not found")
 
         try {

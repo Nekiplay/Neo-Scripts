@@ -106,6 +106,9 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
         
         // Register command functions
         registerCommandFunctions()
+        
+        // Register require function with module loading prevention
+        registerRequireFunction()
     }
 
     private fun registerEventRegistrationFunctions() {
@@ -351,6 +354,22 @@ class LuaScript(private val scriptName: String, private val luaManager: LuaManag
             override fun invoke(args: Varargs): Varargs {
                 val commandName = args.arg(1).checkjstring()
                 return LuaValue.valueOf(removeCommandCallback(commandName))
+            }
+        })
+    }
+
+    private fun registerRequireFunction() {
+        luaManager.globals.set("require", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val moduleName = args.arg(1).checkjstring()
+
+                // Загружаем модуль через LuaManager
+                val result = luaManager.requireModule(moduleName, scriptName)
+                
+                // Добавляем в зависимости только при первом требовании
+                addDependency(moduleName)
+                
+                return result
             }
         })
     }
