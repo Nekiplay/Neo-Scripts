@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.features.modules.impl.misc
 
+import com.mojang.brigadier.CommandDispatcher
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.HypixelCry.LUA_MANAGER
 import com.nekiplay.hypixelcry.events.KeyEvent
@@ -22,6 +23,7 @@ import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
 import net.minecraft.client.Minecraft
+import net.minecraft.commands.SharedSuggestionProvider
 import net.minecraft.network.chat.Component
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
@@ -34,7 +36,7 @@ import net.minecraft.world.phys.HitResult
 import org.luaj.vm2.LuaValue
 
 
-object LuaEvents: ClientModule() {
+object LuaEvents : ClientModule() {
     override fun init() {
         ClientTickEvents.END_CLIENT_TICK.register { _ ->
             LUA_MANAGER.scripts.values.forEach { script ->
@@ -56,7 +58,7 @@ object LuaEvents: ClientModule() {
             }
         }
 
-        WorldRenderExtractionCallback.EVENT.register( { context: PrimitiveCollector? ->
+        WorldRenderExtractionCallback.EVENT.register({ context: PrimitiveCollector? ->
             LUA_MANAGER.scripts.values.forEach { script ->
                 try {
                     script.onRenderTick(context)
@@ -179,15 +181,20 @@ object LuaEvents: ClientModule() {
                             val connection = player.connection
                             val source = connection.suggestionsProvider
                             // Выполняем команду
+                            val dispatcher = scriptExists.commandDispatchers[cmdName]
                             @Suppress("UNCHECKED_CAST")
-                            //(dispatcher as CommandDispatcher<SharedSuggestionProvider>).execute(command, source)
-                            val dispatcher2 = scriptExists.commandDispatchers[cmdName]
-                            dispatcher2?.execute(command, source as FabricClientCommandSource)
+                            (dispatcher as CommandDispatcher<SharedSuggestionProvider>).execute(command, source)
+                            //val dispatcher2 = scriptExists.commandDispatchers[cmdName]
+                            //dispatcher2?.execute(command, source as FabricClientCommandSource)
+                            //connection.sendCommand(command)
                             HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}Executing command: $command")
 
 
                         } catch (e: Exception) {
-                            player.displayClientMessage(Component.literal("${HypixelCry.LOG_PREFIX}§cError executing Lua command: ${e.message}"), false)
+                            player.displayClientMessage(
+                                Component.literal("${HypixelCry.LOG_PREFIX}§cError executing Lua command: ${e.message}"),
+                                false
+                            )
                             e.printStackTrace()
                         }
                     }
@@ -268,29 +275,32 @@ object LuaEvents: ClientModule() {
                     }
                     rotationAllowed
                 }
+
                 is ClientboundPlayerPositionPacket -> {
                     var rotationAllowed = true
                     var teleportAllowed = true
-                    
+
                     LUA_MANAGER.scripts.values.forEach { script ->
                         try {
                             if (!script.onServerSideRotationEvent(packet.change.xRot(), packet.change.yRot())) {
                                 rotationAllowed = false
                             }
                             if (!script.onServerSideTeleportEvent(
-                                packet.change.position.x,
-                                packet.change.position.y,
-                                packet.change.position.z
-                            )) {
+                                    packet.change.position.x,
+                                    packet.change.position.y,
+                                    packet.change.position.z
+                                )
+                            ) {
                                 teleportAllowed = false
                             }
                         } catch (e: Exception) {
                             // Обработка ошибок
                         }
                     }
-                    
+
                     rotationAllowed && teleportAllowed
                 }
+
                 else -> true
             }
 
