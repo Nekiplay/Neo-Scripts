@@ -29,6 +29,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
             "is_stackable" -> valueOf(stack.isStackable)
             "is_recombobulated" -> valueOf(stack.isRecombobulated())
             "is_museum_donated" -> valueOf(stack.isMuseumDonated())
+            "is_enchanted" -> valueOf(stack.isEnchanted)
             "uuid" -> valueOf(stack.getItemUuid())
 
             "map" -> {
