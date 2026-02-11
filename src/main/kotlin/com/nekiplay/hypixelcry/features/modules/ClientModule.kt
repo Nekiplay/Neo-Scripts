@@ -1,6 +1,5 @@
 package com.nekiplay.hypixelcry.features.modules
 
-import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 
 open class ClientModule {

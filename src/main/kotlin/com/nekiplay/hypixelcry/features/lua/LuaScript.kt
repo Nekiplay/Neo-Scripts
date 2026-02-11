@@ -3,6 +3,9 @@ package com.nekiplay.hypixelcry.features.lua
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
+import com.mojang.brigadier.tree.ArgumentCommandNode
+import com.mojang.brigadier.tree.CommandNode
+import com.mojang.brigadier.tree.RootCommandNode
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.objects.misc.TCPLib
@@ -16,13 +19,19 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.commands.CommandBuildContext
+import net.minecraft.commands.SharedSuggestionProvider
+import net.minecraft.commands.synchronization.ArgumentTypeInfos
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
+import net.minecraft.network.protocol.game.ClientboundCommandsPacket
+import net.minecraft.resources.Identifier
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.item.ItemStack
 import org.luaj.vm2.Globals
+import org.luaj.vm2.LuaError
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
@@ -33,8 +42,11 @@ import org.luaj.vm2.lib.jse.LuajavaLib
 import java.util.concurrent.ConcurrentHashMap
 
 class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
-    private val INSTANCE: LuaScript = this
-
+    // Локальный стек загрузки для этого конкретного экземпляра скрипта
+    private val loadingStack = java.util.Stack<String>()
+    // Локальный граф зависимостей для этого конкретного экземпляра скрипта
+    // Ключ: имя файла, Значение: список имен, которые этот файл запросил через require
+    val localDependencyGraph = ConcurrentHashMap<String, MutableSet<String>>()
 
     // Events
     private val clientTickCallbacks = ArrayList<LuaValue>()
@@ -56,7 +68,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val serverSideTeleportCallbacks = ArrayList<LuaValue>()
 
     // Command events
-    private val commandCallbacks = ConcurrentHashMap<String, LuaValue>()
+    val commandCallbacks = ConcurrentHashMap<String, LuaValue>()
+    val commandDispatchers = ConcurrentHashMap<String, CommandDispatcher<FabricClientCommandSource>>()
 
     // Script events
     private val scriptUnloadCallbacks = ArrayList<LuaValue>()
@@ -72,27 +85,25 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val dependencies = ConcurrentHashMap<String, MutableList<String>>()
 
     // Script-specific globals
-    val scriptGlobals: Globals = JsePlatform.standardGlobals()
+    var scriptGlobals: Globals = JsePlatform.standardGlobals()
 
     init {
         // Register standard libraries
         scriptGlobals.load(LuajavaLib())
-        
+
         registerCustomFunctions()
-        
+
         // Initialize script-specific libraries
         tcpLib = TCPLib()
         threadLib = ThreadLib()
-        
+
         // Load libraries into script-specific globals
         scriptGlobals.load(threadLib)
         scriptGlobals.load(tcpLib)
-        
+
         // Register global objects
         registerGlobalObjects()
     }
-
-    val logger = HypixelCry.LOGGER
 
     private fun registerCustomFunctions() {
         // Register event registration functions
@@ -369,13 +380,16 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             override fun invoke(args: Varargs): Varargs {
                 val moduleName = args.arg(1).checkjstring()
 
-                // Загружаем модуль через LuaManager
-                val result = luaManager.requireModule(moduleName, INSTANCE)
+                // 1. Определяем "родителя" (кто вызвал require)
+                val caller = if (loadingStack.isEmpty()) scriptName else loadingStack.peek()
 
-                // Добавляем в зависимости только при первом требовании
-                addDependency(moduleName)
+                // 2. Записываем связь в локальное дерево этого объекта LuaScript
+                localDependencyGraph.getOrPut(caller) {
+                    java.util.Collections.synchronizedSet(LinkedHashSet<String>())
+                }.add(moduleName)
 
-                return result
+                // 3. Загружаем и выполняем (без кэша)
+                return requireModule(moduleName)
             }
         })
     }
@@ -545,8 +559,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             if (commandCallbacks.containsKey(commandName)) {
                 return false
             }
-            registerMinecraftCommand(commandName)
             commandCallbacks[commandName] = callback
+            registerMinecraftCommand(commandName)
 
             return true
         }
@@ -555,25 +569,108 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
     private fun registerMinecraftCommand(commandName: String) {
         try {
-            // Регистрируем команду в Minecraft
-            ClientCommandRegistrationCallback.EVENT.register { dispatcher: CommandDispatcher<FabricClientCommandSource>, registryAccess: CommandBuildContext ->
-                dispatcher.register(
-                    ClientCommandManager.literal(commandName)
-                        .executes { context: CommandContext<FabricClientCommandSource> ->
-                            executeLuaCommand(commandName, emptyArray(), context.source)
-                            1
-                        }
-                        .then(ClientCommandManager.argument("args", StringArgumentType.greedyString())
-                            .executes { context: CommandContext<FabricClientCommandSource> ->
-                                val args = StringArgumentType.getString(context, "args").split(" ").toTypedArray()
-                                executeLuaCommand(commandName, args, context.source)
-                                1
-                            }
-                        )
-                )
+            // 1. Регистрируем коллбэк для будущих обновлений диспетчера (например, при смене сервера)
+            ClientCommandRegistrationCallback.EVENT.register { dispatcher, registryAccess ->
+                commandDispatchers[commandName] = dispatcher
+                actualRegister(dispatcher, commandName)
+            }
+
+            // 2. Попытка немедленной регистрации, если диспетчер уже доступен
+            val client = HypixelCry.mc
+            val networkHandler = client.connection
+            if (networkHandler != null) {
+                val currentDispatcher = networkHandler.commands
+
+                client.execute {
+                    @Suppress("UNCHECKED_CAST")
+                    val fabricDispatcher = currentDispatcher as CommandDispatcher<FabricClientCommandSource>
+
+                    commandDispatchers[commandName] = fabricDispatcher
+                    actualRegister(fabricDispatcher, commandName)
+                    HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}Registered Minecraft command: /$commandName")
+                }
             }
         } catch (e: Exception) {
-            HypixelCry.LOGGER.error("Failed to register Minecraft command: /$commandName", e)
+            HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Failed to register Minecraft command: /$commandName", e)
+        }
+    }
+
+    private fun actualRegister(dispatcher: CommandDispatcher<FabricClientCommandSource>, commandName: String) {
+        // Удаляем старую команду, если она была, чтобы избежать дубликатов в узлах (nodes)
+        val root = dispatcher.root
+        if (root.getChild(commandName) != null) {
+            // Используем рефлексию для удаления существующей команды, если нужно перерегистрировать
+            try {
+                val childrenField = root.javaClass.getDeclaredField("children")
+                childrenField.isAccessible = true
+                @Suppress("UNCHECKED_CAST")
+                (childrenField.get(root) as MutableMap<String, *>).remove(commandName)
+
+                val literalsField = root.javaClass.getDeclaredField("literals")
+                literalsField.isAccessible = true
+                @Suppress("UNCHECKED_CAST")
+                (literalsField.get(root) as MutableMap<String, *>).remove(commandName)
+            } catch (e: Exception) {
+                // Если не вышло удалить — ничего страшного, dispatcher.register просто добавит новый путь
+            }
+        }
+
+        dispatcher.register(
+            ClientCommandManager.literal(commandName)
+                .executes { context ->
+                    executeLuaCommand(commandName, emptyArray(), context.source)
+                    1
+                }
+                .then(ClientCommandManager.argument("args", StringArgumentType.greedyString())
+                    .executes { context ->
+                        val args = StringArgumentType.getString(context, "args").split(" ").toTypedArray()
+                        executeLuaCommand(commandName, args, context.source)
+                        1
+                    }
+                )
+        )
+
+        // Дополнительная проверка для отладки
+        if (dispatcher.root.getChild(commandName) == null) {
+            HypixelCry.LOGGER.error("Failed to inject node into dispatcher root!")
+        } else {
+            HypixelCry.LOGGER.info("Successfully injected command: $commandName")
+        }
+    }
+
+    private fun unregisterCommandInternal(dispatcher: CommandDispatcher<FabricClientCommandSource>, commandName: String) {
+        try {
+            val root = dispatcher.root // В Kotlin это вызывает getRoot()
+
+            // В Brigadier у узла (CommandNode) есть три карты, в которых хранятся команды.
+            // Названия полей в самой библиотеке Brigadier (она не обфусцирована так, как MC):
+            // "children", "literals", "arguments"
+            val nodeClass = root.javaClass.superclass // CommandNode — родитель для RootCommandNode
+
+            val fieldsToClear = arrayOf("children", "literals", "arguments")
+
+            for (fieldName in fieldsToClear) {
+                try {
+                    // Ищем поле в классе CommandNode
+                    val field = com.mojang.brigadier.tree.CommandNode::class.java.getDeclaredField(fieldName)
+                    field.isAccessible = true
+
+                    @Suppress("UNCHECKED_CAST")
+                    val map = field.get(root) as MutableMap<String, *>
+                    map.remove(commandName)
+                } catch (e: NoSuchFieldException) {
+                    // Если вдруг библиотека Brigadier в вашей среде имеет другие названия полей
+                    HypixelCry.LOGGER.warn("Field $fieldName not found in CommandNode")
+                }
+            }
+
+            // Удаляем из наших внутренних списков
+            commandDispatchers.remove(commandName)
+            commandCallbacks.remove(commandName)
+
+            HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}Successfully unregistered Lua command: /$commandName")
+        } catch (e: Exception) {
+            HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Failed to unregister command /$commandName", e)
         }
     }
 
@@ -684,7 +781,12 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
     fun removeCommandCallback(commandName: String): Boolean {
         synchronized(callbacksLock) {
-            return commandCallbacks.remove(commandName) != null
+            val dispatcher = commandDispatchers[commandName]
+            if (dispatcher != null) {
+                unregisterCommandInternal(dispatcher, commandName)
+                return true
+            }
+            return false
         }
     }
 
@@ -942,6 +1044,31 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         return allow
     }
 
+    fun requireModule(moduleName: String): LuaValue {
+        val moduleFile = LuaManager.findModuleFile(moduleName)
+            ?: throw LuaError("module '$moduleName' not found")
+
+        try {
+            // Добавляем в стек перед выполнением
+            loadingStack.push(moduleName)
+
+            // Загружаем код из файла
+            val chunk = LuaManager.loadChunk(moduleFile, moduleName, scriptGlobals)
+
+            // Выполняем. Результат не сохраняем в кэш, просто возвращаем
+            val result = chunk.call()
+            return result
+
+        } catch (e: Exception) {
+            throw LuaError("error loading module '$moduleName': ${e.message}")
+        } finally {
+            // Обязательно убираем из стека после завершения
+            if (!loadingStack.isEmpty() && loadingStack.peek() == moduleName) {
+                loadingStack.pop()
+            }
+        }
+    }
+
     fun onServerSideTeleportEvent(x: Double, y: Double, z: Double): Boolean {
         var allow = true
         val callbacks = synchronized(callbacksLock) {
@@ -963,14 +1090,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         return allow
     }
 
-    // Dependency tracking methods
-    fun addDependency(moduleName: String) {
-        dependencies.getOrPut(scriptName) { mutableListOf() }.add(moduleName)
-    }
-    
-    fun getDependencies(): List<String> {
-        return dependencies[scriptName]?.toList() ?: emptyList()
-    }
+    fun hasCommand(name: String): Boolean = commandCallbacks.containsKey(name)
 
     // Cleanup method
     fun cleanup() {
@@ -980,6 +1100,17 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 callback.call()
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in script unload callback in ${scriptName}", e)
+            }
+        }
+
+        // Очищаем библиотеки
+        threadLib.stopAllThreads()
+        tcpLib.cleanup()
+
+        for (command in commandCallbacks.keys) {
+            val dispatcher = commandDispatchers[command]
+            if (dispatcher != null) {
+                unregisterCommandInternal(dispatcher, command)
             }
         }
 
@@ -1004,11 +1135,11 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             commandCallbacks.clear()
         }
 
+        commandDispatchers.clear()
+
+        localDependencyGraph.remove(scriptName)
         // Очищаем зависимости
         dependencies.clear()
-        
-        // Очищаем библиотеки
-        threadLib.stopAllThreads()
-        tcpLib.cleanup()
+        scriptGlobals = JsePlatform.standardGlobals()
     }
 }

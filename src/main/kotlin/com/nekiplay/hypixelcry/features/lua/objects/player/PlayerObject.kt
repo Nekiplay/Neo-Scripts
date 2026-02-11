@@ -13,7 +13,10 @@ import com.nekiplay.hypixelcry.utils.StatusBarTracker
 import com.nekiplay.hypixelcry.utils.Utils
 import com.nekiplay.hypixelcry.utils.trackers.ColdTracker
 import com.nekiplay.hypixelcry.utils.trackers.PetCache
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.components.toasts.SystemToast
+import net.minecraft.client.multiplayer.ClientSuggestionProvider
+import net.minecraft.commands.SharedSuggestionProvider
 import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.phys.BlockHitResult
@@ -59,7 +62,7 @@ class PlayerObject : LuaValue() {
             // Functions
             "addMessage" -> AddChatMessageFunction()
             "sendMessage" -> SendChatMessageFunction()
-            "sendCommand" -> SendChatMessageFunction()
+            "sendCommand" -> SendCommandFunction()
             "getPos", "getPosition" -> GetPlayerPosFunction()
             "getRotation" -> GetPlayerRotationFunction()
             "setRotation" -> SetPlayerRotationFunction()
@@ -304,6 +307,30 @@ class PlayerObject : LuaValue() {
                 return TRUE
             }
             return FALSE
+        }
+    }
+
+    private inner class SendCommandFunction : OneArgFunction() {
+        override fun call(message: LuaValue): LuaValue {
+            val msg = message.tojstring()
+            if (msg.isEmpty()) return FALSE
+
+            val mc = Minecraft.getInstance()
+
+            mc.execute {
+                val player = mc.player ?: return@execute
+                val connection = player.connection ?: return@execute
+
+                if (msg.startsWith("/")) {
+                    val commandLine = msg.substring(1) // Текст команды без "/"
+                    connection.sendCommand(commandLine)
+                } else {
+                    // Обычное сообщение в чат
+                    connection.sendChat(msg)
+                }
+            }
+
+            return TRUE
         }
     }
 

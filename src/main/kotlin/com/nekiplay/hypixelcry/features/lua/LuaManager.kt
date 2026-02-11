@@ -1,5 +1,7 @@
 package com.nekiplay.hypixelcry.features.lua
 
+import com.mojang.brigadier.CommandDispatcher
+import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.misc.CatboostLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.Creator
 import com.nekiplay.hypixelcry.features.lua.objects.misc.EncodingLib
@@ -11,9 +13,13 @@ import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.hypixelcry.features.lua.objects.world.WorldObject
 import kotlinx.io.files.FileNotFoundException
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.loader.api.FabricLoader
+import net.minecraft.client.Minecraft
+import net.minecraft.commands.SharedSuggestionProvider
+import net.minecraft.network.chat.Component
 import org.luaj.vm2.Globals
-import org.luaj.vm2.LuaError
 import org.luaj.vm2.LuaValue
 import java.io.File
 import java.io.StringReader
@@ -24,21 +30,61 @@ class LuaManager() {
     // Script management
     val scripts = ConcurrentHashMap<String, LuaScript>()
 
-    // Cache module file extensions
-    private val luaExtensions = arrayOf(".lua", ".luac")
-    // Precompute config paths
-    private val configDir = FabricLoader.getInstance().configDir
-    private val baseModuleSearchPaths = arrayOf(
-        "/",
-        "libs/",
-        "lib/",
-        configDir.resolve("hypixelcry/scripts/libs/").toString() + "/",
-        configDir.resolve("hypixelcry/scripts/lib/").toString() + "/",
-        configDir.resolve("hypixelcry/scripts/").toString() + "/"
-    )
+    init {
+        initCommandInterceptor()
+    }
 
-    private val moduleSearchPaths = CopyOnWriteArrayList<String>().apply {
-        addAll(baseModuleSearchPaths)
+    companion object {
+        // Cache module file extensions
+        private val luaExtensions = arrayOf(".lua", ".luac")
+        // Precompute config paths
+        private val configDir = FabricLoader.getInstance().configDir
+        private val baseModuleSearchPaths = arrayOf(
+            "/",
+            "libs/",
+            "lib/",
+            configDir.resolve("hypixelcry/scripts/libs/").toString() + "/",
+            configDir.resolve("hypixelcry/scripts/lib/").toString() + "/",
+            configDir.resolve("hypixelcry/scripts/").toString() + "/"
+        )
+
+        private val moduleSearchPaths = CopyOnWriteArrayList<String>().apply {
+            addAll(baseModuleSearchPaths)
+        }
+
+        fun loadChunk(file: File, name: String, scriptGlobals: Globals): LuaValue {
+            return if (file.extension.equals("luac", ignoreCase = true)) {
+                file.inputStream().use { stream ->
+                    scriptGlobals.load(stream, name, "b", scriptGlobals)
+                }
+            } else {
+                scriptGlobals.load(StringReader(file.readText()), name)
+            }
+        }
+
+        // Optimized module file finding
+        fun findModuleFile(moduleName: String): File? {
+            val baseName = if (moduleName.endsWith(".lua") || moduleName.endsWith(".luac")) {
+                moduleName.substringBeforeLast('.')
+            } else {
+                moduleName
+            }
+
+            for (path in moduleSearchPaths) {
+                // Check direct files
+                for (ext in luaExtensions) {
+                    val file = File("$path$baseName$ext")
+                    if (file.exists() && file.isFile) {
+                        return file
+                    }
+                }
+            }
+            return null
+        }
+
+        init {
+            moduleSearchPaths.addAll(baseModuleSearchPaths)
+        }
     }
 
     // Initialize objects once
@@ -53,57 +99,6 @@ class LuaManager() {
     val creatorLib = Creator()
     val encodingLib = EncodingLib()
 
-    init {
-        // Initialize base module search paths
-        moduleSearchPaths.addAll(baseModuleSearchPaths)
-    }
-
-
-    fun requireModule(moduleName: String, callingScript: LuaScript): LuaValue {
-        val moduleFile = findModuleFile(moduleName) ?: throw LuaError("module '$moduleName' not found")
-
-        try {
-            val scriptGlobals = callingScript.scriptGlobals
-            val chunk = loadChunk(moduleFile, moduleName, scriptGlobals)
-            val result = chunk.call()
-
-            return result
-        } catch (e: FileNotFoundException) {
-            throw LuaError("module '$moduleName' not found: ${e.message}")
-        } catch (e: Exception) {
-            throw LuaError("error loading module '$moduleName': ${e.message}")
-        }
-    }
-
-    private fun loadChunk(file: File, name: String, scriptGlobals: Globals): LuaValue {
-        return if (file.extension.equals("luac", ignoreCase = true)) {
-            file.inputStream().use { stream ->
-                scriptGlobals.load(stream, name, "b", scriptGlobals)
-            }
-        } else {
-            scriptGlobals.load(StringReader(file.readText()), name)
-        }
-    }
-
-    // Optimized module file finding
-    private fun findModuleFile(moduleName: String): File? {
-        val baseName = if (moduleName.endsWith(".lua") || moduleName.endsWith(".luac")) {
-            moduleName.substringBeforeLast('.')
-        } else {
-            moduleName
-        }
-
-        for (path in moduleSearchPaths) {
-            // Check direct files
-            for (ext in luaExtensions) {
-                val file = File("$path$baseName$ext")
-                if (file.exists() && file.isFile) {
-                    return file
-                }
-            }
-        }
-        return null
-    }
 
     fun executeScript(file: File): Any {
         if (!file.exists() || !file.isFile) {
@@ -123,6 +118,44 @@ class LuaManager() {
             return result
         } finally {
 
+        }
+    }
+
+    fun initCommandInterceptor() {
+        ClientSendMessageEvents.ALLOW_COMMAND.register { command ->
+            val cmdName = command.split(" ")[0]
+
+            // Проверяем, есть ли такая команда в каком-либо из скриптов
+            val scriptExists = scripts.values.find { it.commandCallbacks.containsKey(cmdName) }
+
+            if (scriptExists != null) {
+                val client = Minecraft.getInstance()
+                val player = client.player
+
+                if (player != null) {
+                    // Выполняем в основном потоке клиента
+                    client.execute {
+                        try {
+                            val connection = player.connection
+                            val source = connection.suggestionsProvider
+                            val dispatcher = connection.commands
+
+                            // Выполняем команду
+                            @Suppress("UNCHECKED_CAST")
+                            //(dispatcher as CommandDispatcher<SharedSuggestionProvider>).execute(command, source)
+                            val dispatcher2 = scriptExists.commandDispatchers[cmdName]
+                            dispatcher2?.execute(command, source as FabricClientCommandSource)
+                            print("${HypixelCry.LOG_PREFIX}Executing command: $command")
+
+                        } catch (e: Exception) {
+                            player.displayClientMessage(Component.literal("${HypixelCry.LOG_PREFIX}§cError executing Lua command: ${e.message}"), false)
+                            e.printStackTrace()
+                        }
+                    }
+                    return@register false // Блокируем отправку на сервер
+                }
+            }
+            true // Разрешаем отправку, если это не Lua команда
         }
     }
 

@@ -52,12 +52,68 @@ object LuaCommand {
             )
             .then(ClientCommandManager.literal("loaded")
                 .executes { context ->
-                    listLoadedScripts(context.source)
+                    listLoadedScripts(context.source, null) // Вызов без аргумента
                     1
                 }
+                .then(ClientCommandManager.argument("scriptName", StringArgumentType.string())
+                    .suggests(LOADED_SCRIPT_SUGGESTION_PROVIDER)
+                    .executes { context ->
+                        val name = StringArgumentType.getString(context, "scriptName")
+                        listLoadedScripts(context.source, name) // Вызов с именем скрипта
+                        1
+                    }
+                )
+            )
+            .then(ClientCommandManager.literal("toggle")
+                .then(ClientCommandManager.argument("scriptName", StringArgumentType.string())
+                    .suggests(SCRIPT_SUGGESTION_PROVIDER)
+                    .executes { context ->
+                        val name = StringArgumentType.getString(context, "scriptName")
+                        toggleScript(context.source, name)
+                        1
+                    }
+                )
             )
 
         dispatcher.register(luaCommand)
+    }
+
+    private fun toggleScript(source: FabricClientCommandSource, name: String) {
+        val luaManager = HypixelCry.LUA_MANAGER
+        val loadedScripts = luaManager.getLoadedScripts()
+
+        // 1. Пытаемся найти уже загруженный скрипт по имени
+        val loadedInstance = loadedScripts.find { it.scriptName.equals(name, ignoreCase = true) }
+
+        if (loadedInstance != null) {
+            // Если скрипт загружен — ВЫГРУЖАЕМ
+            try {
+                luaManager.unloadScript(loadedInstance.scriptName)
+                source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§7Script §a${loadedInstance.scriptName} §7has been §cunloaded§7."))
+            } catch (e: Exception) {
+                source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§cError unloading script: ${e.message}"))
+            }
+        } else {
+            // Если скрипт не загружен — ЗАГРУЖАЕМ
+            val scriptsDir = File("config/hypixelcry/scripts")
+
+            // Ищем файл с расширением .lua или .luac
+            val scriptFile = File(scriptsDir, "$name.lua").let {
+                if (it.exists()) it else File(scriptsDir, "$name.luac")
+            }
+
+            if (scriptFile.exists()) {
+                try {
+                    // Предполагается, что в LuaManager есть метод loadScript(File)
+                    luaManager.executeScript(scriptFile)
+                    source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§7Script §a$name §7is now §aloaded§7."))
+                } catch (e: Exception) {
+                    source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§cFailed to load script §e$name§c: ${e.message}"))
+                }
+            } else {
+                source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§cFile §e$name.lua §cnot found in scripts directory."))
+            }
+        }
     }
 
     private fun suggestScriptFiles(builder: SuggestionsBuilder): CompletableFuture<Suggestions> {
@@ -184,18 +240,82 @@ object LuaCommand {
         }
     }
 
-    private fun listLoadedScripts(source: FabricClientCommandSource) {
+    private fun listLoadedScripts(source: FabricClientCommandSource, targetName: String?) {
         val luaManager = HypixelCry.LUA_MANAGER
         val loadedScripts = luaManager.getLoadedScripts()
 
         if (loadedScripts.isEmpty()) {
-            source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§7No scripts currently loaded"))
+            source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§7No scripts currently loaded"))
             return
         }
 
-        source.sendFeedback(Component.literal(HypixelCry.PREFIX + "§6Loaded scripts:"))
+        // РЕЖИМ 1: Показ дерева для конкретного скрипта
+        if (targetName != null) {
+            val scriptsToDisplay = loadedScripts.filter { it.scriptName.equals(targetName, ignoreCase = true) }
+
+            if (scriptsToDisplay.isEmpty()) {
+                source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§cScript '$targetName' is not loaded."))
+                return
+            }
+
+            source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§6Dependency tree for §a$targetName§6:"))
+            source.sendFeedback(Component.literal(""))
+
+            scriptsToDisplay.forEach { script ->
+                val depCount = script.localDependencyGraph.size
+                val depInfo = if (depCount > 0) " §8(§7$depCount modules§8)" else ""
+                source.sendFeedback(Component.literal("  §6▶ §a§l${script.scriptName}$depInfo"))
+
+                if (script.localDependencyGraph.isEmpty()) {
+                    source.sendFeedback(Component.literal("  §8  §7No dependencies"))
+                } else {
+                    renderBeautifulTree(source, script.scriptName, "  §8  ", script.localDependencyGraph, mutableSetOf(), 0)
+                }
+            }
+            return
+        }
+
+        // РЕЖИМ 2: Просто краткий список всех загруженных скриптов
+        source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§6Loaded scripts §7(${loadedScripts.size}):"))
         loadedScripts.forEach { script ->
-            source.sendFeedback(Component.literal("§7- §a${script.scriptName} §7(${script.getDependencies().size} deps)"))
+            val depCount = script.localDependencyGraph.size
+            // Стиль как в вашем listLuaFiles: §7- §aИмя §7(доп инфо)
+            source.sendFeedback(Component.literal("  §7- §a${script.scriptName} §8(§7$depCount modules§8) §8[ID: ${script.hashCode().toString(16).take(4)}]"))
+        }
+        source.sendFeedback(Component.literal("§7Tip: Use §e/lua loaded <name> §7to see dependencies"))
+    }
+
+    /**
+     * Рекурсивная отрисовка (остается без изменений из предыдущего ответа)
+     */
+    private fun renderBeautifulTree(
+        source: FabricClientCommandSource,
+        name: String,
+        prefix: String,
+        graph: Map<String, Set<String>>,
+        visited: MutableSet<String>,
+        depth: Int
+    ) {
+        val dependencies = graph[name]?.toList() ?: return
+
+        dependencies.forEachIndexed { index, depName ->
+            val isLast = index == dependencies.size - 1
+            val branchSymbol = if (isLast) "┗━" else "┣━"
+            val nameColor = if (depth == 0) "§e" else "§7"
+
+            source.sendFeedback(Component.literal("$prefix$branchSymbol $nameColor$depName"))
+
+            if (depName in visited) {
+                val circularPrefix = prefix + (if (isLast) "     " else "┃    ")
+                source.sendFeedback(Component.literal("$circularPrefix§c┗━ [Circular]"))
+                return@forEachIndexed
+            }
+
+            val nextVisited = visited.toMutableSet()
+            nextVisited.add(name)
+            val nextPrefix = prefix + (if (isLast) "     " else "┃    ")
+
+            renderBeautifulTree(source, depName, nextPrefix, graph, nextVisited, depth + 1)
         }
     }
 }
