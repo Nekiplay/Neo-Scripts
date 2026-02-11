@@ -9,6 +9,7 @@ import com.nekiplay.hypixelcry.events.network.PacketEvent
 import com.nekiplay.hypixelcry.events.player.AddItemInventoryEvent
 import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent
 import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent.BlockUpdateCallback
+import com.nekiplay.hypixelcry.features.lua.LuaScript
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.modules.ClientModule
 import com.nekiplay.hypixelcry.sugar.getFormattedString
@@ -149,8 +150,10 @@ object LuaEvents: ClientModule() {
             allow
         })
 
-        ClientSendMessageEvents.ALLOW_COMMAND.register(ClientSendMessageEvents.AllowCommand { command ->
+        ClientSendMessageEvents.ALLOW_COMMAND.register { command ->
             var allow = true
+            val cmdName = command.split(" ")[0]
+            var scriptExists: LuaScript? = null
             LUA_MANAGER.scripts.values.forEach { script ->
                 try {
                     if (!script.onSendChatCommandEvent(command)) {
@@ -159,12 +162,11 @@ object LuaEvents: ClientModule() {
                 } catch (e: Exception) {
                     // Обработка ошибок
                 }
+
+                if (script.commandCallbacks.containsKey(cmdName)) {
+                    scriptExists = script
+                }
             }
-
-            val cmdName = command.split(" ")[0]
-
-            // Проверяем, есть ли такая команда в каком-либо из скриптов
-            val scriptExists = LUA_MANAGER.scripts.values.find { it.commandCallbacks.containsKey(cmdName) }
 
             if (scriptExists != null && allow) {
                 val client = Minecraft.getInstance()
@@ -183,16 +185,18 @@ object LuaEvents: ClientModule() {
                             dispatcher2?.execute(command, source as FabricClientCommandSource)
                             HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}Executing command: $command")
 
+
                         } catch (e: Exception) {
                             player.displayClientMessage(Component.literal("${HypixelCry.LOG_PREFIX}§cError executing Lua command: ${e.message}"), false)
                             e.printStackTrace()
                         }
                     }
+                    return@register false
                 }
             }
 
-            allow
-        })
+            return@register allow
+        }
 
         HudRenderCallback.EVENT.register(HudRenderCallback { context, _ ->
             LUA_MANAGER.scripts.values.forEach { script ->
