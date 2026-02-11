@@ -30,10 +30,6 @@ class LuaManager() {
     // Script management
     val scripts = ConcurrentHashMap<String, LuaScript>()
 
-    init {
-        initCommandInterceptor()
-    }
-
     companion object {
         // Cache module file extensions
         private val luaExtensions = arrayOf(".lua", ".luac")
@@ -118,44 +114,6 @@ class LuaManager() {
             return result
         } finally {
 
-        }
-    }
-
-    fun initCommandInterceptor() {
-        ClientSendMessageEvents.ALLOW_COMMAND.register { command ->
-            val cmdName = command.split(" ")[0]
-
-            // Проверяем, есть ли такая команда в каком-либо из скриптов
-            val scriptExists = scripts.values.find { it.commandCallbacks.containsKey(cmdName) }
-
-            if (scriptExists != null) {
-                val client = Minecraft.getInstance()
-                val player = client.player
-
-                if (player != null) {
-                    // Выполняем в основном потоке клиента
-                    client.execute {
-                        try {
-                            val connection = player.connection
-                            val source = connection.suggestionsProvider
-                            val dispatcher = connection.commands
-
-                            // Выполняем команду
-                            @Suppress("UNCHECKED_CAST")
-                            //(dispatcher as CommandDispatcher<SharedSuggestionProvider>).execute(command, source)
-                            val dispatcher2 = scriptExists.commandDispatchers[cmdName]
-                            dispatcher2?.execute(command, source as FabricClientCommandSource)
-                            print("${HypixelCry.LOG_PREFIX}Executing command: $command")
-
-                        } catch (e: Exception) {
-                            player.displayClientMessage(Component.literal("${HypixelCry.LOG_PREFIX}§cError executing Lua command: ${e.message}"), false)
-                            e.printStackTrace()
-                        }
-                    }
-                    return@register false // Блокируем отправку на сервер
-                }
-            }
-            true // Разрешаем отправку, если это не Lua команда
         }
     }
 

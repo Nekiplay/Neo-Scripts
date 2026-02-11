@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.features.modules.impl.misc
 
+import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.HypixelCry.LUA_MANAGER
 import com.nekiplay.hypixelcry.events.KeyEvent
 import com.nekiplay.hypixelcry.events.MouseButtonEvent
@@ -13,11 +14,14 @@ import com.nekiplay.hypixelcry.features.modules.ClientModule
 import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.utils.render.WorldRenderExtractionCallback
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
+import net.minecraft.client.Minecraft
+import net.minecraft.network.chat.Component
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
 import net.minecraft.world.InteractionHand
@@ -156,6 +160,37 @@ object LuaEvents: ClientModule() {
                     // Обработка ошибок
                 }
             }
+
+            val cmdName = command.split(" ")[0]
+
+            // Проверяем, есть ли такая команда в каком-либо из скриптов
+            val scriptExists = LUA_MANAGER.scripts.values.find { it.commandCallbacks.containsKey(cmdName) }
+
+            if (scriptExists != null && allow) {
+                val client = Minecraft.getInstance()
+                val player = client.player
+
+                if (player != null) {
+                    // Выполняем в основном потоке клиента
+                    client.execute {
+                        try {
+                            val connection = player.connection
+                            val source = connection.suggestionsProvider
+                            // Выполняем команду
+                            @Suppress("UNCHECKED_CAST")
+                            //(dispatcher as CommandDispatcher<SharedSuggestionProvider>).execute(command, source)
+                            val dispatcher2 = scriptExists.commandDispatchers[cmdName]
+                            dispatcher2?.execute(command, source as FabricClientCommandSource)
+                            HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}Executing command: $command")
+
+                        } catch (e: Exception) {
+                            player.displayClientMessage(Component.literal("${HypixelCry.LOG_PREFIX}§cError executing Lua command: ${e.message}"), false)
+                            e.printStackTrace()
+                        }
+                    }
+                }
+            }
+
             allow
         })
 
