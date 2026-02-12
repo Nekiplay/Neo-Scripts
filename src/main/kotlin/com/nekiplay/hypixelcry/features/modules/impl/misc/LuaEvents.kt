@@ -167,32 +167,29 @@ object LuaEvents : ClientModule() {
             }
 
             if (allow) {
+                var founded = false
                 LUA_MANAGER.scripts.values.forEach { script ->
-                    var success = false
                     if (script.commandCallbacks.containsKey(cmdName)) {
+                        founded = true
                         player?.let {
-                            HypixelCry.mc.execute {
-                                try {
-                                    val connection = player!!.connection
-                                    val source = connection.suggestionsProvider
-                                    // Выполняем команду
-                                    val dispatcher = script.commandDispatchers[cmdName]
-                                    @Suppress("UNCHECKED_CAST")
-                                    (dispatcher as CommandDispatcher<SharedSuggestionProvider>).execute(command, source)
-                                    HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}Executing command: $command")
-                                    success = true
-
-                                } catch (e: Exception) {
-                                    success = false
-
-                                }
-                            }
-                            if (success) {
+                            try {
+                                val connection = player!!.connection
+                                val source = connection.suggestionsProvider
+                                // Выполняем команду
+                                val dispatcher = script.commandDispatchers[cmdName]
+                                @Suppress("UNCHECKED_CAST")
+                                (dispatcher as CommandDispatcher<SharedSuggestionProvider>).execute(command, source)
+                                HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}Executing command: $command")
                                 return@register false
+
+                            } catch (e: Exception) {
+
                             }
                         }
                     }
-
+                }
+                if (founded) {
+                    return@register false
                 }
             }
 
