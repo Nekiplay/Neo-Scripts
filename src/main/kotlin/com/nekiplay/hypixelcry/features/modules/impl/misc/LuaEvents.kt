@@ -164,41 +164,35 @@ object LuaEvents : ClientModule() {
                 } catch (e: Exception) {
                     // Обработка ошибок
                 }
-
-                if (script.commandCallbacks.containsKey(cmdName)) {
-                    scriptExists = script
-                }
             }
 
-            if (scriptExists != null && allow) {
-                val client = Minecraft.getInstance()
-                val player = client.player
+            if (allow) {
+                LUA_MANAGER.scripts.values.forEach { script ->
+                    var success = false
+                    if (script.commandCallbacks.containsKey(cmdName)) {
+                        player?.let {
+                            HypixelCry.mc.execute {
+                                try {
+                                    val connection = player!!.connection
+                                    val source = connection.suggestionsProvider
+                                    // Выполняем команду
+                                    val dispatcher = script.commandDispatchers[cmdName]
+                                    @Suppress("UNCHECKED_CAST")
+                                    (dispatcher as CommandDispatcher<SharedSuggestionProvider>).execute(command, source)
+                                    HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}Executing command: $command")
+                                    success = true
 
-                if (player != null) {
-                    // Выполняем в основном потоке клиента
-                    client.execute {
-                        try {
-                            val connection = player.connection
-                            val source = connection.suggestionsProvider
-                            // Выполняем команду
-                            val dispatcher = scriptExists.commandDispatchers[cmdName]
-                            @Suppress("UNCHECKED_CAST")
-                            (dispatcher as CommandDispatcher<SharedSuggestionProvider>).execute(command, source)
-                            //val dispatcher2 = scriptExists.commandDispatchers[cmdName]
-                            //dispatcher2?.execute(command, source as FabricClientCommandSource)
-                            //connection.sendCommand(command)
-                            HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}Executing command: $command")
+                                } catch (e: Exception) {
+                                    success = false
 
-
-                        } catch (e: Exception) {
-                            player.displayClientMessage(
-                                Component.literal("${HypixelCry.LOG_PREFIX}§cError executing Lua command: ${e.message}"),
-                                false
-                            )
-                            e.printStackTrace()
+                                }
+                            }
+                            if (success) {
+                                return@register false
+                            }
                         }
                     }
-                    return@register false
+
                 }
             }
 
