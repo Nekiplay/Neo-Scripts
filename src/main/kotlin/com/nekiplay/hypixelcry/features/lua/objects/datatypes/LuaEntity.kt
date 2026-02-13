@@ -73,8 +73,8 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "passengers" -> {
                 val t = tableOf()
                 entity.passengers.forEachIndexed { index, entity ->
-                t.set(index + 1, LuaEntity(entity))
-            }
+                    t.set(index + 1, LuaEntity(entity))
+                }
                 t
             }
             "age" -> valueOf(entity.tickCount)

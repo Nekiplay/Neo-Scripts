@@ -8,6 +8,7 @@ import com.mojang.brigadier.tree.CommandNode
 import com.mojang.brigadier.tree.RootCommandNode
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
 import com.nekiplay.hypixelcry.features.lua.objects.misc.TCPLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ThreadLib
 import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject
@@ -61,7 +62,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val useBlockCallbacks = ArrayList<LuaValue>()
     private val locationChangeCallbacks = ArrayList<LuaValue>()
     private val imguiRenderCallbacks = ArrayList<LuaValue>()
-    private val inventoryItemAddCallbacks = ArrayList<LuaValue>()
+    private val inventoryItemChangeCallbacks = ArrayList<LuaValue>()
 
     // Packet events
     private val serverSideRotationCallbacks = ArrayList<LuaValue>()
@@ -69,6 +70,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
     // Command events
     val commandCallbacks = ConcurrentHashMap<String, LuaValue>()
+    val commandSuggestionsCallbacks = ConcurrentHashMap<String, LuaValue>()
     val commandDispatchers = ConcurrentHashMap<String, CommandDispatcher<FabricClientCommandSource>>()
 
     // Script events
@@ -129,10 +131,10 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
         })
 
-        scriptGlobals.set("registerInventoryItemAdd", object : VarArgFunction() {
+        scriptGlobals.set("registerInventoryItemChange", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
-                return LuaValue.valueOf(addInventoryItemAddCallback(callback))
+                return LuaValue.valueOf(addInventoryItemChangeCallback(callback))
             }
         })
 
@@ -244,10 +246,10 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     private fun registerEventUnregistrationFunctions() {
-        scriptGlobals.set("unregisterInventoryItemAdd", object : VarArgFunction() {
+        scriptGlobals.set("unregisterInventoryItemChange", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
-                return LuaValue.valueOf(removeInventoryItemAddCallback(callback))
+                return LuaValue.valueOf(removeInventoryItemChangeCallback(callback))
             }
         })
 
@@ -358,23 +360,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         })
     }
 
-    private fun registerCommandFunctions() {
-        scriptGlobals.set("registerCommand", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val commandName = args.arg(1).checkjstring()
-                val callback = args.arg(2)
-                return LuaValue.valueOf(addCommandCallback(commandName, callback))
-            }
-        })
-
-        scriptGlobals.set("unregisterCommand", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val commandName = args.arg(1).checkjstring()
-                return LuaValue.valueOf(removeCommandCallback(commandName))
-            }
-        })
-    }
-
     private fun registerRequireFunction() {
         scriptGlobals.set("require", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
@@ -428,6 +413,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         scriptGlobals.set("player", luaManager.playerObj)
         scriptGlobals.set("world", luaManager.worldObj)
         scriptGlobals.set("modules", luaManager.modulesObj)
+        scriptGlobals.set("ComponentBuilder", LuaComponentBuilder.createLibrary())
 
         scriptGlobals.load(luaManager.imguiLib)
         scriptGlobals.load(luaManager.jsonLib)
@@ -445,10 +431,10 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         }
     }
 
-    fun addInventoryItemAddCallback(callback: LuaValue): Boolean {
+    fun addInventoryItemChangeCallback(callback: LuaValue): Boolean {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
-            return inventoryItemAddCallbacks.add(callback)
+            return inventoryItemChangeCallbacks.add(callback)
         }
     }
 
@@ -550,9 +536,10 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         }
     }
 
-    fun addCommandCallback(commandName: String, callback: LuaValue): Boolean {
+    fun addCommandCallback(commandName: String, callback: LuaValue, suggestionsCallback: LuaValue? = null): Boolean {
         if (!callback.isfunction()) return false
         if (commandName.isBlank()) return false
+        if (suggestionsCallback != null && !suggestionsCallback.isfunction()) return false
 
         synchronized(callbacksLock) {
             // Проверяем, не зарегистрирована ли уже команда с таким именем
@@ -560,12 +547,32 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 return false
             }
             commandCallbacks[commandName] = callback
+            if (suggestionsCallback != null) {
+                commandSuggestionsCallbacks[commandName] = suggestionsCallback
+            }
             registerMinecraftCommand(commandName)
 
             return true
         }
     }
 
+    private fun registerCommandFunctions() {
+        scriptGlobals.set("registerCommand", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val commandName = args.arg(1).checkjstring()
+                val callback = args.arg(2)
+                val suggestionsCallback = if (args.narg() >= 3) args.arg(3) else null
+                return LuaValue.valueOf(addCommandCallback(commandName, callback, suggestionsCallback))
+            }
+        })
+
+        scriptGlobals.set("unregisterCommand", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val commandName = args.arg(1).checkjstring()
+                return LuaValue.valueOf(removeCommandCallback(commandName))
+            }
+        })
+    }
 
     private fun registerMinecraftCommand(commandName: String) {
         try {
@@ -596,10 +603,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     private fun actualRegister(dispatcher: CommandDispatcher<FabricClientCommandSource>, commandName: String) {
-        // Удаляем старую команду, если она была, чтобы избежать дубликатов в узлах (nodes)
+        // Удаляем старую команду, если она была
         val root = dispatcher.root
         if (root.getChild(commandName) != null) {
-            // Используем рефлексию для удаления существующей команды, если нужно перерегистрировать
             try {
                 val childrenField = root.javaClass.getDeclaredField("children")
                 childrenField.isAccessible = true
@@ -611,30 +617,107 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 @Suppress("UNCHECKED_CAST")
                 (literalsField.get(root) as MutableMap<String, *>).remove(commandName)
             } catch (e: Exception) {
-                // Если не вышло удалить — ничего страшного, dispatcher.register просто добавит новый путь
+                // Ignore
             }
         }
 
-        dispatcher.register(
-            ClientCommandManager.literal(commandName)
-                .executes { context ->
-                    executeLuaCommand(commandName, emptyArray(), context.source)
-                    1
-                }
-                .then(ClientCommandManager.argument("args", StringArgumentType.greedyString())
+        val commandBuilder = ClientCommandManager.literal(commandName)
+            .executes { context ->
+                executeLuaCommand(commandName, emptyArray(), context.source)
+                1
+            }
+
+        // Проверяем, есть ли callback для автодополнения
+        val suggestionsCallback = commandSuggestionsCallbacks[commandName]
+
+        if (suggestionsCallback != null) {
+            // С автодополнением
+            commandBuilder.then(
+                ClientCommandManager.argument("args", StringArgumentType.greedyString())
+                    .suggests { context, builder ->
+                        getSuggestionsFromLua(commandName, context, builder, suggestionsCallback)
+                    }
                     .executes { context ->
                         val args = StringArgumentType.getString(context, "args").split(" ").toTypedArray()
                         executeLuaCommand(commandName, args, context.source)
                         1
                     }
-                )
-        )
+            )
+        } else {
+            // Без автодополнения
+            commandBuilder.then(
+                ClientCommandManager.argument("args", StringArgumentType.greedyString())
+                    .executes { context ->
+                        val args = StringArgumentType.getString(context, "args").split(" ").toTypedArray()
+                        executeLuaCommand(commandName, args, context.source)
+                        1
+                    }
+            )
+        }
 
-        // Дополнительная проверка для отладки
+        dispatcher.register(commandBuilder)
+
         if (dispatcher.root.getChild(commandName) == null) {
             HypixelCry.LOGGER.error("Failed to inject node into dispatcher root!")
         } else {
-            HypixelCry.LOGGER.info("Successfully injected command: $commandName")
+            HypixelCry.LOGGER.info("Successfully injected command: $commandName with suggestions: ${suggestionsCallback != null}")
+        }
+    }
+
+    private fun getSuggestionsFromLua(
+        commandName: String,
+        context: CommandContext<FabricClientCommandSource>,
+        builder: com.mojang.brigadier.suggestion.SuggestionsBuilder,
+        suggestionsCallback: LuaValue
+    ): java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> {
+        return java.util.concurrent.CompletableFuture.supplyAsync {
+            try {
+                // Получаем текущий ввод пользователя
+                val input = builder.remaining
+
+                // Получаем весь введенный текст команды
+                val fullInput = builder.input
+
+                // Создаем таблицу с информацией для Lua
+                val infoTable = LuaValue.tableOf()
+                infoTable.set("input", LuaValue.valueOf(input))
+                infoTable.set("fullInput", LuaValue.valueOf(fullInput))
+
+                // Вызываем Lua callback
+                val result = suggestionsCallback.call(infoTable)
+
+                // Обрабатываем результат
+                if (result.istable()) {
+                    val suggestions = result.checktable()
+                    var i = 1
+                    while (true) {
+                        val suggestion = suggestions.get(i)
+                        if (suggestion.isnil()) break
+
+                        // Поддержка как строк, так и таблиц с tooltip
+                        if (suggestion.isstring()) {
+                            builder.suggest(suggestion.tojstring())
+                        } else if (suggestion.istable()) {
+                            val suggestionTable = suggestion.checktable()
+                            val text = suggestionTable.get("text").tojstring()
+                            val tooltip = suggestionTable.get("tooltip")
+
+                            if (!tooltip.isnil()) {
+                                builder.suggest(text, Component.literal(tooltip.tojstring()))
+                            } else {
+                                builder.suggest(text)
+                            }
+                        }
+                        i++
+                    }
+                } else if (result.isstring()) {
+                    // Если вернули строку, добавляем как единственное предложение
+                    builder.suggest(result.tojstring())
+                }
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error getting suggestions for command /$commandName", e)
+            }
+            builder.build()
         }
     }
 
@@ -689,9 +772,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     // Methods for removing callbacks
-    fun removeInventoryItemAddCallback(callback: LuaValue): Boolean {
+    fun removeInventoryItemChangeCallback(callback: LuaValue): Boolean {
         synchronized(callbacksLock) {
-            return inventoryItemAddCallbacks.remove(callback)
+            return inventoryItemChangeCallbacks.remove(callback)
         }
     }
 
@@ -784,17 +867,17 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             val dispatcher = commandDispatchers[commandName]
             if (dispatcher != null) {
                 unregisterCommandInternal(dispatcher, commandName)
-                return true
             }
-            return false
+            commandSuggestionsCallbacks.remove(commandName)
+            return commandCallbacks.remove(commandName) != null
         }
     }
 
     // Event handlers
-    fun onInventoryItemAdd(slot: Int, stack: ItemStack): Boolean {
+    fun onInventoryItemAChange(slot: Int, stack: ItemStack): Boolean {
         var allow = true
         val callbacks = synchronized(callbacksLock) {
-            inventoryItemAddCallbacks.toTypedArray()
+            inventoryItemChangeCallbacks.toTypedArray()
         }
 
         for (callback in callbacks) {
@@ -862,15 +945,14 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         }
     }
 
-    fun onRenderTick(context: PrimitiveCollector?) {
+    fun onRenderTick(context: WorldRendererObject) {
         val callbacks = synchronized(callbacksLock) {
             renderWorldCallbacks.toTypedArray()
         }
 
-        val renderContext = WorldRendererObject(context)
         for (callback in callbacks) {
             try {
-                callback.call(renderContext)
+                callback.call(context)
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in world render callback in ${scriptName}: ${e.message}")
             }
@@ -912,14 +994,14 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         return allow
     }
 
-    fun onChatMessageEvent(text: String, overlay: Boolean): Boolean {
+    fun onChatMessageEvent(text: String, overlay: Boolean, json: String): Boolean {
         val callbacks = synchronized(callbacksLock) {
             messageEventCallbacks.toTypedArray()
         }
         var allow = true
         for (callback in callbacks) {
             try {
-                val res = callback.call(LuaValue.valueOf(text), LuaValue.valueOf(overlay))
+                val res = callback.call(LuaValue.valueOf(text), LuaValue.valueOf(overlay), LuaValue.valueOf(json))
                 if (res.isboolean()) {
                     if (!res.toboolean()) {
                         allow = false
@@ -1117,7 +1199,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         // Очищаем все коллбэки
         synchronized(callbacksLock) {
             scriptUnloadCallbacks.clear()
-            inventoryItemAddCallbacks.clear()
+            inventoryItemChangeCallbacks.clear()
             useBlockCallbacks.clear()
             clientTickCallbacks.clear()
             clientPreTickCallbacks.clear()
@@ -1133,6 +1215,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             serverSideRotationCallbacks.clear()
             serverSideTeleportCallbacks.clear()
             commandCallbacks.clear()
+            commandSuggestionsCallbacks.clear()
         }
 
         commandDispatchers.clear()

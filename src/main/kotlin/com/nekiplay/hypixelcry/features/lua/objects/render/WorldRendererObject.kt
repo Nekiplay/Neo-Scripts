@@ -295,6 +295,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 val boxObj = table.get("box")
                 val box = when {
                     boxObj.isuserdata() && boxObj.touserdata() is LuaBox -> (boxObj.touserdata() as LuaBox).box
+                    boxObj is LuaBox -> boxObj.box
                     boxObj.isuserdata() && boxObj.touserdata() is AABB -> boxObj.touserdata() as AABB
                     else -> null
                 }
@@ -344,6 +345,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 val boxObj = table.get("box")
                 val box = when {
                     boxObj.isuserdata() && boxObj.touserdata() is LuaBox -> (boxObj.touserdata() as LuaBox).box
+                    boxObj is LuaBox -> boxObj.box
                     boxObj.isuserdata() && boxObj.touserdata() is AABB -> boxObj.touserdata() as AABB
                     else -> null
                 }
@@ -362,9 +364,6 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         }
     }
 
-    fun getrgb(red: Int, green: Int, blue: Int): Int {
-        return (0xFF shl 24) or (red shl 16) or (green shl 8) or blue
-    }
     fun getArgb(alpha: Int, red: Int, green: Int, blue: Int): Int {
         return (alpha shl 24) or (red shl 16) or (green shl 8) or blue
     }

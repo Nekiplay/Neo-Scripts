@@ -12,8 +12,10 @@ import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent
 import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent.BlockUpdateCallback
 import com.nekiplay.hypixelcry.features.lua.LuaScript
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
+import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.features.modules.ClientModule
 import com.nekiplay.hypixelcry.sugar.getFormattedString
+import com.nekiplay.hypixelcry.sugar.getJsonString
 import com.nekiplay.hypixelcry.utils.render.WorldRenderExtractionCallback
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
@@ -59,9 +61,10 @@ object LuaEvents : ClientModule() {
         }
 
         WorldRenderExtractionCallback.EVENT.register({ context: PrimitiveCollector? ->
+            val renderContext = WorldRendererObject(context)
             LUA_MANAGER.scripts.values.forEach { script ->
                 try {
-                    script.onRenderTick(context)
+                    script.onRenderTick(renderContext)
                 } catch (e: Exception) {
                     // Обработка ошибок
                 }
@@ -128,7 +131,7 @@ object LuaEvents : ClientModule() {
             var allow = true
             LUA_MANAGER.scripts.values.forEach { script ->
                 try {
-                    if (!script.onChatMessageEvent(text.getFormattedString(), overlay)) {
+                    if (!script.onChatMessageEvent(text.getFormattedString(), overlay, text.getJsonString())) {
                         allow = false
                     }
                 } catch (e: Exception) {
@@ -169,7 +172,7 @@ object LuaEvents : ClientModule() {
             if (allow) {
                 var founded = false
                 LUA_MANAGER.scripts.values.forEach { script ->
-                    if (script.commandCallbacks.containsKey(cmdName)) {
+                    if (script.commandCallbacks.containsKey(cmdName) && script.commandDispatchers.containsKey(cmdName)) {
                         founded = true
                         player?.let {
                             try {
@@ -178,9 +181,11 @@ object LuaEvents : ClientModule() {
                                 // Выполняем команду
                                 val dispatcher = script.commandDispatchers[cmdName]
                                 @Suppress("UNCHECKED_CAST")
-                                (dispatcher as CommandDispatcher<SharedSuggestionProvider>).execute(command, source)
-                                HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}Executing command: $command")
-                                return@register false
+                                val result = (dispatcher as CommandDispatcher<SharedSuggestionProvider>).execute(command, source)
+                                if (result >= 1) {
+                                    HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}Executing command: $command")
+                                    return@register false
+                                }
 
                             } catch (e: Exception) {
 
@@ -302,7 +307,7 @@ object LuaEvents : ClientModule() {
             var allow = true
             LUA_MANAGER.scripts.values.forEach { script ->
                 try {
-                    if (!script.onInventoryItemAdd(event.slot, event.item)) {
+                    if (!script.onInventoryItemAChange(event.slot, event.item)) {
                         allow = false
                     }
                 } catch (e: Exception) {

@@ -423,13 +423,6 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         }
     }
 
-    private fun drawQuad(context: GuiGraphics, x1: Float, y1: Float, x2: Float, y2: Float,
-                         x3: Float, y3: Float, x4: Float, y4: Float, color: Int) {
-        // Рисуем четырехугольник как два треугольника
-        drawTriangle(context, x1, y1, x2, y2, x3, y3, color)
-        drawTriangle(context, x1, y1, x3, y3, x4, y4, color)
-    }
-
     private inner class RenderItemStackFunction : OneArgFunction() {
         override fun call(table: LuaValue): LuaValue {
             if (table.istable() && context != null) {
@@ -440,6 +433,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
                 val itemStackObj = table.get("itemStack")
                 val itemStack = when {
                     itemStackObj.isuserdata() && itemStackObj.touserdata() is LuaItemStack -> (itemStackObj.touserdata() as LuaItemStack).stack
+                    itemStackObj is LuaItemStack -> itemStackObj.stack
                     itemStackObj.isuserdata() && itemStackObj.touserdata() is ItemStack -> itemStackObj.touserdata() as ItemStack
                     else -> null
                 }
@@ -554,16 +548,6 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
                 y += sy
             }
         }
-    }
-
-    private fun isPointInTriangle(px: Float, py: Float,
-                                  x1: Float, y1: Float,
-                                  x2: Float, y2: Float,
-                                  x3: Float, y3: Float): Boolean {
-        val area = 0.5 * (-y2 * x3 + y1 * (-x2 + x3) + x1 * (y2 - y3) + x2 * y3)
-        val s = 1 / (2 * area) * (y1 * x3 - x1 * y3 + (y3 - y1) * px + (x1 - x3) * py)
-        val t = 1 / (2 * area) * (x1 * y2 - y1 * x2 + (y1 - y2) * px + (x2 - x1) * py)
-        return s > 0 && t > 0 && (1 - s - t) > 0
     }
 
     override fun typename(): String = "2d_renderer"

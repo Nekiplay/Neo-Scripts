@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.features.lua
 
 import com.mojang.brigadier.CommandDispatcher
 import com.nekiplay.hypixelcry.HypixelCry
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
 import com.nekiplay.hypixelcry.features.lua.objects.misc.CatboostLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.Creator
 import com.nekiplay.hypixelcry.features.lua.objects.misc.EncodingLib

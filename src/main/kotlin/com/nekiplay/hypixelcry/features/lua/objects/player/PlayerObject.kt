@@ -1,6 +1,8 @@
 package com.nekiplay.hypixelcry.features.lua.objects.player
 
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaEntity
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponent
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
 import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.sugar.getFormattedString
@@ -11,6 +13,7 @@ import com.nekiplay.hypixelcry.utils.RaycastUtils
 import com.nekiplay.hypixelcry.utils.Rotations
 import com.nekiplay.hypixelcry.utils.StatusBarTracker
 import com.nekiplay.hypixelcry.utils.Utils
+import com.nekiplay.hypixelcry.utils.render.FrustumUtils
 import com.nekiplay.hypixelcry.utils.trackers.ColdTracker
 import com.nekiplay.hypixelcry.utils.trackers.PetCache
 import net.minecraft.client.Minecraft
@@ -89,6 +92,7 @@ class PlayerObject : LuaValue() {
             "isSprinting" -> IsPlayerSprintingFunction()
             "isOnGround" -> IsPlayerOnGroundFunction()
             "isOnSkyBlock" -> IsPlayerOnSkyBlockFunction()
+            "isHasLineOfSight" -> IsHasLineOfSight()
 
             "swingHand" -> SwingHandFunction()
 
@@ -104,6 +108,22 @@ class PlayerObject : LuaValue() {
             "raycast" -> RayCastFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class IsHasLineOfSight : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue? {
+            if (arg is LuaEntity) {
+                if (mc.player?.hasLineOfSight(arg.entity) == true) {
+                    return TRUE
+                }
+            }
+            else if (arg.touserdata() is LuaEntity) {
+                if (mc.player?.hasLineOfSight((arg.touserdata() as LuaEntity).entity) == true) {
+                    return TRUE
+                }
+            }
+            return FALSE
+        }
     }
 
     private inner class AddToastFunction : ThreeArgFunction() {
@@ -303,6 +323,18 @@ class PlayerObject : LuaValue() {
             if (message.isstring()) {
                 mc.execute {
                     mc.player?.displayClientMessage(Component.literal(message.tojstring()), false)
+                }
+                return TRUE
+            }
+            else if (message is LuaComponent) {
+                mc.execute {
+                    mc.player?.displayClientMessage(message.component, false)
+                }
+                return TRUE
+            }
+            else if (message is LuaComponentBuilder) {
+                mc.execute {
+                    mc.player?.displayClientMessage(message.buildComponent(), false)
                 }
                 return TRUE
             }

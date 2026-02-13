@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
 import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.CropBlock
 import net.minecraft.world.level.block.DoorBlock
 import net.minecraft.world.level.block.RedStoneWireBlock
 import net.minecraft.world.level.block.RepeaterBlock
@@ -23,6 +24,14 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
             "is_solid" -> valueOf(blockState.isSolid)
             "is_liquid" -> valueOf(blockState.liquid())
             "is_air" -> valueOf(blockState.isAir)
+            "age" -> {
+                val age = blockState.getOptionalValue(CropBlock.AGE)
+                if (age.isPresent) {
+                    valueOf(age.get())
+                } else {
+                    LuaValue.NIL
+                }
+            }
             "delay" -> {
                 val delay = blockState.getOptionalValue(RepeaterBlock.DELAY)
                 if (delay.isPresent) {

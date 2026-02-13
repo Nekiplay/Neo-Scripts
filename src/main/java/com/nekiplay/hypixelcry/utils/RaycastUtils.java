@@ -20,9 +20,6 @@ public class RaycastUtils {
     }
 
     public static HitResult fastRayTrace(Entity sourceEntity, Vec3 startVec, Vec3 endVec, List<Block> targetBlocks) {
-        // --- ЭТАП 1: Raytrace Блоков (Твой DDA алгоритм) ---
-
-        // Результат попадания в блок (по умолчанию - промах в конец луча)
         HitResult resultBlockHit = BlockHitResult.miss(
                 endVec,
                 Direction.getApproximateNearest(

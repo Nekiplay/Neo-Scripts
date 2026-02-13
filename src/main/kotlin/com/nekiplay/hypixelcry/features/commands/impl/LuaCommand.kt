@@ -8,10 +8,13 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import com.nekiplay.hypixelcry.HypixelCry
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
+import net.minecraft.client.Minecraft
 import net.minecraft.commands.CommandBuildContext
 import net.minecraft.network.chat.Component
+import java.awt.Desktop
 import java.io.File
 import java.util.concurrent.CompletableFuture
+
 
 object LuaCommand {
     private val SCRIPT_SUGGESTION_PROVIDER = SuggestionProvider<FabricClientCommandSource> { _, builder ->
@@ -74,8 +77,30 @@ object LuaCommand {
                     }
                 )
             )
+            .then(ClientCommandManager.literal("folder")
+                .executes { context ->
+                    openScriptsFolder(context.source)
+                    1
+                }
+            )
 
         dispatcher.register(luaCommand)
+    }
+
+    private fun openScriptsFolder(source: FabricClientCommandSource) {
+        val gameDir = Minecraft.getInstance().gameDirectory
+        val scriptsDir = File(gameDir, "config/hypixelcry/scripts")
+
+        if (scriptsDir.exists()) {
+            // Открываем в отдельном потоке, чтобы не вешать игру
+            Thread(Runnable {
+                try {
+                    Desktop.getDesktop().open(scriptsDir)
+                } catch (e: java.lang.Exception) {
+                    e.printStackTrace()
+                }
+            }).start()
+        }
     }
 
     private fun toggleScript(source: FabricClientCommandSource, name: String) {
@@ -262,7 +287,7 @@ object LuaCommand {
             source.sendFeedback(Component.literal(""))
 
             scriptsToDisplay.forEach { script ->
-                val depCount = script.localDependencyGraph.size
+                val depCount = countUniqueDependencies(script.localDependencyGraph)
                 val depInfo = if (depCount > 0) " §8(§7$depCount modules§8)" else ""
                 source.sendFeedback(Component.literal("  §6▶ §a§l${script.scriptName}$depInfo"))
 
@@ -278,11 +303,27 @@ object LuaCommand {
         // РЕЖИМ 2: Просто краткий список всех загруженных скриптов
         source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§6Loaded scripts §7(${loadedScripts.size}):"))
         loadedScripts.forEach { script ->
-            val depCount = script.localDependencyGraph.size
+            val depCount = countUniqueDependencies(script.localDependencyGraph)
             // Стиль как в вашем listLuaFiles: §7- §aИмя §7(доп инфо)
             source.sendFeedback(Component.literal("  §7- §a${script.scriptName} §8(§7$depCount modules§8) §8[ID: ${script.hashCode().toString(16).take(4)}]"))
         }
         source.sendFeedback(Component.literal("§7Tip: Use §e/lua loaded <name> §7to see dependencies"))
+    }
+
+    private fun countUniqueDependencies(graph: Map<String, Set<String>>): Int {
+        if (graph.isEmpty()) return 0
+
+        val allModules = mutableSetOf<String>()
+
+        // Добавляем все ключи (модули, которые имеют зависимости)
+        allModules.addAll(graph.keys)
+
+        // Добавляем все значения (сами зависимости)
+        graph.values.forEach { dependencies ->
+            allModules.addAll(dependencies)
+        }
+
+        return allModules.size
     }
 
     /**
