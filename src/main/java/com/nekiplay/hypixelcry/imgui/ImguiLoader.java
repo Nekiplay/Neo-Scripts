@@ -73,9 +73,7 @@ public class ImguiLoader {
         io.setIniFilename(null);
         io.setConfigFlags(ImGuiConfigFlags.NavEnableKeyboard);
         io.addConfigFlags(ImGuiConfigFlags.DockingEnable);
-        io.addConfigFlags(ImGuiConfigFlags.ViewportsEnable);
         io.setBackendFlags(ImGuiBackendFlags.HasMouseCursors);
-        io.setBackendPlatformName("imgui_java_impl_glfw");
         //io.setKeyMap(ImGuiKey.Tab, GLFW.GLFW_KEY_TAB);
         //io.setKeyMap(ImGuiKey.LeftArrow, GLFW.GLFW_KEY_LEFT);
         //io.setKeyMap(ImGuiKey.RightArrow, GLFW.GLFW_KEY_RIGHT);
