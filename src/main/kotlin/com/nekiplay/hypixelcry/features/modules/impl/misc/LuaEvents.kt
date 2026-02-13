@@ -27,9 +27,12 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
 import net.minecraft.client.Minecraft
 import net.minecraft.commands.SharedSuggestionProvider
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
+import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
+import net.minecraft.network.protocol.game.ClientboundRespawnPacket
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
@@ -159,7 +162,6 @@ object LuaEvents : ClientModule() {
         ClientSendMessageEvents.ALLOW_COMMAND.register { command ->
             var allow = true
             val cmdName = command.split(" ")[0]
-            var scriptExists: LuaScript? = null
             LUA_MANAGER.scripts.values.forEach { script ->
                 try {
                     if (!script.onSendChatCommandEvent(command)) {
@@ -259,6 +261,17 @@ object LuaEvents : ClientModule() {
         })
 
         PacketEvent.RECEIVE.register { event ->
+            if (event.packet is ClientboundLevelParticlesPacket) {
+                val packet = event.packet as ClientboundLevelParticlesPacket
+
+                LUA_MANAGER.scripts.values.forEach { script ->
+                    try {
+                        script.onSpawnParticleEvent(BuiltInRegistries.PARTICLE_TYPE.getId(packet.particle.type), packet.x, packet.y, packet.z, packet.xDist, packet.yDist, packet.zDist, packet.maxSpeed, packet.count)
+                    } catch (e: Exception) {
+                        // Обработка ошибок
+                    }
+                }
+            }
             val allow = when (val packet = event.packet) {
                 is ClientboundPlayerRotationPacket -> {
                     var rotationAllowed = true

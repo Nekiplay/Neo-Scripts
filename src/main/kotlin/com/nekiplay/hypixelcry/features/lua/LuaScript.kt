@@ -63,6 +63,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val locationChangeCallbacks = ArrayList<LuaValue>()
     private val imguiRenderCallbacks = ArrayList<LuaValue>()
     private val inventoryItemChangeCallbacks = ArrayList<LuaValue>()
+    private val particleCallbacks = ArrayList<LuaValue>()
 
     // Packet events
     private val serverSideRotationCallbacks = ArrayList<LuaValue>()
@@ -128,6 +129,13 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         scriptGlobals.set("registerUnloadCallback", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 return LuaValue.valueOf(addScriptUnloadCallback(callback))
+            }
+        })
+
+        scriptGlobals.set("registerSpawnParticle", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                return LuaValue.valueOf(addParticleCallback(callback))
             }
         })
 
@@ -246,6 +254,13 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     private fun registerEventUnregistrationFunctions() {
+        scriptGlobals.set("unregisterSpawnParticle", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                return LuaValue.valueOf(removeParticleCallback(callback))
+            }
+        })
+
         scriptGlobals.set("unregisterInventoryItemChange", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
@@ -428,6 +443,13 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         if (!callback.isfunction()) return false
         synchronized(callbacksLock) {
             return scriptUnloadCallbacks.add(callback)
+        }
+    }
+
+    fun addParticleCallback(callback: LuaValue): Boolean {
+        if (!callback.isfunction()) return false
+        synchronized(callbacksLock) {
+            return particleCallbacks.add(callback)
         }
     }
 
@@ -772,6 +794,12 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     // Methods for removing callbacks
+    fun removeParticleCallback(callback: LuaValue): Boolean {
+        synchronized(callbacksLock) {
+            return particleCallbacks.remove(callback)
+        }
+    }
+
     fun removeInventoryItemChangeCallback(callback: LuaValue): Boolean {
         synchronized(callbacksLock) {
             return inventoryItemChangeCallbacks.remove(callback)
@@ -1105,6 +1133,37 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     // Packet events
+    fun onSpawnParticleEvent(id: Int, x: Double, y: Double, z: Double, xDist: Float, yDist: Float, zDist: Float, maxSpeed: Float, count: Int): Boolean {
+        var allow = true
+        val callbacks = synchronized(callbacksLock) {
+            particleCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+
+                val t = LuaValue.tableOf()
+                t.set("id", id)
+
+                t.set("x", x)
+                t.set("y", y)
+                t.set("z", z)
+
+                t.set("x_dist", xDist.toDouble())
+                t.set("y_dist", yDist.toDouble())
+                t.set("z_dist", zDist.toDouble())
+
+                t.set("max_speed", maxSpeed.toDouble())
+                t.set("count", count)
+
+                callback.call(t)
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in particle callback in ${scriptName}: ${e.message}")
+            }
+        }
+        return allow
+    }
+
     fun onServerSideRotationEvent(yaw: Float, pitch: Float): Boolean {
         var allow = true
         val callbacks = synchronized(callbacksLock) {
