@@ -11,6 +11,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class TailRenderMixin {
     @Inject(at = @At(value = "INVOKE", target = "Lorg/lwjgl/glfw/GLFW;glfwSwapBuffers(J)V"), method="flipFrame")
     private static void runTickTail(CallbackInfo ci) {
-        ImguiLoader.onFrameRender();
+        //ImguiLoader.onFrameRender();
     }
 }

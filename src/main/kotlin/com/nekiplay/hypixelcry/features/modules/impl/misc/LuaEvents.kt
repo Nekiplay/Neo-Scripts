@@ -14,6 +14,7 @@ import com.nekiplay.hypixelcry.features.lua.LuaScript
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.features.modules.ClientModule
+import com.nekiplay.hypixelcry.imgui.ImguiLoader
 import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.sugar.getJsonString
 import com.nekiplay.hypixelcry.utils.render.WorldRenderExtractionCallback
@@ -202,6 +203,7 @@ object LuaEvents : ClientModule() {
         }
 
         HudRenderCallback.EVENT.register(HudRenderCallback { context, _ ->
+            ImguiLoader.onFrameRender()
             LUA_MANAGER.scripts.values.forEach { script ->
                 try {
                     script.on2DRenderTick(context)
