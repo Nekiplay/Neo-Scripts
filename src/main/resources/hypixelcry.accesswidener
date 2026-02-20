@@ -6,3 +6,5 @@ accessible field net/minecraft/world/level/saveddata/maps/MapItemSavedData track
 accessible field net/minecraft/world/level/saveddata/maps/MapItemSavedData unlimitedTracking Z
 accessible field net/minecraft/world/level/saveddata/maps/MapItemSavedData trackedDecorationCount I
 accessible field net/minecraft/world/level/saveddata/maps/MapItemSavedData frameMarkers Ljava/util/Map;
+
+accessible class net/minecraft/client/Minecraft$GameLoadCookie

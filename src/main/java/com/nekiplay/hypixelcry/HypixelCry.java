@@ -6,6 +6,7 @@ import com.nekiplay.hypixelcry.annotations.Init;
 import com.nekiplay.hypixelcry.features.commands.impl.LuaCommand;
 import com.nekiplay.hypixelcry.features.lua.LuaScript;
 import com.nekiplay.hypixelcry.features.modules.ModuleManager;
+import com.nekiplay.hypixelcry.imgui.ImguiLoader;
 import com.nekiplay.hypixelcry.utils.Utils;
 import com.nekiplay.hypixelcry.utils.scheduler.Scheduler;
 import com.nekiplay.hypixelcry.features.lua.LuaManager;
@@ -99,9 +100,9 @@ public class HypixelCry implements ClientModInitializer {
             if (autoLoadScript.exists()) {
                 try {
                     LUA_MANAGER.executeScript(autoLoadScript);
-                    System.out.println("Autoload script executed successfully");
+                    System.out.println("Autoload script \"" + name + "\" executed successfully");
                 } catch (Exception e) {
-                    System.out.println("Error executing autoload script: " + e.getMessage());
+                    System.out.println("Error executing autoload script \"" + name + "\": " + e.getMessage());
                     e.printStackTrace();
                 }
             }

@@ -344,9 +344,9 @@ class ImGuiLib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (args.isvalue(1) && args.isvalue(2) && args.isvalue(3)) {
                 val image = when {
-                    args.arg(1).isuserdata() && args.arg(1).touserdata() is ImGuiTexture -> (args.arg(1).touserdata() as ImGuiTexture).texture.get()
-                    args.arg(1).isuserdata() && args.arg(1).touserdata() is AtomicInteger -> (args.arg(1).touserdata() as AtomicInteger).get()
-                    args.arg(1).isnumber() -> args.arg(1).toint()
+                    args.arg(1).isuserdata() && args.arg(1).touserdata() is ImGuiTexture -> (args.arg(1).touserdata() as ImGuiTexture).texture.get().toLong()
+                    args.arg(1).isuserdata() && args.arg(1).touserdata() is AtomicInteger -> (args.arg(1).touserdata() as AtomicInteger).get().toLong()
+                    args.arg(1).isnumber() -> args.arg(1).tolong()
                     else -> null
                 }
 

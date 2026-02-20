@@ -1,4 +1,4 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+val lwjgl_version: String by project
 
 plugins {
     java
@@ -8,6 +8,14 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.21"
     id("com.nekiplay.hypixelcry.annotation-processor")
     id("com.gradleup.shadow") version "9.3.0"
+}
+
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.lwjgl") {
+            useVersion(lwjgl_version)
+        }
+    }
 }
 
 repositories {

@@ -365,13 +365,13 @@ class ImGuiDrawListLib : TwoArgFunction() {
 
     // ============ Helper Methods ============
 
-    private fun resolveTextureId(arg: LuaValue): Int? {
+    private fun resolveTextureId(arg: LuaValue): Long? {
         return when {
             arg.isuserdata() && arg.touserdata() is ImGuiTexture ->
-                (arg.touserdata() as ImGuiTexture).texture.get()
+                (arg.touserdata() as ImGuiTexture).texture.get().toLong()
             arg.isuserdata() && arg.touserdata() is java.util.concurrent.atomic.AtomicInteger ->
-                (arg.touserdata() as java.util.concurrent.atomic.AtomicInteger).get()
-            arg.isnumber() -> arg.toint()
+                (arg.touserdata() as java.util.concurrent.atomic.AtomicInteger).get().toLong()
+            arg.isnumber() -> arg.toint().toLong()
             else -> null
         }
     }

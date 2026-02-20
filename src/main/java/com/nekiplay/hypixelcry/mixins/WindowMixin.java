@@ -17,13 +17,13 @@ public class WindowMixin {
     @Final
     private Window window;
 
-    @Inject(at = @At("TAIL"),method = "<init>")
-    private void onGlfwInit(GameConfig args, CallbackInfo ci){
-        ImguiLoader.onGlfwInit(window.handle());
+    @Inject(at = @At("HEAD"),method = "onGameLoadFinished")
+    private void onGlfwInit(Minecraft.GameLoadCookie gameLoadCookie, CallbackInfo ci){
+        ImguiLoader.onGlfwInit();
     }
 
     @Inject(at = @At("RETURN"),method = "<init>")
     private void onGlfwReturn(GameConfig args, CallbackInfo ci){
-        ImguiLoader.onGlfwReturn(window.handle());
+        //ImguiLoader.onGlfwInit();
     }
 }

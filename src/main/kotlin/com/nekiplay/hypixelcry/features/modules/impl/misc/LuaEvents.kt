@@ -15,6 +15,7 @@ import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.features.modules.ClientModule
 import com.nekiplay.hypixelcry.imgui.ImguiLoader
+import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.sugar.getJsonString
 import com.nekiplay.hypixelcry.utils.render.WorldRenderExtractionCallback
@@ -29,6 +30,10 @@ import net.minecraft.client.Minecraft
 import net.minecraft.commands.SharedSuggestionProvider
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
+import net.minecraft.network.protocol.game.ClientboundBlockChangedAckPacket
+import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket
+import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket
+import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
@@ -205,7 +210,6 @@ object LuaEvents : ClientModule() {
         }
 
         HudRenderCallback.EVENT.register(HudRenderCallback { context, _ ->
-            ImguiLoader.onFrameRender()
             LUA_MANAGER.scripts.values.forEach { script ->
                 try {
                     script.on2DRenderTick(context)
@@ -267,6 +271,30 @@ object LuaEvents : ClientModule() {
                 LUA_MANAGER.scripts.values.forEach { script ->
                     try {
                         script.onSpawnParticleEvent(BuiltInRegistries.PARTICLE_TYPE.getId(packet.particle.type), packet.x, packet.y, packet.z, packet.xDist, packet.yDist, packet.zDist, packet.maxSpeed, packet.count)
+                    } catch (e: Exception) {
+                        // Обработка ошибок
+                    }
+                }
+            }
+            else if (event.packet is ClientboundBlockUpdatePacket) {
+                val packet = event.packet as ClientboundBlockUpdatePacket
+
+                val table = LuaValue.tableOf()
+
+                table.set("x", packet.pos.x)
+                table.set("y", packet.pos.y)
+                table.set("z", packet.pos.z)
+                val oldState = mc.level?.getBlockState(packet.pos)
+                if (oldState != null) {
+                    table.set("old", LuaBlockState(oldState))
+                }
+                if (packet.blockState != null) {
+                    table.set("new", LuaBlockState(packet.blockState))
+                }
+
+                LUA_MANAGER.scripts.values.forEach { script ->
+                    try {
+                        script.onBlockUpdateEvent(table)
                     } catch (e: Exception) {
                         // Обработка ошибок
                     }
