@@ -161,10 +161,8 @@ class ImGuiLib : TwoArgFunction() {
         // Sliders
         library.set("sliderFloat", sliderFloat())
         library.set("sliderInt", sliderInt())
-        library.set("sliderDouble", sliderDouble())
         library.set("vSliderFloat", vSliderFloat())
         library.set("vSliderInt", vSliderInt())
-        library.set("sliderAngle", sliderAngle())
 
         // Constants
         val constants = LuaTable()
@@ -328,17 +326,6 @@ class ImGuiLib : TwoArgFunction() {
             val flags = if (args.narg() > 7) args.checkint(8) else 0
             val changed = ImGui.vSliderInt(label, sizeX, sizeY, value, min, max, format, flags)
             return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value[0]))
-        }
-    }
-
-    inner class sliderAngle : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val value = floatArrayOf(args.checkdouble(2).toFloat())
-            val step = if (args.narg() > 2) args.checkdouble(3).toFloat() else 1.0f
-            val flags = if (args.narg() > 3) args.checkint(4) else 0
-            val changed = ImGui.sliderAngle(label, value, step, flags)
-            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value[0].toDouble()))
         }
     }
 
