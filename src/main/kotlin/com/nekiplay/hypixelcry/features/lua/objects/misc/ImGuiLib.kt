@@ -158,6 +158,14 @@ class ImGuiLib : TwoArgFunction() {
         library.set("tableSetColumnIndex", tableSetColumnIndex())
         library.set("endTable", endTable())
 
+        // Sliders
+        library.set("sliderFloat", sliderFloat())
+        library.set("sliderInt", sliderInt())
+        library.set("sliderDouble", sliderDouble())
+        library.set("vSliderFloat", vSliderFloat())
+        library.set("vSliderInt", vSliderInt())
+        library.set("sliderAngle", sliderAngle())
+
         // Constants
         val constants = LuaTable()
         constants.set("WindowFlags_None", ImGuiWindowFlags.None.toInt())
@@ -265,6 +273,86 @@ class ImGuiLib : TwoArgFunction() {
 
         env.set("imgui", library)
         return library
+    }
+
+    inner class sliderFloat : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val value = ImFloat(args.checkdouble(2).toFloat())
+            val min = args.checkdouble(3).toFloat()
+            val max = args.checkdouble(4).toFloat()
+            val format = if (args.narg() > 4) args.checkjstring(5) else "%.3f"
+            val flags = if (args.narg() > 5) args.checkint(6) else 0
+            val changed = ImGui.sliderFloat(label, value, min, max, format, flags)
+            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value.get().toDouble()))
+        }
+    }
+
+    inner class sliderInt : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val value = ImInt(args.checkint(2))
+            val min = args.checkint(3)
+            val max = args.checkint(4)
+            val format = if (args.narg() > 4) args.checkjstring(5) else "%d"
+            val flags = if (args.narg() > 5) args.checkint(6) else 0
+            val changed = ImGui.sliderInt(label, value, min, max, format, flags)
+            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value.get()))
+        }
+    }
+
+    inner class sliderDouble : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val value = ImDouble(args.checkdouble(2))
+            val min = args.checkdouble(3)
+            val max = args.checkdouble(4)
+            val format = if (args.narg() > 4) args.checkjstring(5) else "%.6f"
+            val flags = if (args.narg() > 5) args.checkint(6) else 0
+            val changed = ImGui.sliderDouble(label, value, min, max, format, flags)
+            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value.get()))
+        }
+    }
+
+    inner class vSliderFloat : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val sizeX = args.checkdouble(2).toFloat()
+            val sizeY = args.checkdouble(3).toFloat()
+            val value = ImFloat(args.checkdouble(4).toFloat())
+            val min = args.checkdouble(5).toFloat()
+            val max = args.checkdouble(6).toFloat()
+            val format = if (args.narg() > 6) args.checkjstring(7) else "%.3f"
+            val flags = if (args.narg() > 7) args.checkint(8) else 0
+            val changed = ImGui.vSliderFloat(label, sizeX, sizeY, value, min, max, format, flags)
+            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value.get().toDouble()))
+        }
+    }
+
+    inner class vSliderInt : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val sizeX = args.checkdouble(2).toFloat()
+            val sizeY = args.checkdouble(3).toFloat()
+            val value = ImInt(args.checkint(4))
+            val min = args.checkint(5)
+            val max = args.checkint(6)
+            val format = if (args.narg() > 6) args.checkjstring(7) else "%d"
+            val flags = if (args.narg() > 7) args.checkint(8) else 0
+            val changed = ImGui.vSliderInt(label, sizeX, sizeY, value, min, max, format, flags)
+            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value.get()))
+        }
+    }
+
+    inner class sliderAngle : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val value = ImFloat(args.checkdouble(2).toFloat())
+            val step = if (args.narg() > 2) args.checkdouble(3).toFloat() else 1.0f
+            val flags = if (args.narg() > 3) args.checkint(4) else 0
+            val changed = ImGui.sliderAngle(label, value, step, flags)
+            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value.get().toDouble()))
+        }
     }
 
     inner class beginTable : VarArgFunction() {
