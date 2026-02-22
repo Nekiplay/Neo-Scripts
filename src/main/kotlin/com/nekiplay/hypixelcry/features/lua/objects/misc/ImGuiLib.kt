@@ -1,10 +1,8 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
-import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.ImGuiDrawListLib
-import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.ImGuiIO
 import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.ImGuiTexture
 import imgui.ImGui
+import imgui.ImGuiIO
 import imgui.flag.ImGuiCol
 import imgui.flag.ImGuiColorEditFlags
 import imgui.flag.ImGuiCond
@@ -264,11 +262,6 @@ class ImGuiLib : TwoArgFunction() {
         constants.set("TableFlags_Resizable", ImGuiTableFlags.Resizable.toInt())
         
         library.set("constants", constants)
-
-        library.set("dl", ImGuiDrawListLib())
-        library.set("DL", ImGuiDrawListLib())
-        library.set("io", ImGuiIO())
-        library.set("IO", ImGuiIO())
 
         env.set("imgui", library)
         return library

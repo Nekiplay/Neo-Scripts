@@ -398,6 +398,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         // Register HypixelCry global
         scriptGlobals.set("HypixelCry", CoerceJavaToLua.coerce(HypixelCry.getInstance()))
 
+        scriptGlobals.set("currentScriptName", LuaValue.valueOf(scriptName))
+
         // Register print function
         scriptGlobals.set("print", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {

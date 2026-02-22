@@ -22,6 +22,5 @@ class CatboostLib : TwoArgFunction() {
             }
             return NIL
         }
-
     }
 }
