@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.mixins.gui;
 
 
 import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen;
+import net.minecraft.world.level.block.entity.SignBlockEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
@@ -9,4 +10,10 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface AbstractSignEditScreenAccessor {
     @Accessor("messages")
     String[] getMessages();
+
+    @Accessor("sign")
+    SignBlockEntity getSign();
+
+    @Accessor("isFrontText")
+    boolean isFrontText();
 }

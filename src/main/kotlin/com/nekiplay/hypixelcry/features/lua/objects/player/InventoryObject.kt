@@ -9,6 +9,8 @@ import com.nekiplay.hypixelcry.utils.itemlist.ItemRepository
 import net.minecraft.client.gui.screens.inventory.ContainerScreen
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.minecraft.client.gui.screens.inventory.SignEditScreen
+import net.minecraft.client.multiplayer.ClientPacketListener
+import net.minecraft.network.protocol.game.ServerboundSignUpdatePacket
 import net.minecraft.world.inventory.ChestMenu
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
@@ -35,8 +37,10 @@ class InventoryObject: LuaValue() {
             "getStackFromId" -> GetStackFromIDFunction()
             "getSignText" -> GetSignTextFunction()
             "setSignText" -> SetSignTextFunction()
+            "doneSign" -> DoneSignFunction()
 
             "leftClick" -> LeftClickFunction()
+            "middleClick" -> MiddleClickFunction()
             "dropAll" -> DropFunction()
             "rightClick" -> RightClickFunction()
 
@@ -80,6 +84,30 @@ class InventoryObject: LuaValue() {
         override fun call(): LuaValue {
             val screen = mc.screen
             return valueOf(screen != null)
+        }
+    }
+
+    private inner class DoneSignFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val screen = mc.screen
+            if (screen is SignEditScreen) {
+                val sign = screen as AbstractSignEditScreenAccessor
+
+                val clientPacketListener: ClientPacketListener? = mc.connection
+                clientPacketListener?.send(
+                    ServerboundSignUpdatePacket(
+                        sign.sign.blockPos,
+                        sign.isFrontText,
+                        sign.messages[0],
+                        sign.messages[1],
+                        sign.messages[2],
+                        sign.messages[3]
+                    )
+                )
+                return TRUE
+            } else {
+                return FALSE
+            }
         }
     }
 
@@ -137,6 +165,17 @@ class InventoryObject: LuaValue() {
             val screen = mc.screen
             return if (screen is ContainerScreen) {
                 valueOf(screen.title.getFormattedString())
+            } else {
+                NIL
+            }
+        }
+    }
+
+    private inner class MiddleClickFunction : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue {
+            return if (arg?.isnumber() == true) {
+                InventoryUtils.middleClickSlot(arg.toint())
+                TRUE
             } else {
                 NIL
             }
