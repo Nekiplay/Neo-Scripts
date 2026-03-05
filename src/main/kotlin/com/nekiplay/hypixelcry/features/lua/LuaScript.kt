@@ -84,7 +84,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     // Script-specific libraries
     private val tcpLib: TCPLib
     private val threadLib: ThreadLib
-    private val imguiLib: ImGuiLib
+    public val imguiLib: ImGuiLib
 
     // Dependency tracking for nested requires
     private val dependencies = ConcurrentHashMap<String, MutableList<String>>()
@@ -435,7 +435,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         scriptGlobals.set("world", luaManager.worldObj)
         scriptGlobals.set("modules", luaManager.modulesObj)
         scriptGlobals.set("ComponentBuilder", LuaComponentBuilder.createLibrary())
-        
+
         scriptGlobals.load(luaManager.jsonLib)
         scriptGlobals.load(luaManager.httpLib)
         scriptGlobals.load(luaManager.catboostLib)

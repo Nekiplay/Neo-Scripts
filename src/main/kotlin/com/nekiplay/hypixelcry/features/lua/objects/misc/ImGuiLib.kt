@@ -3,10 +3,8 @@ package com.nekiplay.hypixelcry.features.lua.objects.misc
 import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.DrawCommand
 import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.DrawType
 import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.ImDrawCommandQueue
-import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.ImDrawCommandQueue.makeImGuiColor
 import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.ImGuiTexture
 import imgui.ImGui
-import imgui.ImGuiIO
 import imgui.flag.ImGuiCol
 import imgui.flag.ImGuiColorEditFlags
 import imgui.flag.ImGuiCond
@@ -18,12 +16,14 @@ import imgui.type.ImDouble
 import imgui.type.ImFloat
 import imgui.type.ImInt
 import imgui.type.ImString
-import net.minecraft.world.item.ItemStack
 import org.luaj.vm2.*
 import org.luaj.vm2.lib.*
 import java.util.concurrent.atomic.AtomicInteger
 
 class ImGuiLib : TwoArgFunction() {
+    public val queue: ImDrawCommandQueue = ImDrawCommandQueue()
+
+
     override fun call(modname: LuaValue, env: LuaValue): LuaValue {
         val library = LuaTable()
 
@@ -298,9 +298,9 @@ class ImGuiLib : TwoArgFunction() {
                 val thickness: Float = if (table.get("thickness").isnumber()) table.get("thickness").tofloat() else 1f
 
                 // создаём запрос для отрисовки линии
-                ImDrawCommandQueue.queue(DrawCommand(DrawType.LINE, mapOf(
+                queue.queue(DrawCommand(DrawType.LINE, mapOf(
                     "x1" to x1, "y1" to y1, "x2" to x2, "y2" to y2,
-                    "color" to makeImGuiColor(red, green, blue, alpha),
+                    "color" to queue.makeImGuiColor(red, green, blue, alpha),
                     "thickness" to thickness
                 )))
                 return TRUE
@@ -320,9 +320,9 @@ class ImGuiLib : TwoArgFunction() {
                 val points = mutableListOf<Pair<Float, Float>>()
 
                 if (points.size >= 3) {
-                    ImDrawCommandQueue.queue(DrawCommand(DrawType.POLYGON, mapOf(
+                    queue.queue(DrawCommand(DrawType.POLYGON, mapOf(
                         "points" to points,
-                        "color" to makeImGuiColor(red, green, blue, alpha)
+                        "color" to queue.makeImGuiColor(red, green, blue, alpha)
                     )))
                     return TRUE
                 }

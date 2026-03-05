@@ -200,14 +200,17 @@ public class ImguiLoader {
             imGuiGl3.newFrame();
             ImGui.newFrame();
 
-            ImDrawCommandQueue.INSTANCE.executeAndClear();
 
             // Применяем шрифт только если он загружен
             if (font != null && font.isLoaded()) {
                 ImGui.pushFont(font);
             }
 
-            HypixelCry.LUA_MANAGER.getScripts().values().forEach(LuaScript::onImGuiRenderEvent);
+            HypixelCry.LUA_MANAGER.getScripts().values().forEach((script) -> {
+                script.getImguiLib().getQueue().executeAndClear();
+                script.onImGuiRenderEvent();
+
+            });
 
             if (font != null && font.isLoaded()) {
                 ImGui.popFont();
