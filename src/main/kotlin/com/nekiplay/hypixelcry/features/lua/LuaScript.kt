@@ -1260,6 +1260,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
         }
 
+        imguiLib.queue.clear()
+
         // Очищаем все коллбэки
         synchronized(callbacksLock) {
             scriptUnloadCallbacks.clear()
