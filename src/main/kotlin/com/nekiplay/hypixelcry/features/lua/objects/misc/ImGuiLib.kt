@@ -312,19 +312,38 @@ class ImGuiLib : TwoArgFunction() {
     private inner class RenderPolygonFunction : OneArgFunction() {
         override fun call(table: LuaValue): LuaValue {
             if (table.istable()) {
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
+                val pointsTable = table.get("points")
+                if (pointsTable.istable()) {
+                    val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
+                    val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
+                    val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
+                    val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
 
-                val points = mutableListOf<Pair<Float, Float>>()
+                    val points = mutableListOf<Pair<Float, Float>>()
+                    var i = 1
+                    while (true) {
+                        val pointTable = pointsTable.get(i)
+                        if (pointTable.istable()) {
+                            val x = if (pointTable.get("x").isnumber()) pointTable.get("x").tofloat() else 0f
+                            val y = if (pointTable.get("y").isnumber()) pointTable.get("y").tofloat() else 0f
+                            points.add(x to y)
+                            i++
+                        } else {
+                            break
+                        }
+                    }
 
-                if (points.size >= 3) {
-                    queue.queue(DrawCommand(DrawType.POLYGON, mapOf(
-                        "points" to points,
-                        "color" to queue.makeImGuiColor(red, green, blue, alpha)
-                    )))
-                    return TRUE
+                    if (points.size >= 3) {
+                        queue.queue(
+                            DrawCommand(
+                                DrawType.POLYGON, mapOf(
+                                    "points" to points,
+                                    "color" to queue.makeImGuiColor(red, green, blue, alpha)
+                                )
+                            )
+                        )
+                        return TRUE
+                    }
                 }
                 return FALSE
             }
