@@ -9,6 +9,7 @@ import com.mojang.brigadier.tree.RootCommandNode
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
+import com.nekiplay.hypixelcry.features.lua.objects.misc.ImGuiLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.TCPLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ThreadLib
 import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject
@@ -83,6 +84,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     // Script-specific libraries
     private val tcpLib: TCPLib
     private val threadLib: ThreadLib
+    private val imguiLib: ImGuiLib
 
     // Dependency tracking for nested requires
     private val dependencies = ConcurrentHashMap<String, MutableList<String>>()
@@ -99,10 +101,12 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         // Initialize script-specific libraries
         tcpLib = TCPLib()
         threadLib = ThreadLib()
+        imguiLib = ImGuiLib()
 
         // Load libraries into script-specific globals
         scriptGlobals.load(threadLib)
         scriptGlobals.load(tcpLib)
+        scriptGlobals.load(imguiLib)
 
         // Register global objects
         registerGlobalObjects()
@@ -431,8 +435,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         scriptGlobals.set("world", luaManager.worldObj)
         scriptGlobals.set("modules", luaManager.modulesObj)
         scriptGlobals.set("ComponentBuilder", LuaComponentBuilder.createLibrary())
-
-        scriptGlobals.load(luaManager.imguiLib)
+        
         scriptGlobals.load(luaManager.jsonLib)
         scriptGlobals.load(luaManager.httpLib)
         scriptGlobals.load(luaManager.catboostLib)

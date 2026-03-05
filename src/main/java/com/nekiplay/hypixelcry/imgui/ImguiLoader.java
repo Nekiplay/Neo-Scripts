@@ -11,6 +11,7 @@ import com.mojang.blaze3d.textures.GpuTextureView;
 import com.nekiplay.hypixelcry.HypixelCry;
 import com.nekiplay.hypixelcry.features.lua.LuaManager;
 import com.nekiplay.hypixelcry.features.lua.LuaScript;
+import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.ImDrawCommandQueue;
 import imgui.ImFont;
 import imgui.ImFontConfig;
 import imgui.ImGui;
@@ -198,6 +199,8 @@ public class ImguiLoader {
             imGuiGlfw.newFrame();
             imGuiGl3.newFrame();
             ImGui.newFrame();
+
+            ImDrawCommandQueue.INSTANCE.executeAndClear();
 
             // Применяем шрифт только если он загружен
             if (font != null && font.isLoaded()) {

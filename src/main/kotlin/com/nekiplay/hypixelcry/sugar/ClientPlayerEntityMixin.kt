@@ -17,9 +17,13 @@ fun LocalPlayer.getScoreabordLines(): List<Component> {
         .sortedWith(Gui.SCORE_DISPLAY_ORDER)
         .take(15).map {
             val team = scoreboard.getPlayerTeam(it.owner)
-            val text = it.display ?: Component.empty()
-            PlayerTeam.formatNameForTeam(team, text)
-
+            val text = it.display
+            if (text == null) {
+                PlayerTeam.formatNameForTeam(team, text)
+            }
+            else {
+                Component.empty()
+            }
         }
 }
 

@@ -1,5 +1,9 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
+import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.DrawCommand
+import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.DrawType
+import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.ImDrawCommandQueue
+import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.ImDrawCommandQueue.makeImGuiColor
 import com.nekiplay.hypixelcry.features.lua.objects.misc.imgui.ImGuiTexture
 import imgui.ImGui
 import imgui.ImGuiIO
@@ -266,11 +270,66 @@ class ImGuiLib : TwoArgFunction() {
         constants.set("TableFlags_BordersInnerH", ImGuiTableFlags.BordersInnerH.toInt())
         constants.set("TableFlags_BordersInnerV", ImGuiTableFlags.BordersInnerV.toInt())
         constants.set("TableFlags_Resizable", ImGuiTableFlags.Resizable.toInt())
-        
         library.set("constants", constants)
+
+        // Constants
+        val dl = LuaTable()
+        dl.set("renderLine", RenderLineFunction())
+        dl.set("renderPolygon", RenderPolygonFunction())
+        library.set("dl", dl)
 
         env.set("imgui", library)
         return library
+    }
+
+    private inner class RenderLineFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable()) {
+                val x1: Float = if (table.get("x1").isnumber()) table.get("x1").tofloat() else 0f
+                val y1: Float = if (table.get("y1").isnumber()) table.get("y1").tofloat() else 0f
+                val x2: Float = if (table.get("x2").isnumber()) table.get("x2").tofloat() else 0f
+                val y2: Float = if (table.get("y2").isnumber()) table.get("y2").tofloat() else 0f
+
+                val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
+                val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
+                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
+                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
+
+                val thickness: Float = if (table.get("thickness").isnumber()) table.get("thickness").tofloat() else 1f
+
+                // создаём запрос для отрисовки линии
+                ImDrawCommandQueue.queue(DrawCommand(DrawType.LINE, mapOf(
+                    "x1" to x1, "y1" to y1, "x2" to x2, "y2" to y2,
+                    "color" to makeImGuiColor(red, green, blue, alpha),
+                    "thickness" to thickness
+                )))
+                return TRUE
+            }
+            return NIL
+        }
+    }
+
+    private inner class RenderPolygonFunction : OneArgFunction() {
+        override fun call(table: LuaValue): LuaValue {
+            if (table.istable()) {
+                val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
+                val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
+                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
+                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
+
+                val points = mutableListOf<Pair<Float, Float>>()
+
+                if (points.size >= 3) {
+                    ImDrawCommandQueue.queue(DrawCommand(DrawType.POLYGON, mapOf(
+                        "points" to points,
+                        "color" to makeImGuiColor(red, green, blue, alpha)
+                    )))
+                    return TRUE
+                }
+                return FALSE
+            }
+            return NIL
+        }
     }
 
     inner class sliderFloat : VarArgFunction() {
