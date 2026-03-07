@@ -287,8 +287,8 @@ class ImGuiLib : TwoArgFunction() {
     private inner class RenderDLTextFunction : OneArgFunction() {
         override fun call(table: LuaValue): LuaValue {
             if (table.istable()) {
-                val x1: Float = if (table.get("x").isnumber()) table.get("x1").tofloat() else 0f
-                val y1: Float = if (table.get("y").isnumber()) table.get("y1").tofloat() else 0f
+                val x1: Float = if (table.get("x").isnumber()) table.get("x").tofloat() else 0f
+                val y1: Float = if (table.get("y").isnumber()) table.get("y").tofloat() else 0f
 
                 val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
                 val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
