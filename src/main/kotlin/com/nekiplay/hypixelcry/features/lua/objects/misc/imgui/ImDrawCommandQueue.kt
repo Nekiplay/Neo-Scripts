@@ -9,7 +9,7 @@ data class DrawCommand(
 )
 
 enum class DrawType {
-    LINE, POLYGON
+    LINE, POLYGON, IMAGE, TEXT
 }
 
 // 🔧 Класс вместо object — позволяет создавать несколько очередей
@@ -29,6 +29,8 @@ class ImDrawCommandQueue {
                 when (command.type) {
                     DrawType.LINE -> executeLine(command.data)
                     DrawType.POLYGON -> executePolygon(command.data)
+                    DrawType.IMAGE -> executeImage(command.data)
+                    DrawType.TEXT -> executeText(command.data)
                 }
             }
             pendingCommands.clear()
@@ -64,6 +66,18 @@ class ImDrawCommandQueue {
         drawList.addLine(x1, y1, x2, y2, color, thickness)
     }
 
+    private fun executeText(data: Map<String, Any>) {
+        val x1 = (data["x1"] as? Number)?.toFloat() ?: return
+        val y1 = (data["y1"] as? Number)?.toFloat() ?: return
+        val text = (data["text"] as? String) ?: return
+
+
+        val color = data["color"] as? Int ?: return
+
+        val drawList = ImGui.getBackgroundDrawList()
+        drawList.addText(x1, y1, color, text)
+    }
+
     private fun executePolygon(data: Map<String, Any>) {
         @Suppress("UNCHECKED_CAST")
         val points = data["points"] as? List<Pair<Float, Float>> ?: return
@@ -75,5 +89,28 @@ class ImDrawCommandQueue {
             drawList.pathLineTo(point.first, point.second)
         }
         drawList.pathFillConcave(color)
+    }
+
+    private fun executeImage(data: Map<String, Any>) {
+        val textureID = data["textureID"] as? Long ?: return
+        val pMinX = (data["pMinX"] as? Number)?.toFloat() ?: return
+        val pMinY = (data["pMinY"] as? Number)?.toFloat() ?: return
+        val pMaxX = (data["pMaxX"] as? Number)?.toFloat() ?: return
+        val pMaxY = (data["pMaxY"] as? Number)?.toFloat() ?: return
+
+        val uvMinX = (data["uvMinX"] as? Number)?.toFloat() ?: 0f
+        val uvMinY = (data["uvMinY"] as? Number)?.toFloat() ?: 0f
+        val uvMaxX = (data["uvMaxX"] as? Number)?.toFloat() ?: 1f
+        val uvMaxY = (data["uvMaxY"] as? Number)?.toFloat() ?: 1f
+
+        val color = data["color"] as? Int ?: -1
+
+        val drawList = ImGui.getBackgroundDrawList()
+        drawList.addImage(
+            textureID,
+            pMinX, pMinY, pMaxX, pMaxY,
+            uvMinX, uvMinY, uvMaxX, uvMaxY,
+            color
+        )
     }
 }
