@@ -314,20 +314,15 @@ class ImGuiLib : TwoArgFunction() {
             if (table.istable()) {
                 val textureID: Long = if (table.get("textureID").isnumber()) table.get("textureID").tolong() else 0
 
-                val pMinX: Float = if (table.get("pMinX").isnumber()) table.get("pMinX").tofloat() else 0f
-                val pMinY: Float = if (table.get("pMinY").isnumber()) table.get("pMinY").tofloat() else 0f
-                val pMaxX: Float = if (table.get("pMaxX").isnumber()) table.get("pMaxX").tofloat() else 0f
-                val pMaxY: Float = if (table.get("pMaxY").isnumber()) table.get("pMaxY").tofloat() else 0f
+                val pMinX: Float = if (table.get("x").isnumber()) table.get("x").tofloat() else 0f
+                val pMinY: Float = if (table.get("y").isnumber()) table.get("y").tofloat() else 0f
+                val pMaxX: Float = if (table.get("width").isnumber()) table.get("width").tofloat() else 0f
+                val pMaxY: Float = if (table.get("height").isnumber()) table.get("height").tofloat() else 0f
 
                 val uvMinX: Float = if (table.get("uvMinX").isnumber()) table.get("uvMinX").tofloat() else 0f
                 val uvMinY: Float = if (table.get("uvMinY").isnumber()) table.get("uvMinY").tofloat() else 0f
                 val uvMaxX: Float = if (table.get("uvMaxX").isnumber()) table.get("uvMaxX").tofloat() else 0f
                 val uvMaxY: Float = if (table.get("uvMaxY").isnumber()) table.get("uvMaxY").tofloat() else 0f
-
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
 
                 // создаём запрос для отрисовки линии
                 queue.queue(DrawCommand(DrawType.IMAGE, mapOf(
