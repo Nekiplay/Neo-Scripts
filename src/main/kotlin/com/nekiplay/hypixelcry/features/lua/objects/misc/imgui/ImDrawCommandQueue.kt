@@ -74,6 +74,6 @@ class ImDrawCommandQueue {
         for (point in points) {
             drawList.pathLineTo(point.first, point.second)
         }
-        drawList.pathFillConvex(color)
+        drawList.pathFillConcave(color)
     }
 }
