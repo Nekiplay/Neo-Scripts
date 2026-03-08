@@ -321,8 +321,8 @@ class ImGuiLib : TwoArgFunction() {
 
                 val uvMinX: Float = if (table.get("uvMinX").isnumber()) table.get("uvMinX").tofloat() else 0f
                 val uvMinY: Float = if (table.get("uvMinY").isnumber()) table.get("uvMinY").tofloat() else 0f
-                val uvMaxX: Float = if (table.get("uvMaxX").isnumber()) table.get("uvMaxX").tofloat() else 0f
-                val uvMaxY: Float = if (table.get("uvMaxY").isnumber()) table.get("uvMaxY").tofloat() else 0f
+                val uvMaxX: Float = if (table.get("uvMaxX").isnumber()) table.get("uvMaxX").tofloat() else 1f
+                val uvMaxY: Float = if (table.get("uvMaxY").isnumber()) table.get("uvMaxY").tofloat() else 1f
 
                 // создаём запрос для отрисовки линии
                 queue.queue(DrawCommand(DrawType.IMAGE, mapOf(

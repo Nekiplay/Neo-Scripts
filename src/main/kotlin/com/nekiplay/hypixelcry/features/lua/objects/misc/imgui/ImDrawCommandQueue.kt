@@ -12,7 +12,6 @@ enum class DrawType {
     LINE, POLYGON, IMAGE, TEXT
 }
 
-// 🔧 Класс вместо object — позволяет создавать несколько очередей
 class ImDrawCommandQueue {
     private val pendingCommands = mutableListOf<DrawCommand>()
     private val lock = Object()
