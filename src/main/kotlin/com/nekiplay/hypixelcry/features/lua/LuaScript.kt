@@ -160,7 +160,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         scriptGlobals.set("registerClientTick", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
-                return LuaValue.valueOf(addClientTickCallback(callback))
+                return LuaValue.valueOf(addPreClientTickCallback(callback))
             }
         })
 
