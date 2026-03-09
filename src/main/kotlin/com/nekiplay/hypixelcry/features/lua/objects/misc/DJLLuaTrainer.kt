@@ -152,6 +152,7 @@ class DJLLuaTrainer : TwoArgFunction() {
                 val epochs = config["epochs"].optint(10)
                 val learningRate = config["lr"].optdouble(0.001)
                 val batchSize = config["batch_size"].optint(32)
+                val outputSize = config["output_size"].optint(1)
 
                 val shape = inputShapes[modelId] ?: longArrayOf(1, 10)
                 HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Shape created")
