@@ -103,10 +103,10 @@ dependencies {
 
     modRuntimeOnly(files("libs/firmament.jar"))
 
-    include(implementation("ai.djl:api:0.25.0")!!)
-    include(implementation("ai.djl:basicdataset:0.25.0")!!)
+    include(implementation("ai.djl:api:0.21.0")!!)
+    include(implementation("ai.djl:basicdataset:0.21.0")!!)
 
-    include(implementation("ai.djl.pytorch:pytorch-engine:0.25.0")!!)
+    include(implementation("ai.djl.pytorch:pytorch-engine:0.21.0")!!)
     include(implementation("ai.djl.pytorch:pytorch-native-auto:1.9.1")!!)
 }
 
