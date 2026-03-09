@@ -325,12 +325,13 @@ class DJLLuaTrainer : TwoArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val id = arg.checkstring().tojstring()
             val model = models[id] ?: return LuaValue.NIL
-
             return LuaTable().apply {
                 set("id", LuaValue.valueOf(id))
                 inputShapes[id]?.let { shape ->
                     set("input_shape", LuaValue.valueOf(shape[1].toInt()))
                 }
+                set("input_size", model.block.inputShapes.size)
+                set("output_size", model.block.outputDataTypes.size)
             }
         }
     }
