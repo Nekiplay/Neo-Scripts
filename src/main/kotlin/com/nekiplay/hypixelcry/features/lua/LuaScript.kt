@@ -85,7 +85,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     // Script-specific libraries
     private val tcpLib: TCPLib
     private val threadLib: ThreadLib
-    private val imguiLib: ImGuiLib
+    public val imguiLib: ImGuiLib
     private val djlLibrary = DJLLuaTrainer()
 
     // Dependency tracking for nested requires
