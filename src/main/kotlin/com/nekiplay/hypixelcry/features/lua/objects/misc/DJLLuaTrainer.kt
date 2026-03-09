@@ -157,7 +157,6 @@ class DJLLuaTrainer : TwoArgFunction() {
                             .build()
                     )
                     .addEvaluator(Accuracy())
-                    .optDevices(arrayOf(Device.gpu()))
 
                 // Callback для Lua
                 if (callback != null) {
