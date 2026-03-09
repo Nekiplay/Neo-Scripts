@@ -242,25 +242,41 @@ class DJLLuaTrainer : TwoArgFunction() {
             val inputs = data["inputs"] ?: throw IllegalArgumentException("Dataset must contain 'inputs'")
             val labels = data["labels"] ?: throw IllegalArgumentException("Dataset must contain 'labels'")
         
-            val inputData = mutableListOf<NDArray>()
-            val labelData = mutableListOf<NDArray>()
+            val inputData = NDList()
+            val labelData = NDList()
+        
+            // ВАЖНО: Используем правильный NDManager из текущего контекста или модели
+            // Здесь предполагается, что у вас есть доступ к менеджеру модели
+            val manager = NDManager.newBaseManager() 
         
             for (i in 1..inputs.length()) {
+                // Конвертируем входные данные. Убедитесь, что inputShape — это [input_size], а не [1, input_size]
                 inputData.add(luaToNDArray(inputs[i], inputShape))
-            }
-            for (i in 1..labels.length()) {
-                // Labels are single values; store as (1,) arrays
-                labelData.add(luaToNDArray(labels[i], longArrayOf(1)))
+                
+                // Для меток (labels):
+                val labelValue = labels[i]
+                if (outputSize == 1) {
+                    // Бинарная классификация: метка должна быть массивом из 1 элемента [value]
+                    labelData.add(luaToNDArray(labelValue, longArrayOf(1)))
+                } else {
+                    // Многоклассовая классификация: метка — это индекс класса (одно число)
+                    // Если в Lua передано {2}, берем первое число. Если просто число 2, берем его.
+                    val valToStore = if (labelValue.istable()) labelValue[1].tofloat() else labelValue.tofloat()
+                    labelData.add(manager.create(floatArrayOf(valToStore), Shape(1)))
+                }
             }
         
-            val allInputs = NDArrays.stack(NDList(*inputData.toTypedArray()), 0)   // (numSamples, inputSize)
-            val allLabels = NDArrays.stack(NDList(*labelData.toTypedArray()), 0)   // (numSamples, 1)
+            // Стекаем данные в батчи: (Samples, InputSize) и (Samples, 1)
+            val allInputs = NDArrays.stack(inputData, 0)
+            var allLabels = NDArrays.stack(labelData, 0)
         
-            // For multi-class classification (outputSize > 1), labels must be class indices of shape (numSamples,)
+            // ИСПРАВЛЕНИЕ РАЗМЕРНОСТЕЙ ДЛЯ PYTORCH
             val finalLabels = if (outputSize > 1) {
-                allLabels.squeeze()   // becomes (numSamples,)
+                // Для SoftmaxCrossEntropyLoss метки должны быть формой (Samples) и типом Long (Int64)
+                allLabels.squeeze(-1).toType(DataType.INT64, false)
             } else {
-                allLabels             // keep as (numSamples, 1) for binary classification
+                // Для SigmoidBinaryCrossEntropyLoss метки должны быть формой (Samples, 1) и типом Float32
+                allLabels.toType(DataType.FLOAT32, false)
             }
         
             return ArrayDataset.Builder()
