@@ -146,88 +146,68 @@ class DJLLuaTrainer : TwoArgFunction() {
             val trainData = args.arg(3).opttable(null)
             val testData = args.arg(4).opttable(null)
             val callback = args.arg(5).optfunction(null)
-
+    
             val model = models[modelId] ?: return LuaValue.error("Model not found: $modelId")
-
+    
             return try {
                 val epochs = config["epochs"].optint(10)
                 val learningRate = config["lr"].optdouble(0.001)
                 val batchSize = config["batch_size"].optint(32)
                 val outputSize = config["output_size"].optint(1)
-
-                val shape = inputShapes[modelId] ?: longArrayOf(1, 10)
-                HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Shape created")
-
-                val dataset = buildDataset(trainData, batchSize, shape, outputSize)
-                HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Dataset created")
-                val testDataset = testData?.let { buildDataset(it, batchSize, shape, outputSize) }
-                HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Test dataset created")
-
+    
+                // ИСПРАВЛЕНИЕ 1: Убираем лишнюю единицу из Shape, если она есть
+                // Для обычных нейросетей форма должна быть просто [input_size]
+                var shapeArray = inputShapes[modelId] ?: longArrayOf(10)
+                if (shapeArray.size > 1 && shapeArray[0] == 1L) {
+                    shapeArray = shapeArray.sliceArray(1 until shapeArray.size)
+                }
+                val trainingShape = Shape(*shapeArray)
+    
+                HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Shape adjusted to: $trainingShape")
+    
+                val dataset = buildDataset(trainData, batchSize, shapeArray, outputSize, model.ndManager)
+                val testDataset = testData?.let { buildDataset(it, batchSize, shapeArray, outputSize, model.ndManager) }
+    
                 val loss = if (outputSize == 1) {
                     Loss.sigmoidBinaryCrossEntropyLoss()
                 } else {
                     Loss.softmaxCrossEntropyLoss()
                 }
+                
                 val lrTracker = Tracker.fixed(learningRate.toFloat())
-
+    
                 val trainingConfig = DefaultTrainingConfig(loss)
-                    .optOptimizer(
-                        Adam.builder()
-                            .optLearningRateTracker(lrTracker)
-                            .build()
-                    )
-                    .addEvaluator(Accuracy())
-                    HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Train config created")
-
-                // Callback для Lua
+                    .optOptimizer(Adam.builder().optLearningRateTracker(lrTracker).build())
+                
+                // ИСПРАВЛЕНИЕ 2: Accuracy добавляем ТОЛЬКО если выходов больше 1
+                if (outputSize > 1) {
+                    trainingConfig.addEvaluator(Accuracy())
+                }
+    
+                // Callback для Lua (TrainingListeners)
                 if (callback != null) {
                     trainingConfig.addTrainingListeners(object : TrainingListener {
                         override fun onEpoch(trainer: Trainer) {
                             val epochVal = LuaValue.valueOf(trainer.trainingResult.epoch)
                             val lossKey = trainer.loss.name
-                            val lossVal = try {
-                                trainer.loss.getAccumulator(lossKey)
-                            } catch (e: Exception) {
-                                0f
-                            }
-                            val loss = LuaValue.valueOf(lossVal.toDouble())
+                            val lossVal = try { trainer.loss.getAccumulator(lossKey) } catch (e: Exception) { 0f }
                             Minecraft.getInstance().execute {
-                                callback.call(epochVal, loss)
+                                callback.call(epochVal, LuaValue.valueOf(lossVal.toDouble()))
                             }
                         }
-
-                        override fun onTrainingBatch(
-                            trainer: Trainer?,
-                            batchData: TrainingListener.BatchData?
-                        ) {
-                            // No-op
-                        }
-
-                        override fun onValidationBatch(
-                            trainer: Trainer?,
-                            batchData: TrainingListener.BatchData?
-                        ) {
-                            // No-op
-                        }
-
-                        override fun onTrainingBegin(trainer: Trainer?) {
-                            // No-op
-                        }
-
-                        override fun onTrainingEnd(trainer: Trainer?) {
-                            // No-op
-                        }
+                        override fun onTrainingBatch(trainer: Trainer?, batchData: TrainingListener.BatchData?) {}
+                        override fun onValidationBatch(trainer: Trainer?, batchData: TrainingListener.BatchData?) {}
+                        override fun onTrainingBegin(trainer: Trainer?) {}
+                        override fun onTrainingEnd(trainer: Trainer?) {}
                     })
                 }
-
-                HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "New trainer")
+    
                 model.newTrainer(trainingConfig).use { trainer ->
-                    HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Initialize created")
-                    trainer.initialize(Shape(*shape))
-                    HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Fix")
+                    // Инициализируем модель правильной формой
+                    trainer.initialize(trainingShape)
                     EasyTrain.fit(trainer, epochs, dataset, testDataset)
                 }
-
+    
                 LuaValue.TRUE
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -236,52 +216,42 @@ class DJLLuaTrainer : TwoArgFunction() {
                 isTrainingRunning = false
             }
         }
-
-        private fun buildDataset(data: LuaValue?, batchSize: Int, inputShape: LongArray, outputSize: Int): Dataset {
+    
+        private fun buildDataset(data: LuaValue?, batchSize: Int, inputShape: LongArray, outputSize: Int, manager: NDManager): Dataset {
             require(data != null) { "Dataset is required" }
         
             val inputs = data["inputs"] ?: throw IllegalArgumentException("Dataset must contain 'inputs'")
             val labels = data["labels"] ?: throw IllegalArgumentException("Dataset must contain 'labels'")
         
-            val inputData = NDList()
-            val labelData = NDList()
-            
-            // Используем менеджер из первого попавшегося NDArray или создаем временный
-            val manager = NDManager.newBaseManager()
+            val inputList = NDList()
+            val labelList = NDList()
         
             for (i in 1..inputs.length()) {
-                // 1. Входные данные: гарантируем, что форма плоская [input_size]
-                // Если inputShape = [1, 4], это может создать проблемы, лучше использовать просто [4]
-                inputData.add(luaToNDArray(inputs[i], inputShape))
+                // Загружаем входные данные (например, [4])
+                inputList.add(luaToNDArray(inputs[i], inputShape))
         
-                // 2. Метки (Labels)
                 val labelValue = labels[i]
                 if (outputSize > 1) {
-                    // Для Softmax: метка — это индекс класса (одно целое число)
-                    val classIndex = if (labelValue.istable()) labelValue[1].tolong() else labelValue.tolong()
-                    labelData.add(manager.create(classIndex)) 
+                    // Классификация: метка — это одно число (Long)
+                    val classIdx = if (labelValue.istable()) labelValue[1].tolong() else labelValue.tolong()
+                    labelList.add(manager.create(classIdx))
                 } else {
-                    // Для Sigmoid: метка — это массив из одного Float [0.0] или [1.0]
+                    // Бинарный выход: метка — это массив [1] (Float)
                     val value = if (labelValue.istable()) labelValue[1].tofloat() else labelValue.tofloat()
-                    labelData.add(manager.create(floatArrayOf(value), Shape(1)))
+                    labelList.add(manager.create(floatArrayOf(value), Shape(1)))
                 }
             }
         
-            val allInputs = NDArrays.stack(inputData, 0)
-            var allLabels = NDArrays.stack(labelData, 0)
+            val allInputs = NDArrays.stack(inputList, 0)
+            var allLabels = NDArrays.stack(labelList, 0)
         
-            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ ДЛЯ КЛАССИФИКАЦИИ
+            // ИСПРАВЛЕНИЕ 3: Принудительно корректируем типы и формы для PyTorch
             val finalLabels = if (outputSize > 1) {
-                // Для SoftmaxCrossEntropyLoss:
-                // Предсказания имеют форму [Batch, OutputSize] (например [2, 2])
-                // Метки ДОЛЖНЫ иметь форму [Batch] (например [2]) и тип Long
-                if (allLabels.shape.dimension() > 1) {
-                    allLabels = allLabels.squeeze(-1) 
-                }
+                // Softmax ожидает одномерный тензор меток (Batch) типа Long
+                if (allLabels.shape.dimension() > 1) allLabels = allLabels.squeeze(-1)
                 allLabels.toType(DataType.INT64, false)
             } else {
-                // Для SigmoidBinaryCrossEntropyLoss:
-                // И предсказания, и метки имеют форму [Batch, 1]
+                // Sigmoid ожидает тензор (Batch, 1) типа Float
                 allLabels.toType(DataType.FLOAT32, false)
             }
         
