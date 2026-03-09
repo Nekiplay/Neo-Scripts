@@ -245,38 +245,43 @@ class DJLLuaTrainer : TwoArgFunction() {
         
             val inputData = NDList()
             val labelData = NDList()
-        
-            // ВАЖНО: Используем правильный NDManager из текущего контекста или модели
-            // Здесь предполагается, что у вас есть доступ к менеджеру модели
-            val manager = NDManager.newBaseManager() 
+            
+            // Используем менеджер из первого попавшегося NDArray или создаем временный
+            val manager = NDManager.newBaseManager()
         
             for (i in 1..inputs.length()) {
-                // Конвертируем входные данные. Убедитесь, что inputShape — это [input_size], а не [1, input_size]
+                // 1. Входные данные: гарантируем, что форма плоская [input_size]
+                // Если inputShape = [1, 4], это может создать проблемы, лучше использовать просто [4]
                 inputData.add(luaToNDArray(inputs[i], inputShape))
-                
-                // Для меток (labels):
+        
+                // 2. Метки (Labels)
                 val labelValue = labels[i]
-                if (outputSize == 1) {
-                    // Бинарная классификация: метка должна быть массивом из 1 элемента [value]
-                    labelData.add(luaToNDArray(labelValue, longArrayOf(1)))
+                if (outputSize > 1) {
+                    // Для Softmax: метка — это индекс класса (одно целое число)
+                    val classIndex = if (labelValue.istable()) labelValue[1].tolong() else labelValue.tolong()
+                    labelData.add(manager.create(classIndex)) 
                 } else {
-                    // Многоклассовая классификация: метка — это индекс класса (одно число)
-                    // Если в Lua передано {2}, берем первое число. Если просто число 2, берем его.
-                    val valToStore = if (labelValue.istable()) labelValue[1].tofloat() else labelValue.tofloat()
-                    labelData.add(manager.create(floatArrayOf(valToStore), Shape(1)))
+                    // Для Sigmoid: метка — это массив из одного Float [0.0] или [1.0]
+                    val value = if (labelValue.istable()) labelValue[1].tofloat() else labelValue.tofloat()
+                    labelData.add(manager.create(floatArrayOf(value), Shape(1)))
                 }
             }
         
-            // Стекаем данные в батчи: (Samples, InputSize) и (Samples, 1)
             val allInputs = NDArrays.stack(inputData, 0)
             var allLabels = NDArrays.stack(labelData, 0)
         
-            // ИСПРАВЛЕНИЕ РАЗМЕРНОСТЕЙ ДЛЯ PYTORCH
+            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ ДЛЯ КЛАССИФИКАЦИИ
             val finalLabels = if (outputSize > 1) {
-                // Для SoftmaxCrossEntropyLoss метки должны быть формой (Samples) и типом Long (Int64)
-                allLabels.squeeze(-1).toType(DataType.INT64, false)
+                // Для SoftmaxCrossEntropyLoss:
+                // Предсказания имеют форму [Batch, OutputSize] (например [2, 2])
+                // Метки ДОЛЖНЫ иметь форму [Batch] (например [2]) и тип Long
+                if (allLabels.shape.dimension() > 1) {
+                    allLabels = allLabels.squeeze(-1) 
+                }
+                allLabels.toType(DataType.INT64, false)
             } else {
-                // Для SigmoidBinaryCrossEntropyLoss метки должны быть формой (Samples, 1) и типом Float32
+                // Для SigmoidBinaryCrossEntropyLoss:
+                // И предсказания, и метки имеют форму [Batch, 1]
                 allLabels.toType(DataType.FLOAT32, false)
             }
         
