@@ -157,9 +157,9 @@ class DJLLuaTrainer : TwoArgFunction() {
                 val shape = inputShapes[modelId] ?: longArrayOf(1, 10)
                 HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Shape created")
 
-                val dataset = buildDataset(trainData, batchSize, shape)
+                val dataset = buildDataset(trainData, batchSize, shape, outputSize)
                 HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Dataset created")
-                val testDataset = testData?.let { buildDataset(it, batchSize, shape) }
+                val testDataset = testData?.let { buildDataset(it, batchSize, shape, outputSize) }
                 HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Test dataset created")
 
                 val loss = if (outputSize == 1) {
@@ -236,7 +236,7 @@ class DJLLuaTrainer : TwoArgFunction() {
             }
         }
 
-        private fun buildDataset(data: LuaValue?, batchSize: Int, inputShape: LongArray): Dataset {
+        private fun buildDataset(data: LuaValue?, batchSize: Int, inputShape: LongArray, outputSize: Int): Dataset {
             require(data != null) { "Dataset is required" }
         
             val inputs = data["inputs"] ?: throw IllegalArgumentException("Dataset must contain 'inputs'")
@@ -249,19 +249,23 @@ class DJLLuaTrainer : TwoArgFunction() {
                 inputData.add(luaToNDArray(inputs[i], inputShape))
             }
             for (i in 1..labels.length()) {
+                // Labels are single values; store as (1,) arrays
                 labelData.add(luaToNDArray(labels[i], longArrayOf(1)))
             }
         
-            // Stack all samples along dimension 0 to create batched arrays
-            val allInputs = NDArrays.stack(NDList(*inputData.toTypedArray()), 0)   // shape: (numSamples, inputSize)
-            val allLabels = NDArrays.stack(NDList(*labelData.toTypedArray()), 0)   // shape: (numSamples, 1)
+            val allInputs = NDArrays.stack(NDList(*inputData.toTypedArray()), 0)   // (numSamples, inputSize)
+            val allLabels = NDArrays.stack(NDList(*labelData.toTypedArray()), 0)   // (numSamples, 1)
         
-            // If your loss expects labels of shape (numSamples,) instead of (numSamples,1), squeeze:
-            // val allLabels = allLabels.squeeze()
+            // For multi-class classification (outputSize > 1), labels must be class indices of shape (numSamples,)
+            val finalLabels = if (outputSize > 1) {
+                allLabels.squeeze()   // becomes (numSamples,)
+            } else {
+                allLabels             // keep as (numSamples, 1) for binary classification
+            }
         
             return ArrayDataset.Builder()
                 .setData(allInputs)
-                .optLabels(allLabels)
+                .optLabels(finalLabels)
                 .setSampling(batchSize, true)
                 .build()
         }
