@@ -128,9 +128,17 @@ class DJLLuaTrainer : TwoArgFunction() {
         }
     }
 
+    companion object {
+        private var isTrainingRunning = false
+    }
+
     // === 2. Обучение модели ===
     inner class TrainFunction : VarArgFunction() {
         override fun call(args: LuaValue): LuaValue {
+            if (isTrainingRunning) {
+                return LuaValue.valueOf("Training already in progress")
+            }
+            isTrainingRunning = true
             val modelId = args.arg1().checkstring().tojstring()
             val config = args.arg(2).opttable(null) ?: return LuaValue.error("Config required")
             val trainData = args.arg(3).opttable(null)
@@ -217,6 +225,8 @@ class DJLLuaTrainer : TwoArgFunction() {
             } catch (e: Exception) {
                 e.printStackTrace()
                 LuaValue.error("Training failed: ${e.message}")
+            } finally {
+                isTrainingRunning = false
             }
         }
 
