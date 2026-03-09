@@ -26,6 +26,7 @@ import org.luaj.vm2.*
 import org.luaj.vm2.lib.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.Path
+import net.minecraft.client.Minecraft;
 
 /**
  * Библиотека-обертка для доступа к DJL из LuaJ на Kotlin
