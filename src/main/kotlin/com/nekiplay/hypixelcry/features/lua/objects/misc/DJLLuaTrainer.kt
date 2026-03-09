@@ -281,13 +281,36 @@ class DJLLuaTrainer : TwoArgFunction() {
     }
 
     // === 4. Загрузка модели ===
-    inner class LoadModelFunction : TwoArgFunction() {
-        override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
-            val id = arg1.checkstring().tojstring()
-            val path = arg2.checkstring().tojstring()
+    inner class LoadModelFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val id = args.arg1().checkstring().tojstring()
+            val path = args.arg(2).checkstring().tojstring()
+            val config = args.arg(3).opttable(null) // ТАБЛИЦА КОНФИГУРАЦИИ
 
             return try {
                 val model = Model.newInstance(id)
+
+                // ЕСЛИ передана конфигурация, строим структуру слоев ПЕРЕД загрузкой
+                if (config != null) {
+                    val inputSize = config["input_size"].optint(10)
+                    val outputSize = config["output_size"].optint(1)
+                    val layersConfig = config["layers"]
+
+                    inputShapes[id] = longArrayOf(1, inputSize.toLong())
+
+                    val block = SequentialBlock()
+                    if (layersConfig != null && layersConfig.istable()) {
+                        for (i in 1..layersConfig.length()) {
+                            val layerSize = layersConfig[i].toint()
+                            block.add(Linear.builder().setUnits(layerSize.toLong()).build())
+                            block.add(Activation::relu)
+                        }
+                    }
+                    block.add(Linear.builder().setUnits(outputSize.toLong()).build())
+                    model.block = block
+                }
+
+                // Теперь загружаем веса. DJL найдет id-0000.params и вставит их в блоки.
                 model.load(Path(path), id)
                 models[id] = model
 
@@ -296,6 +319,7 @@ class DJLLuaTrainer : TwoArgFunction() {
 
                 LuaValue.TRUE
             } catch (e: Exception) {
+                e.printStackTrace()
                 LuaValue.error("Load failed: ${e.message}")
             }
         }
