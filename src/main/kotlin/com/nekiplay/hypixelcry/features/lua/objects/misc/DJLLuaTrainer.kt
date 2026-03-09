@@ -232,24 +232,32 @@ class DJLLuaTrainer : TwoArgFunction() {
 
         private fun buildDataset(data: LuaValue?, batchSize: Int, inputShape: LongArray): Dataset {
             require(data != null) { "Dataset is required" }
-
+        
             val inputs = data["inputs"] ?: throw IllegalArgumentException("Dataset must contain 'inputs'")
             val labels = data["labels"] ?: throw IllegalArgumentException("Dataset must contain 'labels'")
-
+        
             val inputData = mutableListOf<NDArray>()
             val labelData = mutableListOf<NDArray>()
-
+        
             for (i in 1..inputs.length()) {
-                inputData.add(luaToNDArray(inputs[i], inputShape))
+                inputData.add(luaToNDArray(inputs[i], inputShape))        // each shape (1, inputSize)
             }
             for (i in 1..labels.length()) {
-                labelData.add(luaToNDArray(labels[i], longArrayOf(1)))
+                // For labels, we later stack them; using shape (1,) for each is fine
+                labelData.add(luaToNDArray(labels[i], longArrayOf(1)))    // each shape (1,)
             }
-
-            // Spread operator * для передачи списка как varargs
+        
+            // Stack all samples along dimension 0 to get a single NDArray
+            val allInputs = manager.stack(inputData, 0)   // shape (numSamples, inputSize)
+            val allLabels = manager.stack(labelData, 0)   // shape (numSamples, 1)
+        
+            // Squeeze labels if your loss expects shape (numSamples,) instead of (numSamples,1)
+            // For softmaxCrossEntropyLoss with outputSize=1, you might need to reshape labels.
+            // Example: val allLabelsSqueezed = allLabels.squeeze()
+        
             return ArrayDataset.Builder()
-                .setData(*inputData.toTypedArray())
-                .optLabels(*labelData.toTypedArray())
+                .setData(allInputs)                         // single data array
+                .optLabels(allLabels)                        // single labels array
                 .setSampling(batchSize, true)
                 .build()
         }
