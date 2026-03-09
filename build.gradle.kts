@@ -102,6 +102,12 @@ dependencies {
     include(implementation(catboostTransitive)!!)
 
     modRuntimeOnly(files("libs/firmament.jar"))
+
+    include(implementation("ai.djl:api:0.25.0")!!)
+    include(implementation("ai.djl:basicdataset:0.25.0")!!)
+
+    include(implementation("ai.djl.pytorch:pytorch-engine:0.25.0")!!)
+    include(implementation("ai.djl.pytorch:pytorch-native-auto:2.1.1")!!)
 }
 
 tasks {

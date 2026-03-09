@@ -9,6 +9,7 @@ import com.mojang.brigadier.tree.RootCommandNode
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
+import com.nekiplay.hypixelcry.features.lua.objects.misc.DJLLuaTrainer
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ImGuiLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.TCPLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ThreadLib
@@ -84,7 +85,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     // Script-specific libraries
     private val tcpLib: TCPLib
     private val threadLib: ThreadLib
-    public val imguiLib: ImGuiLib
+    private val imguiLib: ImGuiLib
+    private val djlLibrary = DJLLuaTrainer()
 
     // Dependency tracking for nested requires
     private val dependencies = ConcurrentHashMap<String, MutableList<String>>()
@@ -427,6 +429,11 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 return LuaValue.valueOf(addScriptUnloadCallback(callback))
             }
         })
+
+        djlLibrary.call(
+            org.luaj.vm2.LuaValue.valueOf("djl"), // имя модуля
+            scriptGlobals                                        // окружение, куда регистрировать
+        )
     }
 
     private fun registerGlobalObjects() {
@@ -1260,8 +1267,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
         }
 
-        imguiLib.queue.clear()
-
         // Очищаем все коллбэки
         synchronized(callbacksLock) {
             scriptUnloadCallbacks.clear()
@@ -1283,6 +1288,10 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             commandCallbacks.clear()
             commandSuggestionsCallbacks.clear()
         }
+        imguiLib.queue.clear()
+        djlLibrary.models.clear()
+        djlLibrary.predictors.clear()
+        djlLibrary.inputShapes.clear()
 
         commandDispatchers.clear()
 
