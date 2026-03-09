@@ -240,24 +240,22 @@ class DJLLuaTrainer : TwoArgFunction() {
             val labelData = mutableListOf<NDArray>()
         
             for (i in 1..inputs.length()) {
-                inputData.add(luaToNDArray(inputs[i], inputShape))        // each shape (1, inputSize)
+                inputData.add(luaToNDArray(inputs[i], inputShape))
             }
             for (i in 1..labels.length()) {
-                // For labels, we later stack them; using shape (1,) for each is fine
-                labelData.add(luaToNDArray(labels[i], longArrayOf(1)))    // each shape (1,)
+                labelData.add(luaToNDArray(labels[i], longArrayOf(1)))
             }
         
-            // Stack all samples along dimension 0 to get a single NDArray
-            val allInputs = manager.stack(inputData, 0)   // shape (numSamples, inputSize)
-            val allLabels = manager.stack(labelData, 0)   // shape (numSamples, 1)
+            // Stack all samples along dimension 0 to create batched arrays
+            val allInputs = NDArrays.stack(NDList(*inputData.toTypedArray()), 0)   // shape: (numSamples, inputSize)
+            val allLabels = NDArrays.stack(NDList(*labelData.toTypedArray()), 0)   // shape: (numSamples, 1)
         
-            // Squeeze labels if your loss expects shape (numSamples,) instead of (numSamples,1)
-            // For softmaxCrossEntropyLoss with outputSize=1, you might need to reshape labels.
-            // Example: val allLabelsSqueezed = allLabels.squeeze()
+            // If your loss expects labels of shape (numSamples,) instead of (numSamples,1), squeeze:
+            // val allLabels = allLabels.squeeze()
         
             return ArrayDataset.Builder()
-                .setData(allInputs)                         // single data array
-                .optLabels(allLabels)                        // single labels array
+                .setData(allInputs)
+                .optLabels(allLabels)
                 .setSampling(batchSize, true)
                 .build()
         }
