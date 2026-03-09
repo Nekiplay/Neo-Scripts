@@ -161,7 +161,11 @@ class DJLLuaTrainer : TwoArgFunction() {
                 val testDataset = testData?.let { buildDataset(it, batchSize, shape) }
                 HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Test dataset created")
 
-                val loss = Loss.sigmoidBinaryCrossEntropyLoss()
+                val loss = if (outputSize == 1) {
+                    Loss.sigmoidBinaryCrossEntropyLoss()
+                } else {
+                    Loss.softmaxCrossEntropyLoss()
+                }
                 val lrTracker = Tracker.fixed(learningRate.toFloat())
 
                 val trainingConfig = DefaultTrainingConfig(loss)
