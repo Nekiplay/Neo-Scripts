@@ -144,9 +144,12 @@ class DJLLuaTrainer : TwoArgFunction() {
                 val batchSize = config["batch_size"].optint(32)
 
                 val shape = inputShapes[modelId] ?: longArrayOf(1, 10)
+                HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Shape created")
 
                 val dataset = buildDataset(trainData, batchSize, shape)
+                HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Dataset created")
                 val testDataset = testData?.let { buildDataset(it, batchSize, shape) }
+                HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Test dataset created")
 
                 val loss = Loss.softmaxCrossEntropyLoss()
                 val lrTracker = Tracker.fixed(learningRate.toFloat())
@@ -158,6 +161,7 @@ class DJLLuaTrainer : TwoArgFunction() {
                             .build()
                     )
                     .addEvaluator(Accuracy())
+                    HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Train config created")
 
                 // Callback для Lua
                 if (callback != null) {
@@ -172,7 +176,7 @@ class DJLLuaTrainer : TwoArgFunction() {
                             }
                             val loss = LuaValue.valueOf(lossVal.toDouble())
                             Minecraft.getInstance().execute {
-                                callback.call(epochVal, LuaValue.valueOf(lossVal.toDouble()))
+                                callback.call(epochVal, loss)
                             }
                         }
 
@@ -200,8 +204,11 @@ class DJLLuaTrainer : TwoArgFunction() {
                     })
                 }
 
+                HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "New trainer")
                 model.newTrainer(trainingConfig).use { trainer ->
+                    HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Initialize created")
                     trainer.initialize(Shape(*shape))
+                    HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Fix")
                     EasyTrain.fit(trainer, epochs, dataset, testDataset)
                 }
 
