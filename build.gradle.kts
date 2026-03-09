@@ -107,7 +107,7 @@ dependencies {
     include(implementation("ai.djl:basicdataset:0.25.0")!!)
 
     include(implementation("ai.djl.pytorch:pytorch-engine:0.25.0")!!)
-    include(implementation("ai.djl.pytorch:pytorch-native-auto:2.1.1")!!)
+    include(implementation("ai.djl.pytorch:pytorch-native-auto:1.9.1")!!)
 }
 
 tasks {
