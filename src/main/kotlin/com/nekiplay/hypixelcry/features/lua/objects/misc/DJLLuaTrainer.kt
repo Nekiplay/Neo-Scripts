@@ -3,6 +3,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.misc
 import ai.djl.Device
 import ai.djl.Model
 import ai.djl.inference.Predictor
+import ai.djl.ndarray.NDArrays
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDList
 import ai.djl.ndarray.NDManager
