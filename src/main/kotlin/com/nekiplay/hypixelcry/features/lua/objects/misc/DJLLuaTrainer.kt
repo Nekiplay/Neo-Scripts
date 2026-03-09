@@ -134,7 +134,7 @@ class DJLLuaTrainer : TwoArgFunction() {
 
     // === 2. Обучение модели ===
     inner class TrainFunction : VarArgFunction() {
-        override fun call(args: LuaValue): LuaValue {
+        override fun invoke(args: Varargs): Varargs {
             if (isTrainingRunning) {
                 return LuaValue.valueOf("Training already in progress")
             }
