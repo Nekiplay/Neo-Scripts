@@ -27,6 +27,7 @@ import org.luaj.vm2.lib.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.Path
 import net.minecraft.client.Minecraft;
+import com.nekiplay.hypixelcry.HypixelCry
 
 /**
  * Библиотека-обертка для доступа к DJL из LuaJ на Kotlin
@@ -167,7 +168,7 @@ class DJLLuaTrainer : TwoArgFunction() {
                 if (callback != null) {
                     trainingConfig.addTrainingListeners(object : TrainingListener {
                         override fun onEpoch(trainer: Trainer) {
-                            val epoch = LuaValue.valueOf(trainer.trainingResult.epoch)
+                            val epochVal = LuaValue.valueOf(trainer.trainingResult.epoch)
                             val lossKey = trainer.loss.name
                             val lossVal = try {
                                 trainer.loss.getAccumulator(lossKey)
