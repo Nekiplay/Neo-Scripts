@@ -170,7 +170,9 @@ class DJLLuaTrainer : TwoArgFunction() {
                                 0f
                             }
                             val loss = LuaValue.valueOf(lossVal.toDouble())
-                            callback.call(epoch, loss)
+                            Minecraft.getInstance().execute {
+                                callback.call(epochVal, LuaValue.valueOf(lossVal.toDouble()))
+                            }
                         }
 
                         override fun onTrainingBatch(
