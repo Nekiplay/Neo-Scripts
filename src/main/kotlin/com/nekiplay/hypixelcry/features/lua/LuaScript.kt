@@ -1292,6 +1292,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         djlLibrary.models.clear()
         djlLibrary.predictors.clear()
         djlLibrary.inputShapes.clear()
+        djlLibrary.modelModes.clear()
 
         commandDispatchers.clear()
 
