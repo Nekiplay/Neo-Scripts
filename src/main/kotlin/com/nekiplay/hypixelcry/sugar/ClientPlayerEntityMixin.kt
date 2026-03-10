@@ -7,18 +7,19 @@ import net.minecraft.network.chat.Component
 import net.minecraft.world.scores.DisplaySlot
 import net.minecraft.world.scores.PlayerScoreEntry
 import net.minecraft.world.scores.PlayerTeam
+import java.lang.String
 import java.util.*
 import kotlin.run
 
 fun LocalPlayer.getScorebordLines(): List<Component> {
     val scoreboard = mc.player?.team?.scoreboard ?: return listOf()
     val activeObjective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR) ?: return listOf()
-    val scoreComparator = compareByDescending<PlayerScoreEntry> { it.value }
-        .thenBy { it.owner }
+    val scoreboardComparator = compareByDescending<PlayerScoreEntry> { it.value }
+        .thenBy(String.CASE_INSENSITIVE_ORDER) { it.owner }
 
     return scoreboard.listPlayerScores(activeObjective)
         .filter { !it.isHidden }
-        .sortedWith(scoreComparator)
+        .sortedWith(scoreboardComparator)
         .take(15).map {
             val team = scoreboard.getPlayerTeam(it.owner)
             val text = it.display ?: Component.empty()
