@@ -2,19 +2,23 @@ package com.nekiplay.hypixelcry.sugar
 
 import com.nekiplay.hypixelcry.mixins.PlayerListHudAccessor
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
-import net.minecraft.client.gui.Gui
 import net.minecraft.client.player.LocalPlayer
 import net.minecraft.network.chat.Component
 import net.minecraft.world.scores.DisplaySlot
+import net.minecraft.world.scores.PlayerScoreEntry
 import net.minecraft.world.scores.PlayerTeam
-import java.util.Optional
+import java.util.*
+import kotlin.run
 
 fun LocalPlayer.getScoreabordLines(): List<Component> {
     val scoreboard = mc.player?.team?.scoreboard ?: return listOf()
     val activeObjective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR) ?: return listOf()
+    val scoreComparator = compareByDescending<PlayerScoreEntry> { it.value }
+        .thenBy { it.owner }
+
     return scoreboard.listPlayerScores(activeObjective)
         .filter { !it.isHidden }
-        .sortedWith(Gui.SCORE_DISPLAY_ORDER)
+        .sortedWith(scoreComparator)
         .take(15).map {
             val team = scoreboard.getPlayerTeam(it.owner)
             val text = it.display ?: Component.empty()

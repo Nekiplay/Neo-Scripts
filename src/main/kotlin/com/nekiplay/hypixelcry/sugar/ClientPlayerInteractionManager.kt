@@ -23,12 +23,7 @@ fun MultiPlayerGameMode.silentUse(useSlot: Int): Boolean {
 
     inventory.selectedSlot = originalSlot
     syncSelectedSlot()
-    return if (useSlot in 0..8) {
-        true
-    }
-    else {
-        false
-    }
+    return useSlot in 0..8
 }
 
 fun MultiPlayerGameMode.attackBlock(): Boolean {

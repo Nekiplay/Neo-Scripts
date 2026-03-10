@@ -15,7 +15,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
     override fun get(key: LuaValue): LuaValue {
         return when (val field = key.tojstring()) {
             // Основная информация о сущности
-            "id" -> valueOf(entity.id.toDouble())
+            "id" -> valueOf(entity.id)
             "uuid" -> valueOf(entity.stringUUID)
             "name" -> valueOf(entity.name.string)
             "display_name" -> valueOf(entity.displayName?.getFormattedString()) ?: NIL

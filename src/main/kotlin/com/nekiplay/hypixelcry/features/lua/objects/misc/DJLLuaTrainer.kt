@@ -1,6 +1,5 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
-import ai.djl.Device
 import ai.djl.Model
 import ai.djl.inference.Predictor
 import ai.djl.ndarray.NDArrays
@@ -19,15 +18,12 @@ import ai.djl.training.evaluator.Accuracy
 import ai.djl.training.listener.TrainingListener
 import ai.djl.training.loss.Loss
 import ai.djl.training.optimizer.Adam
-import ai.djl.training.optimizer.Sgd
 import ai.djl.training.tracker.Tracker
 import ai.djl.translate.TranslateException
-import net.minecraft.world.phys.shapes.Shapes
 import org.luaj.vm2.*
 import org.luaj.vm2.lib.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.Path
-import net.minecraft.client.Minecraft;
 import ai.djl.ndarray.types.DataType
 import com.nekiplay.hypixelcry.HypixelCry
 
@@ -56,7 +52,6 @@ class DJLLuaTrainer : TwoArgFunction() {
         return djl
     }
 
-    // === Конвертация Lua -> NDArray ===
     private fun luaToNDArray(table: LuaValue, shape: LongArray): NDArray {
         val flatData = mutableListOf<Float>()
         flattenTable(table, flatData)
@@ -74,7 +69,6 @@ class DJLLuaTrainer : TwoArgFunction() {
         }
     }
 
-    // === Конвертация NDArray -> Lua ===
     private fun ndArrayToLua(array: NDArray): LuaValue {
         val data = array.toFloatArray()
         val t = LuaTable()
@@ -84,7 +78,6 @@ class DJLLuaTrainer : TwoArgFunction() {
         return t
     }
 
-    // === 1. Создание модели с гибкой архитектурой ===
     inner class CreateModelFunction : TwoArgFunction() {
         override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
             val id = arg1.checkstring().tojstring()
@@ -101,7 +94,6 @@ class DJLLuaTrainer : TwoArgFunction() {
 
                 val block = SequentialBlock()
 
-                // Скрытые слои
                 if (layersConfig != null && layersConfig.istable()) {
                     for (i in 1..layersConfig.length()) {
                         val layerSize = layersConfig[i].toint()
@@ -110,13 +102,11 @@ class DJLLuaTrainer : TwoArgFunction() {
                     }
                 }
 
-                // Выходной слой
                 block.add(Linear.builder().setUnits(outputSize.toLong()).build())
 
                 model.block = block
                 models[id] = model
 
-                // Возвращаем информацию о модели
                 LuaTable().apply {
                     set("id", LuaValue.valueOf(id))
                     set("input_size", LuaValue.valueOf(inputSize))
@@ -130,17 +120,8 @@ class DJLLuaTrainer : TwoArgFunction() {
         }
     }
 
-    companion object {
-        private var isTrainingRunning = false
-    }
-
-    // === 2. Обучение модели ===
     inner class TrainFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            if (isTrainingRunning) {
-                return LuaValue.valueOf("Training already in progress")
-            }
-            isTrainingRunning = true
             val modelId = args.arg1().checkstring().tojstring()
             val config = args.arg(2).opttable(null) ?: return LuaValue.error("Config required")
             val trainData = args.arg(3).opttable(null)
@@ -154,9 +135,7 @@ class DJLLuaTrainer : TwoArgFunction() {
                 val learningRate = config["lr"].optdouble(0.001)
                 val batchSize = config["batch_size"].optint(32)
                 val outputSize = config["output_size"].optint(1)
-    
-                // ИСПРАВЛЕНИЕ 1: Убираем лишнюю единицу из Shape, если она есть
-                // Для обычных нейросетей форма должна быть просто [input_size]
+
                 var shapeArray = inputShapes[modelId] ?: longArrayOf(10)
                 if (shapeArray.size > 1 && shapeArray[0] == 1L) {
                     shapeArray = shapeArray.sliceArray(1 until shapeArray.size)
@@ -178,22 +157,17 @@ class DJLLuaTrainer : TwoArgFunction() {
     
                 val trainingConfig = DefaultTrainingConfig(loss)
                     .optOptimizer(Adam.builder().optLearningRateTracker(lrTracker).build())
-                
-                // ИСПРАВЛЕНИЕ 2: Accuracy добавляем ТОЛЬКО если выходов больше 1
+
                 if (outputSize > 1) {
                     trainingConfig.addEvaluator(Accuracy())
                 }
-    
-                // Callback для Lua (TrainingListeners)
+
                 if (callback != null) {
                     trainingConfig.addTrainingListeners(object : TrainingListener {
                         override fun onEpoch(trainer: Trainer) {
                             val epochVal = LuaValue.valueOf(trainer.trainingResult.epoch)
-                            val lossKey = trainer.loss.name
-                            val lossVal = try { trainer.loss.getAccumulator(lossKey) } catch (e: Exception) { 0f }
-                            Minecraft.getInstance().execute {
-                                callback.call(epochVal, LuaValue.valueOf(lossVal.toDouble()))
-                            }
+                            val lossVal = LuaValue.valueOf(trainer.trainingResult.trainLoss.toDouble())
+                            callback.call(epochVal, lossVal)
                         }
                         override fun onTrainingBatch(trainer: Trainer?, batchData: TrainingListener.BatchData?) {}
                         override fun onValidationBatch(trainer: Trainer?, batchData: TrainingListener.BatchData?) {}
@@ -203,7 +177,6 @@ class DJLLuaTrainer : TwoArgFunction() {
                 }
     
                 model.newTrainer(trainingConfig).use { trainer ->
-                    // Инициализируем модель правильной формой
                     trainer.initialize(trainingShape)
                     EasyTrain.fit(trainer, epochs, dataset, testDataset)
                 }
@@ -212,8 +185,6 @@ class DJLLuaTrainer : TwoArgFunction() {
             } catch (e: Exception) {
                 e.printStackTrace()
                 LuaValue.error("Training failed: ${e.message}")
-            } finally {
-                isTrainingRunning = false
             }
         }
     
@@ -227,16 +198,13 @@ class DJLLuaTrainer : TwoArgFunction() {
             val labelList = NDList()
         
             for (i in 1..inputs.length()) {
-                // Загружаем входные данные (например, [4])
                 inputList.add(luaToNDArray(inputs[i], inputShape))
         
                 val labelValue = labels[i]
                 if (outputSize > 1) {
-                    // Классификация: метка — это одно число (Long)
                     val classIdx = if (labelValue.istable()) labelValue[1].tolong() else labelValue.tolong()
                     labelList.add(manager.create(classIdx))
                 } else {
-                    // Бинарный выход: метка — это массив [1] (Float)
                     val value = if (labelValue.istable()) labelValue[1].tofloat() else labelValue.tofloat()
                     labelList.add(manager.create(floatArrayOf(value), Shape(1)))
                 }
@@ -244,14 +212,11 @@ class DJLLuaTrainer : TwoArgFunction() {
         
             val allInputs = NDArrays.stack(inputList, 0)
             var allLabels = NDArrays.stack(labelList, 0)
-        
-            // ИСПРАВЛЕНИЕ 3: Принудительно корректируем типы и формы для PyTorch
+
             val finalLabels = if (outputSize > 1) {
-                // Softmax ожидает одномерный тензор меток (Batch) типа Long
                 if (allLabels.shape.dimension() > 1) allLabels = allLabels.squeeze(-1)
                 allLabels.toType(DataType.INT64, false)
             } else {
-                // Sigmoid ожидает тензор (Batch, 1) типа Float
                 allLabels.toType(DataType.FLOAT32, false)
             }
         
@@ -263,7 +228,6 @@ class DJLLuaTrainer : TwoArgFunction() {
         }
     }
 
-    // === 3. Сохранение модели ===
     inner class SaveModelFunction : TwoArgFunction() {
         override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
             val modelId = arg1.checkstring().tojstring()
@@ -280,7 +244,6 @@ class DJLLuaTrainer : TwoArgFunction() {
         }
     }
 
-    // === 4. Загрузка модели ===
     inner class LoadModelFunction : TwoArgFunction() {
         override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
             val id = arg1.checkstring().tojstring()
@@ -301,7 +264,6 @@ class DJLLuaTrainer : TwoArgFunction() {
         }
     }
 
-    // === 5. Предикт ===
     inner class PredictFunction : TwoArgFunction() {
         override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
             val id = arg1.checkstring().tojstring()
@@ -335,7 +297,6 @@ class DJLLuaTrainer : TwoArgFunction() {
         }
     }
 
-    // === 6. Очистка ===
     inner class CloseFunction : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val id = arg.checkstring().tojstring()
@@ -348,7 +309,6 @@ class DJLLuaTrainer : TwoArgFunction() {
         }
     }
 
-    // === 7. Информация о модели ===
     inner class GetModelInfoFunction : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val id = arg.checkstring().tojstring()

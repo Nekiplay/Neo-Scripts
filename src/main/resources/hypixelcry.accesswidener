@@ -1,7 +1,5 @@
 accessWidener	v1	named
 
-accessible field net/minecraft/client/gui/Gui SCORE_DISPLAY_ORDER Ljava/util/Comparator;
-
 accessible field net/minecraft/world/level/saveddata/maps/MapItemSavedData trackingPosition Z
 accessible field net/minecraft/world/level/saveddata/maps/MapItemSavedData unlimitedTracking Z
 accessible field net/minecraft/world/level/saveddata/maps/MapItemSavedData trackedDecorationCount I
