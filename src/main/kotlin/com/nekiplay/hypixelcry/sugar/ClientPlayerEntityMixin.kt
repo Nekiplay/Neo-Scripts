@@ -22,7 +22,7 @@ fun LocalPlayer.getScorebordLines(): List<Component> {
         .sortedWith(scoreboardComparator)
         .take(15).map {
             val team = scoreboard.getPlayerTeam(it.owner)
-            val text = it.display ?: Component.empty()
+            val text = it.display ?: Component.literal(it.owner)
             PlayerTeam.formatNameForTeam(team, text)
         }
 }
