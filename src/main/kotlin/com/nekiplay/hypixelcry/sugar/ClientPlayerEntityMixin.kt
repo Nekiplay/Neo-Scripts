@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.sugar
 
 import com.nekiplay.hypixelcry.mixins.PlayerListHudAccessor
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
+import com.nekiplay.hypixelcry.utils.Utils
 import net.minecraft.client.player.LocalPlayer
 import net.minecraft.network.chat.Component
 import net.minecraft.world.scores.DisplaySlot
@@ -12,19 +13,9 @@ import java.util.*
 import kotlin.run
 
 fun LocalPlayer.getScorebordLines(): List<Component> {
-    val scoreboard = mc.player?.team?.scoreboard ?: return listOf()
-    val activeObjective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR) ?: return listOf()
-    val scoreboardComparator = compareByDescending<PlayerScoreEntry> { it.value }
-        .thenBy(String.CASE_INSENSITIVE_ORDER) { it.owner }
-
-    return scoreboard.listPlayerScores(activeObjective)
-        .filter { !it.isHidden }
-        .sortedWith(scoreboardComparator)
-        .take(15).map {
-            val team = scoreboard.getPlayerTeam(it.owner)
-            val text = it.display ?: Component.literal(it.owner)
-            PlayerTeam.formatNameForTeam(team, text)
-        }
+    return Utils.STRING_SCOREBOARD.map { it ->
+        Component.literal(it)
+    }
 }
 
 data class CurrentTabList(
