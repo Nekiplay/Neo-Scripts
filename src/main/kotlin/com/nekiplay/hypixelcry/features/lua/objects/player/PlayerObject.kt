@@ -3,23 +3,19 @@ package com.nekiplay.hypixelcry.features.lua.objects.player
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponent
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
-import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.sugar.getFormattedString
-import com.nekiplay.hypixelcry.sugar.getScoreabordLines
+import com.nekiplay.hypixelcry.sugar.getScorebordLines
 import com.nekiplay.hypixelcry.sugar.getTab
 import com.nekiplay.hypixelcry.utils.PlayerUtils
 import com.nekiplay.hypixelcry.utils.RaycastUtils
 import com.nekiplay.hypixelcry.utils.Rotations
 import com.nekiplay.hypixelcry.utils.StatusBarTracker
 import com.nekiplay.hypixelcry.utils.Utils
-import com.nekiplay.hypixelcry.utils.render.FrustumUtils
 import com.nekiplay.hypixelcry.utils.trackers.ColdTracker
 import com.nekiplay.hypixelcry.utils.trackers.PetCache
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.components.toasts.SystemToast
-import net.minecraft.client.multiplayer.ClientSuggestionProvider
-import net.minecraft.commands.SharedSuggestionProvider
 import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.phys.BlockHitResult
@@ -247,7 +243,7 @@ class PlayerObject : LuaValue() {
     private inner class GetScoreboardLinesFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val table = tableOf()
-            mc.player?.getScoreabordLines()?.forEachIndexed { index, line ->
+            mc.player?.getScorebordLines()?.forEachIndexed { index, line ->
                 table.set(index + 1, valueOf(line.getFormattedString()))
             }
             return table

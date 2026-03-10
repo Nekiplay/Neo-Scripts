@@ -10,7 +10,7 @@ import net.minecraft.world.scores.PlayerTeam
 import java.util.*
 import kotlin.run
 
-fun LocalPlayer.getScoreabordLines(): List<Component> {
+fun LocalPlayer.getScorebordLines(): List<Component> {
     val scoreboard = mc.player?.team?.scoreboard ?: return listOf()
     val activeObjective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR) ?: return listOf()
     val scoreComparator = compareByDescending<PlayerScoreEntry> { it.value }
