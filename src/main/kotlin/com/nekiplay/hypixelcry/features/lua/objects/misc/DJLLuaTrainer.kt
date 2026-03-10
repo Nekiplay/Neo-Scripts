@@ -36,6 +36,7 @@ class DJLLuaTrainer : TwoArgFunction() {
     val predictors = ConcurrentHashMap<String, Predictor<NDList, NDList>>()
     private val manager: NDManager = NDManager.newBaseManager()
     val inputShapes = ConcurrentHashMap<String, LongArray>()
+    val modelModes = ConcurrentHashMap<String, String>()
 
     override fun call(modname: LuaValue?, env: LuaValue?): LuaValue {
         val djl = LuaTable()
@@ -85,23 +86,21 @@ class DJLLuaTrainer : TwoArgFunction() {
 
             return try {
                 val model = Model.newInstance(id)
-
                 val inputSize = config["input_size"].optint(10)
                 val outputSize = config["output_size"].optint(1)
+                val mode = config["mode"].optjstring("classification")
                 val layersConfig = config["layers"]
 
+                modelModes[id] = mode
                 inputShapes[id] = longArrayOf(1, inputSize.toLong())
 
                 val block = SequentialBlock()
-
                 if (layersConfig != null && layersConfig.istable()) {
                     for (i in 1..layersConfig.length()) {
-                        val layerSize = layersConfig[i].toint()
-                        block.add(Linear.builder().setUnits(layerSize.toLong()).build())
+                        block.add(Linear.builder().setUnits(layersConfig[i].tolong()).build())
                         block.add(Activation::relu)
                     }
                 }
-
                 block.add(Linear.builder().setUnits(outputSize.toLong()).build())
 
                 model.block = block
@@ -109,12 +108,9 @@ class DJLLuaTrainer : TwoArgFunction() {
 
                 LuaTable().apply {
                     set("id", LuaValue.valueOf(id))
-                    set("input_size", LuaValue.valueOf(inputSize))
-                    set("output_size", LuaValue.valueOf(outputSize))
-                    set("layers", layersConfig ?: LuaValue.NIL)
+                    set("mode", LuaValue.valueOf(mode))
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
                 LuaValue.error("Failed to create model: ${e.message}")
             }
         }
@@ -127,9 +123,10 @@ class DJLLuaTrainer : TwoArgFunction() {
             val trainData = args.arg(3).opttable(null)
             val testData = args.arg(4).opttable(null)
             val callback = args.arg(5).optfunction(null)
-    
+
             val model = models[modelId] ?: return LuaValue.error("Model not found: $modelId")
-    
+            val mode = modelModes[modelId] ?: "classification"
+
             return try {
                 val epochs = config["epochs"].optint(10)
                 val learningRate = config["lr"].optdouble(0.001)
@@ -141,33 +138,31 @@ class DJLLuaTrainer : TwoArgFunction() {
                     shapeArray = shapeArray.sliceArray(1 until shapeArray.size)
                 }
                 val trainingShape = Shape(*shapeArray)
-    
-                HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + "Shape adjusted to: $trainingShape")
-    
-                val dataset = buildDataset(trainData, batchSize, shapeArray, outputSize, model.ndManager)
-                val testDataset = testData?.let { buildDataset(it, batchSize, shapeArray, outputSize, model.ndManager) }
-    
-                val loss = if (outputSize == 1) {
-                    Loss.sigmoidBinaryCrossEntropyLoss()
-                } else {
-                    Loss.softmaxCrossEntropyLoss()
-                }
-                
-                val lrTracker = Tracker.fixed(learningRate.toFloat())
-    
-                val trainingConfig = DefaultTrainingConfig(loss)
-                    .optOptimizer(Adam.builder().optLearningRateTracker(lrTracker).build())
 
-                if (outputSize > 1) {
+                val dataset = buildDataset(trainData, batchSize, shapeArray, outputSize, mode, model.ndManager)
+                val testDataset = testData?.let { buildDataset(it, batchSize, shapeArray, outputSize, mode, model.ndManager) }
+
+                val loss = if (mode == "regression") {
+                    Loss.l2Loss()
+                } else {
+                    if (outputSize == 1) Loss.sigmoidBinaryCrossEntropyLoss() else Loss.softmaxCrossEntropyLoss()
+                }
+
+                val trainingConfig = DefaultTrainingConfig(loss)
+                    .optOptimizer(Adam.builder().optLearningRateTracker(Tracker.fixed(learningRate.toFloat())).build())
+
+                // Метрики
+                if (mode == "regression") {
+                    trainingConfig.addEvaluator(loss)
+                } else {
                     trainingConfig.addEvaluator(Accuracy())
                 }
 
                 if (callback != null) {
                     trainingConfig.addTrainingListeners(object : TrainingListener {
                         override fun onEpoch(trainer: Trainer) {
-                            val epochVal = LuaValue.valueOf(trainer.trainingResult.epoch)
-                            val lossVal = LuaValue.valueOf(trainer.trainingResult.trainLoss.toDouble())
-                            callback.call(epochVal, lossVal)
+                            callback.call(LuaValue.valueOf(trainer.trainingResult.epoch),
+                                LuaValue.valueOf(trainer.trainingResult.trainLoss.toDouble()))
                         }
                         override fun onTrainingBatch(trainer: Trainer?, batchData: TrainingListener.BatchData?) {}
                         override fun onValidationBatch(trainer: Trainer?, batchData: TrainingListener.BatchData?) {}
@@ -175,56 +170,55 @@ class DJLLuaTrainer : TwoArgFunction() {
                         override fun onTrainingEnd(trainer: Trainer?) {}
                     })
                 }
-    
+
                 model.newTrainer(trainingConfig).use { trainer ->
                     trainer.initialize(trainingShape)
                     EasyTrain.fit(trainer, epochs, dataset, testDataset)
                 }
-    
                 LuaValue.TRUE
             } catch (e: Exception) {
                 e.printStackTrace()
                 LuaValue.error("Training failed: ${e.message}")
             }
         }
-    
-        private fun buildDataset(data: LuaValue?, batchSize: Int, inputShape: LongArray, outputSize: Int, manager: NDManager): Dataset {
+
+        private fun buildDataset(data: LuaValue?, batchSize: Int, inputShape: LongArray, outputSize: Int, mode: String, manager: NDManager): Dataset {
             require(data != null) { "Dataset is required" }
-        
-            val inputs = data["inputs"] ?: throw IllegalArgumentException("Dataset must contain 'inputs'")
-            val labels = data["labels"] ?: throw IllegalArgumentException("Dataset must contain 'labels'")
-        
-            val inputList = NDList()
-            val labelList = NDList()
-        
+            val inputs = data["inputs"]; val labels = data["labels"]
+            val inputList = NDList(); val labelList = NDList()
+
             for (i in 1..inputs.length()) {
                 inputList.add(luaToNDArray(inputs[i], inputShape))
-        
                 val labelValue = labels[i]
-                if (outputSize > 1) {
-                    val classIdx = if (labelValue.istable()) labelValue[1].tolong() else labelValue.tolong()
-                    labelList.add(manager.create(classIdx))
+
+                if (mode == "regression") {
+                    // Для регрессии всегда передаем Float
+                    val vals = if (labelValue.istable()) {
+                        FloatArray(labelValue.length()) { j -> labelValue[j+1].tofloat() }
+                    } else {
+                        floatArrayOf(labelValue.tofloat())
+                    }
+                    labelList.add(manager.create(vals, Shape(vals.size.toLong())))
                 } else {
-                    val value = if (labelValue.istable()) labelValue[1].tofloat() else labelValue.tofloat()
-                    labelList.add(manager.create(floatArrayOf(value), Shape(1)))
+                    if (outputSize > 1) {
+                        labelList.add(manager.create(labelValue.tolong())) // Индекс класса
+                    } else {
+                        labelList.add(manager.create(floatArrayOf(labelValue.tofloat()), Shape(1)))
+                    }
                 }
             }
-        
+
             val allInputs = NDArrays.stack(inputList, 0)
             var allLabels = NDArrays.stack(labelList, 0)
 
-            val finalLabels = if (outputSize > 1) {
+            val finalLabels = if (mode == "classification" && outputSize > 1) {
                 if (allLabels.shape.dimension() > 1) allLabels = allLabels.squeeze(-1)
                 allLabels.toType(DataType.INT64, false)
             } else {
                 allLabels.toType(DataType.FLOAT32, false)
             }
-        
-            return ArrayDataset.Builder()
-                .setData(allInputs)
-                .optLabels(finalLabels)
-                .setSampling(batchSize, true)
-                .build()
+
+            return ArrayDataset.Builder().setData(allInputs).optLabels(finalLabels).setSampling(batchSize, true).build()
         }
     }
 
@@ -258,6 +252,8 @@ class DJLLuaTrainer : TwoArgFunction() {
                     val inputSize = config["input_size"].optint(10)
                     val outputSize = config["output_size"].optint(1)
                     val layersConfig = config["layers"]
+                    val mode = config["mode"].optjstring("classification")
+                    modelModes[id] = mode
 
                     inputShapes[id] = longArrayOf(1, inputSize.toLong())
 
