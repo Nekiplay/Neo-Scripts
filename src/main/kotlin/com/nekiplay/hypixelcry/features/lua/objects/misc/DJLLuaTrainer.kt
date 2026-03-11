@@ -159,10 +159,11 @@ class DJLLuaTrainer : TwoArgFunction() {
                 }
 
                 if (callback != null) {
+                    var epochIndex = 1
                     trainingConfig.addTrainingListeners(object : TrainingListener {
                         override fun onEpoch(trainer: Trainer) {
-                            callback.call(LuaValue.valueOf(trainer.trainingResult.epoch),
-                                LuaValue.valueOf(trainer.trainingResult.trainLoss.toDouble()))
+                            callback.call(LuaValue.valueOf(epochIndex))
+                            epochIndex++
                         }
                         override fun onTrainingBatch(trainer: Trainer?, batchData: TrainingListener.BatchData?) {}
                         override fun onValidationBatch(trainer: Trainer?, batchData: TrainingListener.BatchData?) {}

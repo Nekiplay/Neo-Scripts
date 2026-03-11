@@ -4,13 +4,14 @@ import com.nekiplay.hypixelcry.features.lua.customArgs.FourArgFunction
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaEntity
-import com.nekiplay.hypixelcry.features.lua.utils.EntityUtils
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.RaycastUtils
 import com.nekiplay.hypixelcry.utils.Rotations
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.ClipContext
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
@@ -41,9 +42,14 @@ class WorldObject : LuaValue() {
             "isBlockLoaded" -> IsBlockLoadedFunction()
 
             "getEntities" -> GetEntitiesFunction()
-            "getEntitiesInBox" -> GetEntitieInBoxFunction()
             "getLivingEntities" -> GetLivingEntitiesFunction()
+            "getArmorStandEntities" -> GetArmorStandEntitiesFunction()
+
+            "getEntitiesInBox" -> GetEntitiesInBoxFunction()
+            "getArmorStandEntitiesInBox" -> GetArmorStandEntitiesInBoxFunction()
+
             "getEntityById" -> GetEntityByIdFunction()
+
             "getCollisionBoxes" -> GetCollisionBoxesFunction()
             "getOutlineBoxes" -> GetOutlineBoxesFunction()
 
@@ -102,7 +108,7 @@ class WorldObject : LuaValue() {
             // Конвертируем VoxelShape в Lua таблицу с bounding boxes
             val result = LuaValue.tableOf()
 
-            var index: Int = 1
+            var index = 1
             collisionShape.toAabbs().forEach { voxel ->
                 result.set(index, LuaBox(voxel))
                 index++
@@ -161,7 +167,7 @@ class WorldObject : LuaValue() {
             // Конвертируем VoxelShape в Lua таблицу с bounding boxes
             val result = LuaValue.tableOf()
 
-            var index: Int = 1
+            var index = 1
             collisionShape.toAabbs().forEach { voxel ->
                 result.set(index, LuaBox(voxel))
                 index++
@@ -216,6 +222,13 @@ class WorldObject : LuaValue() {
                     } else {
                         RaycastUtils.fastRayTrace(mc.player, startVec, endVec, ArrayList())
                     }
+
+                    if (include_entity) {
+                        val sub = endVec.subtract(startVec)
+                        val distance = sub.x * sub.x * sub.y * sub.y * sub.z * sub.z
+                        return processHitResult(RaycastUtils.findCrosshairTarget(mc.player, startVec, endVec, distance, distance))
+                    }
+
                     return if (hitResult != null) {
                         processHitResult(hitResult)
                     } else {
@@ -340,7 +353,7 @@ class WorldObject : LuaValue() {
                 mc.level?.setBlockAndUpdate(blockPos, blockState)
 
                 /*mc.worldRenderer.updateBlock(
-                --    mc.level,
+                    mc.level,
                     blockPos,
                     mc.level?.getBlockState(blockPos),
                     blockState,
@@ -422,41 +435,90 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetEntitieInBoxFunction : TwoArgFunction() {
-        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
-            val entity = when {
-                arg1?.isuserdata() == true && arg1.touserdata() is LuaEntity -> (arg1.touserdata() as LuaEntity).entity
-                arg1?.isuserdata() == true && arg1.touserdata() is Entity -> arg1.touserdata() as Entity
-                else -> null
-            }
-            val box = when {
-                arg2?.isuserdata() == true && arg2.touserdata() is LuaBox -> (arg2.touserdata() as LuaBox).box
-                arg2?.isuserdata() == true && arg2.touserdata() is AABB -> arg2.touserdata() as AABB
-                else -> null
+    private inner class GetEntitiesFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val entitiesTable = LuaValue.tableOf()
+
+            mc.level?.entitiesForRendering()?.forEachIndexed { index, entity ->
+                entitiesTable.set(index + 1, LuaEntity(entity))
             }
 
-
-            if (box != null && entity != null) {
-                val entities = mc.level?.getEntities(entity, box, { true })
-                val entitiesTable = tableOf()
-                entities?.forEachIndexed { index, entity ->
-                    entitiesTable.set(index + 1, LuaEntity(entity))
-                }
-                return entitiesTable
-            }
-            return NIL
+            return entitiesTable
         }
     }
 
-    private inner class GetEntitiesFunction : ZeroArgFunction() {
+    private inner class GetArmorStandEntitiesInBoxFunction() : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            val box = when {
+                arg.isuserdata() && arg.touserdata() is LuaBox -> (arg.touserdata() as LuaBox).box
+                arg is LuaBox -> arg.box
+                arg.isuserdata() && arg.touserdata() is AABB -> arg.touserdata() as AABB
+                else -> null
+            }
+            val entitiesTable = LuaValue.tableOf()
+            if (box != null) {
+                var index = 0
+                mc.level?.getEntitiesOfClass(ArmorStand::class.java, box)?.forEach { entity ->
+                    entitiesTable.set(index + 1, LuaEntity(entity))
+                    index++
+                }
+                return entitiesTable
+            }
+            return entitiesTable
+        }
+    }
+
+    private inner class GetEntitiesInBoxFunction() : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            val box = when {
+                arg.isuserdata() && arg.touserdata() is LuaBox -> (arg.touserdata() as LuaBox).box
+                arg is LuaBox -> arg.box
+                arg.isuserdata() && arg.touserdata() is AABB -> arg.touserdata() as AABB
+                else -> null
+            }
+            val entitiesTable = LuaValue.tableOf()
+            if (box != null) {
+
+                var index = 1
+                mc.level?.getEntitiesOfClass(Entity::class.java, box)?.forEach { entity ->
+                    entitiesTable.set(index, LuaEntity(entity))
+                    index++
+                }
+                return entitiesTable
+            }
+            return entitiesTable
+        }
+    }
+
+    private inner class GetArmorStandEntitiesFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return EntityUtils.GetAllEntities()
+            val entitiesTable = LuaValue.tableOf()
+
+            var index = 1
+            mc.level?.entitiesForRendering()?.forEach { entity ->
+                if (entity is ArmorStand) {
+                    entitiesTable.set(index, LuaEntity(entity))
+                    index++
+                }
+            }
+
+            return entitiesTable
         }
     }
 
     private inner class GetLivingEntitiesFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return EntityUtils.GetAllLivingEntities()
+            val entitiesTable = LuaValue.tableOf()
+
+            var index = 1
+            mc.level?.entitiesForRendering()?.forEach { entity ->
+                if (entity is LivingEntity) {
+                    entitiesTable.set(index, LuaEntity(entity))
+                    index++
+                }
+            }
+
+            return entitiesTable
         }
     }
 

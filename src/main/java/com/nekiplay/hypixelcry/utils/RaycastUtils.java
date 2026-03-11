@@ -278,6 +278,51 @@ public class RaycastUtils {
         return closestHit;
     }
 
+    public static HitResult findCrosshairTarget(Entity sourceEntity, Vec3 startPos, Vec3 lookVec, double blockInteractionRange, double entityInteractionRange) {
+        // 1. Вычисляем максимально возможную дистанцию
+        double maxRange = Math.max(blockInteractionRange, entityInteractionRange);
+        Vec3 endVec = startPos.add(lookVec.x * maxRange, lookVec.y * maxRange, lookVec.z * maxRange);
+
+        // 2. Трассировка блоков (используем стандартный клип мира)
+        HitResult blockHit = mc.level.clip(new net.minecraft.world.level.ClipContext(
+                startPos,
+                endVec,
+                net.minecraft.world.level.ClipContext.Block.OUTLINE,
+                net.minecraft.world.level.ClipContext.Fluid.NONE,
+                sourceEntity
+        ));
+
+        double distToBlockSqr = blockHit.getLocation().distanceToSqr(startPos);
+
+        // Ограничиваем поиск сущностей дистанцией до блока (чтобы не бить сквозь стены)
+        double currentMaxDistSqr = (blockHit.getType() != HitResult.Type.MISS) ? distToBlockSqr : maxRange * maxRange;
+
+        // 3. Трассировка сущностей
+        // Создаем область поиска (AABB) на основе луча
+        AABB searchBox = new AABB(startPos, endVec).inflate(1.0D);
+
+        EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(
+                sourceEntity,
+                startPos,
+                endVec,
+                searchBox,
+                (e) -> !e.isSpectator() && e.isPickable(),
+                currentMaxDistSqr
+        );
+
+        // 4. Логика выбора результата
+        if (entityHit != null) {
+            double entityDistSqr = entityHit.getLocation().distanceToSqr(startPos);
+            // Проверяем, входит ли найденная сущность в допустимый радиус атаки
+            if (entityDistSqr <= entityInteractionRange * entityInteractionRange) {
+                return entityHit;
+            }
+        }
+
+        // Если сущность не найдена или слишком далеко, возвращаем блок (с проверкой его радиуса)
+        return ensureTargetInRange(blockHit, startPos, blockInteractionRange);
+    }
+
     public static HitResult findCrosshairTarget(Entity camera, double blockInteractionRange, double entityInteractionRange, float tickProgress) {
         double d = Math.max(blockInteractionRange, entityInteractionRange);
         double e = Mth.square(d);
