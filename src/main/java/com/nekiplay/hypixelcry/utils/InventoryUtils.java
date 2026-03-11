@@ -25,17 +25,6 @@ public class InventoryUtils {
         }
     }
 
-    public static void swapSlots(int slot, int hotbarSlot) {
-        if (mc.player != null && mc.screen != null) {
-            if (mc.player.containerMenu instanceof ChestMenu) {
-                clickSlotWithId(slot, hotbarSlot, ClickType.SWAP, mc.player.containerMenu.containerId);
-            }
-            else if (mc.screen instanceof InventoryScreen) {
-                clickSlotWithId(slot, hotbarSlot, ClickType.SWAP, mc.player.inventoryMenu.containerId);
-            }
-        }
-    }
-
     // Дополнительные полезные методы
     public static void leftClickSlot(int slot) {
         clickSlot(slot, 0, ClickType.PICKUP);

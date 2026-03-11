@@ -42,11 +42,10 @@ class ThreadLib : TwoArgFunction() {
                 } catch (e: Exception) {
                     e.printStackTrace()
                 } finally {
-                    // Автоматическое удаление потока из списка после завершения
                     threads.remove(threadId)
                 }
             }.apply {
-                isDaemon = true // Потоки-демоны не препятствуют завершению JVM
+                isDaemon = true
             }
 
             threads[threadId] = ThreadInfo(thread)
@@ -122,44 +121,16 @@ class ThreadLib : TwoArgFunction() {
         }
     }
 
-    inner class CleanupFinishedThreads : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            cleanupFinishedThreads()
-            return LuaValue.NIL
-        }
-    }
-
     inner class GetThreadCount : ZeroArgFunction() {
         override fun call(): LuaValue {
             return LuaValue.valueOf(threads.size)
         }
     }
 
-    private fun cleanupFinishedThreads() {
-        val iterator = threads.entries.iterator()
-        var removedCount = 0
-        while (iterator.hasNext()) {
-            val entry = iterator.next()
-            if (!entry.value.thread.isAlive) {
-                iterator.remove()
-                removedCount++
-            }
-        }
-        println("ThreadLib: Удалено $removedCount завершенных потоков")
-    }
-
 
     fun stopAllThreads() {
-        // Прерываем все потоки
         threads.values.forEach { it.thread.interrupt() }
 
-        // Моментально удаляем все записи без ожидания завершения
         threads.clear()
-        println("ThreadLib: Все потоки остановлены")
-    }
-
-    // Метод для ручной очистки при уничтожении модуля
-    fun cleanup() {
-        stopAllThreads()
     }
 }

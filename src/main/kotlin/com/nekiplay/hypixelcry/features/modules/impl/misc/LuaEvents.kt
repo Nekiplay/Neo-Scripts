@@ -25,9 +25,13 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
+import net.fabricmc.fabric.api.event.player.AttackBlockCallback
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
 import net.minecraft.client.Minecraft
 import net.minecraft.commands.SharedSuggestionProvider
+import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
+import net.minecraft.core.Direction8
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.network.protocol.game.ClientboundBlockChangedAckPacket
@@ -129,6 +133,26 @@ object LuaEvents : ClientModule() {
                     }
                 }
             }
+            if (allow) {
+                InteractionResult.PASS
+            } else {
+                InteractionResult.FAIL
+            }
+        })
+
+        AttackBlockCallback.EVENT.register(AttackBlockCallback { player: Player, world: Level, hand: InteractionHand, pos: BlockPos, direction: Direction ->
+            var allow = true
+
+            LUA_MANAGER.scripts.values.forEach { script ->
+                try {
+                    if (!script.onAttackBlock(pos, direction, hand)) {
+                        allow = false
+                    }
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
+
             if (allow) {
                 InteractionResult.PASS
             } else {

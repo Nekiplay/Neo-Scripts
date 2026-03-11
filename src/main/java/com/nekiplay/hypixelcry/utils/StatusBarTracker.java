@@ -1,7 +1,9 @@
 package com.nekiplay.hypixelcry.utils;
 
 import com.nekiplay.hypixelcry.annotations.Init;
+import com.nekiplay.hypixelcry.utils.itemlist.PetInfo;
 import com.nekiplay.hypixelcry.utils.scheduler.Scheduler;
+import com.nekiplay.hypixelcry.utils.trackers.PetCache;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -142,6 +144,15 @@ public class StatusBarTracker {
         }
         if (youngDragCount == 4) {
             max = 500;
+        }
+
+        PetInfo pet = PetCache.getCurrentPet();
+        if (pet != null) {
+            if (pet.type().contains("BLACK_CAT")) {
+                max = 500;
+            } else if (pet.type().contains("SNAIL")) {
+                max = 100;
+            }
         }
         
         speed = new Resource(value, max, 0);

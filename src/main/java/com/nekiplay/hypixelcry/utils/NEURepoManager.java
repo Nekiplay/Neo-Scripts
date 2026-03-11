@@ -107,9 +107,9 @@ public class NEURepoManager {
                     try (Git localRepo = Git.open(NEURepoManager.LOCAL_REPO_DIR.toFile())) {
                         PullResult result = localRepo.pull().setRebase(false).setFastForward(MergeCommand.FastForwardMode.FF_ONLY).call();
                         if (result.isSuccessful()) {
-                            LOGGER.info("[Skyblocker NEU Repo] NEU Repository updated with merge status: {}", result.getMergeResult().getMergeStatus());
+                            LOGGER.info("[HypixelCry NEU Repo] NEU Repository updated with merge status: {}", result.getMergeResult().getMergeStatus());
                         } else {
-                            LOGGER.error("[Skyblocker NEU Repo] Update failed with merge status: {}. Downloading new repository", result.getMergeResult().getMergeStatus());
+                            LOGGER.error("[HypixelCry NEU Repo] Update failed with merge status: {}. Downloading new repository", result.getMergeResult().getMergeStatus());
                             Scheduler.INSTANCE.schedule(() -> deleteAndDownloadRepositoryInternal(Minecraft.getInstance().player), 1);
                             success = false;
                         }
@@ -122,26 +122,26 @@ public class NEURepoManager {
                             .setBranch("refs/heads/master")
                             .setDepth(1) // do shallow clone
                             .call().close();
-                    LOGGER.info("[Skyblocker NEU Repo] NEU Repository Downloaded");
+                    LOGGER.info("[HypixelCry NEU Repo] NEU Repository Downloaded");
                 }
             } catch (TransportException e) {
-                LOGGER.error("[Skyblocker NEU Repo] Transport operation failed. Most likely unable to connect to the remote NEU repo on github", e);
+                LOGGER.error("[HypixelCry NEU Repo] Transport operation failed. Most likely unable to connect to the remote NEU repo on github", e);
                 success = false;
             } catch (Exception e) {
-                LOGGER.error("[Skyblocker NEU Repo] Encountered unknown exception while downloading NEU Repository", e);
+                LOGGER.error("[HypixelCry NEU Repo] Encountered unknown exception while downloading NEU Repository", e);
                 success = false;
             }
 
             try {
                 NEU_REPO.reload();
             } catch (Exception e) {
-                LOGGER.error("[Skyblocker NEU Repo] Encountered unknown exception while loading NEU Repository", e);
+                LOGGER.error("[HypixelCry NEU Repo] Encountered unknown exception while loading NEU Repository", e);
                 success = false;
             }
             return success;
         }).thenApplyAsync(success -> {
             CompletableFuture.allOf(afterLoadTasks.stream().map(CompletableFuture::runAsync).toArray(CompletableFuture[]::new)).exceptionally(e -> {
-                LOGGER.error("[Skyblocker NEU Repo] Encountered unknown exception while running after load tasks", e);
+                LOGGER.error("[HypixelCry NEU Repo] Encountered unknown exception while running after load tasks", e);
                 return null;
             });
             return success;
@@ -179,7 +179,7 @@ public class NEURepoManager {
                 sendMessage(player, Component.translatable("skyblocker.updateRepository.deleted"));
                 sendMessage(player, Component.translatable(loadRepository().join() ? "skyblocker.updateRepository.success" : "skyblocker.updateRepository.failed"));
             } catch (Exception e) {
-                LOGGER.error("[Skyblocker NEU Repo] Encountered unknown exception while deleting the NEU repo", e);
+                LOGGER.error("[HypixelCry NEU Repo] Encountered unknown exception while deleting the NEU repo", e);
                 sendMessage(player, Component.translatable("skyblocker.updateRepository.error"));
             }
         });
@@ -189,7 +189,7 @@ public class NEURepoManager {
         if (player != null) {
             player.displayClientMessage(Constants.PREFIX.get().append(text), false);
         } else {
-            LOGGER.info("[Skyblocker NEU Repo] {}", text.getString());
+            LOGGER.info("[HypixelCry NEU Repo] {}", text.getString());
         }
     }
 
@@ -201,7 +201,7 @@ public class NEURepoManager {
      */
     public static CompletableFuture<Void> runAsyncAfterLoad(Runnable runnable) {
         return REPO_LOADING.thenRunAsync(runnable).exceptionally(e -> {
-            LOGGER.error("[Skyblocker NEU Repo] Encountered unknown exception while running after load task", e);
+            LOGGER.error("[HypixelCry NEU Repo] Encountered unknown exception while running after load task", e);
             return null;
         }).thenRun(() -> afterLoadTasks.add(runnable)); // Add to the list after so it doesn't get executed twice.
     }
