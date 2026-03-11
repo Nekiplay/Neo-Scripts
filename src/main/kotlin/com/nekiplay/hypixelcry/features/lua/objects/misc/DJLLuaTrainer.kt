@@ -339,8 +339,6 @@ class DJLLuaTrainer : TwoArgFunction() {
                 inputShapes[id]?.let { shape ->
                     set("input_shape", LuaValue.valueOf(shape[1].toInt()))
                 }
-                set("input_size", model.block.inputShapes.size)
-                set("output_size", model.block.outputDataTypes.size)
             }
         }
     }

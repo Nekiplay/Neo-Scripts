@@ -837,7 +837,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     fun onAttackBlock(pos: BlockPos, direction: Direction, hand: InteractionHand): Boolean {
         var allow = true
         val callbacks = synchronized(callbacksLock) {
-            useBlockCallbacks.toTypedArray()
+            attackBlockCallbacks.toTypedArray()
         }
 
         for (callback in callbacks) {
