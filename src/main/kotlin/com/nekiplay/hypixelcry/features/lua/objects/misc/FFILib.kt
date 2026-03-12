@@ -172,7 +172,7 @@ class FFILib : TwoArgFunction() {
                         if (rawVal == 0L) NIL else valueOf(p.getString(0))
                     }
                     // Исправленный fallback: преобразуем Long в Double для Lua
-                    else -> valueOf(rawVal.toDouble())
+                    else -> LuaLong(rawVal)
                 }
             }
         }
@@ -207,45 +207,49 @@ class FFILib : TwoArgFunction() {
 
     private fun createCallback(func: LuaValue, retType: String, argTypes: LuaTable): LuaValue {
         val argCount = argTypes.length()
+        val isVoid = retType == "void"
 
-        // We create a specific interface implementation based on the number of arguments
-        val callback = when (argCount) {
-            0 -> object : Callback {
-                fun callback(): Any? =
-                    invokeLua(func, emptyArray(), retType, argTypes)
+        val callback = if (isVoid) {
+            when (argCount) {
+                0 -> object : Callback {
+                    fun callback() { invokeLua(func, emptyArray(), retType, argTypes) }
+                }
+                1 -> object : Callback {
+                    fun callback(a1: Long) { invokeLua(func, arrayOf(a1), retType, argTypes) }
+                }
+                2 -> object : Callback {
+                    fun callback(a1: Long, a2: Long) { invokeLua(func, arrayOf(a1, a2), retType, argTypes) }
+                }
+                3 -> object : Callback {
+                    fun callback(a1: Long, a2: Long, a3: Long) { invokeLua(func, arrayOf(a1, a2, a3), retType, argTypes) }
+                }
+                else -> error("FFI: Too many arguments for void callback")
             }
-            1 -> object : Callback {
-                fun callback(a1: Any?): Any? =
-                    invokeLua(func, arrayOf(a1), retType, argTypes)
+        } else {
+            when (argCount) {
+                0 -> object : Callback {
+                    fun callback(): Long = castToLong(invokeLua(func, emptyArray(), retType, argTypes))
+                }
+                1 -> object : Callback {
+                    fun callback(a1: Long): Long = castToLong(invokeLua(func, arrayOf(a1), retType, argTypes))
+                }
+                2 -> object : Callback {
+                    fun callback(a1: Long, a2: Long): Long = castToLong(invokeLua(func, arrayOf(a1, a2), retType, argTypes))
+                }
+                else -> error("FFI: Too many arguments for non-void callback")
             }
-            2 -> object : Callback {
-                fun callback(a1: Any?, a2: Any?): Any? =
-                    invokeLua(func, arrayOf(a1, a2), retType, argTypes)
-            }
-            3 -> object : Callback {
-                fun callback(a1: Any?, a2: Any?, a3: Any?): Any? =
-                    invokeLua(func, arrayOf(a1, a2, a3), retType, argTypes)
-            }
-            4 -> object : Callback {
-                fun callback(a1: Any?, a2: Any?, a3: Any?, a4: Any?): Any? =
-                    invokeLua(func, arrayOf(a1, a2, a3, a4), retType, argTypes)
-            }
-            5 -> object : Callback {
-                fun callback(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?): Any? =
-                    invokeLua(func, arrayOf(a1, a2, a3, a4, a5), retType, argTypes)
-            }
-            6 -> object : Callback {
-                fun callback(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?, a6: Any?): Any? =
-                    invokeLua(func, arrayOf(a1, a2, a3, a4, a5, a6), retType, argTypes)
-            }
-            7 -> object : Callback {
-                fun callback(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?, a6: Any?, a7: Any?): Any? =
-                    invokeLua(func, arrayOf(a1, a2, a3, a4, a5, a6, a7), retType, argTypes)
-            }
-            else -> error("FFI: Unsupported callback argument count: $argCount")
         }
 
         return LuaUserdata(callback)
+    }
+
+    private fun castToLong(result: Any?): Long {
+        return when (result) {
+            is Number -> result.toLong()
+            is Pointer -> Pointer.nativeValue(result)
+            is Boolean -> if (result) 1L else 0L
+            else -> 0L
+        }
     }
 
     inner class NativeLibWrapper(val lib: NativeLibrary, val libName: String) : LuaTable() {
