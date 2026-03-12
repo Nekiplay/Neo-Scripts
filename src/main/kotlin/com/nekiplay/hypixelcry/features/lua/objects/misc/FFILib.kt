@@ -5,6 +5,7 @@ import com.sun.jna.Memory
 import com.sun.jna.Native
 import com.sun.jna.NativeLibrary
 import com.sun.jna.Pointer
+import com.sun.jna.CallbackReference
 import com.sun.jna.Function as JnaFunction
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaUserdata
