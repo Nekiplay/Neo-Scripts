@@ -140,11 +140,31 @@ class FFILib : TwoArgFunction() {
 
     private fun invokeLua(func: LuaValue, args: Array<Any?>, retType: String, argTypes: LuaTable): Any? {
         val luaArgs = Array<LuaValue>(args.size) { i ->
-            // Use the type defined in argTypes table for conversion
-            convertNativeToLua(args[i], argTypes.get(i + 1).tojstring())
+            val rawVal = args[i] as Long // JNA передает аргументы как Long
+            val typeName = argTypes.get(i + 1).tojstring()
+
+            val structDef = structRegistry[typeName]
+
+            if (structDef != null) {
+                LuaStructInstance(structDef, Pointer(rawVal))
+            } else {
+                when (typeName) {
+                    "int" -> valueOf(rawVal.toInt())
+                    "float" -> valueOf(java.lang.Float.intBitsToFloat(rawVal.toInt()).toDouble())
+                    "double" -> valueOf(java.lang.Double.longBitsToDouble(rawVal))
+                    "ptr", "callback" -> LuaPointer(Pointer(rawVal), "void")
+                    "string" -> {
+                        val p = Pointer(rawVal)
+                        if (rawVal == 0L) NIL else valueOf(p.getString(0))
+                    }
+                    // Исправленный fallback: преобразуем Long в Double для Lua
+                    else -> valueOf(rawVal.toDouble())
+                }
+            }
         }
 
         val result = func.invoke(LuaValue.varargsOf(luaArgs))
+        if (retType == "void") return null
         return convertLuaToNative(result.arg1(), retType)
     }
 
