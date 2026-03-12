@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaLong
 import com.sun.jna.Callback
 import com.sun.jna.Memory
 import com.sun.jna.Native
@@ -317,13 +318,13 @@ class FFILib : TwoArgFunction() {
     companion object {
         fun getTypeSize(type: String) = when (type) {
             "int", "float" -> 4
-            "double" -> 8
-            "string", "ptr", "callback" -> Native.POINTER_SIZE
+            "long", "double", "ptr", "callback", "string" -> 8
             else -> 0
         }
 
         fun mapType(type: String): Class<*> = when (type) {
             "int" -> Integer.TYPE
+            "long" -> java.lang.Long.TYPE
             "double" -> java.lang.Double.TYPE
             "float" -> java.lang.Float.TYPE
             "bool" -> java.lang.Boolean.TYPE
@@ -332,55 +333,65 @@ class FFILib : TwoArgFunction() {
             else -> Pointer::class.java
         }
 
-        fun convertLuaToNative(v: LuaValue, type: String): Any? {
-            // Если передана таблица, а ожидается указатель (массив)
-            if (v.istable() && (type == "ptr" || type.endsWith("*") || type.endsWith("[]"))) {
-                val table = v.checktable()
-                val n = table.length()
-                if (n == 0) return Pointer.NULL
-
-                // Определяем базовый тип (например, из "int[]" берем "int")
-                val baseType = type.replace("[]", "").replace("*", "").ifEmpty { "int" }
-                val elementSize = getTypeSize(baseType)
-                val mem = Memory((n * elementSize).toLong())
-
-                for (i in 1..n) {
-                    val offset = (i - 1).toLong() * elementSize
-                    val item = table.get(i)
-                    when (baseType) {
-                        "int" -> mem.setInt(offset, item.checkint())
-                        "float" -> mem.setFloat(offset, item.checkdouble().toFloat())
-                        "double" -> mem.setDouble(offset, item.checkdouble())
-                        else -> {
-                            if (item is LuaPointer) mem.setPointer(offset, item.memory)
-                        }
-                    }
-                }
-                return mem
-            }
-
+        // Чтение из памяти с учетом типа
+        fun readTypeAt(memory: Pointer, offset: Long, type: String): LuaValue {
             return when (type) {
-                "int" -> v.checkint()
-                "double" -> v.checkdouble()
-                "float" -> v.checkdouble().toFloat()
-                "bool" -> v.checkboolean()
-                "string" -> v.checkjstring()
-                "ptr" -> if (v is LuaPointer) v.memory else Pointer.NULL
+                "int" -> valueOf(memory.getInt(offset))
+                "long" -> LuaLong(memory.getLong(offset))
+                "float" -> valueOf(memory.getFloat(offset).toDouble())
+                "double" -> valueOf(memory.getDouble(offset))
+                "string" -> valueOf(memory.getString(offset))
+                "ptr" -> LuaPointer(memory.getPointer(offset), "void")
+                else -> NIL
+            }
+        }
+
+        // Конвертация Long из стека каллбэка в LuaValue
+        fun readTypeFromLong(rawVal: Long, type: String): LuaValue {
+            return when (type) {
+                "int" -> valueOf(rawVal.toInt())
+                "long" -> LuaLong(rawVal)
+                "float" -> valueOf(java.lang.Float.intBitsToFloat(rawVal.toInt()).toDouble())
+                "double" -> valueOf(java.lang.Double.longBitsToDouble(rawVal))
+                "ptr", "callback" -> if (rawVal == 0L) NIL else LuaPointer(Pointer(rawVal), "void")
+                "string" -> if (rawVal == 0L) NIL else valueOf(Pointer(rawVal).getString(0))
+                else -> LuaLong(rawVal)
+            }
+        }
+
+        fun convertLuaToNative(v: LuaValue, type: String): Any? {
+            if (v.isnil()) return null
+            return when (type) {
+                "int" -> v.toint()
+                "long" -> if (v is LuaLong) v.value else v.tolong()
+                "double" -> v.todouble()
+                "float" -> v.todouble().toFloat()
+                "bool" -> v.toboolean()
+                "string" -> v.tojstring()
+                "ptr" -> when(v) {
+                    is LuaPointer -> v.memory
+                    is LuaStructInstance -> v.memory
+                    is LuaUserdata -> v.userdata() as? Pointer
+                    else -> null
+                }
+                "callback" -> if (v is LuaUserdata && v.userdata() is Callback)
+                    CallbackReference.getFunctionPointer(v.userdata() as Callback)
+                else null
                 else -> null
             }
         }
 
         fun convertNativeToLua(v: Any?, type: String): LuaValue {
-            if (v == null) return LuaValue.NIL
+            if (v == null) return NIL
             return when (v) {
-                is Int -> LuaValue.valueOf(v)
-                is Double -> LuaValue.valueOf(v)
-                is Float -> LuaValue.valueOf(v.toDouble())
-                is Long -> LuaValue.valueOf(v.toDouble()) // Добавьте это
-                is Boolean -> LuaValue.valueOf(v)
-                is String -> LuaValue.valueOf(v)
+                is Int -> valueOf(v)
+                is Long -> LuaLong(v)
+                is Double -> valueOf(v)
+                is Float -> valueOf(v.toDouble())
+                is Boolean -> valueOf(v)
+                is String -> valueOf(v)
                 is Pointer -> LuaPointer(v, "void")
-                else -> LuaValue.NIL
+                else -> NIL
             }
         }
     }
