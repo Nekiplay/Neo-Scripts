@@ -35,7 +35,7 @@ import net.fabricmc.loader.api.FabricLoader
 class DJLLuaTrainer : TwoArgFunction() {
 
     init {
-        val djlDir = LuaManager.Companion.configDir.resolve("hypixelcry/scripts/djl_cache/").toString() + "/";
+        val djlDir = LuaManager.Companion.configDir.resolve("hypixelcry/djl_cache/").toString() + "/";
         System.setProperty("DJL_CACHE_DIR", djlDir)
         System.setProperty("ENGINE_CACHE_DIR", djlDir)
         System.setProperty("DJL_OFFLINE", "true")
