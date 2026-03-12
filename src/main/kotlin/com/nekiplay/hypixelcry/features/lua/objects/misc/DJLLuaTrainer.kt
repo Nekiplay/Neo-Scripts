@@ -26,11 +26,20 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.Path
 import ai.djl.ndarray.types.DataType
 import com.nekiplay.hypixelcry.HypixelCry
+import com.nekiplay.hypixelcry.features.lua.LuaManager
+import net.fabricmc.loader.api.FabricLoader
 
 /**
  * Библиотека-обертка для доступа к DJL из LuaJ на Kotlin
  */
 class DJLLuaTrainer : TwoArgFunction() {
+
+    init {
+        val djlDir = LuaManager.Companion.configDir.resolve("hypixelcry/scripts/djl_cache/").toString() + "/";
+        System.setProperty("DJL_CACHE_DIR", djlDir)
+        System.setProperty("ENGINE_CACHE_DIR", djlDir)
+        System.setProperty("DJL_OFFLINE", "true")
+    }
 
     val models = ConcurrentHashMap<String, Model>()
     val predictors = ConcurrentHashMap<String, Predictor<NDList, NDList>>()
