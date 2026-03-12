@@ -214,12 +214,21 @@ class FFILib : TwoArgFunction() {
                 val type = argTypes.get(i + 1).checkjstring()
                 val luaVal = args.arg(i + 1)
 
-                if (luaVal.isnil()) error("FFI: Argument ${i + 1} is nil")
+                if (luaVal.isnil()) error("FFI: Argument ${i + 1} for '${jnaFunc.name}' is nil")
 
                 jnaArgs[i] = when (luaVal) {
-                    is LuaStructInstance -> luaVal.memory
-                    is LuaPointer -> luaVal.memory
-                    else -> convertLuaToNative(luaVal, type)
+                    is LuaUserdata if luaVal.userdata() is Callback -> {
+                        CallbackReference.getFunctionPointer(luaVal.userdata() as Callback)
+                    }
+                    is LuaStructInstance -> {
+                        luaVal.memory
+                    }
+                    is LuaPointer -> {
+                        luaVal.memory
+                    }
+                    else -> {
+                        convertLuaToNative(luaVal, type)
+                    }
                 }
             }
 
