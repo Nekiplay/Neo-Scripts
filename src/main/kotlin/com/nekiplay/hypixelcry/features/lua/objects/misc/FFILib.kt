@@ -138,6 +138,16 @@ class FFILib : TwoArgFunction() {
 
     data class FieldInfo(val name: String, val type: String, val offset: Int, val size: Int)
 
+    private fun invokeLua(func: LuaValue, args: Array<Any?>, retType: String, argTypes: LuaTable): Any? {
+        val luaArgs = Array<LuaValue>(args.size) { i ->
+            // Use the type defined in argTypes table for conversion
+            convertNativeToLua(args[i], argTypes.get(i + 1).tojstring())
+        }
+
+        val result = func.invoke(LuaValue.varargsOf(luaArgs))
+        return convertLuaToNative(result.arg1(), retType)
+    }
+
     class LuaStructInstance(val definition: LuaStructDefinition, val memory: Pointer) : LuaTable() {
         override fun get(key: LuaValue): LuaValue {
             val f = definition.fields.find { it.name == key.tojstring() } ?: return super.get(key)
@@ -162,16 +172,45 @@ class FFILib : TwoArgFunction() {
     }
 
     private fun createCallback(func: LuaValue, retType: String, argTypes: LuaTable): LuaValue {
-        val callback = object : Callback {
-            fun callback(vararg args: Any?): Any? {
-                // 1. Преобразуем входящие нативные аргументы в массив LuaValue
-                val luaArgs = Array<LuaValue>(args.size) { i ->
-                    convertNativeToLua(args[i], argTypes.get(i + 1).tojstring())
-                }
-                val result = func.invoke(LuaValue.varargsOf(luaArgs))
-                return convertLuaToNative(result.arg1(), retType)
+        val argCount = argTypes.length()
+
+        // We create a specific interface implementation based on the number of arguments
+        val callback = when (argCount) {
+            0 -> object : Callback {
+                fun callback(): Any? =
+                    invokeLua(func, emptyArray(), retType, argTypes)
             }
+            1 -> object : Callback {
+                fun callback(a1: Any?): Any? =
+                    invokeLua(func, arrayOf(a1), retType, argTypes)
+            }
+            2 -> object : Callback {
+                fun callback(a1: Any?, a2: Any?): Any? =
+                    invokeLua(func, arrayOf(a1, a2), retType, argTypes)
+            }
+            3 -> object : Callback {
+                fun callback(a1: Any?, a2: Any?, a3: Any?): Any? =
+                    invokeLua(func, arrayOf(a1, a2, a3), retType, argTypes)
+            }
+            4 -> object : Callback {
+                fun callback(a1: Any?, a2: Any?, a3: Any?, a4: Any?): Any? =
+                    invokeLua(func, arrayOf(a1, a2, a3, a4), retType, argTypes)
+            }
+            5 -> object : Callback {
+                fun callback(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?): Any? =
+                    invokeLua(func, arrayOf(a1, a2, a3, a4, a5), retType, argTypes)
+            }
+            6 -> object : Callback {
+                fun callback(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?, a6: Any?): Any? =
+                    invokeLua(func, arrayOf(a1, a2, a3, a4, a5, a6), retType, argTypes)
+            }
+            7 -> object : Callback {
+                fun callback(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?, a6: Any?, a7: Any?): Any? =
+                    invokeLua(func, arrayOf(a1, a2, a3, a4, a5, a6, a7), retType, argTypes)
+            }
+            else -> error("FFI: Unsupported callback argument count: $argCount")
         }
+
         return LuaUserdata(callback)
     }
 
