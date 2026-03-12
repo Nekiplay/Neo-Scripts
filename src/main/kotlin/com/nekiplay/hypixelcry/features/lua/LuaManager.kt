@@ -35,7 +35,7 @@ class LuaManager() {
         // Cache module file extensions
         private val luaExtensions = arrayOf(".lua", ".luac")
         // Precompute config paths
-        private val configDir = FabricLoader.getInstance().configDir
+        val configDir = FabricLoader.getInstance().configDir
         private val baseModuleSearchPaths = arrayOf(
             "/",
             "libs/",
