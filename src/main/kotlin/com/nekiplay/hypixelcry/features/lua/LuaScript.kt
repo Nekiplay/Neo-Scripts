@@ -11,6 +11,7 @@ import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
 import com.nekiplay.hypixelcry.features.lua.objects.misc.DJLLuaTrainer
+import com.nekiplay.hypixelcry.features.lua.objects.misc.FFILib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ImGuiLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.TCPLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ThreadLib
@@ -86,10 +87,11 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val callbacksLock = Any()
 
     // Script-specific libraries
-    private val tcpLib: TCPLib
-    private val threadLib: ThreadLib
-    public val imguiLib: ImGuiLib
+    private val tcpLib = TCPLib()
+    private val threadLib = ThreadLib()
+    val imguiLib = ImGuiLib()
     private val djlLibrary = DJLLuaTrainer()
+    private val ffi = FFILib()
 
     // Dependency tracking for nested requires
     private val dependencies = ConcurrentHashMap<String, MutableList<String>>()
@@ -103,15 +105,11 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
         registerCustomFunctions()
 
-        // Initialize script-specific libraries
-        tcpLib = TCPLib()
-        threadLib = ThreadLib()
-        imguiLib = ImGuiLib()
-
         // Load libraries into script-specific globals
         scriptGlobals.load(threadLib)
         scriptGlobals.load(tcpLib)
         scriptGlobals.load(imguiLib)
+        scriptGlobals.load(ffi)
 
         // Register global objects
         registerGlobalObjects()
@@ -1218,6 +1216,10 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         djlLibrary.predictors.clear()
         djlLibrary.inputShapes.clear()
         djlLibrary.modelModes.clear()
+        ffi.loadedLibraries.forEach { lib ->
+            lib.value.dispose()
+        }
+        ffi.loadedLibraries.clear()
 
         commandDispatchers.clear()
 
