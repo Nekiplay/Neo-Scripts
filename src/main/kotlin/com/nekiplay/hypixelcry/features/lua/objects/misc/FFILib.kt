@@ -93,10 +93,34 @@ class FFILib : TwoArgFunction() {
         return ffi
     }
 
-    inner class LuaPointer(val memory: Pointer, val type: String) : LuaTable() {
+    class LuaPointer(val memory: Pointer, val type: String) : LuaTable() {
+        init {
+            // Добавляем метод :to_table(size) прямо в объект указателя
+            set("to_table", object : TwoArgFunction() {
+                override fun call(self: LuaValue, size: LuaValue): LuaValue {
+                    val n = size.checkint()
+                    val table = LuaTable()
+                    val elementSize = getTypeSize(type).toLong()
+
+                    for (i in 0 until n) {
+                        val offset = i * elementSize
+                        val value = when (type) {
+                            "int" -> valueOf(memory.getInt(offset))
+                            "float" -> valueOf(memory.getFloat(offset).toDouble())
+                            "double" -> valueOf(memory.getDouble(offset))
+                            else -> LuaPointer(memory.getPointer(offset), "void")
+                        }
+                        table.set(i + 1, value) // В Lua индексы с 1
+                    }
+                    return table
+                }
+            })
+        }
+
         override fun get(key: LuaValue): LuaValue {
-            if (key.isint()) { // Обработка ptr[i] как массива
-                val offset = key.checkint() * getTypeSize(type).toLong()
+            if (key.isint()) {
+                val index = key.checkint()
+                val offset = index * getTypeSize(type).toLong()
                 return when (type) {
                     "int" -> valueOf(memory.getInt(offset))
                     "float" -> valueOf(memory.getFloat(offset).toDouble())
@@ -105,17 +129,6 @@ class FFILib : TwoArgFunction() {
                 }
             }
             return super.get(key)
-        }
-
-        override fun set(key: LuaValue, value: LuaValue) {
-            if (key.isint()) {
-                val offset = key.checkint() * getTypeSize(type).toLong()
-                when (type) {
-                    "int" -> memory.setInt(offset, value.checkint())
-                    "float" -> memory.setFloat(offset, value.checkdouble().toFloat())
-                    "double" -> memory.setDouble(offset, value.checkdouble())
-                }
-            } else super.set(key, value)
         }
     }
 
@@ -319,17 +332,42 @@ class FFILib : TwoArgFunction() {
             else -> Pointer::class.java
         }
 
-        fun convertLuaToNative(v: LuaValue, type: String): Any? = when (type) {
-            "int" -> v.checkint()
-            "double" -> v.checkdouble()
-            "float" -> v.checkdouble().toFloat()
-            "bool" -> v.checkboolean()
-            "string" -> v.checkjstring()
-            "ptr" -> { // Обработка случая, если передали userdata Pointer напрямую
-                if (v is LuaUserdata) v.userdata() as? Pointer
-                else null
+        fun convertLuaToNative(v: LuaValue, type: String): Any? {
+            // Если передана таблица, а ожидается указатель (массив)
+            if (v.istable() && (type == "ptr" || type.endsWith("*") || type.endsWith("[]"))) {
+                val table = v.checktable()
+                val n = table.length()
+                if (n == 0) return Pointer.NULL
+
+                // Определяем базовый тип (например, из "int[]" берем "int")
+                val baseType = type.replace("[]", "").replace("*", "").ifEmpty { "int" }
+                val elementSize = getTypeSize(baseType)
+                val mem = Memory((n * elementSize).toLong())
+
+                for (i in 1..n) {
+                    val offset = (i - 1).toLong() * elementSize
+                    val item = table.get(i)
+                    when (baseType) {
+                        "int" -> mem.setInt(offset, item.checkint())
+                        "float" -> mem.setFloat(offset, item.checkdouble().toFloat())
+                        "double" -> mem.setDouble(offset, item.checkdouble())
+                        else -> {
+                            if (item is LuaPointer) mem.setPointer(offset, item.memory)
+                        }
+                    }
+                }
+                return mem
             }
-            else -> null
+
+            return when (type) {
+                "int" -> v.checkint()
+                "double" -> v.checkdouble()
+                "float" -> v.checkdouble().toFloat()
+                "bool" -> v.checkboolean()
+                "string" -> v.checkjstring()
+                "ptr" -> if (v is LuaPointer) v.memory else Pointer.NULL
+                else -> null
+            }
         }
 
         fun convertNativeToLua(v: Any?, type: String): LuaValue {
@@ -338,9 +376,10 @@ class FFILib : TwoArgFunction() {
                 is Int -> LuaValue.valueOf(v)
                 is Double -> LuaValue.valueOf(v)
                 is Float -> LuaValue.valueOf(v.toDouble())
+                is Long -> LuaValue.valueOf(v.toDouble()) // Добавьте это
                 is Boolean -> LuaValue.valueOf(v)
                 is String -> LuaValue.valueOf(v)
-                is Pointer -> LuaValue.userdataOf(v) // Возвращаем как userdata
+                is Pointer -> LuaPointer(v, "void")
                 else -> LuaValue.NIL
             }
         }
