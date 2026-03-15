@@ -1,9 +1,15 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
+import net.minecraft.world.level.block.AbstractFurnaceBlock
+import net.minecraft.world.level.block.AmethystClusterBlock
+import net.minecraft.world.level.block.AnvilBlock
+import net.minecraft.world.level.block.AttachedStemBlock
 import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.CropBlock
 import net.minecraft.world.level.block.DoorBlock
+import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.RedStoneWireBlock
 import net.minecraft.world.level.block.RepeaterBlock
 import net.minecraft.world.level.block.SnowLayerBlock
@@ -49,11 +55,21 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
                 }
             }
             "facing" -> {
-                val facing = blockState.getOptionalValue(DoorBlock.FACING)
-                if (facing.isPresent) {
-                    LuaDirection(facing.get())
-                } else {
-                    LuaValue.NIL
+                val block = blockState.block
+                when (block) {
+                    is HorizontalDirectionalBlock -> {
+                        val facing = blockState.getOptionalValue(HorizontalDirectionalBlock.FACING)
+                        LuaDirection(facing.get());
+                    }
+                    else -> {
+                        val facing = blockState.getOptionalValue(DoorBlock.FACING)
+                        if (facing.isPresent) {
+                            LuaDirection(facing.get());
+                        }
+                        else {
+                            NIL
+                        }
+                    }
                 }
             }
             "extended" -> {
