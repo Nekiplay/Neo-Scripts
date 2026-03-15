@@ -9,12 +9,18 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.CropBlock
 import net.minecraft.world.level.block.DoorBlock
+import net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock
 import net.minecraft.world.level.block.HorizontalDirectionalBlock
+import net.minecraft.world.level.block.LeverBlock
 import net.minecraft.world.level.block.RedStoneWireBlock
+import net.minecraft.world.level.block.RedstoneTorchBlock
+import net.minecraft.world.level.block.RedstoneWallTorchBlock
 import net.minecraft.world.level.block.RepeaterBlock
 import net.minecraft.world.level.block.SnowLayerBlock
+import net.minecraft.world.level.block.WallTorchBlock
 import net.minecraft.world.level.block.piston.PistonBaseBlock
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.state.properties.AttachFace
 import net.minecraft.world.level.redstone.Redstone
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
@@ -55,22 +61,41 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
                 }
             }
             "facing" -> {
-                val block = blockState.block
-                when (block) {
-                    is HorizontalDirectionalBlock -> {
-                        val facing = blockState.getOptionalValue(HorizontalDirectionalBlock.FACING)
-                        LuaDirection(facing.get());
-                    }
-                    else -> {
-                        val facing = blockState.getOptionalValue(DoorBlock.FACING)
-                        if (facing.isPresent) {
-                            LuaDirection(facing.get());
-                        }
-                        else {
-                            NIL
-                        }
-                    }
+                val facing = blockState.getOptionalValue(DoorBlock.FACING)
+                if (facing.isPresent) {
+                    LuaDirection(facing.get());
                 }
+                else {
+                    NIL
+                }
+            }
+            "face" -> {
+                val facing = blockState.getOptionalValue(FaceAttachedHorizontalDirectionalBlock.FACE)
+                if (facing.isPresent) {
+                    valueOf(facing.get().serializedName)
+                }
+                else {
+                    NIL
+                }
+            }
+            "lit" -> {
+                val facing = blockState.getOptionalValue(RedstoneTorchBlock.LIT)
+                if (facing.isPresent) {
+                    valueOf(facing.get())
+                }
+                else {
+                    NIL
+                }
+            }
+            "is_walled" -> {
+                val facing = blockState.getOptionalValue(FaceAttachedHorizontalDirectionalBlock.FACE)
+                if (facing.isPresent && facing.get() == AttachFace.WALL) {
+                    TRUE
+                }
+                else if (blockState.block is RedstoneWallTorchBlock || blockState.block is WallTorchBlock) {
+                    TRUE
+                }
+                FALSE
             }
             "extended" -> {
                 val extended = blockState.getOptionalValue(PistonBaseBlock.EXTENDED)
