@@ -7,6 +7,7 @@ import net.minecraft.world.level.block.AnvilBlock
 import net.minecraft.world.level.block.AttachedStemBlock
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.level.block.ComparatorBlock
 import net.minecraft.world.level.block.CropBlock
 import net.minecraft.world.level.block.DoorBlock
 import net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock
@@ -82,6 +83,15 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
                 val facing = blockState.getOptionalValue(RedstoneTorchBlock.LIT)
                 if (facing.isPresent) {
                     valueOf(facing.get())
+                }
+                else {
+                    NIL
+                }
+            }
+            "mode" -> {
+                val facing = blockState.getOptionalValue(ComparatorBlock.MODE)
+                if (facing.isPresent) {
+                    valueOf(facing.get().serializedName)
                 }
                 else {
                     NIL
