@@ -7,6 +7,7 @@ import net.minecraft.world.level.block.AnvilBlock
 import net.minecraft.world.level.block.AttachedStemBlock
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.level.block.ChestBlock
 import net.minecraft.world.level.block.ComparatorBlock
 import net.minecraft.world.level.block.CropBlock
 import net.minecraft.world.level.block.DoorBlock
@@ -53,6 +54,14 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
                     LuaValue.NIL
                 }
             }
+            "locked" -> {
+                val locked = blockState.getOptionalValue(RepeaterBlock.LOCKED)
+                if (locked.isPresent) {
+                    valueOf(locked.get())
+                } else {
+                    LuaValue.NIL
+                }
+            }
             "power" -> {
                 val power = blockState.getOptionalValue(RedStoneWireBlock.POWER)
                 if (power.isPresent) {
@@ -71,35 +80,35 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
                 }
             }
             "face" -> {
-                val facing = blockState.getOptionalValue(FaceAttachedHorizontalDirectionalBlock.FACE)
-                if (facing.isPresent) {
-                    valueOf(facing.get().serializedName)
+                val face = blockState.getOptionalValue(FaceAttachedHorizontalDirectionalBlock.FACE)
+                if (face.isPresent) {
+                    valueOf(face.get().serializedName)
                 }
                 else {
                     NIL
                 }
             }
             "lit" -> {
-                val facing = blockState.getOptionalValue(RedstoneTorchBlock.LIT)
-                if (facing.isPresent) {
-                    valueOf(facing.get())
+                val lit = blockState.getOptionalValue(RedstoneTorchBlock.LIT)
+                if (lit.isPresent) {
+                    valueOf(lit.get())
                 }
                 else {
                     NIL
                 }
             }
             "mode" -> {
-                val facing = blockState.getOptionalValue(ComparatorBlock.MODE)
-                if (facing.isPresent) {
-                    valueOf(facing.get().serializedName)
+                val mode = blockState.getOptionalValue(ComparatorBlock.MODE)
+                if (mode.isPresent) {
+                    valueOf(mode.get().serializedName)
                 }
                 else {
                     NIL
                 }
             }
             "is_walled" -> {
-                val facing = blockState.getOptionalValue(FaceAttachedHorizontalDirectionalBlock.FACE)
-                if (facing.isPresent && facing.get() == AttachFace.WALL) {
+                val is_walled = blockState.getOptionalValue(FaceAttachedHorizontalDirectionalBlock.FACE)
+                if (is_walled.isPresent && is_walled.get() == AttachFace.WALL) {
                     TRUE
                 }
                 else if (blockState.block is RedstoneWallTorchBlock || blockState.block is WallTorchBlock) {
