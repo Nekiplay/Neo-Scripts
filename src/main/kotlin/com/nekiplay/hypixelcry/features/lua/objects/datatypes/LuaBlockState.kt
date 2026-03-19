@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.ChestBlock
 import net.minecraft.world.level.block.ComparatorBlock
 import net.minecraft.world.level.block.CropBlock
+import net.minecraft.world.level.block.DirectionalBlock
 import net.minecraft.world.level.block.DoorBlock
 import net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock
 import net.minecraft.world.level.block.HorizontalDirectionalBlock
@@ -76,7 +77,13 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
                     LuaDirection(facing.get());
                 }
                 else {
-                    NIL
+                    val facing = blockState.getOptionalValue(DirectionalBlock.FACING)
+                    if (facing.isPresent) {
+                        LuaDirection(facing.get());
+                    }
+                    else {
+                        NIL
+                    }
                 }
             }
             "face" -> {

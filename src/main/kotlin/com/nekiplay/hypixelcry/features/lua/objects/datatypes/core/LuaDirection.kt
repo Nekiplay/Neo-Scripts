@@ -22,4 +22,12 @@ class LuaDirection(val direction: Direction): LuaUserdata(direction) {
             else -> NIL
         }
     }
+
+    override fun tojstring(): String {
+        return direction.name;
+    }
+
+    override fun tostring(): LuaValue? {
+        return valueOf(direction.name)
+    }
 }
