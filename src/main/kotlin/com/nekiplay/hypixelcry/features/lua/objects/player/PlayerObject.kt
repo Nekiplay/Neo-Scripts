@@ -27,612 +27,509 @@ import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
+import party.iroiro.luajava.Lua
 
-class PlayerObject : LuaValue() {
-    override fun call(): LuaValue {
-        return this
+class PlayerObject(private val L: Lua) {
+    fun register() {
+        // Создаем таблицу
+        L.newTable()
+
+        // Регистрируем методы
+        L.push { l -> getBlock(l) }; L.setField(-2, "getBlock")
+        L.push { l -> getBlock(l) }; L.setField(-2, "getBlockState")
+        L.push { l -> setBlock(l) }; L.setField(-2, "setBlock")
+
+        L.push { l -> isBlockLoaded(l) }; L.setField(-2, "isBlockLoaded")
+        L.push { l -> isBlockLoaded(l) }; L.setField(-2, "isLoaded")
+
+        L.push { l -> getRotation(l) }; L.setField(-2, "getRotation")
+
+        L.push { l -> getEntities(l) }; L.setField(-2, "getEntities")
+        L.push { l -> getEntityById(l) }; L.setField(-2, "getEntityById")
+        L.push { l -> getLivingEntities(l) }; L.setField(-2, "getLivingEntities")
+        L.push { l -> getArmorStandEntities(l) }; L.setField(-2, "getArmorStandEntities")
+
+        L.push { l -> getEntitiesInBox(l) }; L.setField(-2, "getEntitiesInBox")
+        L.push { l -> getArmorStandEntitiesInBox(l) }; L.setField(-2, "getArmorStandEntitiesInBox")
+
+        L.push { l -> getCollisionBoxes(l) }; L.setField(-2, "getCollisionBoxes")
+        L.push { l -> getOutlineBoxes(l) }; L.setField(-2, "getOutlineBoxes")
+
+        L.push { l -> raycast(l) }; L.setField(-2, "raycast")
+        L.push { l -> raycastToBlocks(l) }; L.setField(-2, "raycastToBlocks")
+
+
+        // Устанавливаем таблицу как глобальную переменную "world"
+        L.setGlobal("player")
     }
 
-    override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            // Objects
-            "input" -> InputObject()
-            "inventory" -> InventoryObject()
-            "network" -> NetworkObject()
+    private fun hasLineOfSight(l: Lua): Int {
+        // Извлекаем переданный объект из первого аргумента
+        val obj = l.toJavaObject(1)
 
-            // Variables
-            "entity" -> {
-                if (mc.player != null) {
-                    LuaEntity(mc.player!!)
-                }
-                else {
-                    NIL
-                }
-            }
-            "fishHook" -> {
-                if (mc.player != null && mc.player?.fishing != null) {
-                    LuaEntity(mc.player!!.fishing!!)
-                }
-                else {
-                    NIL
-                }
-            }
+        // Пытаемся привести его к нашей обертке LuaEntity
+        val luaEntity = obj as? LuaEntity
+        val targetEntity = luaEntity?.entity
 
-            // Functions
-            "addMessage" -> AddChatMessageFunction()
-            "sendMessage" -> SendChatMessageFunction()
-            "sendCommand" -> SendCommandFunction()
-            "getPos", "getPosition" -> GetPlayerPosFunction()
-            "getRotation" -> GetPlayerRotationFunction()
-            "setRotation" -> SetPlayerRotationFunction()
-            "getName" -> GetPlayerNameFunction()
-            "getArea" -> GetPlayerAreaFunction()
-            "getRawLocation" -> GetPlayerRawLocationFunction()
-            "getLocation" -> GetPlayerLocationFunction()
-            "getProfile" -> GetPlayerProfileFunction()
-            "getProfileId" -> GetPlayerProfileIdFunction()
-            "getBits" -> GetPlayerBitsFunction()
-            "getPurse" -> GetPlayerPurseFunction()
-            "getHealth" -> GetPlayerHealthFunction()
-            "getMaxHealth" -> GetPlayerMaxHealthFunction()
-            "getMana" -> GetPlayerManaFunction()
-            "getMaxMana" -> GetPlayerMaxManaFunction()
-            "getDefence" -> GetPlayerDefenceFunction()
-            "getSpeed" -> GetPlayerSpeedFunction()
-            "getCold" -> GetPlayerColdFunction()
-            "getAir" -> GetPlayerAirFunction()
-            "getPet" -> GetPlayerPetFunction()
-            "getMaxAir" -> GetPlayerMaxAirFunction()
-            "getRank" -> GetPlayerRankFunction()
-            "isSneaking" -> IsPlayerSneakingFunction()
-            "isSprinting" -> IsPlayerSprintingFunction()
-            "isOnGround" -> IsPlayerOnGroundFunction()
-            "isOnSkyBlock" -> IsPlayerOnSkyBlockFunction()
-            "isHasLineOfSight" -> IsHasLineOfSight()
-
-            "swingHand" -> SwingHandFunction()
-
-            "getEyePosition" -> GetEyePositionFunction()
-            "getLookEndPos" -> GetLookEndPosFunction()
-            "getDirectionFromYawPitch" -> GetDirectionFromYawPitch()
-
-            "getScoreBoardLines" -> GetScoreboardLinesFunction()
-            "getTab" -> GetTabFunction()
-
-            "addToast" -> AddToastFunction()
-
-            "raycast" -> RayCastFunction()
-            else -> NIL
-        } as LuaValue
-    }
-
-    private inner class IsHasLineOfSight : OneArgFunction() {
-        override fun call(arg: LuaValue): LuaValue? {
-            if (arg is LuaEntity) {
-                if (mc.player?.hasLineOfSight(arg.entity) == true) {
-                    return TRUE
-                }
-            }
-            else if (arg.touserdata() is LuaEntity) {
-                if (mc.player?.hasLineOfSight((arg.touserdata() as LuaEntity).entity) == true) {
-                    return TRUE
-                }
-            }
-            return FALSE
+        if (targetEntity != null) {
+            val result = mc.player?.hasLineOfSight(targetEntity) == true
+            l.push(result)
+            return 1
         }
+
+        l.push(false)
+        return 1
     }
 
-    private inner class AddToastFunction : ThreeArgFunction() {
-        override fun call(arg: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue? {
-            if (arg?.isstring() == true && arg2?.isstring() == true && arg3?.isnumber() == true) {
-                val type = SystemToast.SystemToastId(arg3.tonumber().tolong())
-                SystemToast.add(
-                    mc.toastManager,
-                    type,
-                    Component.literal(arg.tojstring()),
-                    Component.literal(arg2.tojstring())
-                );
-                return TRUE
-            }
-            return FALSE
+    /**
+     * Добавление тоста (уведомления): player.addToast(title, message, typeId)
+     */
+    private fun addToast(l: Lua): Int {
+        // Проверяем типы аргументов: String, String, Number
+        if (l.isString(1) && l.isString(2) && l.isNumber(3)) {
+            val title = l.toString(1) ?: ""
+            val message = l.toString(2) ?: ""
+            val typeId = l.toNumber(3).toLong()
+
+            // Создаем ID тоста (в новых версиях MC конструктор может отличаться)
+            val type = SystemToast.SystemToastId(typeId)
+
+            SystemToast.add(
+                mc.toastManager,
+                type,
+                Component.literal(title),
+                Component.literal(message)
+            )
+            l.push(true)
+            return 1
         }
+
+        l.push(false)
+        return 1
     }
 
-    private inner class GetPlayerPetFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                val pet = PetCache.getCurrentPet()
-                if (pet != null) {
-                    val table = tableOf()
-                    if (pet.name.isPresent) {
-                        table.set("name", valueOf(pet.name.get()))
-                    }
-                    table.set("type", valueOf(pet.type))
-                    table.set("exp", valueOf(pet.exp))
-                    if (pet.item.isPresent) {
-                        table.set("item", valueOf(pet.item.get()))
-                    }
-                    if (pet.skin.isPresent) {
-                        table.set("skin", valueOf(pet.skin.get()))
-                    }
-                    table.set("tier", valueOf(pet.tier.name))
-                    if (pet.uuid.isPresent) {
-                        table.set("uuid", valueOf(pet.uuid.get()))
-                    }
-                    table
-                }
-                else {
-                    NIL
-                }
-            } else {
-                NIL
+    private fun getPlayerPet(l: Lua): Int {
+        // 1. Проверяем, находится ли игрок на Skyblock
+        if (!Utils.isOnSkyblock()) {
+            return 0 // Возвращаем nil (0 значений на стеке)
+        }
+
+        // 2. Получаем текущего питомца из кэша
+        val pet = PetCache.getCurrentPet() ?: return 0
+
+        // 3. Создаем таблицу для данных питомца
+        l.newTable() // Таблица теперь на индексе -1
+
+        // 4. Наполняем таблицу данными (учитывая Optional поля)
+
+        // Имя
+        pet.name.ifPresent { name ->
+            l.push(name)
+            l.setField(-2, "name")
+        }
+
+        // Тип (например, "ENDERMAN")
+        l.push(pet.type)
+        l.setField(-2, "type")
+
+        // Опыт
+        l.push(pet.exp)
+        l.setField(-2, "exp")
+
+        // Предмет питомца (Optional)
+        pet.item.ifPresent { item ->
+            l.push(item)
+            l.setField(-2, "item")
+        }
+
+        // Скин (Optional)
+        pet.skin.ifPresent { skin ->
+            l.push(skin)
+            l.setField(-2, "skin")
+        }
+
+        // Тир/Редкость (LEGENDARY, EPIC и т.д.)
+        l.push(pet.tier.name)
+        l.setField(-2, "tier")
+
+        // UUID (Optional)
+        pet.uuid.ifPresent { uuid ->
+            l.push(uuid)
+            l.setField(-2, "uuid")
+        }
+
+        // Возвращаем 1, так как на вершине стека лежит наша заполненная таблица
+        return 1
+    }
+
+    private fun getPlayerAir(l: Lua): Int {
+        val value = if (Utils.isOnSkyblock()) {
+            StatusBarTracker.getAir().value
+        } else {
+            0
+        }
+        l.push(value.toDouble())
+        return 1
+    }
+
+    private fun getPlayerMaxAir(l: Lua): Int {
+        val max = if (Utils.isOnSkyblock()) {
+            StatusBarTracker.getAir().max
+        } else {
+            0
+        }
+        l.push(max.toDouble())
+        return 1
+    }
+
+    private fun getPlayerRank(l: Lua): Int {
+        val rank = if (Utils.isOnSkyblock()) {
+            Utils.getRank().toString()
+        } else {
+            "0" // Сохраняем логику вашего оригинала
+        }
+        l.push(rank)
+        return 1
+    }
+
+    private fun swingHand(l: Lua): Int {
+        val offhand = if (l.isBoolean(1)) l.toBoolean(1) else false
+        mc.player?.swing(if (offhand) InteractionHand.OFF_HAND else InteractionHand.MAIN_HAND)
+        l.push(true)
+        return 1
+    }
+
+    private fun getTab(l: Lua): Int {
+        val tab = mc.player?.getTab()
+        l.newTable()
+
+        if (tab?.header?.isPresent == true) {
+            l.push(tab.header.get().getFormattedString())
+            l.setField(-2, "header")
+        }
+
+        if (tab?.footer?.isPresent == true) {
+            l.push(tab.footer.get().getFormattedString())
+            l.setField(-2, "footer")
+        }
+
+        if (tab?.body != null && tab.body.isNotEmpty()) {
+            l.newTable()
+            tab.body.forEachIndexed { index, line ->
+                l.push(line.getFormattedString())
+                l.rawSetI(-2, index + 1)
+            }
+            l.setField(-2, "body")
+        }
+
+        return 1
+    }
+
+    private fun getScoreboardLines(l: Lua): Int {
+        val lines = mc.player?.getScorebordLines()
+        l.newTable()
+        lines?.forEachIndexed { index, line ->
+            l.push(line.getFormattedString())
+            l.rawSetI(-2, index + 1)
+        }
+        return 1
+    }
+
+    private fun getDirectionFromYawPitch(l: Lua): Int {
+        if (l.isNumber(1) && l.isNumber(2)) {
+            val rotations = Rotations.getDirectionFromYawPitch(l.toNumber(1).toFloat(), l.toNumber(2).toFloat())
+            l.newTable()
+            l.push(rotations.x.toDouble()); l.setField(-2, "x")
+            l.push(rotations.y.toDouble()); l.setField(-2, "y")
+            l.push(rotations.z.toDouble()); l.setField(-2, "z")
+            return 1
+        }
+        return 0
+    }
+
+    private fun rayCast(l: Lua): Int {
+        if (l.isNumber(1)) {
+            val distance = l.toNumber(1)
+            val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, distance, distance, 1f)
+            if (hitResult != null) {
+                pushHitResult(l, hitResult)
+                return 1
             }
         }
+        return 0
     }
 
-    private inner class GetPlayerAirFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getAir().value)
-            } else {
-                valueOf(0)
-            }
-        }
-    }
-
-    private inner class GetPlayerMaxAirFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getAir().max)
-            } else {
-                valueOf(0)
-            }
-        }
-    }
-
-    private inner class GetPlayerRankFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(Utils.getRank().toString())
-            } else {
-                valueOf(0)
-            }
-        }
-    }
-
-    private inner class SwingHandFunction : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            if (arg?.isboolean() == true) {
-                if (arg.toboolean()) {
-                    mc.player?.swing(InteractionHand.OFF_HAND)
-                }
-                else {
-                    mc.player?.swing(InteractionHand.MAIN_HAND)
-                }
-            }
-            else {
-                mc.player?.swing(InteractionHand.MAIN_HAND)
-            }
-            return TRUE
-        }
-    }
-
-    private inner class GetTabFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            val tab = mc.player?.getTab()
-            val table = tableOf()
-
-            table.set("header", if (tab?.header?.isPresent == true)
-                valueOf(tab.header.get().getFormattedString()) else NIL)
-
-            table.set("footer", if (tab?.footer?.isPresent == true)
-                valueOf(tab.footer.get().getFormattedString()) else NIL)
-
-            val lines = tableOf()
-            if (tab?.body != null && tab.body.isNotEmpty()) {
-                tab.body.forEachIndexed { index, line ->
-                    lines.set(index + 1, valueOf(line.getFormattedString()))
-                }
-            }
-            table.set("body", if (lines.length() == 0) NIL else lines)
-
-            return table
-        }
-    }
-
-    private inner class GetScoreboardLinesFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            val table = tableOf()
-            mc.player?.getScorebordLines()?.forEachIndexed { index, line ->
-                table.set(index + 1, valueOf(line.getFormattedString()))
-            }
-            return table
-        }
-    }
-
-    private inner class GetDirectionFromYawPitch : TwoArgFunction() {
-        override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue? {
-            if (arg1.isnumber() && arg2.isnumber()) {
-                val table = tableOf()
-                val rotations = Rotations.getDirectionFromYawPitch(arg1.tofloat(), arg2.tofloat())
-                table.set("x", valueOf(rotations.x))
-                table.set("y", valueOf(rotations.y))
-                table.set("z", valueOf(rotations.z))
-                return table
-            }
-            return NIL
-        }
-    }
-
-    private inner class RayCastFunction : OneArgFunction() {
-        override fun call(
-            arg1: LuaValue?
-        ): LuaValue? {
-            if (arg1?.isnumber() == true) {
-                val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, arg1.todouble(), arg1.todouble(), 1f)
-                return if (hitResult != null) {
-                    processHitResult(hitResult)
-                } else {
-                    NIL
-                }
-            }
-            return NIL
-        }
-    }
-
-    private fun processHitResult(hitResult: HitResult): LuaValue {
-        when (hitResult.type)
-        {
+    private fun pushHitResult(l: Lua, hitResult: HitResult) {
+        l.newTable()
+        when (hitResult.type) {
             HitResult.Type.ENTITY -> {
-                val table = tableOf()
-                table.set("type", "entity")
-                table.set("data", LuaEntity((hitResult as EntityHitResult).entity))
-                return table
+                val entityHit = hitResult as EntityHitResult
+                l.push("entity"); l.setField(-2, "type")
+                l.push(LuaEntity(l, entityHit.entity).push())
+                l.setField(-2, "data")
             }
             HitResult.Type.BLOCK -> {
-                val result = hitResult as BlockHitResult
-                val table = tableOf()
-                table.set("type", "block")
-                table.set("x", valueOf(result.blockPos.x))
-                table.set("y", valueOf(result.blockPos.y))
-                table.set("z", valueOf(result.blockPos.z))
-                table.set("side", valueOf(result.direction.toString()))
+                val blockHit = hitResult as BlockHitResult
+                l.push("block"); l.setField(-2, "type")
+                l.push(blockHit.blockPos.x.toDouble()); l.setField(-2, "x")
+                l.push(blockHit.blockPos.y.toDouble()); l.setField(-2, "y")
+                l.push(blockHit.blockPos.z.toDouble()); l.setField(-2, "z")
+                l.push(blockHit.direction.toString()); l.setField(-2, "side")
 
-                val blockPos = tableOf()
-                blockPos.set("x", valueOf(result.blockPos.x))
-                blockPos.set("y", valueOf(result.blockPos.y))
-                blockPos.set("z", valueOf(result.blockPos.z))
-                table.set("blockPos", blockPos)
-
-                return table
+                l.newTable()
+                l.push(blockHit.blockPos.x.toDouble()); l.setField(-2, "x")
+                l.push(blockHit.blockPos.y.toDouble()); l.setField(-2, "y")
+                l.push(blockHit.blockPos.z.toDouble()); l.setField(-2, "z")
+                l.setField(-2, "blockPos")
             }
             else -> {
-                val table = tableOf()
-                table.set("type", "miss")
-                return table
+                l.push("miss"); l.setField(-2, "type")
             }
         }
     }
 
-    private inner class AddChatMessageFunction : OneArgFunction() {
-        override fun call(message: LuaValue): LuaValue {
-            if (message.isstring()) {
-                mc.execute {
-                    mc.player?.displayClientMessage(Component.literal(message.tojstring()), false)
-                }
-                return TRUE
-            }
-            else if (message is LuaComponent) {
-                mc.execute {
-                    mc.player?.displayClientMessage(message.component, false)
-                }
-                return TRUE
-            }
-            else if (message is LuaComponentBuilder) {
-                mc.execute {
-                    mc.player?.displayClientMessage(message.buildComponent(), false)
-                }
-                return TRUE
-            }
-            return FALSE
+    private fun addChatMessage(l: Lua): Int {
+        val raw = l.toJavaObject(1)
+        val component = when {
+            l.isString(1) -> Component.literal(l.toString(1) ?: "")
+            raw is LuaComponent -> raw.component
+            raw is LuaComponentBuilder -> raw.buildComponent()
+            else -> null
         }
-    }
 
-    private inner class SendCommandFunction : OneArgFunction() {
-        override fun call(message: LuaValue): LuaValue {
-            val msg = message.tojstring()
-            if (msg.isEmpty()) return FALSE
-
-            val mc = Minecraft.getInstance()
-
+        if (component != null) {
             mc.execute {
-                val player = mc.player ?: return@execute
-                val connection = player.connection ?: return@execute
-
-                if (msg.startsWith("/")) {
-                    val commandLine = msg.substring(1) // Текст команды без "/"
-                    connection.sendCommand(commandLine)
-                } else {
-                    // Обычное сообщение в чат
-                    connection.sendChat(msg)
-                }
+                mc.player?.displayClientMessage(component, false)
             }
-
-            return TRUE
+            l.push(true)
+        } else {
+            l.push(false)
         }
+        return 1
     }
 
-    private inner class SendChatMessageFunction : OneArgFunction() {
-        override fun call(message: LuaValue): LuaValue {
-            if (message.isstring()) {
-                mc.connection?.sendChat(message.tojstring())
-                return TRUE
-            }
-            return FALSE
+    private fun sendCommand(l: Lua): Int {
+        val msg = l.toString(1) ?: ""
+        if (msg.isEmpty()) {
+            l.push(false)
+            return 1
         }
-    }
 
-    private inner class SetPlayerRotationFunction : TwoArgFunction() {
-        override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
-            if (arg1.isnumber() && arg2.isnumber()) {
-                val player = mc.player
-                if (player != null) {
-                    // Ограничиваем yaw в диапазоне -180° до 180°
-                    var yaw = arg1.tofloat()
-                    yaw %= 360f
-                    if (yaw > 180f) yaw -= 360f
-                    if (yaw < -180f) yaw += 360f
+        mc.execute {
+            val player = mc.player ?: return@execute
+            val connection = player.connection ?: return@execute
 
-                    // Ограничиваем pitch в диапазоне -90° до 90° (стандартные ограничения Minecraft)
-                    var pitch = arg2.tofloat()
-                    pitch = pitch.coerceIn(-90f, 90f)
-
-                    player.yRot = yaw
-                    player.xRot = pitch
-                    return TRUE
-                }
-                return FALSE
-            }
-            return NIL
-        }
-    }
-
-    private inner class GetPlayerRotationFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            val player = mc.player;
-            return if (player != null) {
-                val table = tableOf()
-                table.set("yaw", valueOf(player.yRot.toDouble()))
-                table.set("pitch", valueOf(player.xRot.toDouble()))
-                table
+            if (msg.startsWith("/")) {
+                connection.sendCommand(msg.substring(1))
             } else {
-                NIL
+                connection.sendChat(msg)
             }
+        }
+        l.push(true)
+        return 1
+    }
+
+    private fun sendChatMessage(l: Lua): Int {
+        val msg = l.toString(1)
+        return if (msg != null) {
+            mc.connection?.sendChat(msg)
+            l.push(true)
+            1
+        } else {
+            l.push(false)
+            1
         }
     }
 
-    private inner class GetPlayerPosFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
+    private fun setPlayerRotation(l: Lua): Int {
+        if (l.isNumber(1) && l.isNumber(2)) {
             val player = mc.player
-            return if (player != null) {
-                val table = tableOf()
-                table.set("x", valueOf(player.x))
-                table.set("y", valueOf(player.y))
-                table.set("z", valueOf(player.z))
-                table
-            } else {
-                NIL
+            if (player != null) {
+                var yaw = l.toNumber(1).toFloat()
+                yaw %= 360f
+                if (yaw > 180f) yaw -= 360f
+                if (yaw < -180f) yaw += 360f
+
+                var pitch = l.toNumber(2).toFloat()
+                pitch = pitch.coerceIn(-90f, 90f)
+
+                player.yRot = yaw
+                player.xRot = pitch
+                l.push(true)
+                return 1
             }
         }
+        l.push(false)
+        return 1
     }
 
-    private inner class GetPlayerNameFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(mc.player?.name?.string ?: "Unknown")
+    private fun getPlayerRotation(l: Lua): Int {
+        val player = mc.player
+        if (player != null) {
+            l.newTable()
+            l.push(player.yRot.toDouble()); l.setField(-2, "yaw")
+            l.push(player.xRot.toDouble()); l.setField(-2, "pitch")
+            return 1
         }
+        return 0
     }
 
-    private inner class GetPlayerAreaFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(Utils.getArea())
+    private fun getPlayerPos(l: Lua): Int {
+        val player = mc.player
+        if (player != null) {
+            l.newTable()
+            l.push(player.x); l.setField(-2, "x")
+            l.push(player.y); l.setField(-2, "y")
+            l.push(player.z); l.setField(-2, "z")
+            return 1
         }
+        return 0
     }
 
-    private inner class GetPlayerRawLocationFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(Utils.getRawLocation())
+    private fun getPlayerName(l: Lua): Int {
+        l.push(mc.player?.name?.string ?: "Unknown")
+        return 1
+    }
+
+    private fun getPlayerArea(l: Lua): Int {
+        l.push(Utils.getArea())
+        return 1
+    }
+
+    private fun getPlayerRawLocation(l: Lua): Int {
+        l.push(Utils.getRawLocation())
+        return 1
+    }
+
+    private fun getPlayerLocation(l: Lua): Int {
+        l.push(Utils.getLocation().name)
+        return 1
+    }
+
+    private fun getPlayerProfile(l: Lua): Int {
+        return if (Utils.isOnSkyblock()) {
+            l.push(Utils.getProfile())
+            1
+        } else 0
+    }
+
+    private fun getPlayerProfileId(l: Lua): Int {
+        return if (Utils.isOnSkyblock()) {
+            l.push(Utils.getProfileId())
+            1
+        } else 0
+    }
+
+    private fun getPlayerBits(l: Lua): Int {
+        val bits = if (Utils.isOnSkyblock()) Utils.getBits() else 0.0
+        l.push(bits)
+        return 1
+    }
+
+    private fun getPlayerPurse(l: Lua): Int {
+        val purse = if (Utils.isOnSkyblock()) Utils.getPurse() else 0.0
+        l.push(purse)
+        return 1
+    }
+
+    private fun getPlayerMaxHealth(l: Lua): Int {
+        val value = if (Utils.isOnSkyblock()) {
+            StatusBarTracker.getHealth().max().toDouble()
+        } else {
+            mc.player?.maxHealth?.toDouble() ?: 0.0
         }
+        l.push(value)
+        return 1
     }
 
-    private inner class GetPlayerLocationFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(Utils.getLocation().name)
+    private fun getPlayerHealth(l: Lua): Int {
+        val value = if (Utils.isOnSkyblock()) {
+            StatusBarTracker.getHealth().value().toDouble()
+        } else {
+            mc.player?.health?.toDouble() ?: 0.0
         }
+        l.push(value)
+        return 1
     }
 
-    private inner class GetPlayerProfileFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(Utils.getProfile())
-            } else {
-                NIL
-            }
+    private fun getPlayerDefence(l: Lua): Int {
+        val value = if (Utils.isOnSkyblock()) StatusBarTracker.getDefense().toDouble() else 0.0
+        l.push(value)
+        return 1
+    }
+
+    private fun getPlayerSpeed(l: Lua): Int {
+        val value = if (Utils.isOnSkyblock()) StatusBarTracker.getSpeed().value().toDouble() else 0.0
+        l.push(value)
+        return 1
+    }
+
+    private fun getPlayerMaxMana(l: Lua): Int {
+        val value = if (Utils.isOnSkyblock()) StatusBarTracker.getMana().max().toDouble() else 0.0
+        l.push(value)
+        return 1
+    }
+
+    private fun getPlayerMana(l: Lua): Int {
+        val value = if (Utils.isOnSkyblock()) StatusBarTracker.getMana().value().toDouble() else 0.0
+        l.push(value)
+        return 1
+    }
+
+    private fun getPlayerCold(l: Lua): Int {
+        val value = if (Utils.isOnSkyblock()) ColdTracker.getCold().toDouble() else 0.0
+        l.push(value)
+        return 1
+    }
+
+    private fun isPlayerSneaking(l: Lua): Int {
+        l.push(mc.player?.isShiftKeyDown ?: false)
+        return 1
+    }
+
+    private fun isPlayerSprinting(l: Lua): Int {
+        l.push(mc.player?.isSprinting ?: false)
+        return 1
+    }
+
+    private fun isPlayerOnGround(l: Lua): Int {
+        l.push(mc.player?.onGround() ?: false)
+        return 1
+    }
+
+    private fun isPlayerOnSkyBlock(l: Lua): Int {
+        l.push(Utils.isOnSkyblock())
+        return 1
+    }
+
+
+    private fun getEyePosition(l: Lua): Int {
+        val eyePos = PlayerUtils.getEyePosition()
+        l.newTable()
+        l.push(eyePos.x); l.setField(-2, "x")
+        l.push(eyePos.y); l.setField(-2, "y")
+        l.push(eyePos.z); l.setField(-2, "z")
+        return 1
+    }
+
+    private fun getLookEndPos(l: Lua): Int {
+        val endPos: Vec3 = if (l.isTable(1) && l.isNumber(2)) {
+            l.getField(1, "x"); val tx = l.toNumber(-1); l.pop(1)
+            l.getField(1, "y"); val ty = l.toNumber(-1); l.pop(1)
+            l.getField(1, "z"); val tz = l.toNumber(-1); l.pop(1)
+            val distance = l.toNumber(2)
+            PlayerUtils.getLookEndPos(Vec3(tx, ty, tz), distance.toFloat())
+        } else if (l.isNumber(1)) {
+            val distance = l.toNumber(1)
+            PlayerUtils.getLookEndPos(distance.toFloat())
+        } else {
+            return 0
         }
-    }
 
-    private inner class GetPlayerProfileIdFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(Utils.getProfileId())
-            } else {
-                NIL
-            }
-        }
-    }
-
-    private inner class GetPlayerBitsFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(Utils.getBits())
-            } else {
-                valueOf(0.0)
-            }
-        }
-    }
-
-    private inner class GetPlayerPurseFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(Utils.getPurse())
-            } else {
-                valueOf(0.0)
-            }
-        }
-    }
-
-    private inner class GetPlayerMaxHealthFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getHealth().max())
-            } else {
-                valueOf((mc.player?.health)?.toDouble() ?: 0.0)
-            }
-        }
-    }
-
-    private inner class GetPlayerHealthFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getHealth().value())
-            } else {
-                valueOf((mc.player?.health)?.toDouble() ?: 0.0)
-            }
-        }
-    }
-
-    private inner class GetPlayerDefenceFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getDefense())
-            } else {
-                valueOf(0)
-            }
-        }
-    }
-
-    private inner class GetPlayerSpeedFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getSpeed().value())
-            } else {
-                valueOf(0)
-            }
-        }
-    }
-
-    private inner class GetPlayerMaxManaFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getMana().max())
-            } else {
-                valueOf(0)
-            }
-        }
-    }
-
-    private inner class GetPlayerManaFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getMana().value())
-            } else {
-                valueOf(0)
-            }
-        }
-    }
-
-    private inner class GetPlayerColdFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(ColdTracker.getCold())
-            } else {
-                valueOf(0)
-            }
-        }
-    }
-
-    private inner class IsPlayerSneakingFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(mc.player?.isShiftKeyDown ?: false)
-        }
-    }
-
-    private inner class IsPlayerSprintingFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(mc.player?.isSprinting ?: false)
-        }
-    }
-
-    private inner class IsPlayerOnGroundFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(mc.player?.onGround() ?: false)
-        }
-    }
-
-    private inner class IsPlayerOnSkyBlockFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(Utils.isOnSkyblock())
-        }
-    }
-
-    private inner class GetEyePositionFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            val eyePos = PlayerUtils.getEyePosition()
-            val table = tableOf()
-            table.set("x", valueOf(eyePos.x))
-            table.set("y", valueOf(eyePos.y))
-            table.set("z", valueOf(eyePos.z))
-            return table
-        }
-    }
-
-    private inner class GetLookEndPosFunction : TwoArgFunction() {
-        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
-            return if (arg1?.istable() == true && arg2?.isnumber() == true) {
-                // Если передан target и distance
-                val targetX = arg1.get("x").optdouble(0.0)
-                val targetY = arg1.get("y").optdouble(0.0)
-                val targetZ = arg1.get("z").optdouble(0.0)
-                val distance = arg2.todouble()
-
-                val target = Vec3(targetX, targetY, targetZ)
-                val endPos = PlayerUtils.getLookEndPos(target, distance.toFloat())
-
-                val table = tableOf()
-                table.set("x", valueOf(endPos.x))
-                table.set("y", valueOf(endPos.y))
-                table.set("z", valueOf(endPos.z))
-                table
-            } else if (arg1?.isnumber() == true) {
-                // Если передан только distance (от текущего взгляда)
-                val distance = arg1.todouble()
-                val endPos = PlayerUtils.getLookEndPos(distance.toFloat())
-
-                val table = tableOf()
-                table.set("x", valueOf(endPos.x))
-                table.set("y", valueOf(endPos.y))
-                table.set("z", valueOf(endPos.z))
-                table
-            } else {
-                NIL
-            }
-        }
-    }
-
-    // Переопределяем необходимые методы LuaValue
-    override fun typename(): String = "player"
-    override fun tojstring(): String = "PlayerObject"
-    override fun isnil(): Boolean = false
-    override fun type(): Int {
-        return TUSERDATA
+        l.newTable()
+        l.push(endPos.x); l.setField(-2, "x")
+        l.push(endPos.y); l.setField(-2, "y")
+        l.push(endPos.z); l.setField(-2, "z")
+        return 1
     }
 }
