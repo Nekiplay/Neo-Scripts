@@ -16,7 +16,7 @@ class ModulesLib(val L: Lua) {
         // Регистрируем объект pathFinder
         // Мы используем .push(), так как PathFinderRendererObject — это SimpleLuaWrapper
         val pathFinder = PathFinderRendererObject(L)
-        L.push(pathFinder.push())
+        pathFinder.push()
         L.setField(-2, "pathFinder")
 
         // Делаем таблицу глобальной

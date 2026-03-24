@@ -23,7 +23,7 @@ class CatboostLib(val L: Lua) {
             if (path != null) {
                 val model = CatBoostModel.loadModel(path)
                 // Оборачиваем модель в объект с метатаблицей и пушим в стек
-                l.push(CatBoostModelLua(l, model).push())
+                CatBoostModelLua(l, model).push()
                 return 1
             }
         }

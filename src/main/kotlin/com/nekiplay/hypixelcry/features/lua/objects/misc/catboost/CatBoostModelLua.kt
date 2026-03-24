@@ -76,7 +76,7 @@ class CatBoostModelLua(L: Lua, val model: CatBoostModel) : SimpleLuaWrapper(L) {
         val result = model.predict(features.toFloatArray(), labelsFeatures.toTypedArray())
 
         // Предполагается, что CatBoostPredictionsLua тоже реализован через SimpleLuaWrapper
-        l.push(CatBoostPredictionsLua(l, result).push())
+        CatBoostPredictionsLua(l, result).push()
         return 1
     }
 }

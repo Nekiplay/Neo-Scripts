@@ -65,7 +65,7 @@ class InventoryObject(l: Lua) : SimpleLuaWrapper(l) {
         val stack = ItemRepository.getItemStack(idString)
         return if (stack != null && !stack.isEmpty) {
             // Обязательно вызываем .push() у обертки
-            l.push(LuaItemStack(l, stack).push())
+            LuaItemStack(l, stack).push()
             1
         } else {
             l.pushNil()
@@ -223,7 +223,7 @@ class InventoryObject(l: Lua) : SimpleLuaWrapper(l) {
             return 1
         }
 
-        l.push(LuaItemStack(l, stack).push())
+        LuaItemStack(l, stack).push()
         return 1
     }
 
@@ -236,7 +236,7 @@ class InventoryObject(l: Lua) : SimpleLuaWrapper(l) {
                     if (stack == null || stack.isEmpty) {
                         l.pushNil()
                     } else {
-                        l.push(LuaItemStack(l, stack).push())
+                        LuaItemStack(l, stack).push()
                     }
                 } else {
                     l.pushNil()

@@ -96,12 +96,12 @@ class PlayerObject(private val L: Lua) {
             when (key) {
                 "entity" -> {
                     val p = mc.player
-                    if (p != null) l.push(LuaEntity(l, p).push()) else l.pushNil()
+                    if (p != null) LuaEntity(l, p).push() else l.pushNil()
                     1
                 }
                 "fishHook" -> {
                     val hook = mc.player?.fishing
-                    if (hook != null) l.push(LuaEntity(l, hook).push()) else l.pushNil()
+                    if (hook != null) LuaEntity(l, hook).push() else l.pushNil()
                     1
                 }
                 else -> {
@@ -324,7 +324,7 @@ class PlayerObject(private val L: Lua) {
             HitResult.Type.ENTITY -> {
                 val entityHit = hitResult as EntityHitResult
                 l.push("entity"); l.setField(-2, "type")
-                l.push(LuaEntity(l, entityHit.entity).push())
+                LuaEntity(l, entityHit.entity).push()
                 l.setField(-2, "data")
             }
             HitResult.Type.BLOCK -> {

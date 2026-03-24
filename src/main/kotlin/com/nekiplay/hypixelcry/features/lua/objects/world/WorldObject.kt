@@ -113,8 +113,6 @@ class WorldObject(private val lua: Lua) {
         collisionShape.toAabbs().forEach { aabb ->
             // Предполагаем, что LuaBox — это SimpleLuaWrapper(l, aabb)
             val luaBoxValue = LuaBox(l, aabb).push()
-
-            l.push(luaBoxValue)
             l.rawSetI(-2, index++)
         }
 
@@ -177,8 +175,6 @@ class WorldObject(private val lua: Lua) {
         collisionShape.toAabbs().forEach { aabb ->
             // Предполагаем, что LuaBox — это SimpleLuaWrapper(l, aabb)
             val luaBoxValue = LuaBox(l, aabb).push()
-
-            l.push(luaBoxValue)
             l.rawSetI(-2, index++)
         }
 
@@ -304,7 +300,7 @@ class WorldObject(private val lua: Lua) {
                 l.push("entity"); l.setField(-2, "type")
 
                 // Кладём обертку сущности (не забываем .push())
-                l.push(LuaEntity(l, entityHit.entity).push())
+                LuaEntity(l, entityHit.entity).push()
                 l.setField(-2, "data")
             }
             HitResult.Type.BLOCK -> {
@@ -453,9 +449,6 @@ class WorldObject(private val lua: Lua) {
             // 3. Создаем обертку LuaEntity (она должна быть SimpleLuaWrapper)
             val luaEntityWrapper = LuaEntity(l, entity).push()
 
-            // 4. Кладём LuaValue обертки на стек, чтобы добавить в таблицу
-            l.push(luaEntityWrapper)
-
             // 5. Устанавливаем значение в таблицу: t[luaIndex] = luaEntity
             // Таблица сейчас на индексе -2, значение сущности на -1.
             // Метод rawSetI забирает значение с вершины стека и кладет в таблицу.
@@ -486,7 +479,7 @@ class WorldObject(private val lua: Lua) {
 
         return if (entity != null) {
             // Обязательно вызываем .push() у нашей обетки
-            l.push(LuaEntity(l, entity).push())
+            LuaEntity(l, entity).push()
             1
         } else 0
     }
@@ -499,7 +492,7 @@ class WorldObject(private val lua: Lua) {
         var index = 1
         entities.forEach { entity ->
             if (entity is LivingEntity) {
-                l.push(LuaEntity(l, entity).push())
+                LuaEntity(l, entity).push()
                 l.rawSetI(-2, index++)
             }
         }
@@ -514,7 +507,7 @@ class WorldObject(private val lua: Lua) {
         var index = 1
         entities.forEach { entity ->
             if (entity is ArmorStand) {
-                l.push(LuaEntity(l, entity).push())
+                LuaEntity(l, entity).push()
                 l.rawSetI(-2, index++)
             }
         }
@@ -529,7 +522,7 @@ class WorldObject(private val lua: Lua) {
         l.newTable()
         var index = 1
         entities.forEach { entity ->
-            l.push(LuaEntity(l, entity).push())
+            LuaEntity(l, entity).push()
             l.rawSetI(-2, index++)
         }
         return 1
@@ -543,7 +536,7 @@ class WorldObject(private val lua: Lua) {
         l.newTable()
         var index = 1
         entities.forEach { entity ->
-            l.push(LuaEntity(l, entity).push())
+            LuaEntity(l, entity).push()
             l.rawSetI(-2, index++)
         }
         return 1
