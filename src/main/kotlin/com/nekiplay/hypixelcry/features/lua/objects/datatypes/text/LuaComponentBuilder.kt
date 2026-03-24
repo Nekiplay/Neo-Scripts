@@ -147,7 +147,7 @@ class LuaComponentBuilder(L: Lua, private var text: String = "") : SimpleLuaWrap
         return component
     }
 
-    override fun push(): LuaValue {
+    override fun push() {
         val res = super.push()
         if (L.getMetatable(-1) != 0) {
             L.push(JFunction { l ->
@@ -165,13 +165,13 @@ class LuaComponentBuilder(L: Lua, private var text: String = "") : SimpleLuaWrap
             L.newTable()
             L.push(JFunction { l ->
                 val text = if (l.isString(1)) l.toString(1)!! else ""
-                l.push(LuaComponentBuilder(l, text).push())
+                LuaComponentBuilder(l, text).push()
                 1
             })
             L.setField(-2, "new")
 
             L.push(JFunction { l ->
-                l.push(LuaComponentBuilder(l, "").push())
+                LuaComponentBuilder(l, "").push()
                 1
             })
             L.setField(-2, "empty")

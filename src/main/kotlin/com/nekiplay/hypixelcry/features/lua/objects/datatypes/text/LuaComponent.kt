@@ -32,7 +32,7 @@ class LuaComponent(L: Lua, val component: Component) : SimpleLuaWrapper(L) {
      * Переопределяем push, чтобы добавить поддержку метаметода __tostring,
      * как это было в оригинальном companion object MT.
      */
-    override fun push(): LuaValue {
+    override fun push() {
         val luaValue = super.push() // Создает объект, таблицу и вешает __index/__newindex
 
         // Получаем метатаблицу созданного объекта, чтобы добавить __tostring
