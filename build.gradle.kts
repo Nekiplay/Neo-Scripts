@@ -63,8 +63,8 @@ dependencies {
     include("party.iroiro.luajava:luajava:$luajava_version")
 
     // 2. Lua 5.5 Implementation
-    implementation("party.iroiro.luajava:lua55:$luajava_version")
-    include("party.iroiro.luajava:lua55:$luajava_version")
+    implementation("party.iroiro.luajava:luajit:$luajava_version")
+    include("party.iroiro.luajava:luajit:$luajava_version")
 
     // 3. The Natives
     val natives = "party.iroiro.luajava:lua55-platform:$luajava_version:natives-desktop"
