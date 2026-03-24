@@ -1394,7 +1394,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                         wrapper.push()
 
                         val result = L.pCall(1, 0)
-                        if (status != 0.toLong()) { // В некоторых версиях iroiro это Long/Int
+                        if (result != 0.toLong()) { // В некоторых версиях iroiro это Long/Int
                             val errorMsg = L.toString(-1) ?: "Unknown Lua Error"
                             HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in world render callback: $errorMsg")
                             L.pop(1) // ОБЯЗАТЕЛЬНО удаляем сообщение об ошибке
@@ -1426,7 +1426,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 renderContext.push()
 
                 val result = L.pCall(1, 0)
-                if (status != 0.toLong()) { // В некоторых версиях iroiro это Long/Int
+                if (result != 0.toLong()) { // В некоторых версиях iroiro это Long/Int
                     val errorMsg = L.toString(-1) ?: "Unknown Lua Error"
                     HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in 2D render callback in: $errorMsg")
                     L.pop(1) // ОБЯЗАТЕЛЬНО удаляем сообщение об ошибке
