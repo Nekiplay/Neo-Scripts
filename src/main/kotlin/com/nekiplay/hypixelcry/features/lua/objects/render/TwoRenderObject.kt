@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Supplier
 
-class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, private val scriptId: String? = null): SimpleLuaWrapper(lua) {
+class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, private val scriptId: String? = null) {
     companion object {
         val textureCache = ConcurrentHashMap<String, MutableMap<String, Identifier>>()
         val textureCounter = AtomicInteger(0)
@@ -30,23 +30,31 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
         }
     }
 
-    override fun getFieldValue(l: Lua, key: String): Any? {
-        if (context == null) return null
-        return when (key) {
-            "getWindowScale" -> luaFunction { getWindowScale(it) }
-            "getTextWidth" -> luaFunction { getTextWidth(it) }
-            "renderText" -> luaFunction { renderText(it) }
-            "renderImage" -> luaFunction { renderImage(it) }
-            "renderRect" -> luaFunction { renderRect(it) }
-            "renderLine" -> luaFunction { renderLine(it) }
-            "renderPolygon" -> luaFunction { renderPolygon(it) }
-            "renderItemStack" -> luaFunction { renderItemStack(it) }
-            "clearImageCache" -> luaFunction {
-                scriptId?.let { id -> clearScriptCache(id) }
-                0
-            }
-            else -> null
-        }
+    fun push() {
+        lua.newTable() // [table]
+        val tIdx = lua.getTop()
+
+        // Добавляем функции рендеринга напрямую (они захватывают контекст)
+        registerFunction(tIdx, "getWindowScale") { getWindowScale(it) }
+        registerFunction(tIdx, "getTextWidth") { getTextWidth(it) }
+        registerFunction(tIdx, "renderText") { renderText(it) }
+        registerFunction(tIdx, "renderImage") { renderImage(it) }
+        registerFunction(tIdx, "renderRect") { renderRect(it) }
+        registerFunction(tIdx, "renderLine") { renderLine(it) }
+        registerFunction(tIdx, "renderPolygon") { renderPolygon(it) }
+        registerFunction(tIdx, "renderItemStack") { renderItemStack(it) }
+        //return lua.get() // Забираем и возвращаем готовую таблицу
+    }
+
+
+    private fun registerFunction(tableIdx: Int, name: String, func: (Lua) -> Any?) {
+        lua.push(name) // Кладем имя
+        lua.push(JFunction { l ->
+            val result = func(l)
+            lua.smartPush(result)
+            1 // Возвращаем 1 значение в Lua
+        })
+        lua.setTable(tableIdx) // table[name] = closure
     }
 
     fun luaFunction(block: (Lua) -> Any?): JFunction {

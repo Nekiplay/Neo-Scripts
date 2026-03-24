@@ -23,35 +23,39 @@ import java.io.FileInputStream
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Supplier
 
-class WorldRendererObject(val lua: Lua, private val context: PrimitiveCollector?): SimpleLuaWrapper(lua) {
-    override fun getFieldValue(l: Lua, key: String): Any? {
-        if (context == null) return null
-        return when (key) {
-            "renderFilled" -> luaFunction { renderFilled(it) }
-            "renderFilledCircle" -> luaFunction { renderFilled(it) }
-            "renderOutline" -> luaFunction { renderOutline(it) }
-            "renderOutlineCircle" -> luaFunction { renderOutlineCircle(it) }
-            "renderCylinder" -> luaFunction { renderCylinder(it) }
-            "renderSphere" -> luaFunction { renderSphere(it) }
-            "renderText" -> luaFunction { renderText(it) }
-            "renderLinesFromPoints" -> luaFunction { renderLinesFromPoints(it) }
-            "renderLineFromCursor" -> luaFunction { renderLineFromCursor(it) }
-            "renderImage" -> luaFunction { renderImage(it) }
-            "renderBeaconBeam" -> luaFunction { renderBeaconBeam(it) }
-            "renderQuad" -> luaFunction { renderQuad(it) }
-            "renderHologramBlock" -> luaFunction { renderHologramBlock(it) }
-            "renderBlock" -> luaFunction { renderBlock(it) }
-            "renderItem" -> luaFunction { renderItem(it) }
-            else -> null
-        }
+class WorldRendererObject(val lua: Lua, private val context: PrimitiveCollector?) {
+    fun push() {
+        lua.newTable() // [table]
+        val tIdx = lua.getTop()
+
+        // Добавляем функции рендеринга напрямую (они захватывают контекст)
+        registerFunction(tIdx, "renderFilled") { renderFilled(it) }
+        registerFunction(tIdx, "renderFilledCircle") { renderFilled(it) }
+        registerFunction(tIdx, "renderOutline") { renderOutline(it) }
+        registerFunction(tIdx, "renderOutlineCircle") { renderOutlineCircle(it) }
+        registerFunction(tIdx, "renderCylinder") { renderCylinder(it) }
+        registerFunction(tIdx, "renderSphere") { renderSphere(it) }
+        registerFunction(tIdx, "renderLinesFromPoints") { renderLinesFromPoints(it) }
+        registerFunction(tIdx, "renderLineFromCursor") { renderLineFromCursor(it) }
+        registerFunction(tIdx, "renderImage") { renderImage(it) }
+        registerFunction(tIdx, "renderBeaconBeam") { renderBeaconBeam(it) }
+        registerFunction(tIdx, "renderQuad") { renderQuad(it) }
+        registerFunction(tIdx, "renderHologramBlock") { renderHologramBlock(it) }
+        registerFunction(tIdx, "renderBlock") { renderBlock(it) }
+        registerFunction(tIdx, "renderItem") { renderItem(it) }
+
+        //return lua.get() // Забираем и возвращаем готовую таблицу
     }
 
-    fun luaFunction(block: (Lua) -> Any?): JFunction {
-        return JFunction { l ->
-            val result = block(l)
-            l.smartPush(result)
-            1 // ВАЖНО: всегда возвращаем 1
-        }
+
+    private fun registerFunction(tableIdx: Int, name: String, func: (Lua) -> Any?) {
+        lua.push(name) // Кладем имя
+        lua.push(JFunction { l ->
+            val result = func(l)
+            lua.smartPush(result)
+            1 // Возвращаем 1 значение в Lua
+        })
+        lua.setTable(tableIdx) // table[name] = closure
     }
 
     private fun getArgsIdx(l: Lua): Int {
