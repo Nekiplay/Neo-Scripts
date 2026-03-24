@@ -84,8 +84,7 @@ class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
                 l.newTable()
 
                 entity.passengers.forEachIndexed { index, entity ->
-                    val luaEntityWrapper = LuaEntity(l, entity).push()
-                    l.push(luaEntityWrapper)
+                    LuaEntity(l, entity).push()
                     l.rawSetI(-2, index + 1)
                 }
                 l.get()

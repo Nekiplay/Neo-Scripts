@@ -39,7 +39,7 @@ fun Lua.smartPush(v: Any?) {
         is Number -> this.push(v.toDouble())
         is JFunction -> this.push(v)
         is LuaValue -> this.push(v)
-        is SimpleLuaWrapper -> this.push(v.push()) 
+        is SimpleLuaWrapper -> v.push()
         else -> this.pushJavaObject(v)
     }
 }

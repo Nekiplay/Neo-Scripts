@@ -1267,7 +1267,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     L.push(pos.z.toDouble()); L.setField(-2, "z")
 
                     // Создаем обертку направления и пушим её в таблицу
-                    L.push(LuaDirection(L, direction).push())
+                    LuaDirection(L, direction).push()
                     L.setField(-2, "direction")
 
                     L.push(hand.name); L.setField(-2, "hand")
@@ -1598,12 +1598,12 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
                 if (old != null) {
                     // LuaBlockState(L, old).push() создает LuaValue с метатаблицей
-                    L.push(LuaBlockState(L, old).push())
+                    LuaBlockState(L, old).push()
                     L.setField(-2, "old")
                 }
 
                 if (new != null) {
-                    L.push(LuaBlockState(L, new).push())
+                    LuaBlockState(L, new).push()
                     L.setField(-2, "new")
                 }
 

@@ -107,7 +107,7 @@ class LuaComponentBuilder(L: Lua, private var text: String = "") : SimpleLuaWrap
 
             // Build
             "build" -> JFunction { lInner ->
-                lInner.push(LuaComponent(lInner, this.buildComponent()).push())
+                LuaComponent(lInner, this.buildComponent()).push()
                 1
             }
             else -> null
