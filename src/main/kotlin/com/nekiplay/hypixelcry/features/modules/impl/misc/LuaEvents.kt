@@ -10,45 +10,33 @@ import com.nekiplay.hypixelcry.events.network.PacketEvent
 import com.nekiplay.hypixelcry.events.player.AddItemInventoryEvent
 import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent
 import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent.BlockUpdateCallback
-import com.nekiplay.hypixelcry.features.lua.LuaScript
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.features.modules.ClientModule
-import com.nekiplay.hypixelcry.imgui.ImguiLoader
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.sugar.getJsonString
 import com.nekiplay.hypixelcry.utils.render.WorldRenderExtractionCallback
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
-import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
-import net.minecraft.client.Minecraft
 import net.minecraft.commands.SharedSuggestionProvider
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
-import net.minecraft.core.Direction8
 import net.minecraft.core.registries.BuiltInRegistries
-import net.minecraft.network.chat.Component
-import net.minecraft.network.protocol.game.ClientboundBlockChangedAckPacket
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket
-import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket
-import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
-import net.minecraft.network.protocol.game.ClientboundRespawnPacket
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.HitResult
-import org.luaj.vm2.LuaValue
 
 
 object LuaEvents : ClientModule() {

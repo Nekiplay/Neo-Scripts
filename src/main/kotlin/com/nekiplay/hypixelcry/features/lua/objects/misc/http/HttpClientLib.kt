@@ -21,24 +21,19 @@ class HttpClientLib(val L: Lua) {
     }
 
     fun register() {
-        L.newTable() // Создаем таблицу http
-
-        // GET
+        L.newTable()
         L.push(JFunction { getFunc(it) }); L.setField(-2, "get")
         L.push(JFunction { getWithHeadersFunc(it) }); L.setField(-2, "get_with_headers")
         L.push(JFunction { getAsyncFunc(it) }); L.setField(-2, "get_async")
         L.push(JFunction { getAsyncWithHeadersFunc(it) }); L.setField(-2, "get_async_with_headers")
         L.push(JFunction { getAsyncCallbackFunc(it) }); L.setField(-2, "get_async_callback")
         L.push(JFunction { getAsyncWithHeadersCallbackFunc(it) }); L.setField(-2, "get_async_with_headers_callback")
-
-        // POST
         L.push(JFunction { postFunc(it) }); L.setField(-2, "post")
         L.push(JFunction { postWithHeadersFunc(it) }); L.setField(-2, "post_with_headers")
         L.push(JFunction { postAsyncFunc(it) }); L.setField(-2, "post_async")
         L.push(JFunction { postAsyncWithHeadersFunc(it) }); L.setField(-2, "post_async_with_headers")
         L.push(JFunction { postAsyncCallbackFunc(it) }); L.setField(-2, "post_async_callback")
         L.push(JFunction { postAsyncWithHeadersCallbackFunc(it) }); L.setField(-2, "post_async_with_headers_callback")
-
         L.setGlobal("http")
     }
 
@@ -74,7 +69,6 @@ class HttpClientLib(val L: Lua) {
             .timeout(Duration.ofSeconds(timeout.toLong()))
             .GET()
         headers.forEach { (n, v) -> requestBuilder.header(n, v) }
-
         val resp = HTTP_CLIENT.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofByteArray())
         if (resp.statusCode() >= 400) throw RuntimeException("HTTP ${resp.statusCode()}")
         return resp.body() ?: ByteArray(0)
@@ -87,7 +81,6 @@ class HttpClientLib(val L: Lua) {
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
         headers.forEach { (n, v) -> requestBuilder.header(n, v) }
-
         val resp = HTTP_CLIENT.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofByteArray())
         if (resp.statusCode() >= 400) throw RuntimeException("HTTP ${resp.statusCode()}")
         return resp.body() ?: ByteArray(0)
@@ -111,24 +104,24 @@ class HttpClientLib(val L: Lua) {
         } catch (e: Exception) { l.error(e.toString()); 0 }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun getAsyncCallbackFunc(l: Lua): Int {
         val url = l.toString(1) ?: ""
         if (!l.isFunction(2)) { l.error("Function expected"); return 0 }
         val callback = l.get()
-
         asyncExecutor.submit {
             try {
                 val data = executeGetRequest(url, 5, emptyMap())
-                // Используем spread operator * с типизированным массивом Any?
-                callback.call(*(arrayOf(bytesToList(data), null) as Array<Any?>))
+                callback.call(*(arrayOf(bytesToList(data), null) as Array<Any>))
             } catch (e: Exception) {
-                callback.call(*(arrayOf(null, e.toString()) as Array<Any?>))
+                callback.call(*(arrayOf(null, e.toString()) as Array<Any>))
             }
         }
         l.push(true)
         return 1
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun getAsyncWithHeadersCallbackFunc(l: Lua): Int {
         val url = l.toString(1) ?: ""
         val headers = parseHeaders(l, 2)
@@ -136,9 +129,9 @@ class HttpClientLib(val L: Lua) {
         asyncExecutor.submit {
             try {
                 val data = executeGetRequest(url, 5, headers)
-                callback.call(*(arrayOf(bytesToList(data), null) as Array<Any?>))
+                callback.call(*(arrayOf(bytesToList(data), null) as Array<Any>))
             } catch (e: Exception) {
-                callback.call(*(arrayOf(null, e.toString()) as Array<Any?>))
+                callback.call(*(arrayOf(null, e.toString()) as Array<Any>))
             }
         }
         l.push(true); return 1
@@ -163,6 +156,7 @@ class HttpClientLib(val L: Lua) {
         } catch (e: Exception) { l.error(e.toString()); 0 }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun postAsyncCallbackFunc(l: Lua): Int {
         val url = l.toString(1) ?: ""
         val headers = parseHeaders(l, 2)
@@ -170,14 +164,15 @@ class HttpClientLib(val L: Lua) {
         asyncExecutor.submit {
             try {
                 val data = executePostRequest(url, 5, headers, "")
-                callback.call(*(arrayOf(bytesToList(data), null) as Array<Any?>))
+                callback.call(*(arrayOf(bytesToList(data), null) as Array<Any>))
             } catch (e: Exception) {
-                callback.call(*(arrayOf(null, e.toString()) as Array<Any?>))
+                callback.call(*(arrayOf(null, e.toString()) as Array<Any>))
             }
         }
         l.push(true); return 1
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun postAsyncWithHeadersCallbackFunc(l: Lua): Int {
         val url = l.toString(1) ?: ""
         val headers = parseHeaders(l, 2)
@@ -186,9 +181,9 @@ class HttpClientLib(val L: Lua) {
         asyncExecutor.submit {
             try {
                 val data = executePostRequest(url, 5, headers, body)
-                callback.call(*(arrayOf(bytesToList(data), null) as Array<Any?>))
+                callback.call(*(arrayOf(bytesToList(data), null) as Array<Any>))
             } catch (e: Exception) {
-                callback.call(*(arrayOf(null, e.toString()) as Array<Any?>))
+                callback.call(*(arrayOf(null, e.toString()) as Array<Any>))
             }
         }
         l.push(true); return 1

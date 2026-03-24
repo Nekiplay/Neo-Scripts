@@ -1,6 +1,5 @@
 package com.nekiplay.hypixelcry.features.lua.objects.world
 
-import com.nekiplay.hypixelcry.features.lua.customArgs.FourArgFunction
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaEntity
