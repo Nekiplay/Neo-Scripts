@@ -72,8 +72,8 @@ dependencies {
     include(natives)
 
     // 4. The Native Loader
-    implementation("com.badlogicgames.gdx:gdx-jnigen:$jnigen_old_version")
-    include("com.badlogicgames.gdx:gdx-jnigen:$jnigen_old_version")
+    implementation("com.badlogicgames.gdx:gdx-jnigen:$jnigen_version")
+    include("com.badlogicgames.gdx:gdx-jnigen:$jnigen_version")
 
     modImplementation("net.fabricmc:fabric-loader:${property("loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_version")}")
