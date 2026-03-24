@@ -1405,6 +1405,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 }
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in world render callback: ${e.message}")
+                L.pop(1)
             } finally {
                 val currentTop = L.getTop()
                 if (currentTop > initialTop) {
@@ -1426,13 +1427,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 renderContext.push()
 
                 val result = L.pCall(1, 0)
-                if (result != 0.toLong()) { // В некоторых версиях iroiro это Long/Int
-                    val errorMsg = L.toString(-1) ?: "Unknown Lua Error"
-                    HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in 2D render callback in: $errorMsg")
-                    L.pop(1) // ОБЯЗАТЕЛЬНО удаляем сообщение об ошибке
-                }
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in 2D render callback in ${scriptName}: ${e.message}")
+                L.pop(1)
             } finally {
                 val currentTop = L.getTop()
                 if (currentTop > initialTop) {
