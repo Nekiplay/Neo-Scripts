@@ -50,8 +50,22 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
 
     // --- Вспомогательные методы чтения стека ---
     private fun getArgsIdx(l: Lua): Int {
-        if (l.isTable(1) && l.isTable(2)) return 2
-        if (l.isTable(1)) return 1
+        val top = l.getTop()
+        if (top == 0) return 0
+        // Если вызвано как context:renderText(args), то args на индексе 2
+        // Если вызвано как context.renderText(args), то args на индексе 1
+        for (i in 1..top) {
+            if (l.isTable(i)) {
+                // Проверяем, не является ли эта таблица самим контекстом (у него есть __java_instance)
+                l.push("__java_instance")
+                l.rawGet(i)
+                val isContext = !l.isNil(-1)
+                l.pop(1)
+                if (!isContext) return i
+            }
+        }
+        // Если нашли только одну таблицу, и это аргументы
+        if (top >= 1 && l.isTable(top)) return top
         return 0
     }
 
