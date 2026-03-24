@@ -22,7 +22,7 @@ import java.io.FileInputStream
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Supplier
 
-class WorldRendererObject(val l: Lua, private val context: PrimitiveCollector?): SimpleLuaWrapper(l) {
+class WorldRendererObject(val lua: Lua, private val context: PrimitiveCollector?): SimpleLuaWrapper(lua) {
     override fun getFieldValue(l: Lua, key: String): Any? {
         if (context == null) return null
         return when (key) {
