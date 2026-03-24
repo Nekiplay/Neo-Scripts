@@ -56,7 +56,7 @@ dependencies {
     mappings(loom.officialMojangMappings())
 
     val luajava_version = "4.1.0"
-    val jnigen_version = "1.12.1"
+    val jnigen_version = "2.5.2"
 
     // 1. Luajava Core
     implementation("party.iroiro.luajava:luajava:$luajava_version")
