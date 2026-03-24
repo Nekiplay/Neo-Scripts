@@ -13,34 +13,48 @@ abstract class SimpleLuaWrapper(val L: Lua) {
     open fun setFieldValue(l: Lua, key: String, value: LuaValue): Boolean = false
 
     open fun push(): LuaValue {
+        // 1. Create a table to represent our object in Lua
+        L.newTable() 
+        val tableIdx = L.getTop()
+    
+        // 2. Store the Java wrapper inside the table with a hidden key
         L.pushJavaObject(this)
+        L.setField(tableIdx, "__java_instance")
+    
+        // 3. Create the metatable
         L.newTable()
-
-        // __index (Чтение)
+    
+        // __index logic
         L.push(JFunction { l ->
-            val wrapper = l.toJavaObject(1) as? SimpleLuaWrapper
+            // Get the Java instance from the table (index 1 is the table)
+            l.getField(1, "__java_instance")
+            val wrapper = l.toJavaObject(-1) as? SimpleLuaWrapper
+            l.pop(1) // Remove java_instance from stack
+    
             val key = l.toString(2) ?: ""
             l.smartPush(wrapper?.getFieldValue(l, key))
             1
         })
         L.setField(-2, "__index")
-
-        // __newindex (Запись) - ИСПРАВЛЕНО
+    
+        // __newindex logic
         L.push(JFunction { l ->
-            val wrapper = l.toJavaObject(1) as? SimpleLuaWrapper
+            l.getField(1, "__java_instance")
+            val wrapper = l.toJavaObject(-1) as? SimpleLuaWrapper
+            l.pop(1)
+    
             val key = l.toString(2) ?: ""
-
-            // В Lua __newindex(table, key, value) аргументы: 1=table, 2=key, 3=value
-            // Чтобы получить LuaValue из индекса 3:
-            l.pushValue(3) // Копируем значение из индекса 3 на вершину стека
-            val value = l.get() // Забираем вершину как LuaValue (стек очищается)
-
+            l.pushValue(3)
+            val value = l.get()
             wrapper?.setFieldValue(l, key, value)
             0
         })
         L.setField(-2, "__newindex")
-
-        L.setMetatable(-2)
+    
+        L.setMetatable(tableIdx)
+        
+        // Return the table as a LuaValue
+        L.pushValue(tableIdx)
         return L.get()
     }
 }
