@@ -67,9 +67,9 @@ dependencies {
     include("party.iroiro.luajava:luajit:$luajava_version")
 
     // 3. The Natives
-    val natives = "party.iroiro.luajava:lua55-platform:$luajava_version:natives-desktop"
-    implementation(natives)
-    include(natives)
+    val jitNatives = "party.iroiro.luajava:luajit-platform:$luajava_version:natives-desktop"
+    implementation(jitNatives)
+    include(jitNatives)
 
     // 4. The Native Loader
     implementation("com.badlogicgames.gdx:gdx-jnigen:$jnigen_version")
