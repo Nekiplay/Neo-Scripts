@@ -94,7 +94,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val tcp = TCPLib(L)
     private val threads = ThreadLib(L)
     private val http = HttpClientLib(L)
-    private val imgui = ImGuiLib(L)
+    val imgui = ImGuiLib(L)
     private val modules = ModulesLib(L)
 
     // Dependency tracking for nested requires
