@@ -75,6 +75,9 @@ dependencies {
     implementation("com.badlogicgames.jnigen:jnigen-loader:$jnigen_version")
     include("com.badlogicgames.jnigen:jnigen-loader:$jnigen_version")
 
+    implementation("com.badlogicgames.jnigen:jnigen-commons:$jnigen_version")
+    include("com.badlogicgames.jnigen:jnigen-commons:$jnigen_version")
+
     modImplementation("net.fabricmc:fabric-loader:${property("loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_version")}")
     modImplementation("net.fabricmc:fabric-language-kotlin:${property("fabric_kotlin_version")}")
