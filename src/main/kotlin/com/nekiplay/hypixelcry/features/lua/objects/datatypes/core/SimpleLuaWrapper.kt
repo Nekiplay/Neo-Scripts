@@ -58,6 +58,7 @@ fun Lua.smartPush(v: Any?) {
         is Int -> this.push(v.toDouble())
         is Long -> this.push(v.toDouble())
         is LuaValue -> this.push(v)
+        is JFunction -> this.push(v) 
         // Для всех остальных Java-объектов используем pushJava
         else -> this.pushJavaObject(v)
     }
