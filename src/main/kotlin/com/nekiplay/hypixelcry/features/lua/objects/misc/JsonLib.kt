@@ -1,179 +1,168 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
 import com.nekiplay.hypixelcry.HypixelCry
-import org.luaj.vm2.*
-import org.luaj.vm2.lib.OneArgFunction
-import org.luaj.vm2.lib.TwoArgFunction
-import org.luaj.vm2.lib.VarArgFunction
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
 
-class JsonLib : TwoArgFunction() {
-    override fun call(modname: LuaValue, env: LuaValue): LuaValue {
-        val library = LuaValue.tableOf().apply {
-            set("parse", SimpleParseFunction())
-            set("stringify", StringifyFunction())
-        }
-        env.set("json", library)
-        return library
+class JsonLib(val L: Lua) {
+
+    fun register() {
+        L.newTable() // Создаем таблицу json
+
+        L.push(JFunction { parse(it) })
+        L.setField(-2, "parse")
+
+        L.push(JFunction { stringify(it) })
+        L.setField(-2, "stringify")
+
+        L.setGlobal("json")
     }
 
-    inner class SimpleParseFunction : OneArgFunction() {
-        override fun call(jsonString: LuaValue): LuaValue {
-            return try {
-                val result: Any? = HypixelCry.GSON_COMPACT.fromJson(jsonString.tojstring(), Any::class.java)
-                when (result) {
-                    null -> LuaValue.NIL
-                    is Map<*, *> -> convertMap(result)
-                    is List<*> -> convertList(result)
-                    else -> convertPrimitive(result)
-                }
-            } catch (e: Exception) {
-                LuaValue.NIL
-            }
+    private fun parse(l: Lua): Int {
+        val jsonString = l.toString(1) ?: run {
+            l.pushNil()
+            return 1
         }
 
-        private fun convertMap(map: Map<*, *>): LuaValue {
-            val table = LuaValue.tableOf()
-            map.forEach { (key, value) ->
-                table.set(convertKey(key), convertValue(value))
-            }
-            return table
-        }
-
-        private fun convertList(list: List<*>): LuaValue {
-            val table = LuaValue.tableOf()
-            list.forEachIndexed { index, value ->
-                table.set(index + 1, convertValue(value))
-            }
-            return table
-        }
-
-        private fun convertValue(value: Any?): LuaValue {
-            return when (value) {
-                null -> LuaValue.NIL
-                is String -> LuaValue.valueOf(value)
-                is Number -> LuaValue.valueOf(value.toDouble())
-                is Boolean -> LuaValue.valueOf(value)
-                is Map<*, *> -> convertMap(value)
-                is List<*> -> convertList(value)
-                else -> LuaValue.valueOf(value.toString())
-            }
-        }
-
-        private fun convertKey(key: Any?): LuaValue {
-            return when (key) {
-                is String -> LuaValue.valueOf(key)
-                is Number -> LuaValue.valueOf(key.toDouble())
-                else -> LuaValue.valueOf(key.toString())
-            }
-        }
-
-        private fun convertPrimitive(value: Any): LuaValue {
-            return when (value) {
-                is String -> LuaValue.valueOf(value)
-                is Number -> LuaValue.valueOf(value.toDouble())
-                is Boolean -> LuaValue.valueOf(value)
-                else -> LuaValue.valueOf(value.toString())
-            }
+        return try {
+            // Используем GSON из вашего проекта
+            val result: Any? = HypixelCry.GSON_COMPACT.fromJson(jsonString, Any::class.java)
+            pushJavaToLua(l, result)
+            1
+        } catch (e: Exception) {
+            l.pushNil()
+            1
         }
     }
 
-    inner class StringifyFunction : VarArgFunction() {
-        override fun invoke(args: Varargs): LuaValue {
-            return try {
-                val luaValue = args.arg(1)
-                val indent = if (args.narg() > 1) args.arg(2) else LuaValue.NIL
-
-                val javaObj = convertToJava(luaValue)
-                val jsonString = if (indent.isnil()) {
-                    // По умолчанию - форматированный JSON
-                    HypixelCry.GSON.toJson(javaObj)
-                } else {
-                    // Если указан indent = 0 или false - неформатированный
-                    if (indent.isnumber() && indent.todouble() == 0.0 || indent.isboolean() && !indent.toboolean()) {
-                        HypixelCry.GSON_COMPACT.toJson(javaObj)
-                    } else {
-                        HypixelCry.GSON.toJson(javaObj)
-                    }
-                }
-                LuaValue.valueOf(jsonString)
-            } catch (e: Exception) {
-                LuaValue.NIL
+    private fun stringify(l: Lua): Int {
+        try {
+            if (l.isNoneOrNil(1)) {
+                l.pushNil()
+                return 1
             }
-        }
 
-        private fun convertToJava(luaValue: LuaValue): Any? {
-            return when {
-                luaValue.isnil() -> null
-                luaValue.isstring() -> luaValue.tojstring()
-                luaValue.isnumber() -> luaValue.todouble()
-                luaValue.isboolean() -> luaValue.toboolean()
-                luaValue.istable() -> convertTable(luaValue)
-                else -> luaValue.tojstring()
-            }
-        }
+            val javaObj = luaToJava(l, 1)
 
-        private fun convertTable(table: LuaValue): Any {
-            val tableObj = table.checktable()
-
-            // Проверяем, является ли таблица массивом
-            if (isArray(tableObj)) {
-                return convertTableToArray(tableObj)
+            // Логика indent (аргумент 2)
+            val jsonString = if (l.isNoneOrNil(2)) {
+                // По умолчанию - форматированный
+                HypixelCry.GSON.toJson(javaObj)
             } else {
-                return convertTableToObject(tableObj)
-            }
-        }
+                // Если indent == 0 или indent == false -> компактный
+                val isCompact = (l.isNumber(2) && l.toNumber(2) == 0.0) ||
+                        (l.isBoolean(2) && !l.toBoolean(2))
 
-        private fun isArray(table: LuaTable): Boolean {
-            var arrayIndex = 1
-            val keys = table.keys()
-
-            // Проверяем все ключи таблицы
-            for (key in keys) {
-                // Если ключ не число или не соответствует последовательности массива - это объект
-                if (!key.isnumber()) {
-                    return false
+                if (isCompact) {
+                    HypixelCry.GSON_COMPACT.toJson(javaObj)
+                } else {
+                    HypixelCry.GSON.toJson(javaObj)
                 }
+            }
 
-                val keyNum = key.todouble()
-                // Если ключ не целое число или не соответствует ожидаемому индексу массива
-                if (keyNum != arrayIndex.toDouble() || keyNum != Math.floor(keyNum)) {
-                    return false
+            l.push(jsonString)
+            return 1
+        } catch (e: Exception) {
+            l.pushNil()
+            return 1
+        }
+    }
+
+    // --- Из Java (GSON) в Lua ---
+    private fun pushJavaToLua(l: Lua, value: Any?) {
+        when (value) {
+            null -> l.pushNil()
+            is String -> l.push(value)
+            is Number -> l.push(value.toDouble())
+            is Boolean -> l.push(value)
+            is Map<*, *> -> {
+                l.newTable()
+                value.forEach { (k, v) ->
+                    // Ключ
+                    pushJavaToLua(l, k)
+                    // Значение
+                    pushJavaToLua(l, v)
+                    // t[k] = v
+                    l.setTable(-3)
                 }
-
-                arrayIndex++
             }
-
-            // Если в таблице нет элементов, считаем ее объектом
-            return keys.isNotEmpty()
-        }
-
-        private fun convertTableToArray(table: LuaTable): List<Any?> {
-            val list = mutableListOf<Any?>()
-            var index = 1
-
-            while (true) {
-                val value = table.get(index)
-                if (value.isnil()) {
-                    break
+            is List<*> -> {
+                l.newTable()
+                value.forEachIndexed { index, v ->
+                    pushJavaToLua(l, v)
+                    l.rawSetI(-2, index + 1)
                 }
-                list.add(convertToJava(value))
-                index++
+            }
+            else -> l.push(value.toString())
+        }
+    }
+
+    // --- Из Lua в Java (GSON) ---
+    private fun luaToJava(l: Lua, index: Int): Any? {
+        return when (l.type(index)) {
+            Lua.LuaType.NIL -> null
+            Lua.LuaType.BOOLEAN -> l.toBoolean(index)
+            Lua.LuaType.NUMBER -> l.toNumber(index)
+            Lua.LuaType.STRING -> l.toString(index)
+            Lua.LuaType.TABLE -> {
+                if (isTableArray(l, index)) {
+                    val list = mutableListOf<Any?>()
+                    val len = l.rawLength(index)
+                    for (i in 1..len) {
+                        l.rawGetI(index, i)
+                        list.add(luaToJava(l, -1))
+                        l.pop(1)
+                    }
+                    list
+                } else {
+                    val map = mutableMapOf<String, Any?>()
+                    l.pushNil() // Начальный ключ для next
+                    while (l.next(index) != 0) {
+                        // Ключ на -2, значение на -1
+                        val keyStr = if (l.isNumber(-2)) {
+                            l.toNumber(-2).toString().replace(".0", "")
+                        } else {
+                            l.toString(-2) ?: "null"
+                        }
+                        map[keyStr] = luaToJava(l, -1)
+                        l.pop(1) // Удаляем значение, оставляем ключ
+                    }
+                    map
+                }
+            }
+            else -> l.toString(index)
+        }
+    }
+
+    /**
+     * Ваша логика isArray: таблица считается массивом, если в ней только
+     * последовательные числовые ключи от 1 до N.
+     */
+    private fun isTableArray(l: Lua, index: Int): Boolean {
+        val len = l.rawLength(index)
+        if (len == 0) return false
+
+        var count = 0
+        l.pushNil()
+        while (l.next(index) != 0) {
+            // Если ключ не число - это объект
+            if (!l.isNumber(-2)) {
+                l.pop(2) // удаляем ключ и значение
+                return false
             }
 
-            return list
-        }
-
-        private fun convertTableToObject(table: LuaTable): Map<String, Any?> {
-            val map = mutableMapOf<String, Any?>()
-            val keys = table.keys()
-
-            for (key in keys) {
-                map[key.tojstring()] = convertToJava(table.get(key))
+            val keyNum = l.toNumber(-2)
+            // Если ключ не целое число или не в диапазоне массива
+            if (keyNum != Math.floor(keyNum) || keyNum < 1.0 || keyNum > len.toDouble()) {
+                l.pop(2)
+                return false
             }
 
-            return map
+            count++
+            l.pop(1)
         }
+
+        // Массив, если количество элементов совпадает с длиной #table
+        return count == len
     }
 }

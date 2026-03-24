@@ -1,76 +1,82 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc.catboost
 
 import ai.catboost.CatBoostModel
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaEntity
-import com.nekiplay.hypixelcry.pathfinder.utils.mc
-import imgui.ImGui
-import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.level.block.state.BlockState
-import org.luaj.vm2.LuaUserdata
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.Varargs
-import org.luaj.vm2.lib.VarArgFunction
-import org.luaj.vm2.lib.ZeroArgFunction
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
 
-class CatBoostModelLua(val model: CatBoostModel) : LuaUserdata(model) {
-    override fun get(key: LuaValue): LuaValue {
-        return when (val field = key.tojstring()) {
-            "predict" -> Predict()
-            "getFeatureNames" -> GetFeatureNames()
-            "getFeatures" -> GetFeatures()
-            else -> super.get(key)
+class CatBoostModelLua(L: Lua, val model: CatBoostModel) : SimpleLuaWrapper(L) {
+
+    override fun getFieldValue(l: Lua, key: String): Any? {
+        return when (key) {
+            "predict" -> JFunction { predict(it) }
+            "getFeatureNames" -> JFunction { getFeatureNames(it) }
+            "getFeatures" -> JFunction { getFeatures(it) }
+            else -> null
         }
     }
 
-    inner class GetFeatures : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            val list = model.features
+    private fun getFeatures(l: Lua): Int {
+        val list = model.features
+        l.newTable() // Основная таблица
 
-            val table = tableOf()
+        list.forEachIndexed { index, feature ->
+            l.newTable() // Таблица для конкретного feature
 
-            list.forEachIndexed { index, feature ->
-                val t = tableOf()
-                t.set("name", valueOf(feature.name))
-                t.set("index", valueOf(feature.featureIndex))
-                t.set("flatIndex", valueOf(feature.flatFeatureIndex))
-                table.set(index + 1, t)
-            }
-            return table
+            l.push(feature.name)
+            l.setField(-2, "name")
+
+            l.push(feature.featureIndex.toDouble())
+            l.setField(-2, "index")
+
+            l.push(feature.flatFeatureIndex.toDouble())
+            l.setField(-2, "flatIndex")
+
+            // Кладем во внешнюю таблицу под индексом (index + 1)
+            l.rawSetI(-2, (index + 1))
         }
+        return 1
     }
 
-    inner class GetFeatureNames : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            val list = model.featureNames
+    private fun getFeatureNames(l: Lua): Int {
+        val list = model.featureNames
+        l.newTable()
 
-            val table = tableOf()
-
-            list.forEachIndexed { index, string ->
-                table.set(index + 1, valueOf(string))
-            }
-            return table
+        list.forEachIndexed { index, name ->
+            l.push(name)
+            l.rawSetI(-2, (index + 1))
         }
+        return 1
     }
 
-    inner class Predict : VarArgFunction() {
-        override fun invoke(args: Varargs): LuaValue {
-            val featuresTable = args.checktable(1)
-            val features = ArrayList<Float>()
-            featuresTable.keys().forEachIndexed { index, value ->
-                run {
-                    features.add(value.checkdouble().toFloat())
-                }
-            }
-
-            val labelsTable = args.checktable(2)
-            val labelsFeatures = ArrayList<String>()
-            labelsTable.keys().forEachIndexed { index, value ->
-                run {
-                    labelsFeatures.add(value.tojstring())
-                }
-            }
-
-            return CatBoostPredictionsLua(model.predict(features.toFloatArray(), labelsFeatures.toTypedArray()))
+    private fun predict(l: Lua): Int {
+        // Проверяем наличие двух таблиц в аргументах
+        if (!l.isTable(1) || !l.isTable(2)) {
+            l.pushNil()
+            return 1
         }
+
+        // Логика из оригинала: извлекаем КЛЮЧИ первой таблицы как Float
+        val features = ArrayList<Float>()
+        l.pushNil() // Начальный ключ для итерации
+        while (l.next(1) != 0) {
+            // Ключ на -2, Значение на -1. Оригинал брал ключи (checkdouble).
+            features.add(l.toNumber(-2).toFloat())
+            l.pop(1) // Убираем значение, оставляем ключ для следующей итерации
+        }
+
+        // Логика из оригинала: извлекаем КЛЮЧИ второй таблицы как String
+        val labelsFeatures = ArrayList<String>()
+        l.pushNil()
+        while (l.next(2) != 0) {
+            labelsFeatures.add(l.toString(-2) ?: "")
+            l.pop(1)
+        }
+
+        val result = model.predict(features.toFloatArray(), labelsFeatures.toTypedArray())
+
+        // Предполагается, что CatBoostPredictionsLua тоже реализован через SimpleLuaWrapper
+        l.push(CatBoostPredictionsLua(l, result).push())
+        return 1
     }
 }

@@ -16,1222 +16,1047 @@ import imgui.type.ImDouble
 import imgui.type.ImFloat
 import imgui.type.ImInt
 import imgui.type.ImString
-import org.luaj.vm2.*
-import org.luaj.vm2.lib.*
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
 import java.util.concurrent.atomic.AtomicInteger
 
-class ImGuiLib : TwoArgFunction() {
+class ImGuiLib(val L: Lua) {
     public val queue: ImDrawCommandQueue = ImDrawCommandQueue()
 
-
-    override fun call(modname: LuaValue, env: LuaValue): LuaValue {
-        val library = LuaTable()
+    fun register() {
+        L.newTable() // Основная таблица imgui (на индексе -1)
 
         // Window management
-        library.set("begin", begin())
-        library.set("endBegin", endFunc())
-        library.set("newFrame", newFrame())
-        library.set("render", render())
+        setFunc("begin") { begin(it) }
+        setFunc("endBegin") { endFunc(it) }
+        setFunc("newFrame") { newFrame(it) }
+        setFunc("render") { render(it) }
 
         // Text
-        library.set("text", text())
-        library.set("textColored", textColored())
-        library.set("textDisabled", textDisabled())
-        library.set("bulletText", bulletText())
+        setFunc("text") { text(it) }
+        setFunc("textColored") { textColored(it) }
+        setFunc("textDisabled") { textDisabled(it) }
+        setFunc("bulletText") { bulletText(it) }
 
         // Images
-        library.set("createImageObject", createImageObject())
-        library.set("image", image())
+        setFunc("createImageObject") { createImageObject(it) }
+        setFunc("image") { image(it) }
 
         // Buttons
-        library.set("button", button())
-        library.set("smallButton", smallButton())
-        library.set("arrowButton", arrowButton())
-        library.set("checkbox", checkbox())
+        setFunc("button") { button(it) }
+        setFunc("smallButton") { smallButton(it) }
+        setFunc("arrowButton") { arrowButton(it) }
+        setFunc("checkbox") { checkbox(it) }
 
         // Input
-        library.set("inputText", inputText())
-        library.set("inputTextMultiline", inputTextMultiline())
-        library.set("inputInt", inputInt())
-        library.set("inputFloat", inputFloat())
-        library.set("inputDouble", inputDouble())
+        setFunc("inputText") { inputText(it) }
+        setFunc("inputTextMultiline") { inputTextMultiline(it) }
+        setFunc("inputInt") { inputInt(it) }
+        setFunc("inputFloat") { inputFloat(it) }
+        setFunc("inputDouble") { inputDouble(it) }
 
-        // Layout
-        library.set("sameLine", sameLine())
-        library.set("newLine", newLine())
-        library.set("spacing", spacing())
-        library.set("separator", separator())
+        // Layout / Groups / Indentation / Cursor... (по аналогии)
+        setFunc("sameLine") { sameLine(it) }
+        setFunc("newLine") { newLine(it) }
+        setFunc("spacing") { spacing(it) }
+        setFunc("separator") { separator(it) }
+        setFunc("beginGroup") { beginGroup(it) }
+        setFunc("endGroup") { endGroup(it) }
+        setFunc("indent") { indent(it) }
+        setFunc("unindent") { unindent(it) }
+        setFunc("setCursorPos") { setCursorPos(it) }
+        setFunc("getCursorPos") { getCursorPos(it) }
 
-        // Groups
-        library.set("beginGroup", beginGroup())
-        library.set("endGroup", endGroup())
+        // Tree / Selectables / Lists / Tooltips / Popups / Menus / Tabs / Style / Font / Tables...
+        // Для краткости регистрируем основные категории:
+        setFunc("beginTable") { beginTable(it) }
+        setFunc("tableSetupColumn") { tableSetupColumn(it) }
+        setFunc("endTable") { endTable(it) }
+        setFunc("pushStyleColor") { pushStyleColor(it) }
+        setFunc("popStyleColor") { popStyleColor(it) }
 
-        // Indentation
-        library.set("indent", indent())
-        library.set("unindent", unindent())
+        // --- Константы (Constants) ---
+        L.newTable()
+        // Window Flags
+        addC("WindowFlags_None", ImGuiWindowFlags.None.toInt())
+        addC("WindowFlags_NoTitleBar", ImGuiWindowFlags.NoTitleBar.toInt())
+        addC("WindowFlags_NoResize", ImGuiWindowFlags.NoResize.toInt())
+        addC("WindowFlags_NoMove", ImGuiWindowFlags.NoMove.toInt())
+        addC("WindowFlags_NoScrollbar", ImGuiWindowFlags.NoScrollbar.toInt())
+        addC("WindowFlags_NoCollapse", ImGuiWindowFlags.NoCollapse.toInt())
 
-        // Cursor position
-        library.set("setCursorPos", setCursorPos())
-        library.set("getCursorPos", getCursorPos())
-        library.set("getCursorScreenPos", getCursorScreenPos())
+        // Condition Flags
+        addC("Cond_Always", ImGuiCond.Always.toInt())
+        addC("Cond_Once", ImGuiCond.Once.toInt())
+        addC("Cond_FirstUseEver", ImGuiCond.FirstUseEver.toInt())
 
-        // Tree nodes
-        library.set("treeNode", treeNode())
-        library.set("treeNodeEx", treeNodeEx())
-        library.set("treePop", treePop())
-        library.set("collapsingHeader", collapsingHeader())
+        // Color Edit Flags
+        addC("ColorEditFlags_None", ImGuiColorEditFlags.None.toInt())
+        addC("ColorEditFlags_NoAlpha", ImGuiColorEditFlags.NoAlpha.toInt())
+        addC("ColorEditFlags_NoPicker", ImGuiColorEditFlags.NoPicker.toInt())
 
-        // Selectables
-        library.set("selectable", selectable())
+        // Colors (ImGuiCol)
+        addC("Col_Text", ImGuiCol.Text.toInt())
+        addC("Col_TextDisabled", ImGuiCol.TextDisabled.toInt())
+        addC("Col_WindowBg", ImGuiCol.WindowBg.toInt())
+        addC("Col_ChildBg", ImGuiCol.ChildBg.toInt())
+        addC("Col_PopupBg", ImGuiCol.PopupBg.toInt())
+        addC("Col_Border", ImGuiCol.Border.toInt())
+        addC("Col_BorderShadow", ImGuiCol.BorderShadow.toInt())
+        addC("Col_FrameBg", ImGuiCol.FrameBg.toInt())
+        addC("Col_FrameBgHovered", ImGuiCol.FrameBgHovered.toInt())
+        addC("Col_FrameBgActive", ImGuiCol.FrameBgActive.toInt())
+        addC("Col_TitleBg", ImGuiCol.TitleBg.toInt())
+        addC("Col_TitleBgActive", ImGuiCol.TitleBgActive.toInt())
+        addC("Col_TitleBgCollapsed", ImGuiCol.TitleBgCollapsed.toInt())
+        addC("Col_MenuBarBg", ImGuiCol.MenuBarBg.toInt())
+        addC("Col_ScrollbarBg", ImGuiCol.ScrollbarBg.toInt())
+        addC("Col_ScrollbarGrab", ImGuiCol.ScrollbarGrab.toInt())
+        addC("Col_ScrollbarGrabHovered", ImGuiCol.ScrollbarGrabHovered.toInt())
+        addC("Col_ScrollbarGrabActive", ImGuiCol.ScrollbarGrabActive.toInt())
+        addC("Col_CheckMark", ImGuiCol.CheckMark.toInt())
+        addC("Col_SliderGrab", ImGuiCol.SliderGrab.toInt())
+        addC("Col_SliderGrabActive", ImGuiCol.SliderGrabActive.toInt())
+        addC("Col_Button", ImGuiCol.Button.toInt())
+        addC("Col_ButtonHovered", ImGuiCol.ButtonHovered.toInt())
+        addC("Col_ButtonActive", ImGuiCol.ButtonActive.toInt())
+        addC("Col_Header", ImGuiCol.Header.toInt())
+        addC("Col_HeaderHovered", ImGuiCol.HeaderHovered.toInt())
+        addC("Col_HeaderActive", ImGuiCol.HeaderActive.toInt())
+        addC("Col_Separator", ImGuiCol.Separator.toInt())
+        addC("Col_SeparatorHovered", ImGuiCol.SeparatorHovered.toInt())
+        addC("Col_SeparatorActive", ImGuiCol.SeparatorActive.toInt())
+        addC("Col_ResizeGrip", ImGuiCol.ResizeGrip.toInt())
+        addC("Col_ResizeGripHovered", ImGuiCol.ResizeGripHovered.toInt())
+        addC("Col_ResizeGripActive", ImGuiCol.ResizeGripActive.toInt())
+        addC("Col_Tab", ImGuiCol.Tab.toInt())
+        addC("Col_TabHovered", ImGuiCol.TabHovered.toInt())
+        addC("Col_TabActive", ImGuiCol.TabActive.toInt())
+        addC("Col_TabUnfocused", ImGuiCol.TabUnfocused.toInt())
+        addC("Col_TabUnfocusedActive", ImGuiCol.TabUnfocusedActive.toInt())
+        addC("Col_PlotLines", ImGuiCol.PlotLines.toInt())
+        addC("Col_PlotLinesHovered", ImGuiCol.PlotLinesHovered.toInt())
+        addC("Col_PlotHistogram", ImGuiCol.PlotHistogram.toInt())
+        addC("Col_PlotHistogramHovered", ImGuiCol.PlotHistogramHovered.toInt())
+        addC("Col_TableHeaderBg", ImGuiCol.TableHeaderBg.toInt())
+        addC("Col_TableBorderStrong", ImGuiCol.TableBorderStrong.toInt())
+        addC("Col_TableBorderLight", ImGuiCol.TableBorderLight.toInt())
+        addC("Col_TableRowBg", ImGuiCol.TableRowBg.toInt())
+        addC("Col_TableRowBgAlt", ImGuiCol.TableRowBgAlt.toInt())
+        addC("Col_TextSelectedBg", ImGuiCol.TextSelectedBg.toInt())
+        addC("Col_DragDropTarget", ImGuiCol.DragDropTarget.toInt())
+        addC("Col_NavHighlight", ImGuiCol.NavHighlight.toInt())
+        addC("Col_NavWindowingHighlight", ImGuiCol.NavWindowingHighlight.toInt())
+        addC("Col_NavWindowingDimBg", ImGuiCol.NavWindowingDimBg.toInt())
+        addC("Col_ModalWindowDimBg", ImGuiCol.ModalWindowDimBg.toInt())
 
-        // Lists
-        library.set("listBox", listBox())
+        // Style Vars
+        addC("StyleVar_Alpha", ImGuiStyleVar.Alpha.toInt())
+        addC("StyleVar_DisabledAlpha", ImGuiStyleVar.DisabledAlpha.toInt())
+        addC("StyleVar_WindowPadding", ImGuiStyleVar.WindowPadding.toInt())
+        addC("StyleVar_WindowRounding", ImGuiStyleVar.WindowRounding.toInt())
+        addC("StyleVar_WindowBorderSize", ImGuiStyleVar.WindowBorderSize.toInt())
+        addC("StyleVar_WindowMinSize", ImGuiStyleVar.WindowMinSize.toInt())
+        addC("StyleVar_WindowTitleAlign", ImGuiStyleVar.WindowTitleAlign.toInt())
+        addC("StyleVar_ChildRounding", ImGuiStyleVar.ChildRounding.toInt())
+        addC("StyleVar_ChildBorderSize", ImGuiStyleVar.ChildBorderSize.toInt())
+        addC("StyleVar_PopupRounding", ImGuiStyleVar.PopupRounding.toInt())
+        addC("StyleVar_PopupBorderSize", ImGuiStyleVar.PopupBorderSize.toInt())
+        addC("StyleVar_FramePadding", ImGuiStyleVar.FramePadding.toInt())
+        addC("StyleVar_FrameRounding", ImGuiStyleVar.FrameRounding.toInt())
+        addC("StyleVar_FrameBorderSize", ImGuiStyleVar.FrameBorderSize.toInt())
+        addC("StyleVar_ItemSpacing", ImGuiStyleVar.ItemSpacing.toInt())
+        addC("StyleVar_ItemInnerSpacing", ImGuiStyleVar.ItemInnerSpacing.toInt())
+        addC("StyleVar_IndentSpacing", ImGuiStyleVar.IndentSpacing.toInt())
+        addC("StyleVar_CellPadding", ImGuiStyleVar.CellPadding.toInt())
+        addC("StyleVar_ScrollbarSize", ImGuiStyleVar.ScrollbarSize.toInt())
+        addC("StyleVar_ScrollbarRounding", ImGuiStyleVar.ScrollbarRounding.toInt())
+        addC("StyleVar_GrabMinSize", ImGuiStyleVar.GrabMinSize.toInt())
+        addC("StyleVar_GrabRounding", ImGuiStyleVar.GrabRounding.toInt())
+        addC("StyleVar_TabRounding", ImGuiStyleVar.TabRounding.toInt())
+        addC("StyleVar_ButtonTextAlign", ImGuiStyleVar.ButtonTextAlign.toInt())
+        addC("StyleVar_SelectableTextAlign", ImGuiStyleVar.SelectableTextAlign.toInt())
 
-        // Tooltips
-        library.set("setTooltip", setTooltip())
-        library.set("beginTooltip", beginTooltip())
-        library.set("endTooltip", endTooltip())
+        // Table Flags
+        addC("TableFlags_BordersInner", ImGuiTableFlags.BordersInner.toInt())
+        addC("TableFlags_BordersInnerH", ImGuiTableFlags.BordersInnerH.toInt())
+        addC("TableFlags_BordersInnerV", ImGuiTableFlags.BordersInnerV.toInt())
+        addC("TableFlags_Resizable", ImGuiTableFlags.Resizable.toInt())
 
-        // Popups
-        library.set("beginPopup", beginPopup())
-        library.set("beginPopupModal", beginPopupModal())
-        library.set("endPopup", endPopup())
-        library.set("openPopup", openPopup())
-        library.set("closeCurrentPopup", closeCurrentPopup())
+        // Привязываем таблицу constants к основной таблице (индекс -2)
+        L.setField(-2, "constants")
 
-        // Menus
-        library.set("beginMenuBar", beginMenuBar())
-        library.set("endMenuBar", endMenuBar())
-        library.set("beginMainMenuBar", beginMainMenuBar())
-        library.set("endMainMenuBar", endMainMenuBar())
-        library.set("beginMenu", beginMenu())
-        library.set("endMenu", endMenu())
-        library.set("menuItem", menuItem())
+        // --- DrawList (dl) ---
+        L.newTable()
+        L.push(JFunction { renderDLLine(it) }); L.setField(-2, "renderLine")
+        L.push(JFunction { renderDLPolygon(it) }); L.setField(-2, "renderPolygon")
+        L.push(JFunction { renderDLImage(it) }); L.setField(-2, "renderImage")
+        L.push(JFunction { renderDLText(it) }); L.setField(-2, "renderText")
+        L.setField(-2, "dl")
 
-        // Tabs
-        library.set("beginTabBar", beginTabBar())
-        library.set("endTabBar", endTabBar())
-        library.set("beginTabItem", beginTabItem())
-        library.set("endTabItem", endTabItem())
-
-        // Child windows
-        library.set("beginChild", beginChild())
-        library.set("endChild", endChild())
-
-        // Style
-        library.set("pushStyleColor", pushStyleColor())
-        library.set("popStyleColor", popStyleColor())
-        library.set("pushStyleVar", pushStyleVar())
-        library.set("popStyleVar", popStyleVar())
-
-        // Font
-        library.set("pushFont", pushFont())
-        library.set("popFont", popFont())
-
-        // ID stack
-        library.set("pushID", pushID())
-        library.set("popID", popID())
-
-        // Utilities
-        library.set("setNextItemWidth", setNextItemWidth())
-        library.set("isItemHovered", isItemHovered())
-        library.set("isItemClicked", isItemClicked())
-        library.set("isItemActive", isItemActive())
-        library.set("isWindowAppearing", isWindowAppearing())
-        library.set("isWindowCollapsed", isWindowCollapsed())
-        library.set("isWindowFocused", isWindowFocused())
-        library.set("isWindowHovered", isWindowHovered())
-
-        // Window manipulation
-        library.set("setNextWindowSize", setNextWindowSize())
-        library.set("setNextWindowPos", setNextWindowPos())
-        library.set("setNextWindowCollapsed", setNextWindowCollapsed())
-        library.set("setNextWindowFocus", setNextWindowFocus())
-
-        // State queries
-        library.set("getWindowSize", getWindowSize())
-        library.set("getWindowPos", getWindowPos())
-        library.set("getWindowWidth", getWindowWidth())
-        library.set("getWindowHeight", getWindowHeight())
-
-        // Table
-        library.set("beginTable", beginTable())
-        library.set("tableSetupColumn", tableSetupColumn())
-        library.set("tableHeadersRow", tableHeadersRow())
-        library.set("tableNextRow", tableNextRow())
-        library.set("tableSetColumnIndex", tableSetColumnIndex())
-        library.set("endTable", endTable())
-
-        // Sliders
-        library.set("sliderFloat", sliderFloat())
-        library.set("sliderInt", sliderInt())
-        library.set("vSliderFloat", vSliderFloat())
-        library.set("vSliderInt", vSliderInt())
-
-        // Constants
-        val constants = LuaTable()
-        constants.set("WindowFlags_None", ImGuiWindowFlags.None.toInt())
-        constants.set("WindowFlags_NoTitleBar", ImGuiWindowFlags.NoTitleBar.toInt())
-        constants.set("WindowFlags_NoResize", ImGuiWindowFlags.NoResize.toInt())
-        constants.set("WindowFlags_NoMove", ImGuiWindowFlags.NoMove.toInt())
-        constants.set("WindowFlags_NoScrollbar", ImGuiWindowFlags.NoScrollbar.toInt())
-        constants.set("WindowFlags_NoCollapse", ImGuiWindowFlags.NoCollapse.toInt())
-
-        constants.set("Cond_Always", ImGuiCond.Always.toInt())
-        constants.set("Cond_Once", ImGuiCond.Once.toInt())
-        constants.set("Cond_FirstUseEver", ImGuiCond.FirstUseEver.toInt())
-
-        constants.set("ColorEditFlags_None", ImGuiColorEditFlags.None.toInt())
-        constants.set("ColorEditFlags_NoAlpha", ImGuiColorEditFlags.NoAlpha.toInt())
-        constants.set("ColorEditFlags_NoPicker", ImGuiColorEditFlags.NoPicker.toInt())
-
-        constants.set("Col_Text", ImGuiCol.Text.toInt())
-        constants.set("Col_TextDisabled", ImGuiCol.TextDisabled.toInt())
-        constants.set("Col_WindowBg", ImGuiCol.WindowBg.toInt())
-        constants.set("Col_ChildBg", ImGuiCol.ChildBg.toInt())
-        constants.set("Col_PopupBg", ImGuiCol.PopupBg.toInt())
-        constants.set("Col_Border", ImGuiCol.Border.toInt())
-        constants.set("Col_BorderShadow", ImGuiCol.BorderShadow.toInt())
-        constants.set("Col_FrameBg", ImGuiCol.FrameBg.toInt())
-        constants.set("Col_FrameBgHovered", ImGuiCol.FrameBgHovered.toInt())
-        constants.set("Col_FrameBgActive", ImGuiCol.FrameBgActive.toInt())
-        constants.set("Col_TitleBg", ImGuiCol.TitleBg.toInt())
-        constants.set("Col_TitleBgActive", ImGuiCol.TitleBgActive.toInt())
-        constants.set("Col_TitleBgCollapsed", ImGuiCol.TitleBgCollapsed.toInt())
-        constants.set("Col_MenuBarBg", ImGuiCol.MenuBarBg.toInt())
-        constants.set("Col_ScrollbarBg", ImGuiCol.ScrollbarBg.toInt())
-        constants.set("Col_ScrollbarGrab", ImGuiCol.ScrollbarGrab.toInt())
-        constants.set("Col_ScrollbarGrabHovered", ImGuiCol.ScrollbarGrabHovered.toInt())
-        constants.set("Col_ScrollbarGrabActive", ImGuiCol.ScrollbarGrabActive.toInt())
-        constants.set("Col_CheckMark", ImGuiCol.CheckMark.toInt())
-        constants.set("Col_SliderGrab", ImGuiCol.SliderGrab.toInt())
-        constants.set("Col_SliderGrabActive", ImGuiCol.SliderGrabActive.toInt())
-        constants.set("Col_Button", ImGuiCol.Button.toInt())
-        constants.set("Col_ButtonHovered", ImGuiCol.ButtonHovered.toInt())
-        constants.set("Col_ButtonActive", ImGuiCol.ButtonActive.toInt())
-        constants.set("Col_Header", ImGuiCol.Header.toInt())
-        constants.set("Col_HeaderHovered", ImGuiCol.HeaderHovered.toInt())
-        constants.set("Col_HeaderActive", ImGuiCol.HeaderActive.toInt())
-        constants.set("Col_Separator", ImGuiCol.Separator.toInt())
-        constants.set("Col_SeparatorHovered", ImGuiCol.SeparatorHovered.toInt())
-        constants.set("Col_SeparatorActive", ImGuiCol.SeparatorActive.toInt())
-        constants.set("Col_ResizeGrip", ImGuiCol.ResizeGrip.toInt())
-        constants.set("Col_ResizeGripHovered", ImGuiCol.ResizeGripHovered.toInt())
-        constants.set("Col_ResizeGripActive", ImGuiCol.ResizeGripActive.toInt())
-        constants.set("Col_Tab", ImGuiCol.Tab.toInt())
-        constants.set("Col_TabHovered", ImGuiCol.TabHovered.toInt())
-        constants.set("Col_TabActive", ImGuiCol.TabActive.toInt())
-        constants.set("Col_TabUnfocused", ImGuiCol.TabUnfocused.toInt())
-        constants.set("Col_TabUnfocusedActive", ImGuiCol.TabUnfocusedActive.toInt())
-        constants.set("Col_PlotLines", ImGuiCol.PlotLines.toInt())
-        constants.set("Col_PlotLinesHovered", ImGuiCol.PlotLinesHovered.toInt())
-        constants.set("Col_PlotHistogram", ImGuiCol.PlotHistogram.toInt())
-        constants.set("Col_PlotHistogramHovered", ImGuiCol.PlotHistogramHovered.toInt())
-        constants.set("Col_TableHeaderBg", ImGuiCol.TableHeaderBg.toInt())
-        constants.set("Col_TableBorderStrong", ImGuiCol.TableBorderStrong.toInt())
-        constants.set("Col_TableBorderLight", ImGuiCol.TableBorderLight.toInt())
-        constants.set("Col_TableRowBg", ImGuiCol.TableRowBg.toInt())
-        constants.set("Col_TableRowBgAlt", ImGuiCol.TableRowBgAlt.toInt())
-        constants.set("Col_TextSelectedBg", ImGuiCol.TextSelectedBg.toInt())
-        constants.set("Col_DragDropTarget", ImGuiCol.DragDropTarget.toInt())
-        constants.set("Col_NavHighlight", ImGuiCol.NavHighlight.toInt())
-        constants.set("Col_NavWindowingHighlight", ImGuiCol.NavWindowingHighlight.toInt())
-        constants.set("Col_NavWindowingDimBg", ImGuiCol.NavWindowingDimBg.toInt())
-        constants.set("Col_ModalWindowDimBg", ImGuiCol.ModalWindowDimBg.toInt())
-
-        // Style vars
-        constants.set("StyleVar_Alpha", ImGuiStyleVar.Alpha.toInt())
-        constants.set("StyleVar_DisabledAlpha", ImGuiStyleVar.DisabledAlpha.toInt())
-        constants.set("StyleVar_WindowPadding", ImGuiStyleVar.WindowPadding.toInt())
-        constants.set("StyleVar_WindowRounding", ImGuiStyleVar.WindowRounding.toInt())
-        constants.set("StyleVar_WindowBorderSize", ImGuiStyleVar.WindowBorderSize.toInt())
-        constants.set("StyleVar_WindowMinSize", ImGuiStyleVar.WindowMinSize.toInt())
-        constants.set("StyleVar_WindowTitleAlign", ImGuiStyleVar.WindowTitleAlign.toInt())
-        constants.set("StyleVar_ChildRounding", ImGuiStyleVar.ChildRounding.toInt())
-        constants.set("StyleVar_ChildBorderSize", ImGuiStyleVar.ChildBorderSize.toInt())
-        constants.set("StyleVar_PopupRounding", ImGuiStyleVar.PopupRounding.toInt())
-        constants.set("StyleVar_PopupBorderSize", ImGuiStyleVar.PopupBorderSize.toInt())
-        constants.set("StyleVar_FramePadding", ImGuiStyleVar.FramePadding.toInt())
-        constants.set("StyleVar_FrameRounding", ImGuiStyleVar.FrameRounding.toInt())
-        constants.set("StyleVar_FrameBorderSize", ImGuiStyleVar.FrameBorderSize.toInt())
-        constants.set("StyleVar_ItemSpacing", ImGuiStyleVar.ItemSpacing.toInt())
-        constants.set("StyleVar_ItemInnerSpacing", ImGuiStyleVar.ItemInnerSpacing.toInt())
-        constants.set("StyleVar_IndentSpacing", ImGuiStyleVar.IndentSpacing.toInt())
-        constants.set("StyleVar_CellPadding", ImGuiStyleVar.CellPadding.toInt())
-        constants.set("StyleVar_ScrollbarSize", ImGuiStyleVar.ScrollbarSize.toInt())
-        constants.set("StyleVar_ScrollbarRounding", ImGuiStyleVar.ScrollbarRounding.toInt())
-        constants.set("StyleVar_GrabMinSize", ImGuiStyleVar.GrabMinSize.toInt())
-        constants.set("StyleVar_GrabRounding", ImGuiStyleVar.GrabRounding.toInt())
-        constants.set("StyleVar_TabRounding", ImGuiStyleVar.TabRounding.toInt())
-        constants.set("StyleVar_ButtonTextAlign", ImGuiStyleVar.ButtonTextAlign.toInt())
-        constants.set("StyleVar_SelectableTextAlign", ImGuiStyleVar.SelectableTextAlign.toInt())
-
-        constants.set("TableFlags_BordersInner", ImGuiTableFlags.BordersInner.toInt())
-        constants.set("TableFlags_BordersInnerH", ImGuiTableFlags.BordersInnerH.toInt())
-        constants.set("TableFlags_BordersInnerV", ImGuiTableFlags.BordersInnerV.toInt())
-        constants.set("TableFlags_Resizable", ImGuiTableFlags.Resizable.toInt())
-        library.set("constants", constants)
-
-        // Constants
-        val dl = LuaTable()
-        dl.set("renderLine", RenderDLLineFunction())
-        dl.set("renderPolygon", RenderDLPolygonFunction())
-        dl.set("renderImage", RenderDLImageFunction())
-        dl.set("renderText", RenderDLTextFunction())
-        library.set("dl", dl)
-
-        env.set("imgui", library)
-        return library
+        L.setGlobal("imgui")
     }
 
-    private inner class RenderDLTextFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable()) {
-                val x1: Float = if (table.get("x").isnumber()) table.get("x").tofloat() else 0f
-                val y1: Float = if (table.get("y").isnumber()) table.get("y").tofloat() else 0f
+    fun addC(name: String, value: Int) {
+        L.push(value.toDouble())
+        L.setField(-2, name)
+    }
 
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
+    private fun setFunc(name: String, func: (Lua) -> Int) {
+        L.push(JFunction { func(it) })
+        L.setField(-2, name)
+    }
 
-                val text: String = if (table.get("text").isstring()) table.get("text").tojstring() else ""
+    private fun renderDLText(l: Lua): Int {
+        if (l.isTable(1)) {
+            val t = 1 // Индекс таблицы-аргумента в стеке
 
-                // создаём запрос для отрисовки линии
-                queue.queue(DrawCommand(DrawType.TEXT, mapOf(
-                    "x1" to x1, "y1" to y1,
-                    "color" to queue.makeImGuiColor(red, green, blue, alpha),
-                    "text" to text
-                )))
-                return TRUE
-            }
-            return NIL
+            l.getField(t, "x"); val x1 = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
+            l.getField(t, "y"); val y1 = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
+
+            l.getField(t, "red"); val r = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
+            l.getField(t, "green"); val g = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
+            l.getField(t, "blue"); val b = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
+            l.getField(t, "alpha"); val a = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
+
+            l.getField(t, "text"); val text = l.toString(-1) ?: ""; l.pop(1)
+
+            queue.queue(DrawCommand(DrawType.TEXT, mapOf(
+                "x1" to x1, "y1" to y1,
+                "color" to queue.makeImGuiColor(r, g, b, a),
+                "text" to text
+            )))
+            l.push(true)
+            return 1
         }
+        l.pushNil()
+        return 1
     }
 
-    private inner class RenderDLImageFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable()) {
-                val textureID: Long = if (table.get("textureID").isnumber()) table.get("textureID").tolong() else 0
+    private fun renderDLImage(l: Lua): Int {
+        if (l.isTable(1)) {
+            val t = 1
 
-                val pMinX: Float = if (table.get("x").isnumber()) table.get("x").tofloat() else 0f
-                val pMinY: Float = if (table.get("y").isnumber()) table.get("y").tofloat() else 0f
-                val pMaxX: Float = if (table.get("width").isnumber()) table.get("width").tofloat() else 0f
-                val pMaxY: Float = if (table.get("height").isnumber()) table.get("height").tofloat() else 0f
+            l.getField(t, "textureID"); val textureID = if (l.isNumber(-1)) l.toNumber(-1).toLong() else 0L; l.pop(1)
 
-                val uvMinX: Float = if (table.get("uvMinX").isnumber()) table.get("uvMinX").tofloat() else 0f
-                val uvMinY: Float = if (table.get("uvMinY").isnumber()) table.get("uvMinY").tofloat() else 0f
-                val uvMaxX: Float = if (table.get("uvMaxX").isnumber()) table.get("uvMaxX").tofloat() else 1f
-                val uvMaxY: Float = if (table.get("uvMaxY").isnumber()) table.get("uvMaxY").tofloat() else 1f
+            l.getField(t, "x"); val pMinX = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
+            l.getField(t, "y"); val pMinY = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
+            l.getField(t, "width"); val pMaxX = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
+            l.getField(t, "height"); val pMaxY = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
 
-                // создаём запрос для отрисовки линии
-                queue.queue(DrawCommand(DrawType.IMAGE, mapOf(
-                    "textureID" to textureID,
+            l.getField(t, "uvMinX"); val uvMinX = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
+            l.getField(t, "uvMinY"); val uvMinY = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
+            l.getField(t, "uvMaxX"); val uvMaxX = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
+            l.getField(t, "uvMaxY"); val uvMaxY = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
 
-                    "pMinX" to pMinX, "pMinY" to pMinY,
-                    "pMaxX" to pMaxX, "pMaxY" to pMaxY,
-
-                    "uvMinX" to uvMinX, "uvMinY" to uvMinY,
-                    "uvMaxX" to uvMaxX, "uvMaxY" to uvMaxY
-                )))
-                return TRUE
-            }
-            return NIL
+            queue.queue(DrawCommand(DrawType.IMAGE, mapOf(
+                "textureID" to textureID,
+                "pMinX" to pMinX, "pMinY" to pMinY,
+                "pMaxX" to pMaxX, "pMaxY" to pMaxY,
+                "uvMinX" to uvMinX, "uvMinY" to uvMinY,
+                "uvMaxX" to uvMaxX, "uvMaxY" to uvMaxY
+            )))
+            l.push(true)
+            return 1
         }
+        l.pushNil()
+        return 1
     }
 
-    private inner class RenderDLLineFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable()) {
-                val x1: Float = if (table.get("x1").isnumber()) table.get("x1").tofloat() else 0f
-                val y1: Float = if (table.get("y1").isnumber()) table.get("y1").tofloat() else 0f
-                val x2: Float = if (table.get("x2").isnumber()) table.get("x2").tofloat() else 0f
-                val y2: Float = if (table.get("y2").isnumber()) table.get("y2").tofloat() else 0f
+    private fun renderDLLine(l: Lua): Int {
+        if (l.isTable(1)) {
+            val t = 1
 
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
+            l.getField(t, "x1"); val x1 = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
+            l.getField(t, "y1"); val y1 = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
+            l.getField(t, "x2"); val x2 = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
+            l.getField(t, "y2"); val y2 = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
 
-                val thickness: Float = if (table.get("thickness").isnumber()) table.get("thickness").tofloat() else 1f
+            l.getField(t, "red"); val r = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
+            l.getField(t, "green"); val g = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
+            l.getField(t, "blue"); val b = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
+            l.getField(t, "alpha"); val a = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
 
-                // создаём запрос для отрисовки линии
-                queue.queue(DrawCommand(DrawType.LINE, mapOf(
-                    "x1" to x1, "y1" to y1, "x2" to x2, "y2" to y2,
-                    "color" to queue.makeImGuiColor(red, green, blue, alpha),
-                    "thickness" to thickness
-                )))
-                return TRUE
-            }
-            return NIL
+            l.getField(t, "thickness"); val thickness = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
+
+            queue.queue(DrawCommand(DrawType.LINE, mapOf(
+                "x1" to x1, "y1" to y1, "x2" to x2, "y2" to y2,
+                "color" to queue.makeImGuiColor(r, g, b, a),
+                "thickness" to thickness
+            )))
+            l.push(true)
+            return 1
         }
+        l.pushNil()
+        return 1
     }
 
-    private inner class RenderDLPolygonFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable()) {
-                val pointsTable = table.get("points")
-                if (pointsTable.istable()) {
-                    val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                    val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                    val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                    val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
+    private fun renderDLPolygon(l: Lua): Int {
+        if (l.isTable(1)) {
+            val t = 1
+            l.getField(t, "points")
+            if (l.isTable(-1)) {
+                val pointsIdx = l.getTop() // Индекс таблицы точек
 
-                    val points = mutableListOf<Pair<Float, Float>>()
-                    var i = 1
-                    while (true) {
-                        val pointTable = pointsTable.get(i)
-                        if (pointTable.istable()) {
-                            val x = if (pointTable.get("x").isnumber()) pointTable.get("x").tofloat() else 0f
-                            val y = if (pointTable.get("y").isnumber()) pointTable.get("y").tofloat() else 0f
-                            points.add(x to y)
-                            i++
-                        } else {
-                            break
-                        }
+                l.getField(t, "red"); val r = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
+                l.getField(t, "green"); val g = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
+                l.getField(t, "blue"); val b = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
+                l.getField(t, "alpha"); val a = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
+
+                val points = mutableListOf<Pair<Float, Float>>()
+                val len = l.rawLength(pointsIdx)
+
+                for (i in 1..len) {
+                    l.rawGetI(pointsIdx, i) // Получаем таблицу {x=..., y=...}
+                    if (l.isTable(-1)) {
+                        l.getField(-1, "x"); val px = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
+                        l.getField(-1, "y"); val py = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
+                        points.add(px to py)
                     }
-
-                    if (points.size >= 3) {
-                        queue.queue(
-                            DrawCommand(
-                                DrawType.POLYGON, mapOf(
-                                    "points" to points,
-                                    "color" to queue.makeImGuiColor(red, green, blue, alpha)
-                                )
-                            )
-                        )
-                        return TRUE
-                    }
-                }
-                return FALSE
-            }
-            return NIL
-        }
-    }
-
-    inner class sliderFloat : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val value = floatArrayOf(args.checkdouble(2).toFloat())
-            val min = args.checkdouble(3).toFloat()
-            val max = args.checkdouble(4).toFloat()
-            val format = if (args.narg() > 4) args.checkjstring(5) else "%.3f"
-            val flags = if (args.narg() > 5) args.checkint(6) else 0
-            val changed = ImGui.sliderFloat(label, value, min, max, format, flags)
-            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value[0].toDouble()))
-        }
-    }
-
-    inner class sliderInt : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val value = intArrayOf(args.checkint(2))
-            val min = args.checkint(3)
-            val max = args.checkint(4)
-            val format = if (args.narg() > 4) args.checkjstring(5) else "%d"
-            val flags = if (args.narg() > 5) args.checkint(6) else 0
-            val changed = ImGui.sliderInt(label, value, min, max, format, flags)
-            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value[0]))
-        }
-    }
-
-    inner class vSliderFloat : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val sizeX = args.checkdouble(2).toFloat()
-            val sizeY = args.checkdouble(3).toFloat()
-            val value = floatArrayOf(args.checkdouble(4).toFloat())
-            val min = args.checkdouble(5).toFloat()
-            val max = args.checkdouble(6).toFloat()
-            val format = if (args.narg() > 6) args.checkjstring(7) else "%.3f"
-            val flags = if (args.narg() > 7) args.checkint(8) else 0
-            val changed = ImGui.vSliderFloat(label, sizeX, sizeY, value, min, max, format, flags)
-            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value[0].toDouble()))
-        }
-    }
-
-    inner class vSliderInt : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val sizeX = args.checkdouble(2).toFloat()
-            val sizeY = args.checkdouble(3).toFloat()
-            val value = intArrayOf(args.checkint(4))
-            val min = args.checkint(5)
-            val max = args.checkint(6)
-            val format = if (args.narg() > 6) args.checkjstring(7) else "%d"
-            val flags = if (args.narg() > 7) args.checkint(8) else 0
-            val changed = ImGui.vSliderInt(label, sizeX, sizeY, value, min, max, format, flags)
-            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value[0]))
-        }
-    }
-
-    inner class beginTable : VarArgFunction() {
-        override fun invoke(args: Varargs): LuaValue {
-            val name = args.checkjstring(1)
-            val column = args.checkint(2)
-            val flags = args.checkint(3)
-            ImGui.beginTable(name, column, flags)
-            return LuaValue.NIL
-        }
-    }
-
-    inner class endTable : VarArgFunction() {
-        override fun invoke(args: Varargs): LuaValue {
-            ImGui.endTable()
-
-            return LuaValue.NIL
-        }
-    }
-
-    inner class tableSetColumnIndex : VarArgFunction() {
-        override fun invoke(args: Varargs): LuaValue {
-            val index = args.checkint(1)
-            ImGui.tableSetColumnIndex(index)
-
-            return LuaValue.NIL
-        }
-    }
-
-    inner class tableNextRow : VarArgFunction() {
-        override fun invoke(args: Varargs): LuaValue {
-            ImGui.tableNextRow()
-
-            return LuaValue.NIL
-        }
-    }
-
-    inner class tableHeadersRow : VarArgFunction() {
-        override fun invoke(args: Varargs): LuaValue {
-            ImGui.tableHeadersRow()
-
-            return LuaValue.NIL
-        }
-    }
-
-    inner class tableSetupColumn : VarArgFunction() {
-        override fun invoke(args: Varargs): LuaValue {
-            val name = args.checkjstring(1)
-            ImGui.tableSetupColumn(name)
-
-            return LuaValue.NIL
-        }
-    }
-
-    inner class setNextItemWidth : VarArgFunction() {
-        override fun invoke(args: Varargs): LuaValue {
-            val width = args.checkdouble(1).toFloat()
-
-            return LuaValue.NIL
-        }
-    }
-
-    inner class createImageObject : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return ImGuiTexture(AtomicInteger(0))
-        }
-    }
-
-    inner class image : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            if (args.isvalue(1) && args.isvalue(2) && args.isvalue(3)) {
-                val image = when {
-                    args.arg(1).isuserdata() && args.arg(1).touserdata() is ImGuiTexture -> (args.arg(1).touserdata() as ImGuiTexture).texture.get().toLong()
-                    args.arg(1).isuserdata() && args.arg(1).touserdata() is AtomicInteger -> (args.arg(1).touserdata() as AtomicInteger).get().toLong()
-                    args.arg(1).isnumber() -> args.arg(1).tolong()
-                    else -> null
+                    l.pop(1) // Убираем таблицу точки
                 }
 
-                if (image != null && image > 0) {
-                    if (args.narg() == 7) {
-                        ImGui.image(image, args.arg(2).tofloat(), args.arg(3).tofloat(), args.arg(4).tofloat(), args.arg(5).tofloat(), args.arg(6).tofloat(), args.arg(7).tofloat())
-                    }
-                    else if (args.narg() == 5) {
-                        ImGui.image(image, args.arg(2).tofloat(), args.arg(3).tofloat(), args.arg(4).tofloat(), args.arg(5).tofloat())
-                    }
-                    else {
-                        ImGui.image(image, args.arg(2).tofloat(), args.arg(53).tofloat())
-                    }
-                    return TRUE
+                if (points.size >= 3) {
+                    queue.queue(DrawCommand(DrawType.POLYGON, mapOf(
+                        "points" to points,
+                        "color" to queue.makeImGuiColor(r, g, b, a)
+                    )))
+                    l.pop(1) // Убираем таблицу points
+                    l.push(true)
+                    return 1
                 }
             }
-            return FALSE
+            l.pop(1) // Убираем результат getField("points"), если он там остался
+            l.push(false)
+            return 1
         }
+        l.pushNil()
+        return 1
     }
 
-    inner class pathClear : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.getBackgroundDrawList().pathClear()
-            return LuaValue.TRUE
-        }
+    private fun sliderFloat(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val value = floatArrayOf(l.toNumber(2).toFloat())
+        val min = l.toNumber(3).toFloat()
+        val max = l.toNumber(4).toFloat()
+        val format = if (l.isString(5)) l.toString(5) else "%.3f"
+        val flags = if (l.isNumber(6)) l.toNumber(6).toInt() else 0
+
+        val changed = ImGui.sliderFloat(label, value, min, max, format ?: "%.3f", flags)
+
+        l.push(changed)
+        l.push(value[0].toDouble())
+        return 2 // Возвращаем два значения: changed и новое число
     }
 
-    inner class pathLineTo : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val x = args.checkdouble(1).toFloat()
-            val y = args.checkdouble(2).toFloat()
-            ImGui.getBackgroundDrawList().pathLineTo(x, y)
-            return LuaValue.TRUE
-        }
+    private fun sliderInt(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val value = intArrayOf(l.toNumber(2).toInt())
+        val min = l.toNumber(3).toInt()
+        val max = l.toNumber(4).toInt()
+        val format = if (l.isString(5)) l.toString(5) else "%d"
+        val flags = if (l.isNumber(6)) l.toNumber(6).toInt() else 0
+
+        val changed = ImGui.sliderInt(label, value, min, max, format ?: "%d", flags)
+
+        l.push(changed)
+        l.push(value[0].toDouble())
+        return 2
     }
 
-    inner class pathStroke : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val color = args.checkint(1)
-            val flags = if (args.narg() > 1) args.checkint(2) else 0
-            val thickness = if (args.narg() > 2) args.checkdouble(3).toFloat() else 1.0f
-            ImGui.getBackgroundDrawList().pathStroke(color, flags, thickness)
-            return LuaValue.TRUE
-        }
+    private fun vSliderFloat(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val sizeX = l.toNumber(2).toFloat()
+        val sizeY = l.toNumber(3).toFloat()
+        val value = floatArrayOf(l.toNumber(4).toFloat())
+        val min = l.toNumber(5).toFloat()
+        val max = l.toNumber(6).toFloat()
+        val format = if (l.isString(7)) l.toString(7) else "%.3f"
+        val flags = if (l.isNumber(8)) l.toNumber(8).toInt() else 0
+
+        val changed = ImGui.vSliderFloat(label, sizeX, sizeY, value, min, max, format ?: "%.3f", flags)
+
+        l.push(changed)
+        l.push(value[0].toDouble())
+        return 2
     }
 
-    inner class newFrame : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.newFrame()
-            return LuaValue.TRUE
-        }
+    private fun vSliderInt(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val sizeX = l.toNumber(2).toFloat()
+        val sizeY = l.toNumber(3).toFloat()
+        val value = intArrayOf(l.toNumber(4).toInt())
+        val min = l.toNumber(5).toInt()
+        val max = l.toNumber(6).toInt()
+        val format = if (l.isString(7)) l.toString(7) else "%d"
+        val flags = if (l.isNumber(8)) l.toNumber(8).toInt() else 0
+
+        val changed = ImGui.vSliderInt(label, sizeX, sizeY, value, min, max, format ?: "%d", flags)
+
+        l.push(changed)
+        l.push(value[0].toDouble())
+        return 2
     }
 
-    inner class render : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.render()
-            return LuaValue.TRUE
-        }
+    private fun beginTable(l: Lua): Int {
+        val name = l.toString(1) ?: ""
+        val column = l.toNumber(2).toInt()
+        val flags = l.toNumber(3).toInt()
+        ImGui.beginTable(name, column, flags)
+        return 0
     }
 
-    inner class begin : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val name = args.checkjstring(1)
-            val flags = if (args.narg() > 1) args.checkint(2) else 0
-            val opened = ImGui.begin(name, flags)
-            return LuaValue.valueOf(opened)
-        }
+    private fun endTable(l: Lua): Int {
+        ImGui.endTable()
+        return 0
     }
 
-    inner class endFunc : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.end()
-            return LuaValue.TRUE
-        }
+    private fun tableSetColumnIndex(l: Lua): Int {
+        ImGui.tableSetColumnIndex(l.toNumber(1).toInt())
+        return 0
     }
 
-    inner class text : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.text(args.checkjstring(1))
-            return LuaValue.NIL
-        }
+    private fun tableNextRow(l: Lua): Int {
+        ImGui.tableNextRow()
+        return 0
     }
 
-    inner class textColored : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val r = args.checkdouble(1).toFloat()
-            val g = args.checkdouble(2).toFloat()
-            val b = args.checkdouble(3).toFloat()
-            val a = if (args.narg() > 3) args.checkdouble(4).toFloat() else 1.0f
-            ImGui.textColored(r, g, b, a, args.checkjstring(5))
-            return LuaValue.NIL
-        }
+    private fun tableHeadersRow(l: Lua): Int {
+        ImGui.tableHeadersRow()
+        return 0
     }
 
-    inner class textDisabled : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.textDisabled(args.checkjstring(1))
-            return LuaValue.NIL
-        }
+    private fun tableSetupColumn(l: Lua): Int {
+        ImGui.tableSetupColumn(l.toString(1) ?: "")
+        return 0
     }
 
-    inner class bulletText : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.bulletText(args.checkjstring(1))
-            return LuaValue.NIL
-        }
+    private fun setNextItemWidth(l: Lua): Int {
+        val width = l.toNumber(1).toFloat()
+        // Предполагается вызов ImGui.setNextItemWidth(width)
+        return 0
+    }
+
+    private fun createImageObject(l: Lua): Int {
+        // Возвращаем объект через push() обертки SimpleLuaWrapper
+        l.push(ImGuiTexture(l, AtomicInteger(0)).push())
+        return 1
     }
 
-    inner class button : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val width = if (args.narg() > 1) args.checkdouble(2).toFloat() else 0f
-            val height = if (args.narg() > 2) args.checkdouble(3).toFloat() else 0f
-            val clicked = ImGui.button(label, width, height)
-            return LuaValue.valueOf(clicked)
-        }
+    private fun image(l: Lua): Int {
+        if (!l.isNoneOrNil(1) && !l.isNoneOrNil(2) && !l.isNoneOrNil(3)) {
+            val firstArg = l.toJavaObject(1)
+            val imageId: Long? = when {
+                firstArg is ImGuiTexture -> firstArg.texture.get().toLong()
+                firstArg is AtomicInteger -> firstArg.get().toLong()
+                l.isNumber(1) -> l.toNumber(1).toLong()
+                else -> null
+            }
+
+            if (imageId != null && imageId > 0) {
+                val nArg = l.getTop()
+                when (nArg) {
+                    7 -> ImGui.image(imageId, l.toNumber(2).toFloat(), l.toNumber(3).toFloat(), l.toNumber(4).toFloat(), l.toNumber(5).toFloat(), l.toNumber(6).toFloat(), l.toNumber(7).toFloat())
+                    5 -> ImGui.image(imageId, l.toNumber(2).toFloat(), l.toNumber(3).toFloat(), l.toNumber(4).toFloat(), l.toNumber(5).toFloat())
+                    else -> ImGui.image(imageId, l.toNumber(2).toFloat(), l.toNumber(3).toFloat())
+                }
+                l.push(true)
+                return 1
+            }
+        }
+        l.push(false)
+        return 1
     }
 
-    inner class smallButton : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val clicked = ImGui.smallButton(args.checkjstring(1))
-            return LuaValue.valueOf(clicked)
-        }
+    private fun pathClear(l: Lua): Int {
+        ImGui.getBackgroundDrawList().pathClear()
+        l.push(true)
+        return 1
     }
 
-    inner class arrowButton : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val strId = args.checkjstring(1)
-            val dir = args.checkint(2)
-            val clicked = ImGui.arrowButton(strId, dir)
-            return LuaValue.valueOf(clicked)
-        }
+    private fun pathLineTo(l: Lua): Int {
+        val x = l.toNumber(1).toFloat()
+        val y = l.toNumber(2).toFloat()
+        ImGui.getBackgroundDrawList().pathLineTo(x, y)
+        l.push(true)
+        return 1
     }
 
-    inner class checkbox : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val value = ImBoolean(args.checkboolean(2))
-            val changed = ImGui.checkbox(label, value)
-            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value.get()))
-        }
+    private fun pathStroke(l: Lua): Int {
+        val color = l.toNumber(1).toInt()
+        val flags = if (l.isNumber(2)) l.toNumber(2).toInt() else 0
+        val thickness = if (l.isNumber(3)) l.toNumber(3).toFloat() else 1.0f
+        ImGui.getBackgroundDrawList().pathStroke(color, flags, thickness)
+        l.push(true)
+        return 1
     }
 
-    inner class inputText : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val text = ImString(args.checkjstring(2), 256)
-            val flags = if (args.narg() > 2) args.checkint(3) else 0
-            val changed = ImGui.inputText(label, text, flags)
-            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(text.get()))
-        }
+    // --- Frame Lifecycle ---
+    private fun newFrame(l: Lua): Int {
+        ImGui.newFrame()
+        l.push(true)
+        return 1
     }
 
-    inner class inputTextMultiline : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val text = ImString(args.checkjstring(2), 1024)
-            val width = if (args.narg() > 2) args.checkdouble(3).toFloat() else 0f
-            val height = if (args.narg() > 3) args.checkdouble(4).toFloat() else 0f
-            val flags = if (args.narg() > 4) args.checkint(5) else 0
-            val changed = ImGui.inputTextMultiline(label, text, width, height, flags)
-            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(text.get()))
-        }
+    private fun render(l: Lua): Int {
+        ImGui.render()
+        l.push(true)
+        return 1
     }
 
-    inner class inputInt : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val value = ImInt(args.checkint(2))
-            val step = if (args.narg() > 2) args.checkint(3) else 1
-            val stepFast = if (args.narg() > 3) args.checkint(4) else 100
-            val flags = if (args.narg() > 4) args.checkint(5) else 0
-            val changed = ImGui.inputInt(label, value, step, stepFast, flags)
-            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value.get()))
-        }
+    // --- Windows ---
+    private fun begin(l: Lua): Int {
+        val name = l.toString(1) ?: ""
+        val flags = if (l.isNumber(2)) l.toNumber(2).toInt() else 0
+        val opened = ImGui.begin(name, flags)
+        l.push(opened)
+        return 1
     }
 
-    inner class inputFloat : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val value = ImFloat(args.checkdouble(2).toFloat())
-            val step = if (args.narg() > 2) args.checkdouble(3).toFloat() else 0.0f
-            val stepFast = if (args.narg() > 3) args.checkdouble(4).toFloat() else 0.0f
-            val format = if (args.narg() > 4) args.checkjstring(5) else "%.3f"
-            val flags = if (args.narg() > 5) args.checkint(6) else 0
-            val changed = ImGui.inputFloat(label, value, step, stepFast, format, flags)
-            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value.get().toDouble()))
-        }
+    private fun endFunc(l: Lua): Int {
+        ImGui.end()
+        l.push(true)
+        return 1
     }
 
-    inner class inputDouble : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val value = ImDouble(args.checkdouble(2))
-            val step = if (args.narg() > 2) args.checkdouble(3) else 0.0
-            val stepFast = if (args.narg() > 3) args.checkdouble(4) else 0.0
-            val format = if (args.narg() > 4) args.checkjstring(5) else "%.6f"
-            val flags = if (args.narg() > 5) args.checkint(6) else 0
-            val changed = ImGui.inputDouble(label, value, step, stepFast, format, flags)
-            return LuaValue.varargsOf(LuaValue.valueOf(changed), LuaValue.valueOf(value.get()))
-        }
+    // --- Text ---
+    private fun text(l: Lua): Int {
+        val content = l.toString(1) ?: ""
+        ImGui.text(content)
+        return 0 // NIL в оригинале (ничего не пушим)
     }
 
-    inner class sameLine : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val offsetFromStartX = if (args.narg() > 0) args.checkdouble(1).toFloat() else 0.0f
-            val spacing = if (args.narg() > 1) args.checkdouble(2).toFloat() else -1.0f
-            ImGui.sameLine(offsetFromStartX, spacing)
-            return LuaValue.NIL
-        }
+    private fun textColored(l: Lua): Int {
+        val r = l.toNumber(1).toFloat()
+        val g = l.toNumber(2).toFloat()
+        val b = l.toNumber(3).toFloat()
+        val a = if (l.isNumber(4)) l.toNumber(4).toFloat() else 1.0f
+        val content = l.toString(5) ?: ""
+        ImGui.textColored(r, g, b, a, content)
+        return 0
     }
 
-    inner class newLine : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.newLine()
-            return LuaValue.NIL
-        }
+    private fun textDisabled(l: Lua): Int {
+        val content = l.toString(1) ?: ""
+        ImGui.textDisabled(content)
+        return 0
     }
 
-    inner class spacing : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.spacing()
-            return LuaValue.NIL
-        }
+    private fun bulletText(l: Lua): Int {
+        val content = l.toString(1) ?: ""
+        ImGui.bulletText(content)
+        return 0
     }
 
-    inner class separator : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.separator()
-            return LuaValue.NIL
-        }
+    // --- Buttons ---
+    private fun button(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val width = if (l.isNumber(2)) l.toNumber(2).toFloat() else 0f
+        val height = if (l.isNumber(3)) l.toNumber(3).toFloat() else 0f
+        val clicked = ImGui.button(label, width, height)
+        l.push(clicked)
+        return 1
     }
 
-    inner class beginGroup : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.beginGroup()
-            return LuaValue.NIL
-        }
+    private fun smallButton(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val clicked = ImGui.smallButton(label)
+        l.push(clicked)
+        return 1
     }
 
-    inner class endGroup : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.endGroup()
-            return LuaValue.NIL
-        }
+    private fun arrowButton(l: Lua): Int {
+        val strId = l.toString(1) ?: ""
+        val dir = l.toNumber(2).toInt()
+        val clicked = ImGui.arrowButton(strId, dir)
+        l.push(clicked)
+        return 1
     }
 
-    inner class indent : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val indentWidth = if (args.narg() > 0) args.checkdouble(1).toFloat() else 0.0f
-            ImGui.indent(indentWidth)
-            return LuaValue.NIL
-        }
+    private fun checkbox(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val value = ImBoolean(l.toBoolean(2))
+        val changed = ImGui.checkbox(label, value)
+
+        l.push(changed)
+        l.push(value.get())
+        return 2 // Возвращаем (changed, current_value)
     }
 
-    inner class unindent : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val indentWidth = if (args.narg() > 0) args.checkdouble(1).toFloat() else 0.0f
-            ImGui.unindent(indentWidth)
-            return LuaValue.NIL
-        }
+    private fun inputText(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val initialText = l.toString(2) ?: ""
+        val text = ImString(initialText, 256)
+        val flags = if (l.isNumber(3)) l.toNumber(3).toInt() else 0
+
+        val changed = ImGui.inputText(label, text, flags)
+
+        l.push(changed)
+        l.push(text.get())
+        return 2
     }
 
-    inner class setCursorPos : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val x = args.checkdouble(1).toFloat()
-            val y = args.checkdouble(2).toFloat()
-            ImGui.setCursorPos(x, y)
-            return LuaValue.NIL
-        }
+    private fun inputTextMultiline(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val initialText = l.toString(2) ?: ""
+        val text = ImString(initialText, 1024)
+        val width = if (l.isNumber(3)) l.toNumber(3).toFloat() else 0f
+        val height = if (l.isNumber(4)) l.toNumber(4).toFloat() else 0f
+        val flags = if (l.isNumber(5)) l.toNumber(5).toInt() else 0
+
+        val changed = ImGui.inputTextMultiline(label, text, width, height, flags)
+
+        l.push(changed)
+        l.push(text.get())
+        return 2
     }
 
-    inner class getCursorPos : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val pos = ImGui.getCursorPos()
-            return LuaValue.varargsOf(LuaValue.valueOf(pos.x.toDouble()), LuaValue.valueOf(pos.y.toDouble()))
-        }
+    private fun inputInt(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val value = ImInt(l.toNumber(2).toInt())
+        val step = if (l.isNumber(3)) l.toNumber(3).toInt() else 1
+        val stepFast = if (l.isNumber(4)) l.toNumber(4).toInt() else 100
+        val flags = if (l.isNumber(5)) l.toNumber(5).toInt() else 0
+
+        val changed = ImGui.inputInt(label, value, step, stepFast, flags)
+
+        l.push(changed)
+        l.push(value.get().toDouble())
+        return 2
     }
 
-    inner class getCursorScreenPos : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val pos = ImGui.getCursorScreenPos()
-            return LuaValue.varargsOf(LuaValue.valueOf(pos.x.toDouble()), LuaValue.valueOf(pos.y.toDouble()))
-        }
+    private fun inputFloat(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val value = ImFloat(l.toNumber(2).toFloat())
+        val step = if (l.isNumber(3)) l.toNumber(3).toFloat() else 0.0f
+        val stepFast = if (l.isNumber(4)) l.toNumber(4).toFloat() else 0.0f
+        val format = if (l.isString(5)) l.toString(5) else "%.3f"
+        val flags = if (l.isNumber(6)) l.toNumber(6).toInt() else 0
+
+        val changed = ImGui.inputFloat(label, value, step, stepFast, format ?: "%.3f", flags)
+
+        l.push(changed)
+        l.push(value.get().toDouble())
+        return 2
     }
 
-    inner class treeNode : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val opened = ImGui.treeNode(args.checkjstring(1))
-            return LuaValue.valueOf(opened)
-        }
+    private fun inputDouble(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val value = ImDouble(l.toNumber(2))
+        val step = if (l.isNumber(3)) l.toNumber(3) else 0.0
+        val stepFast = if (l.isNumber(4)) l.toNumber(4) else 0.0
+        val format = if (l.isString(5)) l.toString(5) else "%.6f"
+        val flags = if (l.isNumber(6)) l.toNumber(6).toInt() else 0
+
+        val changed = ImGui.inputDouble(label, value, step, stepFast, format ?: "%.6f", flags)
+
+        l.push(changed)
+        l.push(value.get())
+        return 2
     }
 
-    inner class treeNodeEx : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val flags = if (args.narg() > 1) args.checkint(2) else 0
-            val opened = ImGui.treeNodeEx(label, flags)
-            return LuaValue.valueOf(opened)
-        }
+    private fun sameLine(l: Lua): Int {
+        val offset = if (l.isNumber(1)) l.toNumber(1).toFloat() else 0.0f
+        val spacing = if (l.isNumber(2)) l.toNumber(2).toFloat() else -1.0f
+        ImGui.sameLine(offset, spacing)
+        return 0
     }
 
-    inner class treePop : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.treePop()
-            return LuaValue.NIL
-        }
+    private fun newLine(l: Lua): Int {
+        ImGui.newLine()
+        return 0
     }
 
-    inner class collapsingHeader : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val flags = if (args.narg() > 1) args.checkint(2) else 0
-            val opened = ImGui.collapsingHeader(label, flags)
-            return LuaValue.valueOf(opened)
-        }
+    private fun spacing(l: Lua): Int {
+        ImGui.spacing()
+        return 0
     }
 
-    inner class selectable : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val selected = if (args.narg() > 1) args.checkboolean(2) else false
-            val flags = if (args.narg() > 2) args.checkint(3) else 0
-            val width = if (args.narg() > 3) args.checkdouble(4).toFloat() else 0f
-            val height = if (args.narg() > 4) args.checkdouble(5).toFloat() else 0f
-            val clicked = ImGui.selectable(label, selected, flags, width, height)
-            return LuaValue.varargsOf(LuaValue.valueOf(clicked), LuaValue.valueOf(selected))
-        }
+    private fun separator(l: Lua): Int {
+        ImGui.separator()
+        return 0
     }
 
-    inner class listBox : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val currentItemRef = ImInt(args.checkint(2))
-            val items = args.checktable(3)
-            val itemsCount = items.length().toInt()
-            val itemsArray = Array(itemsCount) { i -> items.get(i + 1).checkjstring() }
-            val heightInItems = if (args.narg() > 3) args.checkint(4) else -1
-            ImGui.listBox(label, currentItemRef, itemsArray, heightInItems)
-            return LuaValue.valueOf(currentItemRef.get())
-        }
+    private fun beginGroup(l: Lua): Int {
+        ImGui.beginGroup()
+        return 0
     }
 
-    inner class setTooltip : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.setTooltip(args.checkjstring(1))
-            return LuaValue.NIL
-        }
+    private fun endGroup(l: Lua): Int {
+        ImGui.endGroup()
+        return 0
     }
 
-    inner class beginTooltip : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.beginTooltip()
-            return LuaValue.NIL
-        }
+    private fun indent(l: Lua): Int {
+        val width = if (l.isNumber(1)) l.toNumber(1).toFloat() else 0.0f
+        ImGui.indent(width)
+        return 0
     }
 
-    inner class endTooltip : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.endTooltip()
-            return LuaValue.NIL
-        }
+    private fun unindent(l: Lua): Int {
+        val width = if (l.isNumber(1)) l.toNumber(1).toFloat() else 0.0f
+        ImGui.unindent(width)
+        return 0
     }
 
-    inner class beginPopup : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val strId = args.checkjstring(1)
-            val flags = if (args.narg() > 1) args.checkint(2) else 0
-            val opened = ImGui.beginPopup(strId, flags)
-            return LuaValue.valueOf(opened)
-        }
+    private fun setCursorPos(l: Lua): Int {
+        val x = l.toNumber(1).toFloat()
+        val y = l.toNumber(2).toFloat()
+        ImGui.setCursorPos(x, y)
+        return 0
     }
 
-    inner class beginPopupModal : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val name = args.checkjstring(1)
-            val flags = if (args.narg() > 1) args.checkint(2) else 0
-            val opened = ImGui.beginPopupModal(name, flags)
-            return LuaValue.valueOf(opened)
-        }
+    private fun getCursorPos(l: Lua): Int {
+        val pos = ImGui.getCursorPos()
+        l.push(pos.x.toDouble())
+        l.push(pos.y.toDouble())
+        return 2
     }
 
-    inner class endPopup : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.endPopup()
-            return LuaValue.NIL
-        }
+    private fun getCursorScreenPos(l: Lua): Int {
+        val pos = ImGui.getCursorScreenPos()
+        l.push(pos.x.toDouble())
+        l.push(pos.y.toDouble())
+        return 2
     }
 
-    inner class openPopup : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val strId = args.checkjstring(1)
-            val flags = if (args.narg() > 1) args.checkint(2) else 0
-            ImGui.openPopup(strId, flags)
-            return LuaValue.NIL
-        }
+    private fun treeNode(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        l.push(ImGui.treeNode(label))
+        return 1
     }
 
-    inner class closeCurrentPopup : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.closeCurrentPopup()
-            return LuaValue.NIL
-        }
+    private fun treeNodeEx(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val flags = if (l.isNumber(2)) l.toNumber(2).toInt() else 0
+        l.push(ImGui.treeNodeEx(label, flags))
+        return 1
     }
 
-    inner class beginMenuBar : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val opened = ImGui.beginMenuBar()
-            return LuaValue.valueOf(opened)
-        }
+    private fun treePop(l: Lua): Int {
+        ImGui.treePop()
+        return 0
     }
 
-    inner class endMenuBar : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.endMenuBar()
-            return LuaValue.NIL
-        }
+    private fun collapsingHeader(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val flags = if (l.isNumber(2)) l.toNumber(2).toInt() else 0
+        l.push(ImGui.collapsingHeader(label, flags))
+        return 1
     }
 
-    inner class beginMainMenuBar : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val opened = ImGui.beginMainMenuBar()
-            return LuaValue.valueOf(opened)
-        }
+    private fun selectable(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val selected = if (l.isBoolean(2)) l.toBoolean(2) else false
+        val flags = if (l.isNumber(3)) l.toNumber(3).toInt() else 0
+        val width = if (l.isNumber(4)) l.toNumber(4).toFloat() else 0f
+        val height = if (l.isNumber(5)) l.toNumber(5).toFloat() else 0f
+
+        val clicked = ImGui.selectable(label, selected, flags, width, height)
+
+        l.push(clicked)
+        l.push(selected)
+        return 2
     }
 
-    inner class endMainMenuBar : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.endMainMenuBar()
-            return LuaValue.NIL
+    private fun listBox(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val currentItemRef = ImInt(l.toNumber(2).toInt())
+
+        if (!l.isTable(3)) {
+            l.push(currentItemRef.get().toDouble())
+            return 1
         }
-    }
 
-    inner class beginMenu : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val enabled = if (args.narg() > 1) args.checkboolean(2) else true
-            val opened = ImGui.beginMenu(label, enabled)
-            return LuaValue.valueOf(opened)
+        // Получаем массив строк из таблицы Lua
+        val itemsTableIdx = 3
+        val itemsCount = l.rawLength(itemsTableIdx)
+        val itemsArray = Array(itemsCount) { i ->
+            l.rawGetI(itemsTableIdx, i + 1)
+            val str = l.toString(-1) ?: ""
+            l.pop(1) // Убираем строку из стека
+            str
         }
+
+        val heightInItems = if (l.isNumber(4)) l.toNumber(4).toInt() else -1
+
+        ImGui.listBox(label, currentItemRef, itemsArray, heightInItems)
+
+        l.push(currentItemRef.get().toDouble())
+        return 1
     }
 
-    inner class endMenu : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.endMenu()
-            return LuaValue.NIL
-        }
+    private fun setTooltip(l: Lua): Int {
+        ImGui.setTooltip(l.toString(1) ?: "")
+        return 0
     }
 
-    inner class menuItem : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val shortcut = if (args.narg() > 1) args.optjstring(2, "") else ""
-            val selected = if (args.narg() > 2) args.checkboolean(3) else false
-            val enabled = if (args.narg() > 3) args.checkboolean(4) else true
-            val clicked = ImGui.menuItem(label, shortcut, selected, enabled)
-            return LuaValue.varargsOf(LuaValue.valueOf(clicked), LuaValue.valueOf(selected))
-        }
+    private fun beginTooltip(l: Lua): Int {
+        ImGui.beginTooltip()
+        return 0
     }
 
-    inner class beginTabBar : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val strId = args.checkjstring(1)
-            val flags = if (args.narg() > 1) args.checkint(2) else 0
-            val opened = ImGui.beginTabBar(strId, flags)
-            return LuaValue.valueOf(opened)
-        }
+    private fun endTooltip(l: Lua): Int {
+        ImGui.endTooltip()
+        return 0
     }
 
-    inner class endTabBar : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.endTabBar()
-            return LuaValue.NIL
-        }
+    private fun beginPopup(l: Lua): Int {
+        val strId = l.toString(1) ?: ""
+        val flags = if (l.isNumber(2)) l.toNumber(2).toInt() else 0
+        l.push(ImGui.beginPopup(strId, flags))
+        return 1
     }
 
-    inner class beginTabItem : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val label = args.checkjstring(1)
-            val flags = if (args.narg() > 1) args.checkint(2) else 0
-            val opened = ImGui.beginTabItem(label, flags)
-            return LuaValue.valueOf(opened)
-        }
+    private fun beginPopupModal(l: Lua): Int {
+        val name = l.toString(1) ?: ""
+        val flags = if (l.isNumber(2)) l.toNumber(2).toInt() else 0
+        l.push(ImGui.beginPopupModal(name, flags))
+        return 1
     }
 
-    inner class endTabItem : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.endTabItem()
-            return LuaValue.NIL
-        }
+    private fun endPopup(l: Lua): Int {
+        ImGui.endPopup()
+        return 0
     }
 
-    inner class beginChild : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val strId = args.checkjstring(1)
-            val width = if (args.narg() > 1) args.checkdouble(2).toFloat() else 0f
-            val height = if (args.narg() > 2) args.checkdouble(3).toFloat() else 0f
-            val border = if (args.narg() > 3) args.checkboolean(4) else false
-            val flags = if (args.narg() > 4) args.checkint(5) else 0
-            val opened = ImGui.beginChild(strId, width, height, border, flags)
-            return LuaValue.valueOf(opened)
-        }
+    private fun openPopup(l: Lua): Int {
+        val strId = l.toString(1) ?: ""
+        val flags = if (l.isNumber(2)) l.toNumber(2).toInt() else 0
+        ImGui.openPopup(strId, flags)
+        return 0
     }
 
-    inner class endChild : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.endChild()
-            return LuaValue.NIL
-        }
+    private fun closeCurrentPopup(l: Lua): Int {
+        ImGui.closeCurrentPopup()
+        return 0
     }
 
-    inner class pushStyleColor : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val idx = args.checkint(1)
-            val r = args.checkdouble(2).toFloat()
-            val g = args.checkdouble(3).toFloat()
-            val b = args.checkdouble(4).toFloat()
-            val a = if (args.narg() > 4) args.checkdouble(5).toFloat() else 1.0f
-            ImGui.pushStyleColor(idx, r, g, b, a)
-            return LuaValue.NIL
-        }
+    private fun beginMenuBar(l: Lua): Int {
+        l.push(ImGui.beginMenuBar())
+        return 1
     }
 
-    inner class popStyleColor : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val count = if (args.narg() > 0) args.checkint(1) else 1
-            ImGui.popStyleColor(count)
-            return LuaValue.NIL
-        }
+    private fun endMenuBar(l: Lua): Int {
+        ImGui.endMenuBar()
+        return 0
     }
 
-    inner class pushStyleVar : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val idx = args.checkint(1)
-            val x = args.checkdouble(2).toFloat()
-            val y = if (args.narg() > 2) args.checkdouble(3).toFloat() else 0.0f
-            ImGui.pushStyleVar(idx, x, y)
-            return LuaValue.NIL
-        }
+    private fun beginMainMenuBar(l: Lua): Int {
+        l.push(ImGui.beginMainMenuBar())
+        return 1
     }
 
-    inner class popStyleVar : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val count = if (args.narg() > 0) args.checkint(1) else 1
-            ImGui.popStyleVar(count)
-            return LuaValue.NIL
-        }
+    private fun endMainMenuBar(l: Lua): Int {
+        ImGui.endMainMenuBar()
+        return 0
     }
 
-    inner class pushFont : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            // Note: This would require font handling
-            return LuaValue.NIL
-        }
+    private fun beginMenu(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val enabled = if (l.isBoolean(2)) l.toBoolean(2) else true
+        l.push(ImGui.beginMenu(label, enabled))
+        return 1
     }
 
-    inner class popFont : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.popFont()
-            return LuaValue.NIL
-        }
+    private fun endMenu(l: Lua): Int {
+        ImGui.endMenu()
+        return 0
     }
 
-    inner class pushID : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val strId = args.checkjstring(1)
-            ImGui.pushID(strId)
-            return LuaValue.NIL
-        }
+    private fun menuItem(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val shortcut = if (l.isString(2)) l.toString(2) else ""
+        val selected = if (l.isBoolean(3)) l.toBoolean(3) else false
+        val enabled = if (l.isBoolean(4)) l.toBoolean(4) else true
+
+        val clicked = ImGui.menuItem(label, shortcut, selected, enabled)
+
+        l.push(clicked)
+        l.push(selected)
+        return 2
     }
 
-    inner class popID : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.popID()
-            return LuaValue.NIL
-        }
+    private fun beginTabBar(l: Lua): Int {
+        val strId = l.toString(1) ?: ""
+        val flags = if (l.isNumber(2)) l.toNumber(2).toInt() else 0
+        l.push(ImGui.beginTabBar(strId, flags))
+        return 1
     }
 
-    inner class isItemHovered : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val flags = if (args.narg() > 0) args.checkint(1) else 0
-            val hovered = ImGui.isItemHovered(flags)
-            return LuaValue.valueOf(hovered)
-        }
+    private fun endTabBar(l: Lua): Int {
+        ImGui.endTabBar()
+        return 0
     }
 
-    inner class isItemClicked : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val mouseButton = if (args.narg() > 0) args.checkint(1) else 0
-            val clicked = ImGui.isItemClicked(mouseButton)
-            return LuaValue.valueOf(clicked)
-        }
+    private fun beginTabItem(l: Lua): Int {
+        val label = l.toString(1) ?: ""
+        val flags = if (l.isNumber(2)) l.toNumber(2).toInt() else 0
+        l.push(ImGui.beginTabItem(label, flags))
+        return 1
     }
 
-    inner class isItemActive : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val active = ImGui.isItemActive()
-            return LuaValue.valueOf(active)
-        }
+    private fun endTabItem(l: Lua): Int {
+        ImGui.endTabItem()
+        return 0
     }
 
-    inner class isWindowAppearing : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val appearing = ImGui.isWindowAppearing()
-            return LuaValue.valueOf(appearing)
-        }
+    private fun beginChild(l: Lua): Int {
+        val strId = l.toString(1) ?: ""
+        val width = if (l.isNumber(2)) l.toNumber(2).toFloat() else 0f
+        val height = if (l.isNumber(3)) l.toNumber(3).toFloat() else 0f
+        val border = if (l.isBoolean(4)) l.toBoolean(4) else false
+        val flags = if (l.isNumber(5)) l.toNumber(5).toInt() else 0
+        l.push(ImGui.beginChild(strId, width, height, border, flags))
+        return 1
     }
 
-    inner class isWindowCollapsed : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val collapsed = ImGui.isWindowCollapsed()
-            return LuaValue.valueOf(collapsed)
-        }
+    private fun endChild(l: Lua): Int {
+        ImGui.endChild()
+        return 0
     }
 
-    inner class isWindowFocused : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val flags = if (args.narg() > 0) args.checkint(1) else 0
-            val focused = ImGui.isWindowFocused(flags)
-            return LuaValue.valueOf(focused)
-        }
+    private fun pushStyleColor(l: Lua): Int {
+        val idx = l.toNumber(1).toInt()
+        val r = l.toNumber(2).toFloat()
+        val g = l.toNumber(3).toFloat()
+        val b = l.toNumber(4).toFloat()
+        val a = if (l.isNumber(5)) l.toNumber(5).toFloat() else 1.0f
+        ImGui.pushStyleColor(idx, r, g, b, a)
+        return 0
     }
 
-    inner class isWindowHovered : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val flags = if (args.narg() > 0) args.checkint(1) else 0
-            val hovered = ImGui.isWindowHovered(flags)
-            return LuaValue.valueOf(hovered)
-        }
+    private fun popStyleColor(l: Lua): Int {
+        val count = if (l.isNumber(1)) l.toNumber(1).toInt() else 1
+        ImGui.popStyleColor(count)
+        return 0
     }
 
-    inner class setNextWindowSize : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val width = args.checkdouble(1).toFloat()
-            val height = args.checkdouble(2).toFloat()
-            val cond = if (args.narg() > 2) args.checkint(3) else 0
-            ImGui.setNextWindowSize(width, height, cond)
-            return LuaValue.NIL
-        }
+    private fun pushStyleVar(l: Lua): Int {
+        val idx = l.toNumber(1).toInt()
+        val x = l.toNumber(2).toFloat()
+        val y = if (l.isNumber(3)) l.toNumber(3).toFloat() else 0.0f
+        ImGui.pushStyleVar(idx, x, y)
+        return 0
     }
 
-    inner class setNextWindowPos : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val x = args.checkdouble(1).toFloat()
-            val y = args.checkdouble(2).toFloat()
-            val cond = if (args.narg() > 2) args.checkint(3) else 0
-            val pivotX = if (args.narg() > 3) args.checkdouble(4).toFloat() else 0f
-            val pivotY = if (args.narg() > 4) args.checkdouble(5).toFloat() else 0f
-            ImGui.setNextWindowPos(x, y, cond, pivotX, pivotY)
-            return LuaValue.NIL
-        }
+    private fun popStyleVar(l: Lua): Int {
+        val count = if (l.isNumber(1)) l.toNumber(1).toInt() else 1
+        ImGui.popStyleVar(count)
+        return 0
     }
 
-    inner class setNextWindowCollapsed : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val collapsed = args.checkboolean(1)
-            val cond = if (args.narg() > 1) args.checkint(2) else 0
-            ImGui.setNextWindowCollapsed(collapsed, cond)
-            return LuaValue.NIL
-        }
+    private fun pushFont(l: Lua): Int {
+        // Логика была пустой в оригинале
+        return 0
     }
 
-    inner class setNextWindowFocus : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            ImGui.setNextWindowFocus()
-            return LuaValue.NIL
-        }
+    private fun popFont(l: Lua): Int {
+        ImGui.popFont()
+        return 0
     }
 
-    inner class getWindowSize : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val size = ImGui.getWindowSize()
-            return LuaValue.varargsOf(LuaValue.valueOf(size.x.toDouble()), LuaValue.valueOf(size.y.toDouble()))
-        }
+    private fun pushID(l: Lua): Int {
+        val strId = l.toString(1) ?: ""
+        ImGui.pushID(strId)
+        return 0
     }
 
-    inner class getWindowPos : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val pos = ImGui.getWindowPos()
-            return LuaValue.varargsOf(LuaValue.valueOf(pos.x.toDouble()), LuaValue.valueOf(pos.y.toDouble()))
-        }
+    private fun popID(l: Lua): Int {
+        ImGui.popID()
+        return 0
     }
 
-    inner class getWindowWidth : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val width = ImGui.getWindowWidth()
-            return LuaValue.valueOf(width.toDouble())
-        }
+    private fun isItemHovered(l: Lua): Int {
+        val flags = if (l.isNumber(1)) l.toNumber(1).toInt() else 0
+        l.push(ImGui.isItemHovered(flags))
+        return 1
     }
 
-    inner class getWindowHeight : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val height = ImGui.getWindowHeight()
-            return LuaValue.valueOf(height.toDouble())
-        }
+    private fun isItemClicked(l: Lua): Int {
+        val mouseButton = if (l.isNumber(1)) l.toNumber(1).toInt() else 0
+        l.push(ImGui.isItemClicked(mouseButton))
+        return 1
+    }
+
+    private fun isItemActive(l: Lua): Int {
+        l.push(ImGui.isItemActive())
+        return 1
+    }
+
+    private fun isWindowAppearing(l: Lua): Int {
+        l.push(ImGui.isWindowAppearing())
+        return 1
+    }
+
+    private fun isWindowCollapsed(l: Lua): Int {
+        l.push(ImGui.isWindowCollapsed())
+        return 1
+    }
+
+    private fun isWindowFocused(l: Lua): Int {
+        val flags = if (l.isNumber(1)) l.toNumber(1).toInt() else 0
+        l.push(ImGui.isWindowFocused(flags))
+        return 1
+    }
+
+    private fun isWindowHovered(l: Lua): Int {
+        val flags = if (l.isNumber(1)) l.toNumber(1).toInt() else 0
+        l.push(ImGui.isWindowHovered(flags))
+        return 1
+    }
+
+    private fun setNextWindowSize(l: Lua): Int {
+        val width = l.toNumber(1).toFloat()
+        val height = l.toNumber(2).toFloat()
+        val cond = if (l.isNumber(3)) l.toNumber(3).toInt() else 0
+        ImGui.setNextWindowSize(width, height, cond)
+        return 0
+    }
+
+    private fun setNextWindowPos(l: Lua): Int {
+        val x = l.toNumber(1).toFloat()
+        val y = l.toNumber(2).toFloat()
+        val cond = if (l.isNumber(3)) l.toNumber(3).toInt() else 0
+        val pivotX = if (l.isNumber(4)) l.toNumber(4).toFloat() else 0f
+        val pivotY = if (l.isNumber(5)) l.toNumber(5).toFloat() else 0f
+        ImGui.setNextWindowPos(x, y, cond, pivotX, pivotY)
+        return 0
+    }
+
+    private fun setNextWindowCollapsed(l: Lua): Int {
+        val collapsed = l.toBoolean(1)
+        val cond = if (l.isNumber(2)) l.toNumber(2).toInt() else 0
+        ImGui.setNextWindowCollapsed(collapsed, cond)
+        return 0
+    }
+
+    private fun setNextWindowFocus(l: Lua): Int {
+        ImGui.setNextWindowFocus()
+        return 0
+    }
+
+    private fun getWindowSize(l: Lua): Int {
+        val size = ImGui.getWindowSize()
+        l.push(size.x.toDouble())
+        l.push(size.y.toDouble())
+        return 2
+    }
+
+    private fun getWindowPos(l: Lua): Int {
+        val pos = ImGui.getWindowPos()
+        l.push(pos.x.toDouble())
+        l.push(pos.y.toDouble())
+        return 2
+    }
+
+    private fun getWindowWidth(l: Lua): Int {
+        l.push(ImGui.getWindowWidth().toDouble())
+        return 1
+    }
+
+    private fun getWindowHeight(l: Lua): Int {
+        l.push(ImGui.getWindowHeight().toDouble())
+        return 1
     }
 }

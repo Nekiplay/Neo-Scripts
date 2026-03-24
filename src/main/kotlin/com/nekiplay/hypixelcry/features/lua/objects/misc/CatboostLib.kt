@@ -2,25 +2,33 @@ package com.nekiplay.hypixelcry.features.lua.objects.misc
 
 import ai.catboost.CatBoostModel
 import com.nekiplay.hypixelcry.features.lua.objects.misc.catboost.CatBoostModelLua
-import org.luaj.vm2.LuaTable
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.OneArgFunction
-import org.luaj.vm2.lib.TwoArgFunction
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
 
-class CatboostLib : TwoArgFunction() {
-    override fun call(modname: LuaValue, env: LuaValue): LuaValue {
-        val library = LuaTable()
-        library.set("loadModel", LoadModel())
-        env.set("catboost", library)
-        return library
+class CatboostLib(val L: Lua) {
+
+    // Метод для регистрации библиотеки catboost в глобальной области
+    fun register() {
+        L.newTable() // Создаем таблицу библиотеки
+
+        L.push(JFunction { loadModel(it) })
+        L.setField(-2, "loadModel")
+
+        L.setGlobal("catboost") // Регистрируем таблицу как глобальную переменную
     }
 
-    inner class LoadModel : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue {
-            if (arg?.isstring() == true) {
-                return CatBoostModelLua(CatBoostModel.loadModel(arg.tojstring()))
+    private fun loadModel(l: Lua): Int {
+        if (l.isString(1)) {
+            val path = l.toString(1)
+            if (path != null) {
+                val model = CatBoostModel.loadModel(path)
+                // Оборачиваем модель в объект с метатаблицей и пушим в стек
+                l.push(CatBoostModelLua(l, model).push())
+                return 1
             }
-            return NIL
         }
+
+        l.pushNil()
+        return 1
     }
 }

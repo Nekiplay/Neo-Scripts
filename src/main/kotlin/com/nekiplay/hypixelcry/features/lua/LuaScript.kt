@@ -3,41 +3,34 @@ package com.nekiplay.hypixelcry.features.lua
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
-import com.mojang.brigadier.tree.ArgumentCommandNode
-import com.mojang.brigadier.tree.CommandNode
-import com.mojang.brigadier.tree.RootCommandNode
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
-import com.nekiplay.hypixelcry.features.lua.objects.misc.DJLLuaTrainer
-import com.nekiplay.hypixelcry.features.lua.objects.misc.FFILib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.Creator
+import com.nekiplay.hypixelcry.features.lua.objects.misc.DJLLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.EncodingLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ImGuiLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.JsonLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.TCPLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ThreadLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
+import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesLib
+import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.features.lua.objects.world.WorldObject
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.Location
 import com.nekiplay.hypixelcry.utils.misc.input.KeyAction
-import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
 import kotlinx.atomicfu.locks.withLock
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
-import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
-import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.commands.CommandBuildContext
-import net.minecraft.commands.SharedSuggestionProvider
-import net.minecraft.commands.synchronization.ArgumentTypeInfos
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.network.chat.Component
-import net.minecraft.network.protocol.game.ClientboundCommandsPacket
-import net.minecraft.resources.Identifier
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
@@ -89,18 +82,22 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     // Synchronize only when needed
     private val callbacksLock = ReentrantLock()
 
+    // Script-specific globals
+    var L: Lua55 = Lua55()
+
     // Script-specific libraries
-    private val tcpLib = TCPLib()
-    private val threadLib = ThreadLib()
-    val imguiLib = ImGuiLib()
-    private val djlLibrary = DJLLuaTrainer()
-    private val ffi = FFILib()
+    private val djlLibrary = DJLLib(L)
+    private val encoding = EncodingLib(L)
+    private val creator = Creator(L)
+    private val json = JsonLib(L)
+    private val tcp = TCPLib(L)
+    private val threads = ThreadLib(L)
+    private val http = HttpClientLib(L)
+    private val imgui = ImGuiLib(L)
+    private val modules = ModulesLib(L)
 
     // Dependency tracking for nested requires
     private val dependencies = ConcurrentHashMap<String, MutableList<String>>()
-
-    // Script-specific globals
-    var L: Lua55 = Lua55()
 
     init {
         L.setExternalLoader(object : ExternalLoader {
@@ -135,10 +132,22 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
         })
 
+        // Загрузка библиотек
+        djlLibrary.register()
+        encoding.register()
+        creator.register()
+        json.register()
+        tcp.register()
+        threads.register()
+        http.register()
+        imgui.register()
+        modules.register()
+
         registerCustomFunctions()
 
         // Register global objects
-        registerGlobalObjects()
+        WorldObject(L).register()
+        PlayerObject(L).register()
     }
 
     private fun registerCustomFunctions() {
@@ -856,11 +865,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             0
         })
         L.setGlobal("print")
-    }
-
-    private fun registerGlobalObjects() {
-        // Register global objects
-        WorldObject(L).register()
     }
 
     fun addCommandCallback(commandName: String, callback: LuaValue, suggestionsCallback: LuaValue?): Boolean {
@@ -1786,8 +1790,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         }
 
         // Очищаем библиотеки
-        threadLib.stopAllThreads()
-        tcpLib.cleanup()
+        //threadLib.stopAllThreads()
+        //tcpLib.cleanup()
 
         for (command in commandCallbacks.keys) {
             val dispatcher = commandDispatchers[command]
@@ -1818,15 +1822,15 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             commandCallbacks.clear()
             commandSuggestionsCallbacks.clear()
         }
-        imguiLib.queue.clear()
+        //imguiLib.queue.clear()
         djlLibrary.models.clear()
         djlLibrary.predictors.clear()
         djlLibrary.inputShapes.clear()
         djlLibrary.modelModes.clear()
-        ffi.loadedLibraries.forEach { lib ->
-            lib.value.dispose()
-        }
-        ffi.loadedLibraries.clear()
+        //ffi.loadedLibraries.forEach { lib ->
+        //    lib.value.dispose()
+        //}
+        //ffi.loadedLibraries.clear()
 
         commandDispatchers.clear()
 

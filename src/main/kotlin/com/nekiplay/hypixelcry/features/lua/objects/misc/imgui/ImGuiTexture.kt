@@ -2,58 +2,55 @@ package com.nekiplay.hypixelcry.features.lua.objects.misc.imgui
 
 import com.mojang.blaze3d.opengl.GlTextureView
 import com.mojang.blaze3d.platform.NativeImage
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.resources.Identifier
-import org.luaj.vm2.LuaUserdata
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.OneArgFunction
-import org.luaj.vm2.lib.ZeroArgFunction
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
+
 import java.io.File
 import java.io.FileInputStream
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Supplier
 
-
-class ImGuiTexture(val texture: AtomicInteger) : LuaUserdata(AtomicInteger(0)) {
+class ImGuiTexture(L: Lua, val texture: AtomicInteger = AtomicInteger(0)) : SimpleLuaWrapper(L) {
     private var _identifier: Identifier? = null
 
-    override fun get(key: LuaValue): LuaValue {
-        return when (val field = key.tojstring()) {
-            "loadImage" -> LoadImage()
-            "release" -> Release()
-            "getId" -> GetID()
-            else -> super.get(key)
-        } as LuaValue
-    }
-
-    private inner class GetID : OneArgFunction() {
-        override fun call(path: LuaValue): LuaValue {
-            return valueOf(texture.get())
+    override fun getFieldValue(l: Lua, key: String): Any? {
+        return when (key) {
+            "loadImage" -> JFunction { loadImage(it) }
+            "release" -> JFunction { release(it) }
+            "getId" -> JFunction { getId(it) }
+            else -> null
         }
     }
 
-    private inner class LoadImage : OneArgFunction() {
-        override fun call(path: LuaValue): LuaValue {
-            if (path.isstring()) {
-                val textureId = loadTexture(path.tojstring())
-                texture.set(textureId)
-                return TRUE
-            }
-            return FALSE
-        }
+    private fun getId(l: Lua): Int {
+        l.push(texture.get().toDouble())
+        return 1
     }
 
-    private inner class Release : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            releaseTexture()
-            return NIL
+    private fun loadImage(l: Lua): Int {
+        if (l.isString(1)) {
+            val path = l.toString(1) ?: ""
+            val textureId = loadTexture(path)
+            texture.set(textureId)
+            l.push(true)
+        } else {
+            l.push(false)
         }
+        return 1
+    }
+
+    private fun release(l: Lua): Int {
+        releaseTexture()
+        l.pushNil()
+        return 1
     }
 
     private fun loadTexture(path: String): Int {
         try {
-            // Release any previously loaded texture
             releaseTexture()
 
             val file = File(path)
@@ -70,15 +67,12 @@ class ImGuiTexture(val texture: AtomicInteger) : LuaUserdata(AtomicInteger(0)) {
             FileInputStream(file).use { inputStream ->
                 val nativeImage = NativeImage.read(inputStream)
 
-                // Generate unique identifier
                 val textureName = "texture_${file.nameWithoutExtension}_${System.currentTimeMillis()}"
                 _identifier = Identifier.fromNamespaceAndPath("hypixelcry", textureName)
                 val indf = _identifier
                 if (indf != null) {
-                    // Create texture
                     val texture = DynamicTexture(Supplier { textureName }, nativeImage)
 
-                    // Register texture
                     mc.textureManager.register(indf, texture)
 
                     val texture2 = mc.textureManager.getTexture(indf).getTextureView() as GlTextureView
