@@ -49,6 +49,12 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
     }
 
     // --- Вспомогательные методы чтения стека ---
+    private fun getArgsIdx(l: Lua): Int {
+        if (l.isTable(1) && l.isTable(2)) return 2
+        if (l.isTable(1)) return 1
+        return 0
+    }
+
     private fun Lua.optI(idx: Int, key: String, def: Int): Int {
         this.getField(idx, key); val res = if (this.isNumber(-1)) this.toInteger(-1).toInt() else def
         this.pop(1); return res
@@ -82,14 +88,19 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
     }
 
     private fun renderText(l: Lua): Int {
-        if (!l.isTable(1)) return 0
-        val text = l.optS(1, "text", "Empty")
-        val x = l.optI(1, "x", 0)
-        val y = l.optI(1, "y", 0)
-        val r = l.optI(1, "red", 255); val g = l.optI(1, "green", 255); val b = l.optI(1, "blue", 255); val a = l.optI(1, "alpha", 255)
+        val idx = getArgsIdx(l)
+        if (idx == 0) return 0
+
+        val text = l.optS(idx, "text", "Empty")
+        val x = l.optI(idx, "x", 0)
+        val y = l.optI(idx, "y", 0)
+        val r = l.optI(idx, "red", 255);
+        val g = l.optI(idx, "green", 255);
+        val b = l.optI(idx, "blue", 255);
+        val a = l.optI(idx, "alpha", 255)
         val color = (a and 0xFF shl 24) or (r and 0xFF shl 16) or (g and 0xFF shl 8) or (b and 0xFF)
-        val shadow = l.optB(1, "shadow", true)
-        val scale = l.optF(1, "scale", 1.0f)
+        val shadow = l.optB(idx, "shadow", true)
+        val scale = l.optF(idx, "scale", 1.0f)
 
         if (scale != 1.0f) {
             context!!.pose().pushMatrix()
@@ -104,18 +115,29 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
     }
 
     private fun renderRect(l: Lua): Int {
-        val x = l.optI(1, "x", 0); val y = l.optI(1, "y", 0)
-        val w = l.optI(1, "width", 0); val h = l.optI(1, "height", 0)
-        val r = l.optI(1, "red", 255); val g = l.optI(1, "green", 255); val b = l.optI(1, "blue", 255); val a = l.optI(1, "alpha", 255)
+        val idx = getArgsIdx(l)
+        if (idx == 0) return 0
+
+        val x = l.optI(idx, "x", 0);
+        val y = l.optI(idx, "y", 0)
+        val w = l.optI(idx, "width", 0);
+        val h = l.optI(idx, "height", 0)
+        val r = l.optI(idx, "red", 255);
+        val g = l.optI(idx, "green", 255);
+        val b = l.optI(idx, "blue", 255); val a = l.optI(1, "alpha", 255)
         context!!.fill(x, y, x + w, y + h, (a shl 24) or (r shl 16) or (g shl 8) or b)
         return 0
     }
 
     private fun renderItemStack(l: Lua): Int {
-        val x = l.optI(1, "x", 0); val y = l.optI(1, "y", 0)
-        val scale = l.optF(1, "scale", 1.0f)
+        val idx = getArgsIdx(l)
+        if (idx == 0) return 0
 
-        l.getField(1, "itemStack")
+        val x = l.optI(idx, "x", 0);
+        val y = l.optI(idx, "y", 0)
+        val scale = l.optF(idx, "scale", 1.0f)
+
+        l.getField(idx, "itemStack")
         val itemObj = l.toJavaObject(-1)
         l.pop(1)
 
@@ -140,10 +162,16 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
     }
 
     private fun renderPolygon(l: Lua): Int {
-        l.getField(1, "points")
+        val idx = getArgsIdx(l)
+        if (idx == 0) return 0
+
+        l.getField(idx, "points")
         if (!l.isTable(-1)) { l.pop(1); return 0 }
 
-        val r = l.optI(1, "red", 255); val g = l.optI(1, "green", 255); val b = l.optI(1, "blue", 255); val a = l.optI(1, "alpha", 255)
+        val r = l.optI(idx, "red", 255);
+        val g = l.optI(idx, "green", 255);
+        val b = l.optI(idx, "blue", 255);
+        val a = l.optI(idx, "alpha", 255)
         val color = (a shl 24) or (r shl 16) or (g shl 8) or b
 
         val points = mutableListOf<Pair<Float, Float>>()
@@ -167,27 +195,25 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
     }
 
     private fun renderImage(l: Lua): Int {
-        // 1. Проверка аргумента (таблица) и контекста рендеринга
-        if (!l.isTable(1) || context == null) {
-            return 0 // Возвращаем nil в Lua
-        }
+        val idx = getArgsIdx(l)
+        if (idx == 0 || context == null) return 0
 
         // 2. Извлечение пути к файлу (обязательно)
-        val path = l.optS(1, "path", "")
+        val path = l.optS(idx, "path", "")
         if (path.isEmpty()) return 0
 
         // 3. Извлечение координат и размеров на экране
-        val x = l.optI(1, "x", 0)
-        val y = l.optI(1, "y", 0)
-        val width = l.optI(1, "width", 0)
-        val height = l.optI(1, "height", 0)
+        val x = l.optI(idx, "x", 0)
+        val y = l.optI(idx, "y", 0)
+        val width = l.optI(idx, "width", 0)
+        val height = l.optI(idx, "height", 0)
 
         // 4. Извлечение параметров UV (текстурные координаты)
-        val u = l.optI(1, "u", 0)
-        val v = l.optI(1, "v", 0)
+        val u = l.optI(idx, "u", 0)
+        val v = l.optI(idx, "v", 0)
 
         // 5. Извлечение размеров региона (если не указаны, используем ширину/высоту картинки)
-        val regionWidth = l.optI(1, "region_width", width)
+        val regionWidth = l.optI(idx, "region_width", width)
         val regionHeight = l.optI(1, "region_height", height)
 
         try {
@@ -216,11 +242,19 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
     }
 
     private fun renderLine(l: Lua): Int {
-        val x1 = l.optI(1, "x1", 0); val y1 = l.optI(1, "y1", 0)
-        val x2 = l.optI(1, "x2", 0); val y2 = l.optI(1, "y2", 0)
-        val r = l.optI(1, "red", 255); val g = l.optI(1, "green", 255); val b = l.optI(1, "blue", 255); val a = l.optI(1, "alpha", 255)
+        val idx = getArgsIdx(l)
+        if (idx == 0 || context == null) return 0
+
+        val x1 = l.optI(idx, "x1", 0);
+        val y1 = l.optI(idx, "y1", 0)
+        val x2 = l.optI(idx, "x2", 0);
+        val y2 = l.optI(idx, "y2", 0)
+        val r = l.optI(idx, "red", 255);
+        val g = l.optI(idx, "green", 255);
+        val b = l.optI(idx, "blue", 255);
+        val a = l.optI(idx, "alpha", 255)
         val color = (a shl 24) or (r shl 16) or (g shl 8) or b
-        val thick = l.optI(1, "thickness", 1)
+        val thick = l.optI(idx, "thickness", 1)
 
         if (thick <= 1) drawLineBresenham(context!!, x1, y1, x2, y2, color)
         else drawThickLine(context!!, x1, y1, x2, y2, color, thick)
