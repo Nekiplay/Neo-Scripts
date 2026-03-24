@@ -8,7 +8,7 @@ abstract class SimpleLuaWrapper(val L: Lua) {
     abstract fun getFieldValue(l: Lua, key: String): Any?
     open fun setFieldValue(l: Lua, key: String, value: LuaValue): Boolean = false
 
-    open fun push(): LuaValue {
+    open fun push() {
         L.newTable()
         val tableIdx = L.getTop()
 
@@ -27,7 +27,6 @@ abstract class SimpleLuaWrapper(val L: Lua) {
         L.setField(-2, "__index")
 
         L.setMetatable(tableIdx)
-        return L.get() // Возвращаем готовую Lua-таблицу
     }
 }
 

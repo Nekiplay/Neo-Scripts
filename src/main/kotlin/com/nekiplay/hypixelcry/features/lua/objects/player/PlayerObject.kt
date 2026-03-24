@@ -32,9 +32,14 @@ class PlayerObject(private val L: Lua) {
         val playerTableIdx = L.getTop()
 
         // --- Объекты (Sub-modules) ---
-        L.push(InputObject(L).push()); L.setField(playerTableIdx, "input")
-        L.push(InventoryObject(L).push()); L.setField(playerTableIdx, "inventory")
-        L.push(NetworkObject(L).push()); L.setField(playerTableIdx, "network")
+        InputObject(L).push()
+        L.setField(playerTableIdx, "input")
+
+        InventoryObject(L).push()
+        L.setField(playerTableIdx, "inventory")
+
+        NetworkObject(L).push()
+        L.setField(playerTableIdx, "network")
 
         // --- Функции ---
         val functions = mapOf(
