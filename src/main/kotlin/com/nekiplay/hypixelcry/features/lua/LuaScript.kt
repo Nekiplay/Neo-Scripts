@@ -38,7 +38,7 @@ import net.minecraft.world.level.block.state.BlockState
 import party.iroiro.luajava.ExternalLoader
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
-import party.iroiro.luajava.lua55.Lua55
+import party.iroiro.luajava.luajit.LuaJit
 import party.iroiro.luajava.value.LuaValue
 import java.io.File
 import java.nio.Buffer
@@ -84,7 +84,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val callbacksLock = ReentrantLock()
 
     // Script-specific globals
-    var L: Lua55 = Lua55()
+    var L = LuaJit()
 
     // Script-specific libraries
     private val djlLibrary = DJLLib(L)
