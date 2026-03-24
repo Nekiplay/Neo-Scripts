@@ -1388,12 +1388,12 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         // 2. Синхронизация для JNI (рендеринг идет в другом потоке!)
         synchronized(callbacksLock) {
             try {
-                val luaRenderer = wrapper.push()
-
                 for (callback in callbacks) {
                     try {
-                        // Передаем именно luaRenderer (LuaValue)
-                        callback.call(luaRenderer)
+                        L.push(callback)
+                        wrapper.push()
+
+                        val result = L.pCall(1, 0)
                     } catch (e: Exception) {
                         HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in world render callback: ${e.message}")
                     }
@@ -1410,10 +1410,12 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         }
 
         val renderContext = TwoRenderObject(L, context, scriptName)
-        renderContext.push()
         for (callback in callbacks) {
             try {
-                callback.call(renderContext)
+                L.push(callback)
+                renderContext.push()
+
+                val result = L.pCall(1, 0)
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in 2D render callback in ${scriptName}: ${e.message}")
             }
