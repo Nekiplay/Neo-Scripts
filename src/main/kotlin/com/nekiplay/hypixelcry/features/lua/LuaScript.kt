@@ -103,33 +103,41 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     init {
         L.openLibraries()
         L.setExternalLoader(object : ExternalLoader {
-            override fun load(moduleName: String, l: Lua): Buffer? {
-                // 1. Превращаем имя модуля в путь (например, "utils.math" -> "utils/math.lua")
-                val fileName = moduleName.replace('.', '/') + ".lua"
-
-                // 2. Указываем базовую папку ваших скриптов
-                val scriptsDir = File(mc.gameDirectory, "config/hypixelcry/scripts/libs")
-                val scriptFile = File(scriptsDir, fileName)
-
-                if (scriptFile.exists()) {
-                    try {
-                        val bytes = scriptFile.readBytes()
-
-                        // 3. Создаем Direct ByteBuffer (Lua лучше всего работает с ними)
-                        val buffer = ByteBuffer.allocateDirect(bytes.size)
-                        buffer.put(bytes)
-
-                        // 4. Обязательно вызываем flip(), чтобы подготовить буфер к чтению со стороны Lua
-                        buffer.flip()
-
-                        return buffer
-                    } catch (e: Exception) {
-                        println("Error loading Lua module $moduleName: ${e.message}")
-                        return null
+            override fun load(moduleName: String, l: Lua): ByteBuffer? {
+                // 1. Normalize the path (handle both '.' and '/' in require)
+                val normalizedName = moduleName.replace('.', File.separatorChar)
+                                               .replace('/', File.separatorChar)
+                val fileName = "$normalizedName.lua"
+    
+                // 2. Define the search folders
+                // We search in the root scripts folder AND the libs folder
+                val scriptsRoot = File(mc.gameDirectory, "config/hypixelcry/scripts")
+                val libsFolder = File(scriptsRoot, "libs")
+                
+                val candidatePaths = listOf(
+                    File(scriptsRoot, fileName),
+                    File(libsFolder, fileName)
+                )
+    
+                for (scriptFile in candidatePaths) {
+                    // DEBUG: Uncomment this to see in console where it is looking
+                    // println("LuaLoader: Checking path: ${scriptFile.absolutePath}")
+    
+                    if (scriptFile.exists()) {
+                        try {
+                            val bytes = scriptFile.readBytes()
+                            val buffer = ByteBuffer.allocateDirect(bytes.size)
+                            buffer.put(bytes)
+                            buffer.flip()
+                            return buffer
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            return null
+                        }
                     }
                 }
-
-                // Если файл не найден, возвращаем null, Lua продолжит искать в других местах
+    
+                // If we reach here, the file wasn't found in any candidate path
                 return null
             }
         })
