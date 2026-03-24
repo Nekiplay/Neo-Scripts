@@ -5,44 +5,38 @@ import party.iroiro.luajava.Lua
 import party.iroiro.luajava.value.LuaValue
 
 abstract class SimpleLuaWrapper(val L: Lua) {
-    /**
-     * Здесь возвращайте: String, Number, Boolean, null или другой SimpleLuaWrapper
-     */
     abstract fun getFieldValue(l: Lua, key: String): Any?
-
     open fun setFieldValue(l: Lua, key: String, value: LuaValue): Boolean = false
 
-    open fun push(): LuaValue {
-        // 1. Create a table to represent our object in Lua
+    fun push(): LuaValue {
         L.newTable() 
         val tableIdx = L.getTop()
-    
-        // 2. Store the Java wrapper inside the table with a hidden key
+
+        // Store this Java object inside the table so the metatable can find it
         L.pushJavaObject(this)
         L.setField(tableIdx, "__java_instance")
-    
-        // 3. Create the metatable
+
+        // Create the metatable
         L.newTable()
-    
-        // __index logic
+
+        // __index: Called when you do object.key
         L.push(JFunction { l ->
-            // Get the Java instance from the table (index 1 is the table)
             l.getField(1, "__java_instance")
             val wrapper = l.toJavaObject(-1) as? SimpleLuaWrapper
-            l.pop(1) // Remove java_instance from stack
-    
+            l.pop(1) // remove java instance from stack
+
             val key = l.toString(2) ?: ""
             l.smartPush(wrapper?.getFieldValue(l, key))
             1
         })
         L.setField(-2, "__index")
-    
-        // __newindex logic
+
+        // __newindex: Called when you do object.key = value
         L.push(JFunction { l ->
             l.getField(1, "__java_instance")
             val wrapper = l.toJavaObject(-1) as? SimpleLuaWrapper
             l.pop(1)
-    
+
             val key = l.toString(2) ?: ""
             l.pushValue(3)
             val value = l.get()
@@ -50,30 +44,21 @@ abstract class SimpleLuaWrapper(val L: Lua) {
             0
         })
         L.setField(-2, "__newindex")
-    
+
         L.setMetatable(tableIdx)
-        
-        // Return the table as a LuaValue
-        L.pushValue(tableIdx)
-        return L.get()
+        return L.get() // Returns the table as a LuaValue and cleans stack
     }
 }
 
-/**
- * Расширение для корректного пуша в Iroiro LuaJava 4.1.0
- */
 fun Lua.smartPush(v: Any?) {
     when (v) {
         null -> this.pushNil()
         is Boolean -> this.push(v)
         is String -> this.push(v)
         is Double -> this.push(v)
-        is Float -> this.push(v.toDouble())
-        is Int -> this.push(v.toDouble())
-        is Long -> this.push(v.toDouble())
-        is LuaValue -> this.push(v)
-        is JFunction -> this.push(v) 
-        // Для всех остальных Java-объектов используем pushJava
+        is Number -> this.push(v.toDouble())
+        is JFunction -> this.push(v) // IMPORTANT: Must be before 'else'
+        is LuaValue -> this.push(v)    // IMPORTANT: Allows nested objects
         else -> this.pushJavaObject(v)
     }
 }
