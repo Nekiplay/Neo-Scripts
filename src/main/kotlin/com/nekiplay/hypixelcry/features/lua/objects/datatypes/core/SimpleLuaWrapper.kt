@@ -27,7 +27,8 @@ abstract class SimpleLuaWrapper(val L: Lua) {
         L.setField(-2, "__index")
 
         L.setMetatable(tableIdx)
-        return L.get() 
+        return L.get() // Возвращаем готовую Lua-таблицу
+    }
 }
 
 fun Lua.smartPush(v: Any?) {
