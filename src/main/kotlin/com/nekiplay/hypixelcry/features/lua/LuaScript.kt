@@ -7,6 +7,7 @@ import com.mojang.brigadier.tree.ArgumentCommandNode
 import com.mojang.brigadier.tree.CommandNode
 import com.mojang.brigadier.tree.RootCommandNode
 import com.nekiplay.hypixelcry.HypixelCry
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
@@ -18,6 +19,7 @@ import com.nekiplay.hypixelcry.features.lua.objects.misc.ThreadLib
 import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.features.lua.objects.world.WorldObject
+import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.Location
 import com.nekiplay.hypixelcry.utils.misc.input.KeyAction
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
@@ -38,16 +40,19 @@ import net.minecraft.network.protocol.game.ClientboundCommandsPacket
 import net.minecraft.resources.Identifier
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.block.state.BlockState
+import party.iroiro.luajava.ExternalLoader
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 import party.iroiro.luajava.lua55.Lua55
 import party.iroiro.luajava.value.LuaValue
+import java.io.File
+import java.nio.Buffer
+import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
 
 class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
-    // Локальный стек загрузки для этого конкретного экземпляра скрипта
-    private val loadingStack = java.util.Stack<String>()
     // Локальный граф зависимостей для этого конкретного экземпляра скрипта
     // Ключ: имя файла, Значение: список имен, которые этот файл запросил через require
     val localDependencyGraph = ConcurrentHashMap<String, MutableSet<String>>()
@@ -98,6 +103,37 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     var L: Lua55 = Lua55()
 
     init {
+        L.setExternalLoader(object : ExternalLoader {
+            override fun load(moduleName: String, l: Lua): Buffer? {
+                // 1. Превращаем имя модуля в путь (например, "utils.math" -> "utils/math.lua")
+                val fileName = moduleName.replace('.', '/') + ".lua"
+
+                // 2. Указываем базовую папку ваших скриптов
+                val scriptsDir = File(mc.gameDirectory, "config/hypixelcry/scripts/libs")
+                val scriptFile = File(scriptsDir, fileName)
+
+                if (scriptFile.exists()) {
+                    try {
+                        val bytes = scriptFile.readBytes()
+
+                        // 3. Создаем Direct ByteBuffer (Lua лучше всего работает с ними)
+                        val buffer = ByteBuffer.allocateDirect(bytes.size)
+                        buffer.put(bytes)
+
+                        // 4. Обязательно вызываем flip(), чтобы подготовить буфер к чтению со стороны Lua
+                        buffer.flip()
+
+                        return buffer
+                    } catch (e: Exception) {
+                        println("Error loading Lua module $moduleName: ${e.message}")
+                        return null
+                    }
+                }
+
+                // Если файл не найден, возвращаем null, Lua продолжит искать в других местах
+                return null
+            }
+        })
 
         registerCustomFunctions()
 
@@ -108,16 +144,13 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private fun registerCustomFunctions() {
         // Register event registration functions
         registerEventRegistrationFunctions()
-        
+
         // Register event unregistration functions
         registerEventUnregistrationFunctions()
-        
+
         // Register command functions
         registerCommandFunctions()
-        
-        // Register require function with module loading prevention
-        registerRequireFunction()
-        
+
         // Register other custom functions
         registerOtherCustomFunctions()
     }
@@ -485,214 +518,344 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         })
         L.setGlobal("unregisterSpawnParticle")
 
-        scriptGlobals.set("unregisterInventoryItemChange", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(inventoryItemChangeCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    inventoryItemChangeCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterInventoryItemChange")
 
-        scriptGlobals.set("unregisterUseBlock", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(useBlockCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    useBlockCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterUseBlock")
 
-        scriptGlobals.set("unregisterAttackBlock", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(attackBlockCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    attackBlockCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterAttackBlock")
 
-        scriptGlobals.set("unregisterClientTick", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(clientPreTickCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    clientPreTickCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterClientTick")
 
-        scriptGlobals.set("unregisterClientTickPost", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(clientTickCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    clientTickCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterClientTickPost")
 
-        scriptGlobals.set("unregisterClientTickPre", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(clientPreTickCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    clientPreTickCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterClientTickPre")
 
-        scriptGlobals.set("unregisterBlockUpdate", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(blockUpdateCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    blockUpdateCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterBlockUpdate")
 
-        scriptGlobals.set("unregisterWorldRenderer", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(renderWorldCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    renderWorldCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterWorldRenderer")
 
-        scriptGlobals.set("unregister2DRenderer", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(render2DCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    render2DCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregister2DRenderer")
 
-        scriptGlobals.set("unregisterKeyEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(keyEventCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    keyEventCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterKeyEvent")
 
-        scriptGlobals.set("unregisterMessageEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(messageEventCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    messageEventCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterMessageEvent")
 
-        scriptGlobals.set("unregisterSendMessageEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(onSendMessageEventCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    onSendMessageEventCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterSendMessageEvent")
 
-        scriptGlobals.set("unregisterSendCommandEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(onSendCommandEventCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    onSendCommandEventCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterSendCommandEvent")
 
-        scriptGlobals.set("unregisterLocationChangeEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(locationChangeCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    locationChangeCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterLocationChangeEvent")
 
-        scriptGlobals.set("unregisterImGuiRenderEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(imguiRenderCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    imguiRenderCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterImGuiRenderEvent")
 
-        // Packet events
-        scriptGlobals.set("unregisterServerSideRotationEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(serverSideRotationCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    serverSideRotationCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterServerSideRotationEvent")
 
-        scriptGlobals.set("unregisterServerSideTeleportEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(serverSideTeleportCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    serverSideTeleportCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
-    }
-
-    private fun registerRequireFunction() {
-        scriptGlobals.set("require", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val moduleName = args.arg(1).checkjstring()
-
-                // 1. Определяем "родителя" (кто вызвал require)
-                val caller = if (loadingStack.isEmpty()) scriptName else loadingStack.peek()
-
-                // 2. Записываем связь в локальное дерево этого объекта LuaScript
-                localDependencyGraph.getOrPut(caller) {
-                    java.util.Collections.synchronizedSet(LinkedHashSet<String>())
-                }.add(moduleName)
-
-                // 3. Загружаем и выполняем (без кэша)
-                return requireModule(moduleName)
-            }
-        })
+        L.setGlobal("unregisterServerSideTeleportEvent")
     }
 
     private fun registerOtherCustomFunctions() {
-        // Register HypixelCry global
-        scriptGlobals.set("HypixelCry", CoerceJavaToLua.coerce(HypixelCry.getInstance()))
+        L.pushJavaObject(HypixelCry.getInstance())
+        L.setGlobal("HypixelCry")
 
-        scriptGlobals.set("currentScriptName", LuaValue.valueOf(scriptName))
+        L.push(scriptName)
+        L.setGlobal("currentScriptName")
+
 
         // Register print function
-        scriptGlobals.set("print", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val message = StringBuilder()
+        L.push(JFunction { l ->
+            val n = l.getTop() // Получаем количество переданных аргументов
+            val message = StringBuilder()
 
-                // Обрабатываем все переданные аргументы
-                for (i in 1..args.narg()) {
-                    if (i > 1) message.append(" ")
-                    message.append(args.arg(i).tojstring())
-                }
-                val messageStr = message.toString()
-                HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + messageStr)
-                return NIL
+            for (i in 1..n) {
+                if (i > 1) message.append("\t") // В стандартном Lua print использует табуляцию
+
+                // l.toString(i) преобразует значение в строку (аналог tojstring)
+                // Если значение nil или его нельзя превратить в строку, вернется null
+                val str = l.toString(i) ?: "nil"
+                message.append(str)
             }
-        })
 
-        // Register registerUnloadCallback function
-        scriptGlobals.set("registerUnloadCallback", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                return LuaValue.valueOf(addScriptUnloadCallback(callback))
-            }
-        })
+            val finalMessage = message.toString()
 
-        djlLibrary.call(
-            org.luaj.vm2.LuaValue.valueOf("djl"), // имя модуля
-            scriptGlobals                                        // окружение, куда регистрировать
-        )
+            // Вывод в лог Minecraft
+            HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}$finalMessage")
+
+            // print в Lua обычно ничего не возвращает
+            0
+        })
+        L.setGlobal("print")
     }
 
     private fun registerGlobalObjects() {
@@ -700,42 +863,66 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         WorldObject(L).register()
     }
 
-    fun addCommandCallback(commandName: String, callback: LuaValue, suggestionsCallback: LuaValue? = null): Boolean {
-        if (!callback.isfunction()) return false
+    fun addCommandCallback(commandName: String, callback: LuaValue, suggestionsCallback: LuaValue?): Boolean {
+        // В iroiro LuaValue.type() возвращает LuaType
+        if (callback.type() != Lua.LuaType.FUNCTION) return false
         if (commandName.isBlank()) return false
-        if (suggestionsCallback != null && !suggestionsCallback.isfunction()) return false
+        if (suggestionsCallback != null && suggestionsCallback.type() != Lua.LuaType.FUNCTION) return false
 
         synchronized(callbacksLock) {
-            // Проверяем, не зарегистрирована ли уже команда с таким именем
             if (commandCallbacks.containsKey(commandName)) {
                 return false
             }
+            // Сохранение LuaValue предотвращает удаление функции со стороны Lua GC
             commandCallbacks[commandName] = callback
             if (suggestionsCallback != null) {
                 commandSuggestionsCallbacks[commandName] = suggestionsCallback
             }
-            registerMinecraftCommand(commandName)
 
+            // Ваша логика регистрации команды в Minecraft
+            registerMinecraftCommand(commandName)
             return true
         }
     }
 
     private fun registerCommandFunctions() {
-        scriptGlobals.set("registerCommand", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val commandName = args.arg(1).checkjstring()
-                val callback = args.arg(2)
-                val suggestionsCallback = if (args.narg() >= 3) args.arg(3) else null
-                return LuaValue.valueOf(addCommandCallback(commandName, callback, suggestionsCallback))
-            }
-        })
+        // Функция: registerCommand(name, callback, suggestionsCallback)
+        L.push(JFunction { l ->
+            val nArgs = l.getTop()
 
-        scriptGlobals.set("unregisterCommand", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val commandName = args.arg(1).checkjstring()
-                return LuaValue.valueOf(removeCommandCallback(commandName))
+            // 1. Извлекаем имя команды
+            val commandName = l.toString(1) ?: ""
+
+            // 2. Извлекаем основной коллбэк (аргумент 2)
+            // Нам нужно получить LuaValue, поэтому копируем его наверх и вызываем get()
+            if (l.type(2) != Lua.LuaType.FUNCTION) {
+                l.push(false)
+                return@JFunction 1
             }
+            l.pushValue(2)
+            val callbackValue = l.get()
+
+            // 3. Извлекаем опциональный коллбэк подсказок (аргумент 3)
+            var suggestionsValue: LuaValue? = null
+            if (nArgs >= 3 && l.type(3) == Lua.LuaType.FUNCTION) {
+                l.pushValue(3)
+                suggestionsValue = l.get()
+            }
+
+            val success = addCommandCallback(commandName, callbackValue, suggestionsValue)
+            l.push(success)
+            1
         })
+        L.setGlobal("registerCommand")
+
+        // Функция: unregisterCommand(name)
+        L.push(JFunction { l ->
+            val commandName = l.toString(1) ?: ""
+            val success = removeCommandCallback(commandName)
+            l.push(success)
+            1
+        })
+        L.setGlobal("unregisterCommand")
     }
 
     private fun registerMinecraftCommand(commandName: String) {
@@ -835,57 +1022,88 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         suggestionsCallback: LuaValue
     ): java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> {
         return java.util.concurrent.CompletableFuture.supplyAsync {
-            try {
-                // Получаем текущий ввод пользователя
-                val input = builder.remaining
+            synchronized(callbacksLock) {
+                try {
+                    val input = builder.remaining
+                    val fullInput = builder.input
 
-                // Получаем весь введенный текст команды
-                val fullInput = builder.input
+                    val l = L
 
-                // Создаем таблицу с информацией для Lua
-                val infoTable = LuaValue.tableOf()
-                infoTable.set("input", LuaValue.valueOf(input))
-                infoTable.set("fullInput", LuaValue.valueOf(fullInput))
+                    // 1. Создаем таблицу аргументов {input=..., fullInput=...}
+                    l.newTable()
+                    l.push(input); l.setField(-2, "input")
+                    l.push(fullInput); l.setField(-2, "fullInput")
+                    val infoTable = l.get()
 
-                // Вызываем Lua callback
-                val result = suggestionsCallback.call(infoTable)
+                    // 2. Вызываем коллбэк
+                    val resultArray = suggestionsCallback.call(infoTable)
 
-                // Обрабатываем результат
-                if (result.istable()) {
-                    val suggestions = result.checktable()
-                    var i = 1
-                    while (true) {
-                        val suggestion = suggestions.get(i)
-                        if (suggestion.isnil()) break
-
-                        // Поддержка как строк, так и таблиц с tooltip
-                        if (suggestion.isstring()) {
-                            builder.suggest(suggestion.tojstring())
-                        } else if (suggestion.istable()) {
-                            val suggestionTable = suggestion.checktable()
-                            val text = suggestionTable.get("text").tojstring()
-                            val tooltip = suggestionTable.get("tooltip")
-
-                            if (!tooltip.isnil()) {
-                                builder.suggest(text, Component.literal(tooltip.tojstring()))
-                            } else {
-                                builder.suggest(text)
-                            }
-                        }
-                        i++
+                    // Если массив пустой, значит функция ничего не вернула
+                    if (resultArray == null || resultArray.isEmpty()) {
+                        return@supplyAsync builder.build()
                     }
-                } else if (result.isstring()) {
-                    // Если вернули строку, добавляем как единственное предложение
-                    builder.suggest(result.tojstring())
+
+                    // Берем первый (и скорее всего единственный) результат
+                    val result = resultArray[0]
+
+                    // 3. Проверяем тип результата
+                    l.push(result) // Теперь это один LuaValue, push его примет!
+                    val resultIsTable = l.isTable(-1)
+                    val resultIsString = l.isString(-1) || l.isNumber(-1)
+                    l.pop(1)
+
+                    if (resultIsTable) {
+                        var i = 1
+                        while (true) {
+                            // Метод get у LuaValue (таблицы) возвращает один LuaValue
+                            val suggestion = result.get(i)
+
+                            l.push(suggestion) // Опять же, push примет одиночный LuaValue
+                            val isNil = l.isNil(-1)
+
+                            if (isNil) {
+                                l.pop(1)
+                                break
+                            }
+
+                            if (l.isString(-1) || l.isNumber(-1)) {
+                                builder.suggest(suggestion.toString())
+                            } else if (l.isTable(-1)) {
+                                val textValue = suggestion.get("text")
+                                val text = if (textValue.type() == Lua.LuaType.NIL) "" else textValue.toString()
+
+                                val tooltipValue = suggestion.get("tooltip")
+
+                                l.push(tooltipValue)
+                                val hasTooltip = !l.isNil(-1)
+                                l.pop(1)
+
+                                if (hasTooltip) {
+                                    builder.suggest(text, Component.literal(tooltipValue.toString()))
+                                } else {
+                                    builder.suggest(text)
+                                }
+                            }
+
+                            l.pop(1)
+                            i++
+                        }
+                    } else if (resultIsString) {
+                        builder.suggest(result.toString())
+                    }
+
+                } catch (e: Exception) {
+                    HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in suggestions for /$commandName", e)
                 }
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error getting suggestions for command /$commandName", e)
             }
             builder.build()
         }
     }
 
-    private fun unregisterCommandInternal(dispatcher: CommandDispatcher<FabricClientCommandSource>, commandName: String) {
+    private fun unregisterCommandInternal(
+        dispatcher: CommandDispatcher<FabricClientCommandSource>,
+        commandName: String
+    ) {
         try {
             val root = dispatcher.root // В Kotlin это вызывает getRoot()
 
@@ -922,12 +1140,35 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     private fun executeLuaCommand(commandName: String, args: Array<String>, source: FabricClientCommandSource?) {
-        val callback = commandCallbacks[commandName]
-        if (callback != null && callback.isfunction()) {
+        val callback = commandCallbacks[commandName] ?: return
+
+        // Синхронизация для потокобезопасности JNI
+        synchronized(callbacksLock) {
             try {
-                // Преобразуем аргументы в Lua таблицу
-                val argsTable = LuaValue.listOf(args.map { LuaValue.valueOf(it) }.toTypedArray())
-                callback.call(LuaValue.valueOf(commandName), argsTable, LuaValue.valueOf(source?.player?.name?.string ?: ""))
+                val l = L
+
+                // 1. Проверяем, является ли коллбэк функцией
+                l.push(callback)
+                val isFunction = l.isFunction(-1)
+                l.pop(1)
+                if (!isFunction) return
+
+                // 2. Преобразуем массив строк в таблицу Lua
+                l.newTable() // Создаем таблицу на вершине стека
+                args.forEachIndexed { index, arg ->
+                    l.push(arg) // Кладем строку
+                    l.rawSetI(-2, index + 1) // Кладем в таблицу под индексом (Lua-style: 1-based)
+                }
+                // Забираем готовую таблицу как LuaValue (она удалится со стека)
+                val argsTable = l.get()
+
+                // 3. Подготавливаем остальные параметры
+                val playerName = source?.player?.name?.string ?: ""
+
+                // 4. Вызываем коллбэк: callback(commandName, argsTable, playerName)
+                // Метод call(Object...) автоматически обработает String и LuaValue
+                callback.call(commandName, argsTable, playerName)
+
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error executing Lua command: /$commandName", e)
                 source?.sendError(Component.literal("Error executing command: ${e.message}"))
@@ -949,18 +1190,43 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     // Event handlers
     fun onInventoryItemAChange(slot: Int, stack: ItemStack): Boolean {
         var allow = true
+
+        // 1. Копируем список колбэков, чтобы избежать ConcurrentModificationException
         val callbacks = synchronized(callbacksLock) {
-            inventoryItemChangeCallbacks.toTypedArray()
+            inventoryItemChangeCallbacks.toList()
         }
 
         for (callback in callbacks) {
             try {
-                val res = callback.call(LuaValue.valueOf(slot), LuaItemStack(stack))
-                if (res.isboolean() && !res.toboolean()) {
-                    allow = false
+                // Обязательно синхронизируемся при работе с нативным стеком L
+                synchronized(callbacksLock) {
+                    // 2. Создаем обертку предмета (метод .push() возвращает LuaValue)
+                    val luaStack = LuaItemStack(L, stack).push()
+
+                    // 3. Вызываем функцию Lua: callback(slot, item)
+                    // В iroiro метод call принимает (Object...)
+                    val resultArray = callback.call(slot.toDouble(), luaStack)
+
+                    // 4. Проверяем результат (первый элемент массива LuaValue[])
+                    val result = resultArray?.getOrNull(0)
+                    if (result != null) {
+                        // Кладём результат на стек для проверки типа
+                        L.push(result)
+
+                        // Если вернули булево значение
+                        if (L.isBoolean(-1)) {
+                            // Если результат — false, то отменяем действие
+                            if (!L.toBoolean(-1)) {
+                                allow = false
+                            }
+                        }
+
+                        // Удаляем результат со стека
+                        L.pop(1)
+                    }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in inventory add item callback in ${scriptName}", e)
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in inventory change callback", e)
             }
         }
         return allow
@@ -968,24 +1234,50 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
     fun onAttackBlock(pos: BlockPos, direction: Direction, hand: InteractionHand): Boolean {
         var allow = true
+
+        // 1. Копируем список колбэков для безопасной итерации
         val callbacks = synchronized(callbacksLock) {
-            attackBlockCallbacks.toTypedArray()
+            attackBlockCallbacks.toList()
         }
 
         for (callback in callbacks) {
             try {
-                val t = LuaValue.tableOf()
-                t.set("x", LuaValue.valueOf(pos.x))
-                t.set("y", LuaValue.valueOf(pos.y))
-                t.set("z", LuaValue.valueOf(pos.z))
-                t.set("direction", LuaDirection(direction))
-                t.set("hand", LuaValue.valueOf(hand.name))
-                val res = callback.call(t)
-                if (res.isboolean() && !res.toboolean()) {
-                    allow = false
+                // Обязательно синхронизируемся при работе с нативным стеком L
+                synchronized(callbacksLock) {
+                    // 2. Создаем таблицу аргументов {x, y, z, direction, hand}
+                    L.newTable() // Таблица на индексе -1
+
+                    L.push(pos.x.toDouble()); L.setField(-2, "x")
+                    L.push(pos.y.toDouble()); L.setField(-2, "y")
+                    L.push(pos.z.toDouble()); L.setField(-2, "z")
+
+                    // Создаем обертку направления и пушим её в таблицу
+                    L.push(LuaDirection(L, direction).push())
+                    L.setField(-2, "direction")
+
+                    L.push(hand.name); L.setField(-2, "hand")
+
+                    // Забираем готовую таблицу как LuaValue для передачи в функцию
+                    val argTable = L.get()
+
+                    // 3. Вызываем функцию Lua: callback(t)
+                    val resultArray = callback.call(argTable)
+
+                    // 4. Проверяем результат
+                    val result = resultArray?.getOrNull(0)
+                    if (result != null) {
+                        L.push(result) // Кладем результат на стек для проверки
+
+                        // Если Lua вернула false (явно), то запрещаем действие
+                        if (L.isBoolean(-1) && !L.toBoolean(-1)) {
+                            allow = false
+                        }
+
+                        L.pop(1) // Очищаем стек
+                    }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in attack block callback in ${scriptName}", e)
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in attack block callback", e)
             }
         }
         return allow
@@ -993,23 +1285,48 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
     fun onUseBlock(pos: BlockPos, hand: InteractionHand): Boolean {
         var allow = true
+
+        // 1. Копируем список колбэков для безопасной итерации
         val callbacks = synchronized(callbacksLock) {
-            useBlockCallbacks.toTypedArray()
+            useBlockCallbacks.toList()
         }
 
         for (callback in callbacks) {
             try {
-                val t = LuaValue.tableOf()
-                t.set("x", LuaValue.valueOf(pos.x))
-                t.set("y", LuaValue.valueOf(pos.y))
-                t.set("z", LuaValue.valueOf(pos.z))
-                t.set("hand", LuaValue.valueOf(hand.name))
-                val res = callback.call(t)
-                if (res.isboolean() && !res.toboolean()) {
-                    allow = false
+                // Обязательно синхронизируемся при работе с нативным состоянием L
+                synchronized(callbacksLock) {
+                    // 2. Создаем таблицу аргументов {x, y, z, hand} на стеке L
+                    L.newTable() // Таблица теперь на индексе -1
+
+                    L.push(pos.x.toDouble()); L.setField(-2, "x")
+                    L.push(pos.y.toDouble()); L.setField(-2, "y")
+                    L.push(pos.z.toDouble()); L.setField(-2, "z")
+                    L.push(hand.name); L.setField(-2, "hand")
+
+                    // Метод get() БЕЗ параметров (согласно вашему Lua.java)
+                    // забирает таблицу со стека и возвращает её как LuaValue
+                    val argTable = L.get()
+
+                    // 3. Вызываем функцию Lua: callback(argTable)
+                    // Результат — массив LuaValue[], так как Lua может возвращать несколько значений
+                    val resultArray = callback.call(argTable)
+
+                    // 4. Проверяем результат (первый элемент массива)
+                    val res = resultArray?.getOrNull(0)
+                    if (res != null) {
+                        L.push(res) // Кладем результат на стек для проверки типа
+
+                        // Если Lua вернула false (явно), то запрещаем действие
+                        // Используем методы из вашего интерфейса Lua
+                        if (L.isBoolean(-1) && !L.toBoolean(-1)) {
+                            allow = false
+                        }
+
+                        L.pop(1) // Очищаем стек после проверки, чтобы не было утечек
+                    }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in use block callback in ${scriptName}", e)
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in use block callback", e)
             }
         }
         return allow
@@ -1038,7 +1355,10 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call()
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in client pre tick callback in ${scriptName}", e)
+                HypixelCry.LOGGER.error(
+                    "${HypixelCry.LOG_PREFIX}Error in client pre tick callback in ${scriptName}",
+                    e
+                )
             }
         }
     }
@@ -1073,102 +1393,219 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     fun onKeyEvent(key: Int, type: KeyAction): Boolean {
-        val callbacks = synchronized(callbacksLock) {
-            keyEventCallbacks.toTypedArray()
-        }
         var allow = true
+
+        // 1. Копируем список колбэков для безопасной итерации
+        val callbacks = synchronized(callbacksLock) {
+            keyEventCallbacks.toList()
+        }
+
         for (callback in callbacks) {
             try {
-                val res = callback.call(LuaValue.valueOf(key), LuaValue.valueOf(type.name))
-                if (res.isboolean()) {
-                    if (!res.toboolean()) {
-                        allow = false
+                // Обязательно синхронизируемся при работе с нативным состоянием L
+                synchronized(callbacksLock) {
+                    // 2. Вызываем функцию Lua: callback(key, typeName)
+                    // В Lua числа передаем как Double, строки как String
+                    val resultArray = callback.call(key.toDouble(), type.name)
+
+                    // 3. Проверяем результат (первый элемент массива LuaValue[])
+                    val res = resultArray?.getOrNull(0)
+                    if (res != null) {
+                        // Кладем результат на стек глобального L для проверки типа
+                        L.push(res)
+
+                        // Проверяем: если это булево значение и оно равно false
+                        // Используем методы из вашего интерфейса Lua
+                        if (L.isBoolean(-1) && !L.toBoolean(-1)) {
+                            allow = false
+                        }
+
+                        // Обязательно удаляем результат со стека после проверки
+                        L.pop(1)
                     }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in key callback in ${scriptName}: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in key callback: ${e.message}")
             }
         }
         return allow
     }
 
+
     fun onChatMessageEvent(text: String, overlay: Boolean, json: String): Boolean {
-        val callbacks = synchronized(callbacksLock) {
-            messageEventCallbacks.toTypedArray()
-        }
         var allow = true
+
+        // 1. Копируем список колбэков для безопасной итерации
+        val callbacks = synchronized(callbacksLock) {
+            messageEventCallbacks.toList()
+        }
+
         for (callback in callbacks) {
             try {
-                val res = callback.call(LuaValue.valueOf(text), LuaValue.valueOf(overlay), LuaValue.valueOf(json))
-                if (res.isboolean()) {
-                    if (!res.toboolean()) {
-                        allow = false
+                // Обязательно синхронизируемся при работе с нативным состоянием L
+                synchronized(callbacksLock) {
+                    // 2. Вызываем функцию Lua: callback(text, overlay, json)
+                    // Библиотека автоматически сконвертирует String и Boolean в типы Lua
+                    val resultArray = callback.call(text, overlay, json)
+
+                    // 3. Проверяем результат (первый элемент массива LuaValue[])
+                    val res = resultArray?.getOrNull(0)
+                    if (res != null) {
+                        // Кладем результат на стек глобального L для проверки типа
+                        L.push(res)
+
+                        // Проверяем: если это булево значение и оно равно false
+                        // Используем методы из вашего интерфейса Lua (L.java)
+                        if (L.isBoolean(-1) && !L.toBoolean(-1)) {
+                            allow = false
+                        }
+
+                        // Обязательно удаляем результат со стека после проверки
+                        L.pop(1)
                     }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in message callback in ${scriptName}: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in chat message callback: ${e.message}")
             }
         }
         return allow
     }
 
     fun onSendChatMessageEvent(text: String): Boolean {
-        val callbacks = synchronized(callbacksLock) {
-            onSendMessageEventCallbacks.toTypedArray()
-        }
         var allow = true
+
+        // 1. Копируем список колбэков для безопасной итерации
+        val callbacks = synchronized(callbacksLock) {
+            onSendMessageEventCallbacks.toList()
+        }
+
         for (callback in callbacks) {
             try {
-                val res = callback.call(LuaValue.valueOf(text))
-                if (res.isboolean()) {
-                    if (!res.toboolean()) {
-                        allow = false
+                // Обязательно синхронизируемся при работе с нативным состоянием L
+                synchronized(callbacksLock) {
+                    // 2. Вызываем функцию Lua: callback(text)
+                    // Строка 'text' будет автоматически сконвертирована в тип Lua
+                    val resultArray = callback.call(text)
+
+                    // 3. Проверяем результат (первый элемент массива LuaValue[])
+                    val res = resultArray?.getOrNull(0)
+                    if (res != null) {
+                        // Кладем результат на стек глобального L для проверки типа
+                        L.push(res)
+
+                        // Проверяем: если это булево значение и оно равно false
+                        // Используем методы из вашего интерфейса Lua (L.java)
+                        if (L.isBoolean(-1) && !L.toBoolean(-1)) {
+                            allow = false
+                        }
+
+                        // Обязательно удаляем результат со стека после проверки
+                        L.pop(1)
                     }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in send message callback in ${scriptName}: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in send message callback: ${e.message}")
             }
         }
         return allow
     }
 
     fun onSendChatCommandEvent(text: String): Boolean {
-        val callbacks = synchronized(callbacksLock) {
-            onSendCommandEventCallbacks.toTypedArray()
-        }
         var allow = true
+
+        // 1. Копируем список колбэков для безопасной итерации
+        val callbacks = synchronized(callbacksLock) {
+            onSendCommandEventCallbacks.toList()
+        }
+
         for (callback in callbacks) {
             try {
-                val res = callback.call(LuaValue.valueOf(text))
-                if (res.isboolean()) {
-                    if (!res.toboolean()) {
-                        allow = false
+                // Обязательно синхронизируемся при работе с нативным состоянием L
+                synchronized(callbacksLock) {
+                    // 2. Вызываем функцию Lua: callback(text)
+                    // Результат в этой библиотеке всегда возвращается как массив LuaValue[]
+                    val resultArray = callback.call(text)
+
+                    // 3. Проверяем результат (первый элемент массива)
+                    val res = resultArray?.getOrNull(0)
+                    if (res != null) {
+                        // Кладем результат на стек глобального L для проверки типа
+                        L.push(res)
+
+                        // Проверяем: если это булево значение и оно равно false
+                        // Используем методы из вашего интерфейса Lua (L.java)
+                        if (L.isBoolean(-1) && !L.toBoolean(-1)) {
+                            allow = false
+                        }
+
+                        // Обязательно удаляем результат со стека после проверки
+                        L.pop(1)
                     }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in send command callback in ${scriptName}: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in send command callback: ${e.message}")
             }
         }
         return allow
     }
 
-    fun onBlockUpdateEvent(table: LuaValue): Boolean {
+    fun onBlockUpdateEvent(pos: BlockPos, old: BlockState?, new: BlockState?): Boolean {
+        // 1. Сначала проверяем, есть ли вообще колбэки, чтобы не делать лишнюю работу
         val callbacks = synchronized(callbacksLock) {
-            blockUpdateCallbacks.toTypedArray()
+            if (blockUpdateCallbacks.isEmpty()) return true
+            blockUpdateCallbacks.toList()
         }
+
         var allow = true
-        for (callback in callbacks) {
+
+        // 2. Синхронизируемся для работы с нативным стеком L
+        synchronized(callbacksLock) {
             try {
-                val res = callback.call(table)
-                if (res.isboolean()) {
-                    if (!res.toboolean()) {
-                        allow = false
+                // Создаем ОДНУ таблицу для всех колбэков этого скрипта
+                L.newTable() // Таблица на индексе -1
+
+                L.push(pos.x.toDouble()); L.setField(-2, "x")
+                L.push(pos.y.toDouble()); L.setField(-2, "y")
+                L.push(pos.z.toDouble()); L.setField(-2, "z")
+
+                if (old != null) {
+                    // LuaBlockState(L, old).push() создает LuaValue с метатаблицей
+                    L.push(LuaBlockState(L, old).push())
+                    L.setField(-2, "old")
+                }
+
+                if (new != null) {
+                    L.push(LuaBlockState(L, new).push())
+                    L.setField(-2, "new")
+                }
+
+                // Забираем готовую таблицу как LuaValue для передачи в call()
+                val eventTable = L.get()
+
+                // 3. Проходим по колбэкам
+                for (callback in callbacks) {
+                    try {
+                        // Вызываем функцию Lua: callback(eventTable)
+                        val resultArray = callback.call(eventTable)
+
+                        // Проверяем результат (первый элемент массива)
+                        val res = resultArray?.getOrNull(0)
+                        if (res != null) {
+                            L.push(res) // Кладем на стек для проверки
+                            if (L.isBoolean(-1) && !L.toBoolean(-1)) {
+                                allow = false
+                            }
+                            L.pop(1) // Очищаем стек после проверки
+                        }
+                    } catch (e: Exception) {
+                        HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in block update callback: ${e.message}")
                     }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in block update callback in ${scriptName}: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Critical error in onBlockUpdateEvent: ${e.message}")
             }
         }
+
         return allow
     }
 
@@ -1179,7 +1616,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
         for (callback in callbacks) {
             try {
-                callback.call(LuaValue.valueOf(location.toString()))
+                callback.call(location.toString())
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in location change callback in ${scriptName}: ${e.message}")
             }
@@ -1205,30 +1642,41 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     // Packet events
     fun onSpawnParticleEvent(id: Int, x: Double, y: Double, z: Double, xDist: Float, yDist: Float, zDist: Float, maxSpeed: Float, count: Int): Boolean {
         var allow = true
+
+        // 1. Копируем список колбэков для безопасной итерации
         val callbacks = synchronized(callbacksLock) {
-            particleCallbacks.toTypedArray()
+            particleCallbacks.toList()
         }
 
         for (callback in callbacks) {
             try {
+                // Обязательно синхронизируемся при работе с нативным состоянием L
+                synchronized(callbacksLock) {
+                    // 2. Создаем таблицу параметров {id, x, y, z, x_dist, ...} на стеке L
+                    L.newTable() // Таблица теперь на индексе -1
 
-                val t = LuaValue.tableOf()
-                t.set("id", id)
+                    L.push(id.toDouble()); L.setField(-2, "id")
+                    L.push(x); L.setField(-2, "x")
+                    L.push(y); L.setField(-2, "y")
+                    L.push(z); L.setField(-2, "z")
 
-                t.set("x", x)
-                t.set("y", y)
-                t.set("z", z)
+                    L.push(xDist.toDouble()); L.setField(-2, "x_dist")
+                    L.push(yDist.toDouble()); L.setField(-2, "y_dist")
+                    L.push(zDist.toDouble()); L.setField(-2, "z_dist")
 
-                t.set("x_dist", xDist.toDouble())
-                t.set("y_dist", yDist.toDouble())
-                t.set("z_dist", zDist.toDouble())
+                    L.push(maxSpeed.toDouble()); L.setField(-2, "max_speed")
+                    L.push(count.toDouble()); L.setField(-2, "count")
 
-                t.set("max_speed", maxSpeed.toDouble())
-                t.set("count", count)
+                    // Метод get() БЕЗ параметров забирает таблицу со стека и возвращает её как LuaValue
+                    val argTable = L.get()
 
-                callback.call(t)
+                    // 3. Вызываем функцию Lua: callback(argTable)
+                    // В вашем оригинальном коде результат не проверялся, но если нужно —
+                    // вы можете добавить проверку resultArray аналогично предыдущим ивентам.
+                    callback.call(argTable)
+                }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in particle callback in ${scriptName}: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in particle callback: ${e.message}")
             }
         }
         return allow
@@ -1236,66 +1684,78 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
     fun onServerSideRotationEvent(yaw: Float, pitch: Float): Boolean {
         var allow = true
+
+        // 1. Копируем список колбэков для безопасной итерации
         val callbacks = synchronized(callbacksLock) {
-            serverSideRotationCallbacks.toTypedArray()
+            serverSideRotationCallbacks.toList()
         }
 
         for (callback in callbacks) {
             try {
-                val res = callback.call(LuaValue.valueOf(yaw.toDouble()), LuaValue.valueOf(pitch.toDouble()))
-                if (res.isboolean()) {
-                    if (!res.toboolean()) {
-                        allow = false
+                // Обязательно синхронизируемся при работе с нативным состоянием L
+                synchronized(callbacksLock) {
+                    // 2. Вызываем функцию Lua: callback(yaw, pitch)
+                    // Передаем как Double, так как в Lua это стандарт для чисел
+                    val resultArray = callback.call(yaw.toDouble(), pitch.toDouble())
+
+                    // 3. Проверяем результат (первый элемент массива LuaValue[])
+                    val res = resultArray?.getOrNull(0)
+                    if (res != null) {
+                        // Кладем результат на стек глобального L для проверки типа
+                        L.push(res)
+
+                        // Проверяем: если это булево значение и оно равно false
+                        // Используем методы из вашего интерфейса Lua (L.java)
+                        if (L.isBoolean(-1) && !L.toBoolean(-1)) {
+                            allow = false
+                        }
+
+                        // Обязательно удаляем результат со стека после проверки
+                        L.pop(1)
                     }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in server side rotation callback in ${scriptName}: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in server side rotation callback: ${e.message}")
             }
         }
         return allow
     }
 
-    fun requireModule(moduleName: String): LuaValue {
-        val moduleFile = LuaManager.findModuleFile(moduleName)
-            ?: throw LuaError("module '$moduleName' not found")
-
-        try {
-            // Добавляем в стек перед выполнением
-            loadingStack.push(moduleName)
-
-            // Загружаем код из файла
-            val chunk = LuaManager.loadChunk(moduleFile, moduleName, scriptGlobals)
-
-            // Выполняем. Результат не сохраняем в кэш, просто возвращаем
-            val result = chunk.call()
-            return result
-
-        } catch (e: Exception) {
-            throw LuaError("error loading module '$moduleName': ${e.message}")
-        } finally {
-            // Обязательно убираем из стека после завершения
-            if (!loadingStack.isEmpty() && loadingStack.peek() == moduleName) {
-                loadingStack.pop()
-            }
-        }
-    }
-
     fun onServerSideTeleportEvent(x: Double, y: Double, z: Double): Boolean {
         var allow = true
+
+        // 1. Копируем список колбэков для безопасной итерации
         val callbacks = synchronized(callbacksLock) {
-            serverSideTeleportCallbacks.toTypedArray()
+            serverSideTeleportCallbacks.toList()
         }
 
         for (callback in callbacks) {
             try {
-                val res = callback.call(LuaValue.valueOf(x), LuaValue.valueOf(y), LuaValue.valueOf(z))
-                if (res.isboolean()) {
-                    if (!res.toboolean()) {
-                        allow = false
+                // Обязательно синхронизируемся при работе с нативным состоянием L (JNI)
+                synchronized(callbacksLock) {
+                    // 2. Вызываем функцию Lua: callback(x, y, z)
+                    // Библиотека автоматически упакует Double в числа Lua
+                    val resultArray = callback.call(x, y, z)
+
+                    // 3. Проверяем результат (первый элемент массива LuaValue[])
+                    val res = resultArray?.getOrNull(0)
+                    if (res != null) {
+                        // Кладем результат на стек глобального L для проверки типа
+                        L.push(res)
+
+                        // Проверяем: если это булево значение и оно равно false
+                        // Используем методы из вашего интерфейса Lua (L.java)
+                        if (L.isBoolean(-1) && !L.toBoolean(-1)) {
+                            allow = false
+                        }
+
+                        // Обязательно удаляем результат со стека после проверки,
+                        // чтобы не засорять память нативной стороны
+                        L.pop(1)
                     }
                 }
             } catch (e: Exception) {
-                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in server side rotation callback in ${scriptName}: ${e.message}")
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in server side teleport callback: ${e.message}")
             }
         }
         return allow
@@ -1360,6 +1820,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         localDependencyGraph.remove(scriptName)
         // Очищаем зависимости
         dependencies.clear()
-        scriptGlobals = JsePlatform.standardGlobals()
+        L.close()
     }
 }
