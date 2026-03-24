@@ -3,7 +3,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.datatypes.core
 import net.minecraft.core.Direction
 import party.iroiro.luajava.Lua
 
-class LuaDirection(val l: Lua, val direction: Direction): SimpleLuaWrapper(l) {
+class LuaDirection(val lua: Lua, val direction: Direction): SimpleLuaWrapper(lua) {
     override fun getFieldValue(l: Lua, key: String): Any? {
         return when (key) {
             "opposite" -> LuaDirection(l, direction.opposite).push()
