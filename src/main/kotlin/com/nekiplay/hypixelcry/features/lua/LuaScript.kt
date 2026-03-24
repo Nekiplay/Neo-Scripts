@@ -101,7 +101,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val dependencies = ConcurrentHashMap<String, MutableList<String>>()
 
     init {
-        L.openLibs()
+        L.openLibraries()
         L.setExternalLoader(object : ExternalLoader {
             override fun load(moduleName: String, l: Lua): Buffer? {
                 // 1. Превращаем имя модуля в путь (например, "utils.math" -> "utils/math.lua")
