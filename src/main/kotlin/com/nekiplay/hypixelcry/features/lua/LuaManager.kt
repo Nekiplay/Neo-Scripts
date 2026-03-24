@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.features.lua
 
 import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject
 import kotlinx.io.files.FileNotFoundException
+import net.fabricmc.loader.api.FabricLoader
 import java.io.File
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
