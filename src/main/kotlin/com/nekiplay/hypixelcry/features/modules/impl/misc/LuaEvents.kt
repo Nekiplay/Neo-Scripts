@@ -254,38 +254,16 @@ object LuaEvents : ClientModule() {
         }
 
         BlockUpdateEvent.EVENT.register(BlockUpdateCallback { event ->
-            val blockPos = event.blockPos
-            val oldState = event.old
-            val newState = event.new
-
-            val table = LuaValue.tableOf()
-
-            table.set("x", blockPos.x)
-            table.set("y", blockPos.y)
-            table.set("z", blockPos.z)
-            if (oldState != null) {
-                table.set("old", LuaBlockState(oldState))
-            }
-            if (newState != null) {
-                table.set("new", LuaBlockState(newState))
-            }
-
             var allow = true
+
+            // Передаем чистые объекты Minecraft
             LUA_MANAGER.scripts.values.forEach { script ->
-                try {
-                    if (!script.onBlockUpdateEvent(table)) {
-                        allow = false
-                    }
-                } catch (e: Exception) {
-                    // Обработка ошибок
+                if (!script.onBlockUpdateEvent(event.blockPos, event.old, event.new)) {
+                    allow = false
                 }
             }
 
-            if (allow) {
-                InteractionResult.PASS
-            } else {
-                InteractionResult.FAIL
-            }
+            if (allow) InteractionResult.PASS else InteractionResult.FAIL
         })
 
         PacketEvent.RECEIVE.register { event ->
