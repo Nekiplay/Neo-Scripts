@@ -13,6 +13,7 @@ import net.minecraft.resources.Identifier
 import net.minecraft.world.item.ItemStack
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
+import party.iroiro.luajava.value.LuaValue
 import java.io.File
 import java.io.FileInputStream
 import java.util.concurrent.ConcurrentHashMap
@@ -30,7 +31,7 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
         }
     }
 
-    fun push() {
+    fun push(): LuaValue {
         lua.newTable() // [table]
         val tIdx = lua.getTop()
 
@@ -43,7 +44,7 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
         registerFunction(tIdx, "renderLine") { renderLine(it) }
         registerFunction(tIdx, "renderPolygon") { renderPolygon(it) }
         registerFunction(tIdx, "renderItemStack") { renderItemStack(it) }
-        //return lua.get() // Забираем и возвращаем готовую таблицу
+        return lua.get() // Забираем и возвращаем готовую таблицу
     }
 
 

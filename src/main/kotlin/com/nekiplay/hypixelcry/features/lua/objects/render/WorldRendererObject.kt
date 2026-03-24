@@ -18,13 +18,14 @@ import net.minecraft.world.phys.Vec3
 import org.joml.Quaternionf
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
+import party.iroiro.luajava.value.LuaValue
 import java.io.File
 import java.io.FileInputStream
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Supplier
 
 class WorldRendererObject(val lua: Lua, private val context: PrimitiveCollector?) {
-    fun push() {
+    fun push(): LuaValue {
         lua.newTable() // [table]
         val tIdx = lua.getTop()
 
@@ -44,7 +45,7 @@ class WorldRendererObject(val lua: Lua, private val context: PrimitiveCollector?
         registerFunction(tIdx, "renderBlock") { renderBlock(it) }
         registerFunction(tIdx, "renderItem") { renderItem(it) }
 
-        //return lua.get() // Забираем и возвращаем готовую таблицу
+        return lua.get() // Забираем и возвращаем готовую таблицу
     }
 
 
