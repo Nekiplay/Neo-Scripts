@@ -56,7 +56,7 @@ dependencies {
     mappings(loom.officialMojangMappings())
 
     val luajava_version = "4.1.0"
-    val jnigen_version = "3.1.1"
+    val jnigen_version = "1.0.1"
 
     // 1. Luajava Core
     implementation("party.iroiro.luajava:luajava:$luajava_version")
@@ -72,8 +72,8 @@ dependencies {
     include(jitNatives)
 
     // 4. The Native Loader
-    implementation("com.badlogicgames.jnigen:jnigen-loader:$jnigen_version")
-    include("com.badlogicgames.jnigen:jnigen-loader:$jnigen_version")
+    implementation("party.iroiro.luajava:jnigen:$jnigen_version")
+    include("party.iroiro.luajava:jnigen:$jnigen_version")
 
     modImplementation("net.fabricmc:fabric-loader:${property("loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_version")}")
