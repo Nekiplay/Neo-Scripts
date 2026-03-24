@@ -8,7 +8,7 @@ abstract class SimpleLuaWrapper(val L: Lua) {
     abstract fun getFieldValue(l: Lua, key: String): Any?
     open fun setFieldValue(l: Lua, key: String, value: LuaValue): Boolean = false
 
-    fun push(): LuaValue {
+    open fun push(): LuaValue {
         L.newTable() 
         val tableIdx = L.getTop()
 
