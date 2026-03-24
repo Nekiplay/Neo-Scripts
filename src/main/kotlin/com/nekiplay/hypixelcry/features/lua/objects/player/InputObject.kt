@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.objects.player
 
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.sugar.attackBlock
 import com.nekiplay.hypixelcry.sugar.attackEntity
@@ -12,416 +13,256 @@ import com.nekiplay.hypixelcry.sugar.syncSelectedSlot
 import com.nekiplay.hypixelcry.sugar.useItem
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
 import net.minecraft.client.KeyMapping
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.OneArgFunction
-import org.luaj.vm2.lib.ZeroArgFunction
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
 
 
-class InputObject: LuaValue() {
-    override fun call(): LuaValue {
-        return this
-    }
+class InputObject(L: Lua) : SimpleLuaWrapper(L) {
 
-    override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            "useItem" -> UseFunction()
-            "silentUse" -> SilentUseFunction()
-            "syncSelectedSlot" -> SyncSelectedSlotFunction()
+    override fun getFieldValue(l: Lua, key: String): Any? {
+        return when (key) {
+            // Actions
+            "useItem" -> JFunction { useItem(it) }
+            "silentUse" -> JFunction { silentUse(it) }
+            "syncSelectedSlot" -> JFunction { syncSelectedSlot(it) }
+            "attackBlock" -> JFunction { attackBlock(it) }
+            "attackEntity" -> JFunction { attackEntity(it) }
+            "interactBlock" -> JFunction { interactBlock(it) }
+            "interactEntity" -> JFunction { interactEntity(it) }
+            "leftClick" -> JFunction { leftClick(it) }
+            "rightClick" -> JFunction { rightClick(it) }
 
-            "attackBlock" -> AttackBlockFunction()
-            "attackEntity" -> AttackEntityFunction()
-
-            "interactBlock" -> InteractBlockFunction()
-            "interactEntity" -> InteractEntityFunction()
-
-            "leftClick" -> LeftClickFunction()
-            "rightClick" -> RightClickFunction()
             // Setters
-            "setSelectedSlot" -> SetSelectedSlotFunction()
-
-            // KeyBoard
-            "setPressedSprinting" -> SetPressedSprintingFunction()
-            "setPressedJump" -> SetPressedJumpFunction()
-            "setPressedSneak" -> SetPressedSneakFunction()
-
-            "setPressedForward" -> SetPressedForwardFunction()
-            "setPressedBack" -> SetPressedBackFunction()
-            "setPressedLeft" -> SetPressedLeftFunction()
-            "setPressedRight" -> SetPressedRightFunction()
-
-            // Mouse
-            "setPressedAttack" -> SetPressedAttackFunction()
-            "setPressedUse" -> SetPressedUseFunction()
+            "setSelectedSlot" -> JFunction { setSelectedSlot(it) }
+            "setPressedSprinting" -> JFunction { setPressedSprinting(it) }
+            "setPressedJump" -> JFunction { setPressedJump(it) }
+            "setPressedSneak" -> JFunction { setPressedSneak(it) }
+            "setPressedForward" -> JFunction { setPressedForward(it) }
+            "setPressedBack" -> JFunction { setPressedBack(it) }
+            "setPressedLeft" -> JFunction { setPressedLeft(it) }
+            "setPressedRight" -> JFunction { setPressedRight(it) }
+            "setPressedAttack" -> JFunction { setPressedAttack(it) }
+            "setPressedUse" -> JFunction { setPressedUse(it) }
 
             // Getters
-            "getSelectedSlot" -> GetSelectedSlotFunction()
+            "getSelectedSlot" -> JFunction { getSelectedSlot(it) }
+            "isPressedSprinting" -> JFunction { isPressedSprinting(it) }
+            "isPressedJump" -> JFunction { isPressedJump(it) }
+            "isPressedSneak" -> JFunction { isPressedSneak(it) }
+            "isPressedForward" -> JFunction { isPressedForward(it) }
+            "isPressedBack" -> JFunction { isPressedBack(it) }
+            "isPressedLeft" -> JFunction { isPressedLeft(it) }
+            "isPressedRight" -> JFunction { isPressedRight(it) }
+            "isPressedAttack" -> JFunction { isPressedAttack(it) }
+            "isPressedUse" -> JFunction { isPressedUse(it) }
 
-            // KeyBoard
-            "isPressedSprinting" -> IsPressedSprintingFunction()
-            "isPressedJump" -> IsPressedJumpFunction()
-            "isPressedSneak" -> IsPressedSneakFunction()
-
-            "isPressedForward" -> IsPressedForwardFunction()
-            "isPressedBack" -> IsPressedBackFunction()
-            "isPressedLeft" -> IsPressedLeftFunction()
-            "isPressedRight" -> IsPressedRightFunction()
-
-            // Mouse
-            "isPressedAttack" -> IsPressedAttackFunction()
-            "isPressedUse" -> IsPressedUseFunction()
-            else -> NIL
-        } as LuaValue
-    }
-
-    private inner class SyncSelectedSlotFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(mc.gameMode?.syncSelectedSlot() == true)
+            else -> null
         }
     }
 
-    private inner class LeftClickFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(mc.leftClick())
-        }
+    // Реализованные вами функции
+    private fun syncSelectedSlot(l: Lua): Int {
+        l.push(mc.gameMode?.syncSelectedSlot() == true)
+        return 1
     }
 
-    private inner class RightClickFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            mc.rightClick()
-            return TRUE
-        }
+    private fun leftClick(l: Lua): Int {
+        // Логика: вызываем метод и возвращаем результат (обычно boolean)
+        l.push(mc.leftClick())
+        return 1
     }
 
-    private inner class AttackBlockFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            return LuaValue.valueOf(mc.gameMode?.attackBlock() == true)
-        }
+    private fun rightClick(l: Lua): Int {
+        mc.rightClick()
+        l.push(true)
+        return 1
     }
 
-    private inner class AttackEntityFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            return LuaValue.valueOf(mc.gameMode?.attackEntity() == true)
-        }
+    private fun attackBlock(l: Lua): Int {
+        l.push(mc.gameMode?.attackBlock() == true)
+        return 1
     }
 
-    private inner class InteractEntityFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            return LuaValue.valueOf(mc.gameMode?.interactEntity() == true)
-        }
+    private fun attackEntity(l: Lua): Int {
+        l.push(mc.gameMode?.attackEntity() == true)
+        return 1
     }
 
-    private inner class InteractBlockFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            return LuaValue.valueOf(mc.gameMode?.interactBlock() == true)
-        }
+    private fun interactEntity(l: Lua): Int {
+        l.push(mc.gameMode?.interactEntity() == true)
+        return 1
     }
 
-    private inner class UseFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            return LuaValue.valueOf(mc.gameMode?.useItem() == true)
-        }
+    private fun interactBlock(l: Lua): Int {
+        l.push(mc.gameMode?.interactBlock() == true)
+        return 1
     }
 
-    private inner class SilentUseFunction : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            return if (arg != null && arg.isnumber()) {
-                val slot = arg.toint()
-                if (slot in 0..8) {
-                    if (mc.screen == null) {
-                        mc.gameMode?.silentUse(slot)
-                        return TRUE
-                    }
-                    FALSE
-                } else {
-                    FALSE
+    private fun useItem(l: Lua): Int {
+        l.push(mc.gameMode?.useItem() == true)
+        return 1
+    }
+
+    private fun silentUse(l: Lua): Int {
+        if (l.isNumber(1)) {
+            val slot = l.toInteger(1).toInt()
+            if (slot in 0..8) {
+                if (mc.screen == null) {
+                    mc.gameMode?.silentUse(slot)
+                    l.push(true) // Аналог TRUE
+                    return 1
                 }
+                l.push(false) // Аналог FALSE
+                return 1
             } else {
-                NIL
+                l.push(false) // Аналог FALSE
+                return 1
             }
+        } else {
+            l.pushNil() // Аналог NIL
+            return 1
         }
     }
 
-    // Setters
-    private inner class SetSelectedSlotFunction : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            return if (arg != null && arg.isnumber()) {
-                val slot = arg.toint()
-                if (slot in 0..8) {
-                    if (mc.screen == null) {
-                        mc.player?.inventory?.selectedSlot = slot
-                        return TRUE
-                    }
-                    FALSE
-                } else {
-                    FALSE
+    private fun setSelectedSlot(l: Lua): Int {
+        if (l.isNumber(1)) {
+            val slot = l.toInteger(1).toInt()
+            if (slot in 0..8) {
+                if (mc.screen == null) {
+                    mc.player?.inventory?.selectedSlot = slot
+                    l.push(true) // TRUE
+                    return 1
                 }
+                l.push(false) // FALSE
             } else {
-                NIL
+                l.push(false) // FALSE
             }
+        } else {
+            l.pushNil() // NIL
+        }
+        return 1
+    }
+
+    // Вспомогательная функция для сохранения идентичной логики во всех кнопках
+    private fun handleKeyUpdate(l: Lua, keyBinding: KeyMapping): Int {
+        if (l.isBoolean(1)) {
+            val state = l.toBoolean(1)
+            if (mc.screen == null) {
+                keyBinding.isDown = state
+                val key = KeyBindingHelper.getBoundKeyOf(keyBinding)
+                KeyMapping.set(key, state)
+                if (state) {
+                    KeyMapping.click(key)
+                }
+                l.push(true) // TRUE
+                return 1
+            }
+            l.push(false) // FALSE
+            return 1
+        } else {
+            l.pushNil() // NIL
+            return 1
         }
     }
 
-    private inner class SetPressedSprintingFunction : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
-                    val sprintKey = mc.options.keySprint
-                    sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
-                    KeyMapping.set(key, arg.toboolean())
-                    if (arg.toboolean()) {
-                        KeyMapping.click(key)
-                    }
-                    TRUE
-                }
-                FALSE
-            }
-            else {
-                NIL
-            }
-        }
+    private fun setPressedSprinting(l: Lua): Int {
+        return handleKeyUpdate(l, mc.options.keySprint)
     }
 
-    private inner class SetPressedForwardFunction : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
-                    val sprintKey = mc.options.keyUp
-                    sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
-                    KeyMapping.set(key, arg.toboolean())
-                    if (arg.toboolean()) {
-                        KeyMapping.click(key)
-                    }
-                    TRUE
-                }
-                FALSE
-            }
-            else {
-                NIL
-            }
-        }
+    private fun setPressedForward(l: Lua): Int {
+        return handleKeyUpdate(l, mc.options.keyUp)
     }
 
-    private inner class SetPressedBackFunction : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
-                    val sprintKey = mc.options.keyDown
-                    sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
-                    KeyMapping.set(key, arg.toboolean())
-                    if (arg.toboolean()) {
-                        KeyMapping.click(key)
-                    }
-                    TRUE
-                }
-                FALSE
-            }
-            else {
-                NIL
-            }
-        }
+    private fun setPressedBack(l: Lua): Int {
+        return handleKeyUpdate(l, mc.options.keyDown)
     }
 
-    private inner class SetPressedLeftFunction : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
-                    val sprintKey = mc.options.keyLeft
-                    sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
-                    KeyMapping.set(key, arg.toboolean())
-                    if (arg.toboolean()) {
-                        KeyMapping.click(key)
-                    }
-                    TRUE
-                }
-                FALSE
-            }
-            else {
-                NIL
-            }
-        }
+    private fun setPressedLeft(l: Lua): Int {
+        return handleKeyUpdate(l, mc.options.keyLeft)
     }
 
-    private inner class SetPressedRightFunction : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
-                    val sprintKey = mc.options.keyRight
-                    sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
-                    KeyMapping.set(key, arg.toboolean())
-                    if (arg.toboolean()) {
-                        KeyMapping.click(key)
-                    }
-                    TRUE
-                }
-                FALSE
-            }
-            else {
-                NIL
-            }
-        }
+    private fun setPressedRight(l: Lua): Int {
+        return handleKeyUpdate(l, mc.options.keyRight)
     }
 
-    private inner class SetPressedJumpFunction : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
-                    val sprintKey = mc.options.keyJump
-                    sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
-                    KeyMapping.set(key, arg.toboolean())
-                    if (arg.toboolean()) {
-                        KeyMapping.click(key)
-                    }
-                    TRUE
-                }
-                FALSE
-            }
-            else {
-                NIL
-            }
-        }
+    private fun setPressedJump(l: Lua): Int {
+        return handleKeyUpdate(l, mc.options.keyJump)
     }
 
-    private inner class SetPressedSneakFunction : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
-                    val sprintKey = mc.options.keyShift
-                    sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
-                    KeyMapping.set(key, arg.toboolean())
-                    if (arg.toboolean()) {
-                        KeyMapping.click(key)
-                    }
-                    TRUE
-                }
-                FALSE
-            }
-            else {
-                NIL
-            }
-        }
+    private fun setPressedSneak(l: Lua): Int {
+        return handleKeyUpdate(l, mc.options.keyShift)
     }
 
-    private inner class SetPressedAttackFunction : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
-                    val sprintKey = mc.options.keyAttack
-                    sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
-                    KeyMapping.set(key, arg.toboolean())
-                    if (arg.toboolean()) {
-                        KeyMapping.click(key)
-                    }
-                    TRUE
-                }
-                FALSE
-            }
-            else {
-                NIL
-            }
-        }
+    private fun setPressedAttack(l: Lua): Int {
+        return handleKeyUpdate(l, mc.options.keyAttack)
     }
 
-    private inner class SetPressedUseFunction : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
-                    val sprintKey = mc.options.keyUse
-                    sprintKey.isDown = arg.toboolean()
-                    KeyMapping.set(KeyBindingHelper.getBoundKeyOf(sprintKey), arg.toboolean())
-                    TRUE
-                }
-                FALSE
+    private fun setPressedUse(l: Lua): Int {
+        if (l.isBoolean(1)) {
+            if (mc.screen == null) {
+                val state = l.toBoolean(1)
+                val keyBinding = mc.options.keyUse
+                keyBinding.isDown = state
+                KeyMapping.set(KeyBindingHelper.getBoundKeyOf(keyBinding), state)
+                l.push(true) // TRUE
+                return 1
             }
-            else {
-                NIL
-            }
+            l.push(false) // FALSE
+            return 1
+        } else {
+            l.pushNil() // NIL
+            return 1
         }
     }
 
     // Getters
-    private inner class GetSelectedSlotFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            return valueOf(mc.player?.inventory?.selectedSlot ?: 0)
-        }
+    private fun getSelectedSlot(l: Lua): Int {
+        l.push((mc.player?.inventory?.selectedSlot ?: 0))
+        return 1
     }
 
-
-    private inner class IsPressedSprintingFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            val sprintKey = mc.options.keySprint
-            return valueOf(sprintKey.isDown)
-        }
+    private fun isPressedSprinting(l: Lua): Int {
+        l.push(mc.options.keySprint.isDown)
+        return 1
     }
 
-    private inner class IsPressedForwardFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            val sprintKey = mc.options.keyUp
-            return valueOf(sprintKey.isDown)
-        }
+    private fun isPressedForward(l: Lua): Int {
+        l.push(mc.options.keyUp.isDown)
+        return 1
     }
 
-    private inner class IsPressedBackFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            val sprintKey = mc.options.keyDown
-            return valueOf(sprintKey.isDown)
-        }
+    private fun isPressedBack(l: Lua): Int {
+        l.push(mc.options.keyDown.isDown)
+        return 1
     }
 
-    private inner class IsPressedLeftFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            val sprintKey = mc.options.keyLeft
-            return valueOf(sprintKey.isDown)
-        }
+    private fun isPressedLeft(l: Lua): Int {
+        l.push(mc.options.keyLeft.isDown)
+        return 1
     }
 
-    private inner class IsPressedRightFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            val sprintKey = mc.options.keyRight
-            return valueOf(sprintKey.isDown)
-        }
+    private fun isPressedRight(l: Lua): Int {
+        l.push(mc.options.keyRight.isDown)
+        return 1
     }
 
-    private inner class IsPressedJumpFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            val sprintKey = mc.options.keyJump
-            return valueOf(sprintKey.isDown)
-        }
+    private fun isPressedJump(l: Lua): Int {
+        l.push(mc.options.keyJump.isDown)
+        return 1
     }
 
-    private inner class IsPressedSneakFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            val sprintKey = mc.options.keyShift
-            return valueOf(sprintKey.isDown)
-        }
+    private fun isPressedSneak(l: Lua): Int {
+        l.push(mc.options.keyShift.isDown)
+        return 1
     }
 
-    private inner class IsPressedAttackFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            val sprintKey = mc.options.keyAttack
-            return valueOf(sprintKey.isDown)
-        }
+    private fun isPressedAttack(l: Lua): Int {
+        l.push(mc.options.keyAttack.isDown)
+        return 1
     }
 
-    private inner class IsPressedUseFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            val sprintKey = mc.options.keyUse
-            return valueOf(sprintKey.isDown)
-        }
-    }
-
-    // Переопределяем необходимые методы LuaValue
-    override fun typename(): String = "input"
-    override fun tojstring(): String = "InputObject"
-    override fun isnil(): Boolean = false
-    override fun type(): Int {
-        return TUSERDATA
+    private fun isPressedUse(l: Lua): Int {
+        l.push(mc.options.keyUse.isDown)
+        return 1
     }
 }

@@ -27,39 +27,98 @@ import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
+import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 
 class PlayerObject(private val L: Lua) {
     fun register() {
-        // Создаем таблицу
+        // 1. Создаем основную таблицу модуля player
         L.newTable()
+        val playerTableIdx = L.getTop()
 
-        // Регистрируем методы
-        L.push { l -> getBlock(l) }; L.setField(-2, "getBlock")
-        L.push { l -> getBlock(l) }; L.setField(-2, "getBlockState")
-        L.push { l -> setBlock(l) }; L.setField(-2, "setBlock")
+        // --- Объекты (Sub-modules) ---
+        L.push(InputObject(L).push()); L.setField(playerTableIdx, "input")
+        L.push(InventoryObject(L).push()); L.setField(playerTableIdx, "inventory")
+        L.push(NetworkObject(L).push()); L.setField(playerTableIdx, "network")
 
-        L.push { l -> isBlockLoaded(l) }; L.setField(-2, "isBlockLoaded")
-        L.push { l -> isBlockLoaded(l) }; L.setField(-2, "isLoaded")
+        // --- Функции ---
+        val functions = mapOf(
+            "addMessage" to JFunction { l -> addChatMessage(l) },
+            "sendMessage" to JFunction { l -> sendChatMessage(l) },
+            "sendCommand" to JFunction { l -> sendCommand(l) },
+            "getPos" to JFunction { l -> getPlayerPos(l) },
+            "getPosition" to JFunction { l -> getPlayerPos(l) },
+            "getRotation" to JFunction { l -> getPlayerRotation(l) },
+            "setRotation" to JFunction { l -> setPlayerRotation(l) },
+            "getName" to JFunction { l -> getPlayerName(l) },
+            "getArea" to JFunction { l -> getPlayerArea(l) },
+            "getRawLocation" to JFunction { l -> getPlayerRawLocation(l) },
+            "getLocation" to JFunction { l -> getPlayerLocation(l) },
+            "getProfile" to JFunction { l -> getPlayerProfile(l) },
+            "getProfileId" to JFunction { l -> getPlayerProfileId(l) },
+            "getBits" to JFunction { l -> getPlayerBits(l) },
+            "getPurse" to JFunction { l -> getPlayerPurse(l) },
+            "getHealth" to JFunction { l -> getPlayerHealth(l) },
+            "getMaxHealth" to JFunction { l -> getPlayerMaxHealth(l) },
+            "getMana" to JFunction { l -> getPlayerMana(l) },
+            "getMaxMana" to JFunction { l -> getPlayerMaxMana(l) },
+            "getDefence" to JFunction { l -> getPlayerDefence(l) },
+            "getSpeed" to JFunction { l -> getPlayerSpeed(l) },
+            "getCold" to JFunction { l -> getPlayerCold(l) },
+            "getAir" to JFunction { l -> getPlayerAir(l) },
+            "getPet" to JFunction { l -> getPlayerPet(l) },
+            "getMaxAir" to JFunction { l -> getPlayerMaxAir(l) },
+            "getRank" to JFunction { l -> getPlayerRank(l) },
+            "isSneaking" to JFunction { l -> isPlayerSneaking(l) },
+            "isSprinting" to JFunction { l -> isPlayerSprinting(l) },
+            "isOnGround" to JFunction { l -> isPlayerOnGround(l) },
+            "isOnSkyBlock" to JFunction { l -> isPlayerOnSkyBlock(l) },
+            "isHasLineOfSight" to JFunction { l -> hasLineOfSight(l) },
+            "swingHand" to JFunction { l -> swingHand(l) },
+            "getEyePosition" to JFunction { l -> getEyePosition(l) },
+            "getLookEndPos" to JFunction { l -> getLookEndPos(l) },
+            "getDirectionFromYawPitch" to JFunction { l -> getDirectionFromYawPitch(l) },
+            "getScoreBoardLines" to JFunction { l -> getScoreboardLines(l) },
+            "getTab" to JFunction { l -> getTab(l) },
+            "addToast" to JFunction { l -> addToast(l) },
+            "raycast" to JFunction { l -> rayCast(l) }
+        )
 
-        L.push { l -> getRotation(l) }; L.setField(-2, "getRotation")
+        functions.forEach { (name, func) ->
+            L.push(func)
+            L.setField(playerTableIdx, name)
+        }
 
-        L.push { l -> getEntities(l) }; L.setField(-2, "getEntities")
-        L.push { l -> getEntityById(l) }; L.setField(-2, "getEntityById")
-        L.push { l -> getLivingEntities(l) }; L.setField(-2, "getLivingEntities")
-        L.push { l -> getArmorStandEntities(l) }; L.setField(-2, "getArmorStandEntities")
+        // 2. Создаем метатаблицу для динамических полей (entity, fishHook)
+        L.newTable()
+        L.push(JFunction { l ->
+            val key = l.toString(2)
+            when (key) {
+                "entity" -> {
+                    val p = mc.player
+                    if (p != null) l.push(LuaEntity(l, p).push()) else l.pushNil()
+                    1
+                }
+                "fishHook" -> {
+                    val hook = mc.player?.fishing
+                    if (hook != null) l.push(LuaEntity(l, hook).push()) else l.pushNil()
+                    1
+                }
+                else -> {
+                    // Если это не динамическое поле, ищем в основной таблице функций
+                    l.pushValue(1) // Кладём саму таблицу player
+                    l.pushValue(2) // Кладём ключ
+                    l.rawGet(-3)   // Ищем значение в таблице (без вызова метаметодов)
+                    1
+                }
+            }
+        })
+        L.setField(-2, "__index")
 
-        L.push { l -> getEntitiesInBox(l) }; L.setField(-2, "getEntitiesInBox")
-        L.push { l -> getArmorStandEntitiesInBox(l) }; L.setField(-2, "getArmorStandEntitiesInBox")
+        // Привязываем метатаблицу к таблице player
+        L.setMetatable(playerTableIdx)
 
-        L.push { l -> getCollisionBoxes(l) }; L.setField(-2, "getCollisionBoxes")
-        L.push { l -> getOutlineBoxes(l) }; L.setField(-2, "getOutlineBoxes")
-
-        L.push { l -> raycast(l) }; L.setField(-2, "raycast")
-        L.push { l -> raycastToBlocks(l) }; L.setField(-2, "raycastToBlocks")
-
-
-        // Устанавливаем таблицу как глобальную переменную "world"
+        // 3. Делаем таблицу глобальной
         L.setGlobal("player")
     }
 
