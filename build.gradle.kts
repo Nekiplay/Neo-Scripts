@@ -55,6 +55,9 @@ dependencies {
     minecraft("com.mojang:minecraft:${property("minecraft_version")}")
     mappings(loom.officialMojangMappings())
 
+    val luajava_version = "4.1.0"
+    val jnigen_version = "1.12.1"
+
     // 1. Luajava Core
     implementation("party.iroiro.luajava:luajava:$luajava_version")
     include("party.iroiro.luajava:luajava:$luajava_version")
