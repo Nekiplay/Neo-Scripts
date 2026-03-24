@@ -10,6 +10,10 @@ class LuaManager() {
     // Script management
     val scripts = ConcurrentHashMap<String, LuaScript>()
 
+    companion object {
+        // Cache module file extensions
+        val configDir = FabricLoader.getInstance().configDir
+    }
 
     fun executeScript(file: File): Any {
         if (!file.exists() || !file.isFile) {
