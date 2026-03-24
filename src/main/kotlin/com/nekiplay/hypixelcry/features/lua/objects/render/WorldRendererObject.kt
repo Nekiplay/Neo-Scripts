@@ -3,6 +3,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.render
 import com.logisticscraft.occlusionculling.util.Vec3d
 import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.smartPush
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
@@ -26,22 +27,30 @@ class WorldRendererObject(val lua: Lua, private val context: PrimitiveCollector?
     override fun getFieldValue(l: Lua, key: String): Any? {
         if (context == null) return null
         return when (key) {
-            "renderFilled" -> JFunction { renderFilled(it) }
-            "renderFilledCircle" -> JFunction { renderFilled(it) }
-            "renderOutline" -> JFunction { renderOutline(it) }
-            "renderOutlineCircle" -> JFunction { renderOutlineCircle(it) }
-            "renderCylinder" -> JFunction { renderCylinder(it) }
-            "renderSphere" -> JFunction { renderSphere(it) }
-            "renderText" -> JFunction { renderText(it) }
-            "renderLinesFromPoints" -> JFunction { renderLinesFromPoints(it) }
-            "renderLineFromCursor" -> JFunction { renderLineFromCursor(it) }
-            "renderImage" -> JFunction { renderImage(it) }
-            "renderBeaconBeam" -> JFunction { renderBeaconBeam(it) }
-            "renderQuad" -> JFunction { renderQuad(it) }
-            "renderHologramBlock" -> JFunction { renderHologramBlock(it) }
-            "renderBlock" -> JFunction { renderBlock(it) }
-            "renderItem" -> JFunction { renderItem(it) }
+            "renderFilled" -> luaFunction { renderFilled(it) }
+            "renderFilledCircle" -> luaFunction { renderFilled(it) }
+            "renderOutline" -> luaFunction { renderOutline(it) }
+            "renderOutlineCircle" -> luaFunction { renderOutlineCircle(it) }
+            "renderCylinder" -> luaFunction { renderCylinder(it) }
+            "renderSphere" -> luaFunction { renderSphere(it) }
+            "renderText" -> luaFunction { renderText(it) }
+            "renderLinesFromPoints" -> luaFunction { renderLinesFromPoints(it) }
+            "renderLineFromCursor" -> luaFunction { renderLineFromCursor(it) }
+            "renderImage" -> luaFunction { renderImage(it) }
+            "renderBeaconBeam" -> luaFunction { renderBeaconBeam(it) }
+            "renderQuad" -> luaFunction { renderQuad(it) }
+            "renderHologramBlock" -> luaFunction { renderHologramBlock(it) }
+            "renderBlock" -> luaFunction { renderBlock(it) }
+            "renderItem" -> luaFunction { renderItem(it) }
             else -> null
+        }
+    }
+
+    fun luaFunction(block: (Lua) -> Any?): JFunction {
+        return JFunction { l ->
+            val result = block(l)
+            l.smartPush(result)
+            1 // ВАЖНО: всегда возвращаем 1
         }
     }
 

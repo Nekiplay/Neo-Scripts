@@ -3,6 +3,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.render
 import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.smartPush
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.renderer.RenderPipelines
@@ -32,19 +33,27 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
     override fun getFieldValue(l: Lua, key: String): Any? {
         if (context == null) return null
         return when (key) {
-            "getWindowScale" -> JFunction { getWindowScale(it) }
-            "getTextWidth" -> JFunction { getTextWidth(it) }
-            "renderText" -> JFunction { renderText(it) }
-            "renderImage" -> JFunction { renderImage(it) }
-            "renderRect" -> JFunction { renderRect(it) }
-            "renderLine" -> JFunction { renderLine(it) }
-            "renderPolygon" -> JFunction { renderPolygon(it) }
-            "renderItemStack" -> JFunction { renderItemStack(it) }
-            "clearImageCache" -> JFunction {
+            "getWindowScale" -> luaFunction { getWindowScale(it) }
+            "getTextWidth" -> luaFunction { getTextWidth(it) }
+            "renderText" -> luaFunction { renderText(it) }
+            "renderImage" -> luaFunction { renderImage(it) }
+            "renderRect" -> luaFunction { renderRect(it) }
+            "renderLine" -> luaFunction { renderLine(it) }
+            "renderPolygon" -> luaFunction { renderPolygon(it) }
+            "renderItemStack" -> luaFunction { renderItemStack(it) }
+            "clearImageCache" -> luaFunction {
                 scriptId?.let { id -> clearScriptCache(id) }
                 0
             }
             else -> null
+        }
+    }
+
+    fun luaFunction(block: (Lua) -> Any?): JFunction {
+        return JFunction { l ->
+            val result = block(l)
+            l.smartPush(result)
+            1 // ВАЖНО: всегда возвращаем 1
         }
     }
 
