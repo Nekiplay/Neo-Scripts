@@ -1384,7 +1384,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             if (renderWorldCallbacks.isEmpty()) return
             renderWorldCallbacks.toList()
         }
-
+        val initialTop = L.getTop()
         // 2. Синхронизация для JNI (рендеринг идет в другом потоке!)
         synchronized(callbacksLock) {
             try {
@@ -1400,6 +1400,11 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 }
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in world render callback: ${e.message}")
+            } finally {
+                val currentTop = L.getTop()
+                if (currentTop > initialTop) {
+                    L.pop(currentTop - initialTop)
+                }
             }
         }
     }
@@ -1408,7 +1413,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         val callbacks = synchronized(callbacksLock) {
             render2DCallbacks.toTypedArray()
         }
-
+        val initialTop = L.getTop()
         val renderContext = TwoRenderObject(L, context, scriptName)
         for (callback in callbacks) {
             try {
@@ -1418,6 +1423,11 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 val result = L.pCall(1, 0)
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in 2D render callback in ${scriptName}: ${e.message}")
+            } finally {
+                val currentTop = L.getTop()
+                if (currentTop > initialTop) {
+                    L.pop(currentTop - initialTop)
+                }
             }
         }
     }
