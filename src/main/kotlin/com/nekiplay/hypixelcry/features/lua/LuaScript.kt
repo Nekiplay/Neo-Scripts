@@ -1384,7 +1384,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             if (renderWorldCallbacks.isEmpty()) return
             renderWorldCallbacks.toList()
         }
-        val initialTop = L.getTop()
         // 2. Синхронизация для JNI (рендеринг идет в другом потоке!)
         synchronized(callbacksLock) {
             try {
@@ -1394,23 +1393,14 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                         wrapper.push()
 
                         val result = L.pCall(1, 0)
-                        if (result != 0.toLong()) { // В некоторых версиях iroiro это Long/Int
-                            val errorMsg = L.toString(-1) ?: "Unknown Lua Error"
-                            HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in world render callback: $errorMsg")
-                            L.pop(1) // ОБЯЗАТЕЛЬНО удаляем сообщение об ошибке
-                        }
                     } catch (e: Exception) {
                         HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in world render callback: ${e.message}")
+                        L.pop(1)
                     }
                 }
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in world render callback: ${e.message}")
                 L.pop(1)
-            } finally {
-                val currentTop = L.getTop()
-                if (currentTop > initialTop) {
-                    L.pop(currentTop - initialTop)
-                }
             }
         }
     }
