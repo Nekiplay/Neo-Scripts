@@ -35,7 +35,7 @@ class Creator(val L: Lua) {
             )
 
             // Оборачиваем в ваш LuaBox
-            l.push(LuaBox(l, box).push())
+            LuaBox(l, box).push()
         } else {
             l.pushNil()
         }
@@ -48,7 +48,7 @@ class Creator(val L: Lua) {
             try {
                 if (dirStr != null) {
                     val dir = Direction.valueOf(dirStr)
-                    l.push(LuaDirection(l, dir).push())
+                    LuaDirection(l, dir).push()
                     return 1
                 }
             } catch (e: Exception) {}
@@ -67,7 +67,7 @@ class Creator(val L: Lua) {
         val stack = ItemRepository.getItemStack(idString)
 
         if (stack != null) {
-            l.push(LuaItemStack(l, stack).push())
+            LuaItemStack(l, stack).push()
         } else {
             l.pushNil()
         }

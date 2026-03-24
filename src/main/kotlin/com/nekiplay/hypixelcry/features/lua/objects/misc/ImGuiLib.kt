@@ -439,7 +439,7 @@ class ImGuiLib(val L: Lua) {
 
     private fun createImageObject(l: Lua): Int {
         // Возвращаем объект через push() обертки SimpleLuaWrapper
-        l.push(ImGuiTexture(l, AtomicInteger(0)).push())
+        ImGuiTexture(l, AtomicInteger(0)).push()
         return 1
     }
 
