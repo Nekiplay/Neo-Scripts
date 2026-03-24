@@ -2,613 +2,720 @@ package com.nekiplay.hypixelcry.features.lua.objects.render
 
 import com.logisticscraft.occlusionculling.util.Vec3d
 import com.mojang.blaze3d.platform.NativeImage
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.TextColor
 import net.minecraft.resources.Identifier
 import net.minecraft.util.CommonColors
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.joml.Quaternionf
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.OneArgFunction
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
 import java.io.File
 import java.io.FileInputStream
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Supplier
 
-class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() {
-    override fun call(): LuaValue {
-        return this
-    }
-
-    override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            "renderFilled" -> RenderFilledFunction()
-            "renderFilledCircle" -> RenderFilledCircleFunction()
-            "renderOutline" -> RenderOutlineFunction()
-            "renderOutlineCircle" -> RenderOutlineCircleFunction()
-            "renderCylinder" -> RenderCylinderFunction()
-            "renderSphere" -> RenderSphereFunction()
-            "renderText" -> RenderTextFunction()
-            "renderLinesFromPoints" -> RenderLinesFromPointsFunction()
-            "renderLineFromCursor" -> RenderLineFromCursorFunction()
-            "renderImage" -> RenderImageFunction()
-            "renderBeaconBeam" -> RenderBeaconBeamFunction()
-            "renderQuad" -> SubmitQuadFunction()
-            "renderHologramBlock" -> RenderHologramBlockFunction()
-            "renderBlock" -> RenderBlockFunction()
-            "renderItem" -> RenderItemFunction()
-            else -> NIL
-        } as LuaValue
-    }
-
-    private inner class RenderSphereFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
-                val y = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
-                val z = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
-                val radius = if (table.get("radius").isnumber()) table.get("radius").todouble() else 1.0
-                val segments = if (table.get("segments").isnumber()) table.get("segments").toint() else 1
-                val rings = if (table.get("rings").isnumber()) table.get("rings").toint() else 4
-
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
-
-                val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
-
-                context.submitSphere(Vec3(x, y, z), radius.toFloat(), segments, rings, getArgb(alpha, red, green, blue), throughWalls)
-                return TRUE
-            }
-            return NIL
+class WorldRendererObject(val l: Lua, private val context: PrimitiveCollector?): SimpleLuaWrapper(l) {
+    override fun getFieldValue(l: Lua, key: String): Any? {
+        if (context == null) return null
+        return when (key) {
+            "renderFilled" -> JFunction { renderFilled(it) }
+            "renderFilledCircle" -> JFunction { renderFilled(it) }
+            "renderOutline" -> JFunction { renderOutline(it) }
+            "renderOutlineCircle" -> JFunction { renderOutlineCircle(it) }
+            "renderCylinder" -> JFunction { renderCylinder(it) }
+            "renderSphere" -> JFunction { renderSphere(it) }
+            "renderText" -> JFunction { renderText(it) }
+            "renderLinesFromPoints" -> JFunction { renderLinesFromPoints(it) }
+            "renderLineFromCursor" -> JFunction { renderLineFromCursor(it) }
+            "renderImage" -> JFunction { renderImage(it) }
+            "renderBeaconBeam" -> JFunction { renderBeaconBeam(it) }
+            "renderQuad" -> JFunction { renderQuad(it) }
+            "renderHologramBlock" -> JFunction { renderHologramBlock(it) }
+            "renderBlock" -> JFunction { renderBlock(it) }
+            "renderItem" -> JFunction { renderItem(it) }
+            else -> null
         }
     }
 
-    private inner class RenderCylinderFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
-                val y = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
-                val z = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
-                val radius = if (table.get("radius").isnumber()) table.get("radius").todouble() else 1.0
-                val height = if (table.get("height").isnumber()) table.get("height").todouble() else 1.0
-                val segments = if (table.get("segments").isnumber()) table.get("segments").toint() else 1
-
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
-
-                val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
-
-                context.submitCylinder(Vec3(x, y, z), radius.toFloat(), height.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
-                return TRUE
-            }
-            return NIL
-        }
+    // --- Вспомогательные методы извлечения данных из таблицы на стеке ---
+    private fun Lua.optD(idx: Int, key: String, def: Double): Double {
+        this.getField(idx, key)
+        val res = if (this.isNumber(-1)) this.toNumber(-1) else def
+        this.pop(1)
+        return res
     }
 
-    private inner class RenderItemFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
-                val y = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
-                val z = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
-                val id = if (table.get("id").isstring()) table.get("id").tojstring() else "minecraft:stone"
-
-                val identifier = Identifier.bySeparator(id, ':')
-
-                context.submitItem(Vec3d(x, y, z), identifier)
-                return TRUE
-            }
-            return NIL
-        }
+    private fun Lua.optI(idx: Int, key: String, def: Int): Int {
+        this.getField(idx, key)
+        val res = if (this.isNumber(-1)) this.toInteger(-1).toInt() else def
+        this.pop(1)
+        return res
     }
 
-    private inner class RenderBlockFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x = if (table.get("x").isnumber()) table.get("x").toint() else 0
-                val y = if (table.get("y").isnumber()) table.get("y").toint() else 0
-                val z = if (table.get("z").isnumber()) table.get("z").toint() else 0
-                val id = if (table.get("id").isnumber()) table.get("id").toint() else 1
+    private fun Lua.optB(idx: Int, key: String, def: Boolean): Boolean {
+        this.getField(idx, key)
+        val res = if (this.isBoolean(-1)) this.toBoolean(-1) else def
+        this.pop(1)
+        return res
+    }
 
-                val blockState = Block.stateById(id)
+    private fun Lua.optS(idx: Int, key: String, def: String): String {
+        this.getField(idx, key)
+        val res = this.toString(-1) ?: def
+        this.pop(1)
+        return res
+    }
 
+    private fun Lua.optF(idx: Int, key: String, def: Float): Float {
+        this.getField(idx, key)
+        val res = if (this.isNumber(-1)) this.toNumber(-1).toFloat() else def
+        this.pop(1)
+        return res
+    }
+
+    private fun renderBlock(l: Lua): Int {
+        // 1. Проверка аргумента (должна быть таблица) и контекста рендеринга
+        if (!l.isTable(1) || context == null) {
+            return 0 // Возвращаем nil в Lua
+        }
+
+        // 2. Извлечение координат и ID блока через вспомогательный метод optI
+        // optI гарантирует извлечение Int и очистку стека (pop(1))
+        val x = l.optI(1, "x", 0)
+        val y = l.optI(1, "y", 0)
+        val z = l.optI(1, "z", 0)
+        val id = l.optI(1, "id", 1)
+
+        // 3. Получаем BlockState по числовому ID
+        val blockState = Block.stateById(id)
+
+        // 4. Выполнение рендеринга блока
+        try {
+            if (blockState != null) {
                 context.submitBlock(BlockPos(x, y, z), blockState)
-                return TRUE
+                l.push(true) // Сообщаем об успехе
+                return 1
             }
-            return NIL
+        } catch (e: Exception) {
+            // Обработка возможных ошибок рендеринга
         }
+
+        return 0 // Возвращаем nil, если блок не найден или произошла ошибка
     }
 
+    private fun renderHologramBlock(l: Lua): Int {
+        // 1. Проверка аргумента (таблица) и наличия контекста рендеринга
+        if (!l.isTable(1) || context == null) {
+            return 0 // Возвращаем nil в Lua
+        }
 
-    private inner class RenderHologramBlockFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x = if (table.get("x").isnumber()) table.get("x").toint() else 0
-                val y = if (table.get("y").isnumber()) table.get("y").toint() else 0
-                val z = if (table.get("z").isnumber()) table.get("z").toint() else 0
-                val id = if (table.get("id").isnumber()) table.get("id").toint() else 1
+        // 2. Извлечение координат (x, y, z) и ID блока
+        // Используем optI, так как BlockPos и ID — целые числа
+        val x = l.optI(1, "x", 0)
+        val y = l.optI(1, "y", 0)
+        val z = l.optI(1, "z", 0)
+        val id = l.optI(1, "id", 1) // По умолчанию ID = 1 (обычно камень)
 
-                val blockState = Block.stateById(id)
+        // 3. Получение BlockState из Minecraft по ID
+        val blockState = Block.stateById(id)
 
+        // 4. Выполнение рендеринга голограммы
+        try {
+            if (blockState != null) {
                 context.submitBlockHologram(BlockPos(x, y, z), blockState)
-                return TRUE
+                l.push(true) // Возвращаем успех
+                return 1
             }
-            return NIL
+        } catch (e: Exception) {
+            // Логирование ошибки, если метод не поддерживается в текущей версии PrimitiveCollector
+        }
+
+        return 0 // Если блок не найден или произошла ошибка
+    }
+
+    private fun renderQuad(l: Lua): Int {
+        // 1. Проверка аргумента (таблица) и контекста
+        if (!l.isTable(1) || context == null) {
+            return 0
+        }
+
+        val points = Array(4) { Vec3.ZERO }
+
+        // 2. Пытаемся прочитать массив "points"
+        l.getField(1, "points") // Кладём таблицу points на индекс -1
+        val isPointsArray = l.isTable(-1)
+
+        if (isPointsArray) {
+            // Читаем из массива: points = { {x,y,z}, {x,y,z}, ... }
+            for (i in 1..4) {
+                l.rawGetI(-1, i) // Берем points[i] на индекс -1, сама таблица points теперь на -2
+                if (l.isTable(-1)) {
+                    val px = l.optD(-1, "x", 0.0)
+                    val py = l.optD(-1, "y", 0.0)
+                    val pz = l.optD(-1, "z", 0.0)
+                    points[i - 1] = Vec3(px, py, pz)
+                }
+                l.pop(1) // Удаляем таблицу конкретной точки
+            }
+        }
+        l.pop(1) // Удаляем таблицу "points" (или nil) со стека
+
+        // 3. Если массива "points" не было, ищем поля "point1", "point2" ...
+        if (!isPointsArray) {
+            for (i in 1..4) {
+                l.getField(1, "point$i") // Кладем таблицу pointN на индекс -1
+                if (l.isTable(-1)) {
+                    val px = l.optD(-1, "x", 0.0)
+                    val py = l.optD(-1, "y", 0.0)
+                    val pz = l.optD(-1, "z", 0.0)
+                    points[i - 1] = Vec3(px, py, pz)
+                }
+                l.pop(1)
+            }
+        }
+
+        // 4. Извлекаем цвета и настройки
+        val red = l.optI(1, "red", 255)
+        val green = l.optI(1, "green", 255)
+        val blue = l.optI(1, "blue", 255)
+        val alpha = l.optI(1, "alpha", 255)
+
+        val throughWalls = l.optB(1, "throughWalls", false)
+
+        // 5. Подготовка данных для Minecraft
+        val colorComponents = floatArrayOf(
+            red.toFloat() / 255.0f,
+            green.toFloat() / 255.0f,
+            blue.toFloat() / 255.0f
+        )
+        val alphaF = alpha.toFloat() / 255.0f
+
+        // 6. Выполнение рендеринга
+        try {
+            context.submitQuad(points, colorComponents, alphaF, throughWalls)
+            l.push(true)
+            return 1
+        } catch (e: Exception) {
+            return 0
         }
     }
 
-    private inner class SubmitQuadFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val pointsArray = table.get("points")
-                val points = if (pointsArray.istable() && pointsArray.length() == 4) {
-                    Array(4) { index ->
-                        val point = pointsArray.get(index + 1)
-                        Vec3(
-                            point.get("x").optdouble(0.0),
-                            point.get("y").optdouble(0.0),
-                            point.get("z").optdouble(0.0)
-                        )
-                    }
-                } else {
-                    Array(4) { index ->
-                        val pointTable = table.get("point${index + 1}")
-                        Vec3(
-                            pointTable.get("x").optdouble(0.0),
-                            pointTable.get("y").optdouble(0.0),
-                            pointTable.get("z").optdouble(0.0)
-                        )
-                    }
-                }
+    private fun renderBeaconBeam(l: Lua): Int {
+        // 1. Проверка аргумента (таблица) и наличия контекста рендеринга
+        if (!l.isTable(1) || context == null) {
+            return 0 // Возвращаем nil в Lua
+        }
 
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
+        // 2. Извлечение координат блока (x, y, z)
+        // Используем optI, так как BlockPos принимает целые числа
+        val x = l.optI(1, "x", 0)
+        val y = l.optI(1, "y", 0)
+        val z = l.optI(1, "z", 0)
 
-                val colorComponents = floatArrayOf(
-                    red.toFloat() / 255.0f,
-                    green.toFloat() / 255.0f,
-                    blue.toFloat() / 255.0f
-                )
-                val alphaComponent = alpha / 255.0f
+        // 3. Извлечение компонентов цвета (0-255)
+        val red = l.optI(1, "red", 255)
+        val green = l.optI(1, "green", 255)
+        val blue = l.optI(1, "blue", 255)
 
-                val throughWalls = if (table.get("throughWalls").isboolean()) table.get("throughWalls").toboolean() else false
+        // 4. Подготовка массива цветов для Minecraft (нормализация 0.0 - 1.0)
+        val colorComponents = floatArrayOf(
+            red.toFloat() / 255.0f,
+            green.toFloat() / 255.0f,
+            blue.toFloat() / 255.0f
+        )
 
-                context.submitQuad(points, colorComponents, alphaComponent, throughWalls)
-                return TRUE
-            }
-            return NIL
+        // 5. Выполнение рендеринга
+        try {
+            context.submitBeaconBeam(BlockPos(x, y, z), colorComponents)
+            l.push(true) // Возвращаем успех в Lua
+            return 1
+        } catch (e: Exception) {
+            // В случае ошибки (например, если мир не загружен)
+            return 0
         }
     }
 
-    private inner class RenderBeaconBeamFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x = if (table.get("x").isnumber()) table.get("x").toint() else 0
-                val y = if (table.get("y").isnumber()) table.get("y").toint() else 0
-                val z = if (table.get("z").isnumber()) table.get("z").toint() else 0
+    private fun renderCylinder(l: Lua): Int {
+        // 1. Проверка аргумента (таблица) и наличия контекста рендеринга
+        if (!l.isTable(1) || context == null) {
+            return 0 // Возвращаем nil в Lua
+        }
 
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
+        // 2. Извлечение координат основания (x, y, z)
+        val x = l.optD(1, "x", 0.0)
+        val y = l.optD(1, "y", 0.0)
+        val z = l.optD(1, "z", 0.0)
 
-                val colorComponents = floatArrayOf(
-                    red.toFloat() / 255.0f,
-                    green.toFloat() / 255.0f,
-                    blue.toFloat() / 255.0f
-                )
+        // 3. Извлечение параметров геометрии (радиус, высота, сегменты)
+        val radius = l.optD(1, "radius", 1.0).toFloat()
+        val height = l.optD(1, "height", 1.0).toFloat()
+        val segments = l.optI(1, "segments", 8) // В оригинале был 1, но для цилиндра лучше 8+
 
-                context.submitBeaconBeam(BlockPos(x, y, z), colorComponents)
-                return TRUE
-            }
-            return NIL
+        // 4. Извлечение цвета (RGBA)
+        val red = l.optI(1, "red", 255)
+        val green = l.optI(1, "green", 255)
+        val blue = l.optI(1, "blue", 255)
+        val alpha = l.optI(1, "alpha", 255)
+
+        // 5. Проверка отрисовки сквозь стены
+        val throughWalls = l.optB(1, "through_walls", true)
+
+        // 6. Выполнение рендеринга
+        try {
+            context.submitCylinder(
+                Vec3(x, y, z),
+                radius,
+                height,
+                segments,
+                getArgb(alpha, red, green, blue),
+                throughWalls
+            )
+            l.push(true) // Возвращаем успех
+            return 1
+        } catch (e: Exception) {
+            l.push(false)
+            return 1
         }
     }
 
-    private inner class RenderFilledCircleFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
-                val y = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
-                val z = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
-                val radius = if (table.get("radius").isnumber()) table.get("radius").todouble() else 1.0
-                val segments = if (table.get("segments").isnumber()) table.get("segments").toint() else 8
+    private fun renderOutlineCircle(l: Lua): Int {
+        // 1. Проверка аргумента (таблица) и наличия контекста рендеринга
+        if (!l.isTable(1) || context == null) {
+            return 0 // Возвращаем nil в Lua
+        }
 
+        // 2. Извлечение координат центра (x, y, z)
+        val x = l.optD(1, "x", 0.0)
+        val y = l.optD(1, "y", 0.0)
+        val z = l.optD(1, "z", 0.0)
 
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
+        // 3. Извлечение параметров геометрии (радиус, сегменты, толщина линии)
+        val radius = l.optD(1, "radius", 1.0).toFloat()
+        val segments = l.optI(1, "segments", 8)
+        val thickness = l.optD(1, "line_width", 1.0).toFloat()
 
-                val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
+        // 4. Извлечение цвета (RGBA)
+        val red = l.optI(1, "red", 255)
+        val green = l.optI(1, "green", 255)
+        val blue = l.optI(1, "blue", 255)
+        val alpha = l.optI(1, "alpha", 255)
 
-                context.submitFilledCircle(Vec3(x, y, z), radius.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
-                return TRUE
-            }
-            return NIL
+        // 5. Проверка отрисовки сквозь стены
+        val throughWalls = l.optB(1, "through_walls", true)
+
+        // 6. Выполнение рендеринга
+        try {
+            context.submitOutlinedCircle(
+                Vec3(x, y, z),
+                radius,
+                thickness,
+                segments,
+                getArgb(alpha, red, green, blue),
+                throughWalls
+            )
+            l.push(true) // Возвращаем успех
+            return 1
+        } catch (e: Exception) {
+            l.push(false)
+            return 1
         }
     }
 
-    private inner class RenderOutlineCircleFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
-                val y = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
-                val z = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
-                val radius = if (table.get("radius").isnumber()) table.get("radius").todouble() else 1.0
-                val segments = if (table.get("segments").isnumber()) table.get("segments").toint() else 8
-                val thickness = if (table.get("line_width").isnumber()) table.get("line_width").todouble() else 1.0
-
-
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
-
-                val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
-
-                context.submitOutlinedCircle(Vec3(x, y, z), radius.toFloat(), thickness.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
-                return TRUE
-            }
-            return NIL
+    // --- Реализации функций рендеринга ---
+    private fun renderOutline(l: Lua): Int {
+        // 1. Проверка аргумента (должна быть таблица) и контекста
+        if (!l.isTable(1) || context == null) {
+            return 0
         }
+
+        // 2. Извлечение базовых координат
+        val x = l.optD(1, "x", 0.0)
+        val y = l.optD(1, "y", 0.0)
+        val z = l.optD(1, "z", 0.0)
+
+        // 3. Извлечение второй точки (x2, y2, z2)
+        l.getField(1, "x2")
+        val hasX2 = !l.isNil(-1)
+        val x2 = if (hasX2) l.toNumber(-1) else 0.0
+        l.pop(1)
+
+        l.getField(1, "y2"); val y2 = l.toNumber(-1); l.pop(1)
+        l.getField(1, "z2"); val z2 = l.toNumber(-1); l.pop(1)
+
+        // 4. Извлечение цвета и настроек линии
+        val r = l.optI(1, "red", 255)
+        val g = l.optI(1, "green", 255)
+        val b = l.optI(1, "blue", 255)
+        val a = l.optI(1, "alpha", 255)
+
+        val lineWidth = l.optF(1, "line_width", 1.0f)
+        val throughWalls = l.optB(1, "through_walls", true)
+
+        // Подготовка массива цветов для Minecraft (от 0.0 до 1.0)
+        val colorComponents = floatArrayOf(
+            r.toFloat() / 255.0f,
+            g.toFloat() / 255.0f,
+            b.toFloat() / 255.0f,
+            a.toFloat() / 255.0f
+        )
+
+        // 5. Извлечение объекта Box (если он передан)
+        l.getField(1, "box")
+        val boxObj = l.toJavaObject(-1)
+        l.pop(1)
+
+        val box = when (boxObj) {
+            is LuaBox -> boxObj.box
+            is AABB -> boxObj
+            else -> null
+        }
+
+        // 6. Логика выбора геометрии для отрисовки
+        try {
+            if (box != null) {
+                // Приоритет 1: Передан готовый объект AABB/LuaBox
+                context.submitOutlinedBox(box, colorComponents, lineWidth, throughWalls)
+            } else if (hasX2) {
+                // Приоритет 2: Переданы две точки (x,y,z) и (x2,y2,z2)
+                context.submitOutlinedBox(AABB(Vec3(x, y, z), Vec3(x2, y2, z2)), colorComponents, lineWidth, throughWalls)
+            } else {
+                // Приоритет 3: Отрисовка одного блока по координатам x, y, z
+                context.submitOutlinedBox(BlockPos(x.toInt(), y.toInt(), z.toInt()), colorComponents, lineWidth, throughWalls)
+            }
+            l.push(true)
+        } catch (e: Exception) {
+            l.push(false)
+        }
+
+        return 1
     }
 
-    private inner class RenderFilledFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
-                val y = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
-                val z = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
 
-                val x2 = if (table.get("x2").isnumber()) table.get("x2").todouble() else null
-                val y2 = if (table.get("y2").isnumber()) table.get("y2").todouble() else null
-                val z2 = if (table.get("z2").isnumber()) table.get("z2").todouble() else null
-
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
-
-                val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
-                
-                val colorComponents = floatArrayOf(
-                    red.toFloat() / 255.0f,
-                    green.toFloat() / 255.0f,
-                    blue.toFloat() / 255.0f
-                )
-
-                val alphaComponent = alpha.toFloat() / 255.0f
-
-                val boxObj = table.get("box")
-                val box = when {
-                    boxObj.isuserdata() && boxObj.touserdata() is LuaBox -> (boxObj.touserdata() as LuaBox).box
-                    boxObj is LuaBox -> boxObj.box
-                    boxObj.isuserdata() && boxObj.touserdata() is AABB -> boxObj.touserdata() as AABB
-                    else -> null
-                }
-
-                if (box != null) {
-                    context.submitFilledBox(box, colorComponents, alphaComponent, throughWalls)
-                }
-                else if (x2 != null && y2 != null && z2 != null) {
-                    context.submitFilledBox(AABB(Vec3(x, y, z), Vec3(x2, y2, z2)), colorComponents, alphaComponent, throughWalls)
-                }
-                else {
-                    context.submitFilledBox(BlockPos(x.toInt(), y.toInt(), z.toInt()), colorComponents, alphaComponent, throughWalls)
-                }
-                return TRUE
-            }
-            return NIL
-        }
+    private fun renderSphere(l: Lua): Int {
+        val x = l.optD(1, "x", 0.0); val y = l.optD(1, "y", 0.0); val z = l.optD(1, "z", 0.0)
+        val radius = l.optD(1, "radius", 1.0)
+        val seg = l.optI(1, "segments", 8); val rings = l.optI(1, "rings", 4)
+        val r = l.optI(1, "red", 255); val g = l.optI(1, "green", 255); val b = l.optI(1, "blue", 255); val a = l.optI(1, "alpha", 255)
+        val tw = l.optB(1, "through_walls", true)
+        context?.submitSphere(Vec3(x, y, z), radius.toFloat(), seg, rings, getArgb(a, r, g, b), tw)
+        return 0
     }
 
-    private inner class RenderOutlineFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
-                val y = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
-                val z = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
+    private fun renderFilled(l: Lua): Int {
+        val x = l.optD(1, "x", 0.0); val y = l.optD(1, "y", 0.0); val z = l.optD(1, "z", 0.0)
 
-                val x2 = if (table.get("x2").isnumber()) table.get("x2").todouble() else null
-                val y2 = if (table.get("y2").isnumber()) table.get("y2").todouble() else null
-                val z2 = if (table.get("z2").isnumber()) table.get("z2").todouble() else null
+        l.getField(1, "x2"); val hasX2 = !l.isNil(-1); val x2 = l.toNumber(-1); l.pop(1)
+        l.getField(1, "y2"); val y2 = l.toNumber(-1); l.pop(1)
+        l.getField(1, "z2"); val z2 = l.toNumber(-1); l.pop(1)
 
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
+        val r = l.optI(1, "red", 255); val g = l.optI(1, "green", 255); val b = l.optI(1, "blue", 255); val a = l.optI(1, "alpha", 255)
+        val tw = l.optB(1, "through_walls", true)
 
-                val lineWidth = if (table.get("line_width").isnumber()) table.get("line_width").tofloat() else 1.0f
+        val colors = floatArrayOf(r/255f, g/255f, b/255f)
+        val alpha = a/255f
 
-                val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
+        l.getField(1, "box")
+        val boxObj = l.toJavaObject(-1)
+        l.pop(1)
 
-                val colorComponents = floatArrayOf(
-                    red.toFloat() / 255.0f,
-                    green.toFloat() / 255.0f,
-                    blue.toFloat() / 255.0f,
-                    alpha.toFloat() / 255.0f
-                )
-
-                val boxObj = table.get("box")
-                val box = when {
-                    boxObj.isuserdata() && boxObj.touserdata() is LuaBox -> (boxObj.touserdata() as LuaBox).box
-                    boxObj is LuaBox -> boxObj.box
-                    boxObj.isuserdata() && boxObj.touserdata() is AABB -> boxObj.touserdata() as AABB
-                    else -> null
-                }
-                if (box != null) {
-                    context.submitOutlinedBox(box, colorComponents, lineWidth, throughWalls)
-                }
-                else if (x2 != null && y2 != null && z2 != null) {
-                    context.submitOutlinedBox(AABB(Vec3(x, y, z), Vec3(x2, y2, z2)), colorComponents, lineWidth, throughWalls)
-                }
-                else {
-                    context.submitOutlinedBox(BlockPos(x.toInt(), y.toInt(), z.toInt()), colorComponents, lineWidth, throughWalls)
-                }
-                return TRUE
-            }
-            return NIL
+        val box = when (boxObj) {
+            is LuaBox -> boxObj.box
+            is AABB -> boxObj
+            else -> null
         }
+
+        if (box != null) {
+            context?.submitFilledBox(box, colors, alpha, tw)
+        } else if (hasX2) {
+            context?.submitFilledBox(AABB(Vec3(x, y, z), Vec3(x2, y2, z2)), colors, alpha, tw)
+        } else {
+            context?.submitFilledBox(BlockPos(x.toInt(), y.toInt(), z.toInt()), colors, alpha, tw)
+        }
+        return 0
     }
 
-    fun getArgb(alpha: Int, red: Int, green: Int, blue: Int): Int {
+    private fun renderItem(l: Lua): Int {
+        val x = l.optD(1, "x", 0.0); val y = l.optD(1, "y", 0.0); val z = l.optD(1, "z", 0.0)
+        val id = l.optS(1, "id", "minecraft:stone")
+        context?.submitItem(Vec3d(x, y, z), Identifier.bySeparator(id, ':'))
+        return 0
+    }
+
+    // --- Вспомогательные методы (Color, Texture) ---
+
+    private fun getArgb(alpha: Int, red: Int, green: Int, blue: Int): Int {
         return (alpha shl 24) or (red shl 16) or (green shl 8) or blue
     }
 
-    private inner class RenderTextFunction : OneArgFunction() {
-
-        // --- Приватные хелперы для безопасного извлечения данных из LuaTable ---
-
-        /** Безопасно извлекает Double по ключу, возвращая defaultValue, если не число. */
-        private fun LuaValue.getDoubleOrDefault(key: String, defaultValue: Double): Double {
-            val value = this.get(key)
-            return if (value.isnumber()) value.todouble() else defaultValue
+    private fun renderText(l: Lua): Int {
+        // 1. Проверка аргументов
+        if (!l.isTable(1) || context == null) {
+            return 0 // Возвращаем nil в Lua
         }
 
-        /** Безопасно извлекает Float по ключу, возвращая defaultValue, если не число. */
-        private fun LuaValue.getFloatOrDefault(key: String, defaultValue: Float): Float {
-            val value = this.get(key)
-            return if (value.isnumber()) value.tofloat() else defaultValue
+        // 2. Извлечение параметров через наши opt-методы
+        val x = l.optD(1, "x", 0.0)
+        val y = l.optD(1, "y", 0.0)
+        val z = l.optD(1, "z", 0.0)
+        val pos = Vec3(x, y, z)
+
+        val text = l.optS(1, "text", "Empty")
+        val scale = l.optF(1, "scale", 1f)
+        val throughWalls = l.optB(1, "through_walls", true)
+        val component = Component.literal(text)
+
+        // 3. Цвет
+        val red = l.optI(1, "red", -1)
+        val green = l.optI(1, "green", -1)
+        val blue = l.optI(1, "blue", -1)
+
+        val color: Int = if (red in 0..255 && green in 0..255 && blue in 0..255) {
+            (255 shl 24) or (red shl 16) or (green shl 8) or blue
+        } else {
+            CommonColors.WHITE
         }
 
-        /** Безопасно извлекает Int по ключу, возвращая defaultValue, если не число. */
-        private fun LuaValue.getIntOrDefault(key: String, defaultValue: Int): Int {
-            val value = this.get(key)
-            return if (value.isnumber()) value.toint() else defaultValue
+        // 4. Вращение (Quaternion)
+        val qx = l.optD(1, "qx", 0.0)
+        val qy = l.optD(1, "qy", 0.0)
+        val qz = l.optD(1, "qz", 0.0)
+        val qw = l.optD(1, "qw", 0.0)
+
+        val hasRotation = (qx != 0.0 || qy != 0.0 || qz != 0.0 || qw != 0.0)
+
+        // 5. Вызов контекста рендеринга
+        if (hasRotation) {
+            val quaternion = Quaternionf(qx.toFloat(), qy.toFloat(), qz.toFloat(), qw.toFloat())
+            context.submitText(
+                component,
+                pos,
+                color,
+                scale,
+                0.5f,
+                quaternion,
+                throughWalls
+            )
+        } else {
+            context.submitText(
+                component,
+                pos,
+                color,
+                scale,
+                0.5f,
+                throughWalls
+            )
         }
 
-        /** Безопасно извлекает String по ключу, возвращая defaultValue, если не строка. */
-        private fun LuaValue.getStringOrDefault(key: String, defaultValue: String): String {
-            val value = this.get(key)
-            return if (value.isstring()) value.tojstring() else defaultValue
+        // 6. Возвращаем true в Lua
+        l.push(true)
+        return 1
+    }
+
+    private fun renderLinesFromPoints(l: Lua): Int {
+        // 1. Проверка аргументов
+        if (!l.isTable(1) || context == null) {
+            return 0
         }
 
-        /** Безопасно извлекает Boolean по ключу, возвращая defaultValue, если не булево. */
-        private fun LuaValue.getBooleanOrDefault(key: String, defaultValue: Boolean): Boolean {
-            val value = this.get(key)
-            return if (value.isboolean()) value.toboolean() else defaultValue
+        // 2. Получаем таблицу "points"
+        l.getField(1, "points") // Кладём таблицу на индекс -1
+        if (!l.isTable(-1)) {
+            l.pop(1)
+            return 0
         }
 
-        // ----------------------------------------------------------------------
+        val pointsList = mutableListOf<Vec3>()
 
-        override fun call(table: LuaValue): LuaValue {
-            // 1. Guard Clauses (условия выхода)
-            if (!table.istable() || context == null) {
-                return NIL
+        // 3. Итерация по массиву точек (поддержка 0-based и 1-based)
+        var i = 1
+        var triedZero = false
+
+        while (true) {
+            l.rawGetI(-1, i) // Берем points[i] на индекс -1. Таблица points смещается на -2.
+
+            if (!l.isTable(-1)) {
+                l.pop(1) // Удаляем результат (не-таблицу)
+
+                // Если на индексе 1 ничего не нашли, пробуем индекс 0 (для 0-based массивов)
+                if (i == 1 && !triedZero) {
+                    i = 0
+                    triedZero = true
+                    continue
+                }
+                break // Конец массива
             }
 
-            // 2. Извлечение позиционных и текстовых параметров
-            val x = table.getDoubleOrDefault("x", 0.0)
-            val y = table.getDoubleOrDefault("y", 0.0)
-            val z = table.getDoubleOrDefault("z", 0.0)
-            val pos = Vec3(x, y, z)
+            // Извлекаем x, y, z из таблицы точки (она на индексе -1)
+            val px = l.optD(-1, "x", 0.0)
+            val py = l.optD(-1, "y", 0.0)
+            val pz = l.optD(-1, "z", 0.0)
+            pointsList.add(Vec3(px, py, pz))
 
-            val text = table.getStringOrDefault("text", "Empty")
-            val scale = table.getFloatOrDefault("scale", 1f)
-            val throughWalls = table.getBooleanOrDefault("through_walls", true)
-            val component = Component.literal(text)
+            l.pop(1) // Удаляем таблицу точки со стека
 
-            // 3. Извлечение и обработка цвета
-            val red = table.getIntOrDefault("red", -1)
-            val green = table.getIntOrDefault("green", -1)
-            val blue = table.getIntOrDefault("blue", -1)
+            // Логика инкремента индекса
+            if (i == 0) i = 1 else i++
+        }
 
-            val color: Int = if (red in 0..255 && green in 0..255 && blue in 0..255) {
-                // Формат: 0xAARRGGBB → альфа=255 (0xFF) + RGB компоненты
-                (255 shl 24) or (red shl 16) or (green shl 8) or blue
-            } else {
-                CommonColors.WHITE
-            }
+        l.pop(1) // Удаляем таблицу "points" со стека
 
-            // 4. Извлечение и обработка вращения (Quaternion)
-            val qx = table.getDoubleOrDefault("qx", 0.0)
-            val qy = table.getDoubleOrDefault("qy", 0.0)
-            val qz = table.getDoubleOrDefault("qz", 0.0)
-            val qw = table.getDoubleOrDefault("qw", 0.0)
+        // 4. Проверяем, достаточно ли точек для линии
+        if (pointsList.size < 2) {
+            l.push(false)
+            return 1
+        }
 
-            val hasRotation = (qx != 0.0 || qy != 0.0 || qz != 0.0 || qw != 0.0)
+        // 5. Извлекаем остальные параметры (цвет, толщина, through_walls)
+        val red = l.optI(1, "red", 255)
+        val green = l.optI(1, "green", 255)
+        val blue = l.optI(1, "blue", 255)
+        val alpha = l.optI(1, "alpha", 255)
 
-            // 5. Выполнение логики (Минимум ветвления)
+        val lineWidth = l.optF(1, "line_width", 1.0f)
+        val throughWalls = l.optB(1, "through_walls", true)
 
-            if (hasRotation) {
-                val quaternion = Quaternionf(qx, qy, qz, qw)
-                context.submitText(
-                    component,
-                    pos,
-                    color,
-                    scale,
-                    0.5f,
-                    quaternion,
+        // 6. Подготовка компонентов цвета
+        val colorComponents = floatArrayOf(
+            red.toFloat() / 255.0f,
+            green.toFloat() / 255.0f,
+            blue.toFloat() / 255.0f
+        )
+        val alphaComponent = alpha.toFloat() / 255.0f
+
+        // 7. Вызов метода рендеринга
+        try {
+            context.submitLinesFromPoints(
+                pointsList.toTypedArray(),
+                colorComponents,
+                alphaComponent,
+                lineWidth,
+                throughWalls
+            )
+            l.push(true)
+        } catch (e: Exception) {
+            l.push(false)
+        }
+
+        return 1
+    }
+
+    private fun renderLineFromCursor(l: Lua): Int {
+        // 1. Проверка аргумента (таблица) и контекста рендеринга
+        if (!l.isTable(1) || context == null) {
+            return 0 // Возвращаем nil в Lua
+        }
+
+        // 2. Извлечение координат (x, y, z)
+        val x = l.optD(1, "x", 0.0)
+        val y = l.optD(1, "y", 0.0)
+        val z = l.optD(1, "z", 0.0)
+
+        // 3. Извлечение компонентов цвета (RGBA)
+        val red = l.optI(1, "red", 255)
+        val green = l.optI(1, "green", 255)
+        val blue = l.optI(1, "blue", 255)
+        val alpha = l.optI(1, "alpha", 255)
+
+        // 4. Извлечение толщины линии
+        val lineWidth = l.optF(1, "line_width", 1.0f)
+
+        // 5. Подготовка данных для Minecraft
+        val colorComponents = floatArrayOf(
+            red.toFloat() / 255.0f,
+            green.toFloat() / 255.0f,
+            blue.toFloat() / 255.0f
+        )
+        val alphaF = alpha.toFloat() / 255.0f
+        val pos = Vec3(x, y, z)
+
+        // 6. Вызов метода рендеринга в коллекторе
+        try {
+            context.submitLineFromCursor(
+                pos,
+                colorComponents,
+                alphaF,
+                lineWidth
+            )
+            l.push(true)
+        } catch (e: Exception) {
+            l.push(false)
+        }
+
+        return 1 // Возвращаем 1 результат на стеке (true/false)
+    }
+
+    private fun renderImage(l: Lua): Int {
+        // 1. Проверка: передан ли аргумент-таблица и инициализирован ли контекст
+        if (!l.isTable(1) || context == null) {
+            return 0 // Возвращаем nil в Lua
+        }
+
+        // 2. Извлечение обязательного пути к файлу
+        val path = l.optS(1, "path", "")
+        if (path.isEmpty()) {
+            return 0
+        }
+
+        // 3. Извлечение мировых координат
+        val x = l.optD(1, "x", 0.0)
+        val y = l.optD(1, "y", 0.0)
+        val z = l.optD(1, "z", 0.0)
+
+        // 4. Извлечение смещений (offsets)
+        val ox = l.optD(1, "offset_x", 0.0)
+        val oy = l.optD(1, "offset_y", 0.0)
+        val oz = l.optD(1, "offset_z", 0.0)
+
+        // 5. Извлечение размеров изображения
+        val width = l.optF(1, "width", 0f)
+        val height = l.optF(1, "height", 0f)
+
+        // 6. Извлечение размеров региона текстуры (UV)
+        val regionWidth = l.optF(1, "region_width", 1f)
+        val regionHeight = l.optF(1, "region_height", 1f)
+
+        // 7. Извлечение цветов (конвертируем 0-255 в 0.0-1.0)
+        val r = l.optI(1, "red", 255).toFloat() / 255f
+        val g = l.optI(1, "green", 255).toFloat() / 255f
+        val b = l.optI(1, "blue", 255).toFloat() / 255f
+        val alpha = l.optI(1, "alpha", 255).toFloat() / 255f
+
+        // 8. Проверка отрисовки сквозь стены
+        val throughWalls = l.optB(1, "through_walls", true)
+
+        try {
+            // 9. Загрузка текстуры через ваш метод (он возвращает Identifier)
+            val identifier = loadTexture(path)
+
+            if (identifier != null) {
+                context.submitTexturedQuad(
+                    Vec3(x, y, z),
+                    width,
+                    height,
+                    regionWidth,
+                    regionHeight,
+                    Vec3(ox, oy, oz),
+                    identifier,
+                    floatArrayOf(r, g, b),
+                    alpha,
                     throughWalls
                 )
-            } else {
-                context.submitText(
-                    component,
-                    pos,
-                    color,
-                    scale,
-                    0.5f,
-                    throughWalls
-                )
+                l.push(true) // Возвращаем успех
+                return 1
             }
-
-            return TRUE
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-    }
 
-    private inner class RenderLinesFromPointsFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                // Parse points array
-                val pointsTable = table.get("points")
-                if (pointsTable.istable()) {
-                    val pointsList = mutableListOf<Vec3>()
-                    var i = 0
-                    while (true) {
-                        val pointTable = pointsTable.get(i)
-                        if (pointTable.istable()) {
-                            val x = if (pointTable.get("x").isnumber()) pointTable.get("x").todouble() else 0.0
-                            val y = if (pointTable.get("y").isnumber()) pointTable.get("y").todouble() else 0.0
-                            val z = if (pointTable.get("z").isnumber()) pointTable.get("z").todouble() else 0.0
-                            pointsList.add(Vec3(x, y, z))
-                            i++
-                        } else {
-                            // If 0-based fails, try 1-based
-                            if (i == 0) {
-                                i = 1
-                                continue
-                            }
-                            break
-                        }
-                    }
-
-                    if (pointsList.size >= 2) {
-                        // Parse color
-                        val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
-                        val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
-                        val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
-                        val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
-
-                        // Parse line width
-                        val lineWidth = if (table.get("line_width").isnumber()) table.get("line_width").tofloat() else 1.0f
-
-                        // Parse through walls
-                        val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
-
-                        val colorComponents = floatArrayOf(
-                            red.toFloat() / 255.0f,
-                            green.toFloat() / 255.0f,
-                            blue.toFloat() / 255.0f,
-                        )
-
-                        val alphaComponent = alpha.toFloat() / 255.0f
-
-                        // Call the render method
-                        context.submitLinesFromPoints(
-                            pointsList.toTypedArray(),
-                            colorComponents,
-                            alphaComponent,
-                            lineWidth,
-                            throughWalls
-                        )
-                        return TRUE
-                    }
-                }
-            }
-            return NIL
-        }
-    }
-
-    private inner class RenderLineFromCursorFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x: Double = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
-                val y: Double = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
-                val z: Double = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
-
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 0
-
-                val lineWidth = if (table.get("line_width").isnumber()) table.get("line_width").tofloat() else 1.0f
-
-                val colorComponents = floatArrayOf(
-                    red.toFloat() / 255.0f,
-                    green.toFloat() / 255.0f,
-                    blue.toFloat() / 255.0f,
-                )
-                val alphah: Float =  alpha.toFloat() / 255.0f
-
-                val pos = Vec3(x, y, z)
-
-                context.submitLineFromCursor(
-                    pos,
-                    colorComponents,
-                    alphah,
-                    lineWidth,
-                );
-                return TRUE
-            }
-            return NIL
-        }
-    }
-
-    private inner class RenderImageFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val path = if (table.get("path").isstring()) table.get("path").tojstring() else return NIL
-
-                val x: Double = if (table.get("x").isnumber()) table.get("x").todouble() else 0.0
-                val y: Double = if (table.get("y").isnumber()) table.get("y").todouble() else 0.0
-                val z: Double = if (table.get("z").isnumber()) table.get("z").todouble() else 0.0
-
-                val ox: Double = if (table.get("offset_x").isnumber()) table.get("offset_x").todouble() else 0.0
-                val oy: Double = if (table.get("offset_y").isnumber()) table.get("offset_y").todouble() else 0.0
-                val oz: Double = if (table.get("offset_z").isnumber()) table.get("offset_z").todouble() else 0.0
-
-                val width: Float = if (table.get("width").isnumber()) table.get("width").tofloat() else 0f
-                val height: Float = if (table.get("height").isnumber()) table.get("height").tofloat() else 0f
-
-                val regionWidth: Float = if (table.get("region_width").isnumber()) table.get("region_width").tofloat() else 1f
-                val regionHeight: Float = if (table.get("region_height").isnumber()) table.get("region_height").tofloat() else 1f
-
-                val r: Float = (if (table.get("red").isnumber()) table.get("red").todouble() else 255.0).toFloat() / 255f
-                val g: Float = (if (table.get("green").isnumber()) table.get("green").todouble() else 255.0).toFloat() / 255f
-                val b: Float = (if (table.get("blue").isnumber()) table.get("blue").todouble() else 255.0).toFloat() / 255f
-
-                val alpha: Float = (if (table.get("alpha").isnumber()) table.get("alpha").todouble() else 255.0).toFloat() / 255f
-
-                val throughWalls = if (table.get("through_walls").isboolean()) table.get("through_walls").toboolean() else true
-
-                val rgb: FloatArray = floatArrayOf(r, g, b)
-
-                try {
-                    val identifier = loadTexture(path)
-                    if (identifier != null) {
-                        context.submitTexturedQuad(Vec3(x, y, z), width, height, regionWidth, regionHeight, Vec3(
-                            ox, oy, oz
-                        ), identifier, rgb, alpha, throughWalls)
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-            return NIL
-        }
+        return 0 // Если текстура не загрузилась
     }
 
     /**
@@ -652,12 +759,5 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             e.printStackTrace()
             return null
         }
-    }
-
-    override fun typename(): String = "world_renderer"
-    override fun tojstring(): String = "WorldRenderObject"
-    override fun isnil(): Boolean = false
-    override fun type(): Int {
-        return LuaValue.TUSERDATA
     }
 }

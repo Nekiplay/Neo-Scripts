@@ -2,172 +2,229 @@ package com.nekiplay.hypixelcry.features.lua.objects.render
 
 import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
-import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import net.minecraft.world.item.ItemStack
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.OneArgFunction
-import org.luaj.vm2.lib.ZeroArgFunction
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
 import java.io.File
 import java.io.FileInputStream
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Supplier
 
-class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: String? = null): LuaValue() {
-    // Кэш для загруженных текстур с разделением по скриптам
+class TwoRenderObject(val l: Lua, private val context: GuiGraphics?, private val scriptId: String? = null): SimpleLuaWrapper(l) {
     companion object {
         val textureCache = ConcurrentHashMap<String, MutableMap<String, Identifier>>()
         val textureCounter = AtomicInteger(0)
 
-        // Очистка кэша для конкретного скрипта
         fun clearScriptCache(scriptId: String) {
-            textureCache[scriptId]?.values?.forEach { identifier ->
-                mc.textureManager.release(identifier)
-            }
+            textureCache[scriptId]?.values?.forEach { mc.textureManager.release(it) }
             textureCache.remove(scriptId)
         }
+    }
 
-        // Полная очистка всех кэшей
-        fun clearAllCaches() {
-            textureCache.values.forEach { scriptCache ->
-                scriptCache.values.forEach { identifier ->
-                    mc.textureManager.release(identifier)
-                }
+    override fun getFieldValue(l: Lua, key: String): Any? {
+        if (context == null) return null
+        return when (key) {
+            "getWindowScale" -> JFunction { getWindowScale(it) }
+            "getTextWidth" -> JFunction { getTextWidth(it) }
+            "renderText" -> JFunction { renderText(it) }
+            "renderImage" -> JFunction { renderImage(it) }
+            "renderRect" -> JFunction { renderRect(it) }
+            "renderLine" -> JFunction { renderLine(it) }
+            "renderPolygon" -> JFunction { renderPolygon(it) }
+            "renderItemStack" -> JFunction { renderItemStack(it) }
+            "clearImageCache" -> JFunction {
+                scriptId?.let { id -> clearScriptCache(id) }
+                0
             }
-            textureCache.clear()
+            else -> null
         }
     }
 
-    override fun call(): LuaValue {
-        return this
+    // --- Вспомогательные методы чтения стека ---
+    private fun Lua.optI(idx: Int, key: String, def: Int): Int {
+        this.getField(idx, key); val res = if (this.isNumber(-1)) this.toInteger(-1).toInt() else def
+        this.pop(1); return res
+    }
+    private fun Lua.optF(idx: Int, key: String, def: Float): Float {
+        this.getField(idx, key); val res = if (this.isNumber(-1)) this.toNumber(-1).toFloat() else def
+        this.pop(1); return res
+    }
+    private fun Lua.optB(idx: Int, key: String, def: Boolean): Boolean {
+        this.getField(idx, key); val res = if (this.isBoolean(-1)) this.toBoolean(-1) else def
+        this.pop(1); return res
+    }
+    private fun Lua.optS(idx: Int, key: String, def: String): String {
+        this.getField(idx, key); val res = this.toString(-1) ?: def
+        this.pop(1); return res
     }
 
-    override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            "getWindowScale" -> GetWindowScaleFunction()
-            "getTextWidth" -> GetTextWidthFunction()
-            "renderText" -> RenderTextFunction()
-            "renderImage" -> RenderImageFunction()
-            "renderRect" -> RenderRectFunction()
-            "renderLine" -> RenderLineFunction()
-            "renderPolygon" -> RenderPolygonFunction()
-            "renderItemStack" -> RenderItemStackFunction()
-            else -> NIL
-        } as LuaValue
+    // --- Реализация функций ---
+
+    private fun getWindowScale(l: Lua): Int {
+        l.newTable()
+        l.push(mc.window.guiScaledWidth.toDouble()); l.setField(-2, "width")
+        l.push(mc.window.guiScaledHeight.toDouble()); l.setField(-2, "height")
+        return 1
     }
 
-    private inner class GetTextWidthFunction : OneArgFunction() {
-        override fun call(text: LuaValue): LuaValue {
-            if (text.isstring()) {
-                val textRenderer: Font? = mc.font
-                val width: Int? = textRenderer?.width(text.tojstring())
-                if (width != null) {
-                    return valueOf(width)
-                }
+    private fun getTextWidth(l: Lua): Int {
+        val text = l.toString(1) ?: return 0
+        l.push(mc.font.width(text).toDouble())
+        return 1
+    }
+
+    private fun renderText(l: Lua): Int {
+        if (!l.isTable(1)) return 0
+        val text = l.optS(1, "text", "Empty")
+        val x = l.optI(1, "x", 0)
+        val y = l.optI(1, "y", 0)
+        val r = l.optI(1, "red", 255); val g = l.optI(1, "green", 255); val b = l.optI(1, "blue", 255); val a = l.optI(1, "alpha", 255)
+        val color = (a and 0xFF shl 24) or (r and 0xFF shl 16) or (g and 0xFF shl 8) or (b and 0xFF)
+        val shadow = l.optB(1, "shadow", true)
+        val scale = l.optF(1, "scale", 1.0f)
+
+        if (scale != 1.0f) {
+            context!!.pose().pushMatrix()
+            context.pose().translate(x.toFloat(), y.toFloat())
+            context.pose().scale(scale, scale)
+            context.drawString(mc.font, Component.literal(text), 0, 0, color, shadow)
+            context.pose().popMatrix()
+        } else {
+            context!!.drawString(mc.font, Component.literal(text), x, y, color, shadow)
+        }
+        return 0
+    }
+
+    private fun renderRect(l: Lua): Int {
+        val x = l.optI(1, "x", 0); val y = l.optI(1, "y", 0)
+        val w = l.optI(1, "width", 0); val h = l.optI(1, "height", 0)
+        val r = l.optI(1, "red", 255); val g = l.optI(1, "green", 255); val b = l.optI(1, "blue", 255); val a = l.optI(1, "alpha", 255)
+        context!!.fill(x, y, x + w, y + h, (a shl 24) or (r shl 16) or (g shl 8) or b)
+        return 0
+    }
+
+    private fun renderItemStack(l: Lua): Int {
+        val x = l.optI(1, "x", 0); val y = l.optI(1, "y", 0)
+        val scale = l.optF(1, "scale", 1.0f)
+
+        l.getField(1, "itemStack")
+        val itemObj = l.toJavaObject(-1)
+        l.pop(1)
+
+        val stack: ItemStack? = when (itemObj) {
+            is LuaItemStack -> itemObj.stack
+            is ItemStack -> itemObj
+            else -> null
+        }
+
+        stack?.let {
+            if (scale != 1.0f) {
+                context!!.pose().pushMatrix()
+                context.pose().translate(x.toFloat(), y.toFloat())
+                context.pose().scale(scale, scale)
+                context.renderItem(it, 0, 0)
+                context.pose().popMatrix()
+            } else {
+                context!!.renderItem(it, x, y)
             }
-            return NIL
         }
+        return 0
     }
 
-    private inner class GetWindowScaleFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            val table = tableOf()
-            val width: Int = mc.window.guiScaledWidth
-            val height: Int = mc.window.guiScaledHeight
+    private fun renderPolygon(l: Lua): Int {
+        l.getField(1, "points")
+        if (!l.isTable(-1)) { l.pop(1); return 0 }
 
-            table.set("width", width)
-            table.set("height", height)
-            return table
+        val r = l.optI(1, "red", 255); val g = l.optI(1, "green", 255); val b = l.optI(1, "blue", 255); val a = l.optI(1, "alpha", 255)
+        val color = (a shl 24) or (r shl 16) or (g shl 8) or b
+
+        val points = mutableListOf<Pair<Float, Float>>()
+        var i = 1
+        while (true) {
+            l.rawGetI(-1, i)
+            if (!l.isTable(-1)) { l.pop(1); break }
+            val px = l.optF(-1, "x", 0f); val py = l.optF(-1, "y", 0f)
+            points.add(px to py)
+            l.pop(1); i++
         }
-    }
+        l.pop(1) // pop points table
 
-    private inner class RenderTextFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val text = if (table.get("text").isstring()) table.get("text").tojstring() else "Empty"
-
-                val x: Int = if (table.get("x").isnumber()) table.get("x").toint() else 0
-                val y: Int = if (table.get("y").isnumber()) table.get("y").toint() else 0
-
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
-
-                val color = (alpha and 0xFF shl 24) or
-                        (red and 0xFF shl 16) or
-                        (green and 0xFF shl 8) or
-                        (blue and 0xFF)
-
-                val isShadow = if (table.get("shadow").isboolean()) table.get("shadow").toboolean() else true
-                val scale = if (table.get("scale").isnumber()) table.get("scale").tofloat() else 1.0f
-
-
-                val textRenderer: Font? = mc.font
-                if (textRenderer != null) {
-                    if (scale != 1.0f) {
-                        context.pose().pushMatrix()
-                        context.pose().translate(x.toFloat(), y.toFloat())
-                        context.pose().scale(scale, scale)
-
-                        context.drawString(textRenderer, Component.literal(text), 0, 0, color, isShadow)
-
-                        context.pose().popMatrix()
-                    } else {
-                        context.drawString(textRenderer, Component.literal(text), x, y, color, isShadow)
-                    }
-                }
+        if (points.size >= 3) {
+            val (x0, y0) = points[0]
+            for (j in 1 until points.size - 1) {
+                fillTriangle(context!!, x0, y0, points[j].first, points[j].second, points[j+1].first, points[j+1].second, color)
             }
-            return NIL
         }
+        return 0
     }
 
-    private inner class RenderImageFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val path = if (table.get("path").isstring()) table.get("path").tojstring() else return NIL
-                val x: Int = if (table.get("x").isnumber()) table.get("x").toint() else 0
-                val y: Int = if (table.get("y").isnumber()) table.get("y").toint() else 0
-                val width: Int = if (table.get("width").isnumber()) table.get("width").toint() else 0
-                val height: Int = if (table.get("height").isnumber()) table.get("height").toint() else 0
+    private fun renderImage(l: Lua): Int {
+        // 1. Проверка аргумента (таблица) и контекста рендеринга
+        if (!l.isTable(1) || context == null) {
+            return 0 // Возвращаем nil в Lua
+        }
 
-                val u: Int = if (table.get("u").isnumber()) table.get("u").toint() else 0
-                val v: Int = if (table.get("v").isnumber()) table.get("v").toint() else 0
-                val regionWidth: Int = if (table.get("region_width").isnumber()) table.get("region_width").toint() else width
-                val regionHeight: Int = if (table.get("region_height").isnumber()) table.get("region_height").toint() else height
+        // 2. Извлечение пути к файлу (обязательно)
+        val path = l.optS(1, "path", "")
+        if (path.isEmpty()) return 0
 
-                try {
-                    val identifier = loadTexture(path)
-                    if (identifier != null) {
-                        context.blit(
-                            RenderPipelines.GUI_TEXTURED, identifier,
-                            x, y,
-                            u.toFloat(), v.toFloat(),
-                            width, height,
-                            regionWidth, regionHeight,
-                            regionWidth, regionHeight
-                        )
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+        // 3. Извлечение координат и размеров на экране
+        val x = l.optI(1, "x", 0)
+        val y = l.optI(1, "y", 0)
+        val width = l.optI(1, "width", 0)
+        val height = l.optI(1, "height", 0)
+
+        // 4. Извлечение параметров UV (текстурные координаты)
+        val u = l.optI(1, "u", 0)
+        val v = l.optI(1, "v", 0)
+
+        // 5. Извлечение размеров региона (если не указаны, используем ширину/высоту картинки)
+        val regionWidth = l.optI(1, "region_width", width)
+        val regionHeight = l.optI(1, "region_height", height)
+
+        try {
+            // 6. Загрузка текстуры через ваш метод (кэширование уже внутри него)
+            val identifier = loadTexture(path)
+
+            if (identifier != null) {
+                // 7. Вызов blit с использованием RenderPipelines (как в вашем оригинале)
+                context.blit(
+                    RenderPipelines.GUI_TEXTURED,
+                    identifier,
+                    x, y,
+                    u.toFloat(), v.toFloat(),
+                    width, height,
+                    regionWidth, regionHeight, // Texture size (total)
+                    regionWidth, regionHeight  // Region size (drawn)
+                )
+                l.push(true)
+                return 1
             }
-            return NIL
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
+
+        return 0
     }
 
-    private inner class ClearImageCacheFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            // Очищаем кэш текстур только для текущего скрипта
-            scriptId?.let { TwoRenderObject.clearScriptCache(it) }
-            return NIL
-        }
+    private fun renderLine(l: Lua): Int {
+        val x1 = l.optI(1, "x1", 0); val y1 = l.optI(1, "y1", 0)
+        val x2 = l.optI(1, "x2", 0); val y2 = l.optI(1, "y2", 0)
+        val r = l.optI(1, "red", 255); val g = l.optI(1, "green", 255); val b = l.optI(1, "blue", 255); val a = l.optI(1, "alpha", 255)
+        val color = (a shl 24) or (r shl 16) or (g shl 8) or b
+        val thick = l.optI(1, "thickness", 1)
+
+        if (thick <= 1) drawLineBresenham(context!!, x1, y1, x2, y2, color)
+        else drawThickLine(context!!, x1, y1, x2, y2, color, thick)
+        return 0
     }
 
     /**
@@ -210,32 +267,6 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         } catch (e: Exception) {
             e.printStackTrace()
             return null
-        }
-    }
-
-    private inner class RenderLineFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x1: Int = if (table.get("x1").isnumber()) table.get("x1").toint() else 0
-                val y1: Int = if (table.get("y1").isnumber()) table.get("y1").toint() else 0
-                val x2: Int = if (table.get("x2").isnumber()) table.get("x2").toint() else 0
-                val y2: Int = if (table.get("y2").isnumber()) table.get("y2").toint() else 0
-
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
-
-                val color = (alpha and 0xFF shl 24) or
-                        (red and 0xFF shl 16) or
-                        (green and 0xFF shl 8) or
-                        (blue and 0xFF)
-
-                val thickness: Int = if (table.get("thickness").isnumber()) table.get("thickness").toint() else 1
-
-                drawLine(context, x1, y1, x2, y2, color, thickness)
-            }
-            return NIL
         }
     }
 
@@ -346,68 +377,6 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         }
     }
 
-    private inner class RenderPolygonFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val pointsTable = table.get("points")
-                if (pointsTable.istable()) {
-                    val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                    val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                    val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                    val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
-
-                    val color = (alpha and 0xFF shl 24) or
-                            (red and 0xFF shl 16) or
-                            (green and 0xFF shl 8) or
-                            (blue and 0xFF)
-
-                    val points = mutableListOf<Pair<Float, Float>>()
-                    var i = 1
-                    while (true) {
-                        val pointTable = pointsTable.get(i)
-                        if (pointTable.istable()) {
-                            val x = if (pointTable.get("x").isnumber()) pointTable.get("x").tofloat() else 0f
-                            val y = if (pointTable.get("y").isnumber()) pointTable.get("y").tofloat() else 0f
-                            points.add(x to y)
-                            i++
-                        } else {
-                            break
-                        }
-                    }
-
-                    if (points.size >= 3) {
-                        drawPolygon(context, points, color)
-                    }
-                }
-            }
-            return NIL
-        }
-    }
-
-    private inner class RenderRectFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x: Int = if (table.get("x").isnumber()) table.get("x").toint() else 0
-                val y: Int = if (table.get("y").isnumber()) table.get("y").toint() else 0
-                val width: Int = if (table.get("width").isnumber()) table.get("width").toint() else 0
-                val height: Int = if (table.get("height").isnumber()) table.get("height").toint() else 0
-
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
-
-                val color = (alpha and 0xFF shl 24) or
-                        (red and 0xFF shl 16) or
-                        (green and 0xFF shl 8) or
-                        (blue and 0xFF)
-
-                context.fill(x, y, x + width, y + height, color)
-            }
-            return NIL
-        }
-    }
-
     private fun drawPolygon(context: GuiGraphics, points: List<Pair<Float, Float>>, color: Int) {
         if (points.size < 3) return
 
@@ -420,37 +389,6 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
             val (x2, y2) = points[i + 1]
 
             drawTriangle(context, x0, y0, x1, y1, x2, y2, color)
-        }
-    }
-
-    private inner class RenderItemStackFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x = if (table.get("x").isnumber()) table.get("x").toint() else 0
-                val y = if (table.get("y").isnumber()) table.get("y").toint() else 0
-                val scale = if (table.get("scale").isnumber()) table.get("scale").tofloat() else 1.0f
-
-                val itemStackObj = table.get("itemStack")
-                val itemStack = when {
-                    itemStackObj.isuserdata() && itemStackObj.touserdata() is LuaItemStack -> (itemStackObj.touserdata() as LuaItemStack).stack
-                    itemStackObj is LuaItemStack -> itemStackObj.stack
-                    itemStackObj.isuserdata() && itemStackObj.touserdata() is ItemStack -> itemStackObj.touserdata() as ItemStack
-                    else -> null
-                }
-
-                if (itemStack != null) {
-                    if (scale != 1.0f) {
-                        context.pose().pushMatrix()
-                        context.pose().translate(x.toFloat(), y.toFloat())
-                        context.pose().scale(scale, scale)
-                        context.renderItem(itemStack, 0, 0)
-                        context.pose().popMatrix()
-                    } else {
-                        context.renderItem(itemStack, x, y)
-                    }
-                }
-            }
-            return NIL
         }
     }
 
@@ -548,12 +486,5 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
                 y += sy
             }
         }
-    }
-
-    override fun typename(): String = "2d_renderer"
-    override fun tojstring(): String = "2DRenderObject"
-    override fun isnil(): Boolean = false
-    override fun type(): Int {
-        return LuaValue.TUSERDATA
     }
 }

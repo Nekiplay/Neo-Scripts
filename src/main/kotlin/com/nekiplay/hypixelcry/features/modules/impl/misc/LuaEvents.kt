@@ -74,9 +74,9 @@ object LuaEvents : ClientModule() {
         }
 
         WorldRenderExtractionCallback.EVENT.register({ context: PrimitiveCollector? ->
-            val renderContext = WorldRendererObject(context)
             LUA_MANAGER.scripts.values.forEach { script ->
                 try {
+                    val renderContext = WorldRendererObject(script.L, context)
                     script.onRenderTick(renderContext)
                 } catch (e: Exception) {
                     // Обработка ошибок
@@ -280,27 +280,17 @@ object LuaEvents : ClientModule() {
             }
             else if (event.packet is ClientboundBlockUpdatePacket) {
                 val packet = event.packet as ClientboundBlockUpdatePacket
-
-                val table = LuaValue.tableOf()
-
-                table.set("x", packet.pos.x)
-                table.set("y", packet.pos.y)
-                table.set("z", packet.pos.z)
+                var allow = true
                 val oldState = mc.level?.getBlockState(packet.pos)
                 if (oldState != null) {
-                    table.set("old", LuaBlockState(oldState))
-                }
-                if (packet.blockState != null) {
-                    table.set("new", LuaBlockState(packet.blockState))
-                }
-
-                LUA_MANAGER.scripts.values.forEach { script ->
-                    try {
-                        script.onBlockUpdateEvent(table)
-                    } catch (e: Exception) {
-                        // Обработка ошибок
+                    LUA_MANAGER.scripts.values.forEach { script ->
+                        if (!script.onBlockUpdateEvent(packet.pos, oldState, packet.blockState)) {
+                            allow = false
+                        }
                     }
                 }
+
+                if (allow) InteractionResult.PASS else InteractionResult.FAIL
             }
             val allow = when (val packet = event.packet) {
                 is ClientboundPlayerRotationPacket -> {
