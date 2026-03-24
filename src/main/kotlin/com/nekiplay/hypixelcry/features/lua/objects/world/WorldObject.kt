@@ -22,40 +22,39 @@ import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.Vec3
 import party.iroiro.luajava.Lua
 import java.util.ArrayList
-import kotlin.collections.forEachIndexed
 
-class WorldObject(private val L: Lua) {
+class WorldObject(private val lua: Lua) {
     fun register() {
         // Создаем таблицу
-        L.newTable()
+        lua.newTable()
 
         // Регистрируем методы
-        L.push { l -> getBlock(l) }; L.setField(-2, "getBlock")
-        L.push { l -> getBlock(l) }; L.setField(-2, "getBlockState")
-        L.push { l -> setBlock(l) }; L.setField(-2, "setBlock")
+        lua.push { l -> getBlock(l) }; lua.setField(-2, "getBlock")
+        lua.push { l -> getBlock(l) }; lua.setField(-2, "getBluaockState")
+        lua.push { l -> setBlock(l) }; lua.setField(-2, "setBluaock")
 
-        L.push { l -> isBlockLoaded(l) }; L.setField(-2, "isBlockLoaded")
-        L.push { l -> isBlockLoaded(l) }; L.setField(-2, "isLoaded")
+        lua.push { l -> isBlockLoaded(l) }; lua.setField(-2, "isBluaockluaoaded")
+        lua.push { l -> isBlockLoaded(l) }; lua.setField(-2, "isluaoaded")
 
-        L.push { l -> getRotation(l) }; L.setField(-2, "getRotation")
+        lua.push { l -> getRotation(l) }; lua.setField(-2, "getRotation")
 
-        L.push { l -> getEntities(l) }; L.setField(-2, "getEntities")
-        L.push { l -> getEntityById(l) }; L.setField(-2, "getEntityById")
-        L.push { l -> getLivingEntities(l) }; L.setField(-2, "getLivingEntities")
-        L.push { l -> getArmorStandEntities(l) }; L.setField(-2, "getArmorStandEntities")
+        lua.push { l -> getEntities(l) }; lua.setField(-2, "getEntities")
+        lua.push { l -> getEntityById(l) }; lua.setField(-2, "getEntityById")
+        lua.push { l -> getLivingEntities(l) }; lua.setField(-2, "getLivingEntities")
+        lua.push { l -> getArmorStandEntities(l) }; lua.setField(-2, "getArmorStandEntities")
 
-        L.push { l -> getEntitiesInBox(l) }; L.setField(-2, "getEntitiesInBox")
-        L.push { l -> getArmorStandEntitiesInBox(l) }; L.setField(-2, "getArmorStandEntitiesInBox")
+        lua.push { l -> getEntitiesInBox(l) }; lua.setField(-2, "getEntitiesInBox")
+        lua.push { l -> getArmorStandEntitiesInBox(l) }; lua.setField(-2, "getArmorStandEntitiesInBox")
 
-        L.push { l -> getCollisionBoxes(l) }; L.setField(-2, "getCollisionBoxes")
-        L.push { l -> getOutlineBoxes(l) }; L.setField(-2, "getOutlineBoxes")
+        lua.push { l -> getCollisionBoxes(l) }; lua.setField(-2, "getCollisionBoxes")
+        lua.push { l -> getOutlineBoxes(l) }; lua.setField(-2, "getOutlineBoxes")
 
-        L.push { l -> raycast(l) }; L.setField(-2, "raycast")
-        L.push { l -> raycastToBlocks(l) }; L.setField(-2, "raycastToBlocks")
+        lua.push { l -> raycast(l) }; lua.setField(-2, "raycast")
+        lua.push { l -> raycastToBlocks(l) }; lua.setField(-2, "raycastToBlocks")
 
 
         // Устанавливаем таблицу как глобальную переменную "world"
-        L.setGlobal("world")
+        lua.setGlobal("world")
     }
 
     private fun getOutlineBoxes(l: Lua): Int {

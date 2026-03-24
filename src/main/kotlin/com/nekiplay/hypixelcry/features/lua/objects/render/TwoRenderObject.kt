@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Supplier
 
-class TwoRenderObject(val l: Lua, private val context: GuiGraphics?, private val scriptId: String? = null): SimpleLuaWrapper(l) {
+class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, private val scriptId: String? = null): SimpleLuaWrapper(lua) {
     companion object {
         val textureCache = ConcurrentHashMap<String, MutableMap<String, Identifier>>()
         val textureCounter = AtomicInteger(0)
