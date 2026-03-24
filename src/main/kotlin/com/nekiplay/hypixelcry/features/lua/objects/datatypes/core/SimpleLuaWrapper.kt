@@ -57,8 +57,9 @@ fun Lua.smartPush(v: Any?) {
         is String -> this.push(v)
         is Double -> this.push(v)
         is Number -> this.push(v.toDouble())
-        is JFunction -> this.push(v) // IMPORTANT: Must be before 'else'
-        is LuaValue -> this.push(v)    // IMPORTANT: Allows nested objects
+        is JFunction -> this.push(v)
+        is LuaValue -> this.push(v)
+        is SimpleLuaWrapper -> this.push(v.push()) 
         else -> this.pushJavaObject(v)
     }
 }
