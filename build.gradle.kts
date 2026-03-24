@@ -57,7 +57,7 @@ dependencies {
 
     include(implementation("party.iroiro.luajava:luajava:4.1.0")!!)
     include(implementation("party.iroiro.luajava:lua55:4.1.0")!!)
-    runtimeOnly("party.iroiro.luajava:luajit-platform:4.1.0:natives-desktop")
+    include(implementation("party.iroiro.luajava:luajit-platform:4.1.0:natives-desktop")!!)
 
     modImplementation("net.fabricmc:fabric-loader:${property("loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_version")}")
