@@ -12,7 +12,7 @@ abstract class SimpleLuaWrapper(val L: Lua) {
 
     open fun setFieldValue(l: Lua, key: String, value: LuaValue): Boolean = false
 
-    fun push(): LuaValue {
+    open fun push(): LuaValue {
         L.pushJavaObject(this)
         L.newTable()
 

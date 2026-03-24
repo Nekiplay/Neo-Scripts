@@ -1,7 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 
 import com.nekiplay.hypixelcry.HypixelCry.mc
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.sugar.getFormattedString
@@ -10,20 +9,6 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ItemFrame
 import net.minecraft.world.entity.item.ItemEntity
-import net.minecraft.world.level.block.Block
-import net.minecraft.world.level.block.ComparatorBlock
-import net.minecraft.world.level.block.CropBlock
-import net.minecraft.world.level.block.DirectionalBlock
-import net.minecraft.world.level.block.DoorBlock
-import net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock
-import net.minecraft.world.level.block.RedStoneWireBlock
-import net.minecraft.world.level.block.RedstoneTorchBlock
-import net.minecraft.world.level.block.RedstoneWallTorchBlock
-import net.minecraft.world.level.block.RepeaterBlock
-import net.minecraft.world.level.block.SnowLayerBlock
-import net.minecraft.world.level.block.WallTorchBlock
-import net.minecraft.world.level.block.piston.PistonBaseBlock
-import net.minecraft.world.level.block.state.properties.AttachFace
 import party.iroiro.luajava.Lua
 
 class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
@@ -63,7 +48,7 @@ class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
                 l.get()
             }
 
-            "box" -> LuaBox(entity.boundingBox)
+            "box" -> LuaBox(l, entity.boundingBox).push()
 
             "velocity_x" -> entity.forward.x
             "velocity_y" -> entity.forward.y

@@ -7,6 +7,7 @@ import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
 import com.nekiplay.hypixelcry.features.lua.objects.misc.Creator
 import com.nekiplay.hypixelcry.features.lua.objects.misc.DJLLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.EncodingLib
@@ -142,6 +143,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         http.register()
         imgui.register()
         modules.register()
+        LuaComponentBuilder.register(L)
 
         registerCustomFunctions()
 
@@ -1790,8 +1792,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         }
 
         // Очищаем библиотеки
-        //threadLib.stopAllThreads()
-        //tcpLib.cleanup()
+        threads.stopAllThreads()
+        tcp.cleanup()
 
         for (command in commandCallbacks.keys) {
             val dispatcher = commandDispatchers[command]
@@ -1822,7 +1824,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             commandCallbacks.clear()
             commandSuggestionsCallbacks.clear()
         }
-        //imguiLib.queue.clear()
+        imgui.queue.clear()
         djlLibrary.models.clear()
         djlLibrary.predictors.clear()
         djlLibrary.inputShapes.clear()

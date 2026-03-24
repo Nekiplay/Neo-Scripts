@@ -1,42 +1,50 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes.text
 
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
 import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.sugar.getJsonString
 import net.minecraft.network.chat.Component
-import org.luaj.vm2.LuaTable
-import org.luaj.vm2.LuaUserdata
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.OneArgFunction
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
+import party.iroiro.luajava.value.LuaValue
 
-class LuaComponent(val component: Component) : LuaUserdata(component) {
-    init {
-        setmetatable(MT)
+class LuaComponent(L: Lua, val component: Component) : SimpleLuaWrapper(L) {
+
+    override fun getFieldValue(l: Lua, key: String): Any? {
+        return when (key) {
+            "getString" -> JFunction { lInner ->
+                lInner.push(component.getString())
+                1
+            }
+            "getFormattedString" -> JFunction { lInner ->
+                lInner.push(component.getFormattedString())
+                1
+            }
+            "getJsonString" -> JFunction { lInner ->
+                lInner.push(component.getJsonString())
+                1
+            }
+            else -> null
+        }
     }
 
-    companion object {
-        private val MT = LuaTable().apply {
-            val idx = LuaTable()
-            set("__index", idx)
+    /**
+     * Переопределяем push, чтобы добавить поддержку метаметода __tostring,
+     * как это было в оригинальном companion object MT.
+     */
+    override fun push(): LuaValue {
+        val luaValue = super.push() // Создает объект, таблицу и вешает __index/__newindex
 
-            set("__tostring", object : OneArgFunction() {
-                override fun call(self: LuaValue): LuaValue =
-                    valueOf((self as LuaComponent).component.getString())
+        // Получаем метатаблицу созданного объекта, чтобы добавить __tostring
+        if (L.getMetatable(-1) != 0) {
+            L.push(JFunction { l ->
+                l.push(component.getString())
+                1
             })
-
-            idx.set("getString", object : OneArgFunction() {
-                override fun call(self: LuaValue): LuaValue =
-                    valueOf((self as LuaComponent).component.getString())
-            })
-
-            idx.set("getFormattedString", object : OneArgFunction() {
-                override fun call(self: LuaValue): LuaValue =
-                    valueOf((self as LuaComponent).component.getFormattedString())
-            })
-
-            idx.set("getJsonString", object : OneArgFunction() {
-                override fun call(self: LuaValue): LuaValue =
-                    valueOf((self as LuaComponent).component.getJsonString())
-            })
+            L.setField(-2, "__tostring")
+            L.pop(1) // Убираем метатаблицу из стека
         }
+
+        return luaValue
     }
 }
