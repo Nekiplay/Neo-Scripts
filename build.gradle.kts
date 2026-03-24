@@ -55,9 +55,9 @@ dependencies {
     minecraft("com.mojang:minecraft:${property("minecraft_version")}")
     mappings(loom.officialMojangMappings())
 
-    implementation("org.luaj:luaj-jse:3.0.1")
-    include("org.luaj:luaj-jse:3.0.1")
-    shadowModImpl("org.luaj:luaj-jse:3.0.1")
+    include(implementation("party.iroiro.luajava:luajava:4.1.0")!!)
+    include(implementation("party.iroiro.luajava:lua55:4.1.0")!!)
+    runtimeOnly("party.iroiro.luajava:luajit-platform:4.1.0:natives-desktop")
 
     modImplementation("net.fabricmc:fabric-loader:${property("loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_version")}")

@@ -1,33 +1,26 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes.core
 
 import net.minecraft.core.Direction
-import org.luaj.vm2.LuaUserdata
-import org.luaj.vm2.LuaValue
+import party.iroiro.luajava.Lua
 
-class LuaDirection(val direction: Direction): LuaUserdata(direction) {
-    override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            "opposite" -> LuaDirection(direction.opposite)
-            "name" -> valueOf(direction.name)
-            "axisDirection" -> LuaAxisDirection(direction.axisDirection)
-            "axis" -> LuaAxis(direction.axis)
-            "clockWise" -> LuaDirection(direction.clockWise)
+class LuaDirection(val l: Lua, val direction: Direction): SimpleLuaWrapper(l) {
+    override fun getFieldValue(l: Lua, key: String): Any? {
+        return when (key) {
+            "opposite" -> LuaDirection(l, direction.opposite).push()
+            "name" -> direction.name
+            "axisDirection" -> LuaAxisDirection(l, direction.axisDirection)
+            "axis" -> LuaAxis(l, direction.axis)
+            "clockWise" -> LuaDirection(L, direction.clockWise).push()
             "step" -> {
-                val t = tableOf()
-                t.set("y", valueOf(direction.stepY))
-                t.set("x", valueOf(direction.stepX))
-                t.set("z", valueOf(direction.stepZ))
-                t
+                L.newTable()
+
+                l.push(direction.stepX.toDouble()); l.setField(-2, "x")
+                l.push(direction.stepY.toDouble()); l.setField(-2, "y")
+                l.push(direction.stepZ.toDouble()); l.setField(-2, "z")
+
+                l.get()
             }
-            else -> NIL
+            else -> null
         }
-    }
-
-    override fun tojstring(): String {
-        return direction.name;
-    }
-
-    override fun tostring(): LuaValue? {
-        return valueOf(direction.name)
     }
 }

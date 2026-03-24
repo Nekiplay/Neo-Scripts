@@ -1,6 +1,5 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaLong
 import com.sun.jna.Callback
 import com.sun.jna.Memory
 import com.sun.jna.Native

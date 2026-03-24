@@ -17,9 +17,11 @@ import com.nekiplay.hypixelcry.features.lua.objects.misc.TCPLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ThreadLib
 import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
+import com.nekiplay.hypixelcry.features.lua.objects.world.WorldObject
 import com.nekiplay.hypixelcry.utils.Location
 import com.nekiplay.hypixelcry.utils.misc.input.KeyAction
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
+import kotlinx.atomicfu.locks.withLock
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
@@ -36,16 +38,12 @@ import net.minecraft.network.protocol.game.ClientboundCommandsPacket
 import net.minecraft.resources.Identifier
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.item.ItemStack
-import org.luaj.vm2.Globals
-import org.luaj.vm2.LuaError
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.Varargs
-import org.luaj.vm2.lib.OneArgFunction
-import org.luaj.vm2.lib.VarArgFunction
-import org.luaj.vm2.lib.jse.CoerceJavaToLua
-import org.luaj.vm2.lib.jse.JsePlatform
-import org.luaj.vm2.lib.jse.LuajavaLib
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
+import party.iroiro.luajava.lua55.Lua55
+import party.iroiro.luajava.value.LuaValue
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.locks.ReentrantLock
 
 class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     // Локальный стек загрузки для этого конкретного экземпляра скрипта
@@ -84,7 +82,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val scriptUnloadCallbacks = ArrayList<LuaValue>()
 
     // Synchronize only when needed
-    private val callbacksLock = Any()
+    private val callbacksLock = ReentrantLock()
 
     // Script-specific libraries
     private val tcpLib = TCPLib()
@@ -97,19 +95,11 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val dependencies = ConcurrentHashMap<String, MutableList<String>>()
 
     // Script-specific globals
-    var scriptGlobals: Globals = JsePlatform.standardGlobals()
+    var L: Lua55 = Lua55()
 
     init {
-        // Register standard libraries
-        scriptGlobals.load(LuajavaLib())
 
         registerCustomFunctions()
-
-        // Load libraries into script-specific globals
-        scriptGlobals.load(threadLib)
-        scriptGlobals.load(tcpLib)
-        scriptGlobals.load(imguiLib)
-        scriptGlobals.load(ffi)
 
         // Register global objects
         registerGlobalObjects()
@@ -133,206 +123,367 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     private fun registerEventRegistrationFunctions() {
-        scriptGlobals.set("registerUnloadCallback", object : OneArgFunction() {
-            override fun call(callback: LuaValue): LuaValue {
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(scriptUnloadCallbacks.add(callback))
-                }
-            }
-        })
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
 
-        scriptGlobals.set("registerSpawnParticle", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(particleCallbacks.add(callback))
+                callbacksLock.withLock {
+                    scriptUnloadCallbacks.add(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("registerUnloadCallback")
 
-        scriptGlobals.set("registerInventoryItemChange", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(inventoryItemChangeCallbacks.add(callback))
-                }
-            }
-        })
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
 
-        scriptGlobals.set("registerUseBlock", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(useBlockCallbacks.add(callback))
+                callbacksLock.withLock {
+                    particleCallbacks.add(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("registerSpawnParticle")
 
-        scriptGlobals.set("registerAttackBlock", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(attackBlockCallbacks.add(callback))
-                }
-            }
-        })
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
 
-        scriptGlobals.set("registerClientTick", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(clientPreTickCallbacks.add(callback))
+                callbacksLock.withLock {
+                    inventoryItemChangeCallbacks.add(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("registerInventoryItemChange")
 
-        scriptGlobals.set("registerClientTickPost", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(clientTickCallbacks.add(callback))
-                }
-            }
-        })
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
 
-        scriptGlobals.set("registerClientTickPre", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(clientPreTickCallbacks.add(callback))
+                callbacksLock.withLock {
+                    useBlockCallbacks.add(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("registerUseBlock")
 
-        scriptGlobals.set("registerBlockUpdate", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(blockUpdateCallbacks.add(callback))
-                }
-            }
-        })
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
 
-        scriptGlobals.set("registerWorldRenderer", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(renderWorldCallbacks.add(callback))
+                callbacksLock.withLock {
+                    attackBlockCallbacks.add(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("registerAttackBlock")
 
-        scriptGlobals.set("register2DRenderer", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(render2DCallbacks.add(callback))
-                }
-            }
-        })
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
 
-        scriptGlobals.set("registerKeyEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(keyEventCallbacks.add(callback))
+                callbacksLock.withLock {
+                    clientPreTickCallbacks.add(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("registerClientTick")
 
-        scriptGlobals.set("registerMessageEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(messageEventCallbacks.add(callback))
-                }
-            }
-        })
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
 
-        scriptGlobals.set("registerSendMessageEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(onSendMessageEventCallbacks.add(callback))
+                callbacksLock.withLock {
+                    clientTickCallbacks.add(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("registerClientTickPost")
 
-        scriptGlobals.set("registerSendCommandEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(onSendCommandEventCallbacks.add(callback))
-                }
-            }
-        })
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
 
-        scriptGlobals.set("registerLocationChangeEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(locationChangeCallbacks.add(callback))
+                callbacksLock.withLock {
+                    clientPreTickCallbacks.add(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("registerClientTickPre")
 
-        scriptGlobals.set("registerImGuiRenderEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(imguiRenderCallbacks.add(callback))
-                }
-            }
-        })
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
 
-        // Packet events
-        scriptGlobals.set("registerServerSideRotationEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(serverSideRotationCallbacks.add(callback))
+                callbacksLock.withLock {
+                    blockUpdateCallbacks.add(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("registerBlockUpdate")
 
-        scriptGlobals.set("registerServerSideTeleportEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(serverSideTeleportCallbacks.add(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    renderWorldCallbacks.add(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("registerWorldRenderer")
+
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    render2DCallbacks.add(callback)
+                }
+                l.push(true)
+            } else {
+                l.push(false)
+            }
+            1 // Количество возвращаемых значений
+        })
+        L.setGlobal("register2DRenderer")
+
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    keyEventCallbacks.add(callback)
+                }
+                l.push(true)
+            } else {
+                l.push(false)
+            }
+            1 // Количество возвращаемых значений
+        })
+        L.setGlobal("registerKeyEvent")
+
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    messageEventCallbacks.add(callback)
+                }
+                l.push(true)
+            } else {
+                l.push(false)
+            }
+            1 // Количество возвращаемых значений
+        })
+        L.setGlobal("registerMessageEvent")
+
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    onSendMessageEventCallbacks.add(callback)
+                }
+                l.push(true)
+            } else {
+                l.push(false)
+            }
+            1 // Количество возвращаемых значений
+        })
+        L.setGlobal("registerSendMessageEvent")
+
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    onSendCommandEventCallbacks.add(callback)
+                }
+                l.push(true)
+            } else {
+                l.push(false)
+            }
+            1 // Количество возвращаемых значений
+        })
+        L.setGlobal("registerSendCommandEvent")
+
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    locationChangeCallbacks.add(callback)
+                }
+                l.push(true)
+            } else {
+                l.push(false)
+            }
+            1 // Количество возвращаемых значений
+        })
+        L.setGlobal("registerLocationChangeEvent")
+
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    imguiRenderCallbacks.add(callback)
+                }
+                l.push(true)
+            } else {
+                l.push(false)
+            }
+            1 // Количество возвращаемых значений
+        })
+        L.setGlobal("registerImGuiRenderEvent")
+
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    serverSideRotationCallbacks.add(callback)
+                }
+                l.push(true)
+            } else {
+                l.push(false)
+            }
+            1 // Количество возвращаемых значений
+        })
+        L.setGlobal("registerServerSideRotationEvent")
+
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    serverSideTeleportCallbacks.add(callback)
+                }
+                l.push(true)
+            } else {
+                l.push(false)
+            }
+            1 // Количество возвращаемых значений
+        })
+        L.setGlobal("registerServerSideTeleportEvent")
     }
 
     private fun registerEventUnregistrationFunctions() {
-        scriptGlobals.set("unregisterSpawnParticle", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(particleCallbacks.remove(callback))
+        L.push(JFunction { l ->
+            // Проверяем, является ли первый аргумент функцией
+            if (l.type(1) == Lua.LuaType.FUNCTION) {
+                // Копируем функцию на вершину стека и забираем как LuaValue
+                l.pushValue(1)
+                val callback = l.get() // Теперь это LuaValue, он удерживает ссылку на функцию
+
+                callbacksLock.withLock {
+                    particleCallbacks.remove(callback)
                 }
+                l.push(true)
+            } else {
+                l.push(false)
             }
+            1 // Количество возвращаемых значений
         })
+        L.setGlobal("unregisterSpawnParticle")
 
         scriptGlobals.set("unregisterInventoryItemChange", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
@@ -546,24 +697,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
     private fun registerGlobalObjects() {
         // Register global objects
-        scriptGlobals.set("player", luaManager.playerObj)
-        scriptGlobals.set("world", luaManager.worldObj)
-        scriptGlobals.set("modules", luaManager.modulesObj)
-        scriptGlobals.set("ComponentBuilder", LuaComponentBuilder.createLibrary())
-
-        scriptGlobals.load(luaManager.jsonLib)
-        scriptGlobals.load(luaManager.httpLib)
-        scriptGlobals.load(luaManager.catboostLib)
-        scriptGlobals.load(luaManager.creatorLib)
-        scriptGlobals.load(luaManager.encodingLib)
-    }
-
-    // Methods for adding callbacks
-    fun addScriptUnloadCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            return scriptUnloadCallbacks.add(callback)
-        }
+        WorldObject(L).register()
     }
 
     fun addCommandCallback(commandName: String, callback: LuaValue, suggestionsCallback: LuaValue? = null): Boolean {

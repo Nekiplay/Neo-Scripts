@@ -1,16 +1,15 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes.core
 
 import net.minecraft.core.Direction
-import org.luaj.vm2.LuaUserdata
-import org.luaj.vm2.LuaValue
+import party.iroiro.luajava.Lua
 
-class LuaAxisDirection(val axis: Direction.AxisDirection): LuaUserdata(axis) {
-    override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            "opposite" -> LuaAxisDirection(axis.opposite())
-            "name" -> valueOf(axis.name)
-            "step" -> valueOf(axis.step)
-            else -> NIL
+class LuaAxisDirection(val l: Lua, val axis: Direction.AxisDirection): SimpleLuaWrapper(l) {
+    override fun getFieldValue(l: Lua, key: String): Any? {
+        return when (key) {
+            "opposite" -> LuaAxisDirection(l, axis.opposite())
+            "name" -> axis.name
+            "step" -> axis.step
+            else -> null
         }
     }
 }
