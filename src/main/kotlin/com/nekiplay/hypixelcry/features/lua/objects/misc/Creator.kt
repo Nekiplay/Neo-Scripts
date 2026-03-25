@@ -12,17 +12,13 @@ import party.iroiro.luajava.Lua
 
 class Creator(val L: Lua) {
     fun register() {
-        L.push(JFunction { createBox(it) })
-        L.setGlobal("createBox")
-
-        L.push(JFunction { createBox(it) })
-        L.setGlobal("createAABB")
-
-        L.push(JFunction { createDirection(it) })
-        L.setGlobal("createDirection")
-
-        L.push(JFunction { createStackFromId(it) })
-        L.setGlobal("createItemStackFromId")
+        L.newTable()
+        val tIdx = L.getTop()
+        L.push("createItemStackFromId"); L.push(JFunction { createStackFromId(it) }); L.setTable(tIdx)
+        L.push("createBox"); L.push(JFunction { createBox(it) }); L.setTable(tIdx)
+        L.push("createAABB"); L.push(JFunction { createBox(it) }); L.setTable(tIdx)
+        L.push("createDirection"); L.push(JFunction { createDirection(it) }); L.setTable(tIdx)
+        L.setGlobal("creator")
     }
 
     private fun createBox(l: Lua): Int {
