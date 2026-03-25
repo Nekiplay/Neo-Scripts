@@ -14,6 +14,10 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class ThreadLib(val L: Lua) {
 
+    init {
+        println("ThreadLib: initializing, L=$L")
+    }
+
     private val threads = ConcurrentHashMap<Int, ThreadInfo>()
     private val nextId = AtomicInteger(1)
 
@@ -23,6 +27,7 @@ class ThreadLib(val L: Lua) {
     )
 
     fun register() {
+        println("ThreadLib.register: called, L=$L")
         L.newTable() // Создаем таблицу threads
 
         L.push(JFunction { startThread(it) })
@@ -47,6 +52,7 @@ class ThreadLib(val L: Lua) {
         L.setField(-2, "getThreadCount")
 
         L.setGlobal("threads")
+        println("ThreadLib.register: threads global set, isNil=${L.isNil(L.getGlobal("threads"))}")
     }
 
     private fun startThread(l: Lua): Int {
