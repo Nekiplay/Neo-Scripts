@@ -42,6 +42,7 @@ class LuaLibsRegister {
         threads?.register()
         http = HttpClientLib(lua)
         imgui = ImGuiLib(lua)
+        imgui?.register()
         modules = ModulesLib(lua)
         LuaComponentBuilder.register(lua)
 
