@@ -147,9 +147,9 @@ class LuaComponentBuilder(L: Lua?, private var text: String = "") : SimpleLuaWra
         return component
     }
 
-    override fun push() {
-        super.push()
-        val lua = L ?: return
+    override fun push(targetLua: Lua?) {
+        super.push(targetLua)
+        val lua = targetLua ?: L ?: return
         if (lua.getMetatable(-1) != 0) {
             lua.push(JFunction { l ->
                 l.push(buildComponent().string)
@@ -160,9 +160,9 @@ class LuaComponentBuilder(L: Lua?, private var text: String = "") : SimpleLuaWra
         }
     }
 
-    override fun pushValue(): LuaValue {
-        push()
-        return L!!.get()
+    override fun pushValue(targetLua: Lua?): LuaValue {
+        push(targetLua)
+        return (targetLua ?: L)!!.get()
     }
 
     companion object {

@@ -8,10 +8,10 @@ import party.iroiro.luajava.Lua
 import party.iroiro.luajava.value.LuaValue
 
 class LuaBox(l: Lua?, val box: AABB) : SimpleLuaWrapper(l) {
-    override fun push() {
-        super.push()
+    override fun push(targetLua: Lua?) {
+        super.push(targetLua)
 
-        val lua = L ?: return
+        val lua = targetLua ?: L ?: return
         if (lua.getMetatable(-1) != 0) {
             lua.push(JFunction { l ->
                 l.push("Box(${box.minX}, ${box.minY}, ${box.minZ} -> ${box.maxX}, ${box.maxY}, ${box.maxZ})")
@@ -22,9 +22,9 @@ class LuaBox(l: Lua?, val box: AABB) : SimpleLuaWrapper(l) {
         }
     }
 
-    override fun pushValue(): LuaValue {
-        push()
-        return L!!.get()
+    override fun pushValue(targetLua: Lua?): LuaValue {
+        push(targetLua)
+        return (targetLua ?: L)!!.get()
     }
 
     override fun getFieldValue(l: Lua, key: String): Any? {
