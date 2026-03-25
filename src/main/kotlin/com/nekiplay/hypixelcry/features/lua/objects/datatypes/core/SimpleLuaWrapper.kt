@@ -9,11 +9,11 @@ abstract class SimpleLuaWrapper(val L: Lua) {
     open fun setFieldValue(l: Lua, key: String, value: LuaValue): Boolean = false
 
     open fun push() {
-        L.newTable()
         val tableIdx = L.getTop()
+        L.newTable()
 
         L.pushJavaObject(this)
-        L.setField(tableIdx, "__java_instance")
+        L.setField(tableIdx + 1, "__java_instance")
 
         L.newTable()
         L.push(JFunction { l ->
@@ -26,7 +26,12 @@ abstract class SimpleLuaWrapper(val L: Lua) {
         })
         L.setField(-2, "__index")
 
-        L.setMetatable(tableIdx)
+        L.setMetatable(tableIdx + 1)
+    }
+
+    open fun pushValue(): LuaValue {
+        push()
+        return L.subIdx(-1, 1)
     }
 }
 

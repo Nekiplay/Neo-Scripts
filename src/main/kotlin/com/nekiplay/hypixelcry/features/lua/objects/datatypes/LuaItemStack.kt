@@ -14,8 +14,8 @@ import party.iroiro.luajava.Lua
 import party.iroiro.luajava.value.LuaValue
 
 class LuaItemStack(L: Lua, val stack: ItemStack) : SimpleLuaWrapper(L) {
-    override fun push(): LuaValue {
-        val luaValue = super.push()
+    override fun push() {
+        super.push()
 
         if (L.getMetatable(-1) != 0) {
             L.push(JFunction { l ->
@@ -25,8 +25,11 @@ class LuaItemStack(L: Lua, val stack: ItemStack) : SimpleLuaWrapper(L) {
             L.setField(-2, "__tostring")
             L.pop(1)
         }
+    }
 
-        return luaValue
+    override fun pushValue(): LuaValue {
+        push()
+        return L.subIdx(-1, 1)
     }
     override fun getFieldValue(l: Lua, key: String): Any? {
         return when (key) {
