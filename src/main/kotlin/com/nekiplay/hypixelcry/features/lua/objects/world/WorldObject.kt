@@ -58,13 +58,11 @@ class WorldObject(private val lua: Lua) {
     }
 
     private fun getOutlineBoxes(l: Lua): Int {
-        // 1. Проверяем аргументы (x, y, z)
         if (!l.isNumber(1) || !l.isNumber(2) || !l.isNumber(3)) {
             l.error("Expected three number arguments for coordinates")
             return 0
         }
 
-        // 2. Проверяем наличие BlockState (4-й аргумент)
         if (l.isNoneOrNil(4)) {
             l.error("BlockState argument is required")
             return 0
@@ -80,13 +78,11 @@ class WorldObject(private val lua: Lua) {
         val z = l.toInteger(3).toInt()
         val blockPos = BlockPos(x, y, z)
 
-        // 3. Извлекаем BlockState из Java-объекта
-        // В iroiro то, что мы пушили через pushJavaObject, достается через toJavaObject
         val rawObject = l.toJavaObject(4)
         val blockState: BlockState? = when (rawObject) {
             is LuaBlockState -> rawObject.blockState
             is BlockState -> rawObject
-            else -> null
+            else -> level.getBlockState(blockPos)
         }
 
         if (blockState == null) {
@@ -94,19 +90,16 @@ class WorldObject(private val lua: Lua) {
             return 0
         }
 
-        // 4. Получаем коллизию
         val collisionShape = try {
-            // Для GetOutlineBoxes используйте blockState.getShape(level, blockPos)
             blockState.getShape(level, blockPos)
         } catch (e: Exception) {
             l.error("Error getting collision shape: ${e.message}")
             return 0
         }
 
-        // 5. Создаем результирующую таблицу
         l.newTable()
         if (collisionShape.isEmpty) {
-            return 1 // Возвращаем пустую таблицу
+            return 1
         }
 
         var index = 1
@@ -388,12 +381,10 @@ class WorldObject(private val lua: Lua) {
         val z: Int
 
         if (l.isTable(1)) {
-            // Если пришла таблица {x=1, y=2, z=3}
             l.getField(1, "x"); x = l.toInteger(-1).toInt(); l.pop(1)
             l.getField(1, "y"); y = l.toInteger(-1).toInt(); l.pop(1)
             l.getField(1, "z"); z = l.toInteger(-1).toInt(); l.pop(1)
         } else {
-            // Если пришли числа: getBlock(x, y, z)
             x = l.toInteger(1).toInt()
             y = l.toInteger(2).toInt()
             z = l.toInteger(3).toInt()
@@ -401,9 +392,7 @@ class WorldObject(private val lua: Lua) {
 
         val state = level.getBlockState(BlockPos(x, y, z))
 
-        // Используем обертку LuaBlockState из предыдущего ответа
-        // Она должна уметь "пушить" себя в стек
-        LuaBlockState(l, state).push()
+        LuaBlockState(null, state).push(l)
         return 1
     }
 
