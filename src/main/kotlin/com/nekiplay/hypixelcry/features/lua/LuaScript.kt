@@ -1379,51 +1379,35 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     fun onRenderTick(wrapper: WorldRendererObject) {
-        // 1. Быстрая проверка на наличие колбэков
         val callbacks = synchronized(callbacksLock) {
             if (renderWorldCallbacks.isEmpty()) return
             renderWorldCallbacks.toList()
         }
-        // 2. Синхронизация для JNI (рендеринг идет в другом потоке!)
-        synchronized(callbacksLock) {
-            try {
-                for (callback in callbacks) {
-                    try {
-                        L.push(callback)
-                        wrapper.push()
 
-                        val result = L.pCall(1, 0)
-                    } catch (e: Exception) {
-                        HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in world render callback: ${e.message}")
-                        L.pop(1)
-                    }
+        synchronized(callbacksLock) {
+            for (callback in callbacks) {
+                try {
+                    callback.call(wrapper.push())
+                } catch (e: Exception) {
+                    HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in world render callback: ${e.message}")
                 }
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in world render callback: ${e.message}")
-                L.pop(1)
             }
         }
     }
 
     fun on2DRenderTick(context: GuiGraphics?) {
         val callbacks = synchronized(callbacksLock) {
-            render2DCallbacks.toTypedArray()
+            if (render2DCallbacks.isEmpty()) return
+            render2DCallbacks.toList()
         }
-        val initialTop = L.getTop()
-        val renderContext = TwoRenderObject(L, context, scriptName)
-        for (callback in callbacks) {
-            try {
-                L.push(callback)
-                renderContext.push()
 
-                val result = L.pCall(1, 0)
-            } catch (e: Exception) {
-                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in 2D render callback in ${scriptName}: ${e.message}")
-                L.pop(1)
-            } finally {
-                val currentTop = L.getTop()
-                if (currentTop > initialTop) {
-                    L.pop(currentTop - initialTop)
+        val renderContext = TwoRenderObject(L, context, scriptName)
+        synchronized(callbacksLock) {
+            for (callback in callbacks) {
+                try {
+                    callback.call(renderContext.push())
+                } catch (e: Exception) {
+                    HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in 2D render callback in ${scriptName}: ${e.message}")
                 }
             }
         }
