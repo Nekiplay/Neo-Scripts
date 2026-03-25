@@ -88,7 +88,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
     // Dependency tracking for nested requires
     private val dependencies = ConcurrentHashMap<String, MutableList<String>>()
-    private val libs = LuaLibsRegister()
+    val libs = LuaLibsRegister()
 
     init {
         libs.register(L)

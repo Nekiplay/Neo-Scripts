@@ -26,6 +26,7 @@ import org.lwjgl.BufferUtils;
 
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 import static com.nekiplay.hypixelcry.HypixelCry.mc;
 import static org.lwjgl.glfw.GLFW.glfwGetCurrentContext;
@@ -207,7 +208,7 @@ public class ImguiLoader {
             }
 
             HypixelCry.LUA_MANAGER.getScripts().values().forEach((script) -> {
-                script.getImgui().getQueue().executeAndClear();
+                Objects.requireNonNull(script.getLibs().getImgui()).getQueue().executeAndClear();
                 script.onImGuiRenderEvent();
 
             });
