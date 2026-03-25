@@ -3,6 +3,8 @@ package com.nekiplay.hypixelcry.features.lua.objects.misc
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.smartPush
 import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
 import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesLib
+import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
+import com.nekiplay.hypixelcry.features.lua.objects.world.WorldObject
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 import party.iroiro.luajava.luajit.LuaJit
@@ -70,8 +72,8 @@ class ThreadLib(val L: Lua) {
                     HttpClientLib(newL).register()
                     ImGuiLib(newL).register()
                     ModulesLib(newL).register()
-                    WorldObject(L).register()
-                    PlayerObject(L).register()
+                    WorldObject(newL).register()
+                    PlayerObject(newL).register()
 
                     // Выполняем скрипт
                     try {
