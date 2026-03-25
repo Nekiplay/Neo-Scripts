@@ -17,7 +17,7 @@ import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 
 
-class InputObject(L: Lua?) : SimpleLuaWrapper(L) {
+class InputObject(L: Lua) : SimpleLuaWrapper(L) {
 
     override fun getFieldValue(l: Lua, key: String): Any? {
         return when (key) {

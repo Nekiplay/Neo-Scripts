@@ -13,24 +13,23 @@ import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 import party.iroiro.luajava.value.LuaValue
 
-class LuaEntity(L: Lua?, val entity: Entity): SimpleLuaWrapper(L) {
+class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
     override fun push() {
         super.push()
 
-        val lua = L ?: return
-        if (lua.getMetatable(-1) != 0) {
-            lua.push(JFunction { l ->
+        if (L.getMetatable(-1) != 0) {
+            L.push(JFunction { l ->
                 l.push(entity.name.string)
                 1
             })
-            lua.setField(-2, "__tostring")
-            lua.pop(1)
+            L.setField(-2, "__tostring")
+            L.pop(1)
         }
     }
 
     override fun pushValue(): LuaValue {
         push()
-        return L!!.get()
+        return L.get()
     }
     override fun getFieldValue(l: Lua, key: String): Any? {
         return when (key) {
@@ -121,8 +120,8 @@ class LuaEntity(L: Lua?, val entity: Entity): SimpleLuaWrapper(L) {
             // Специфичные для ItemFrameEntity
             "item" -> {
                 when (entity) {
-                    is ItemFrame -> LuaItemStack(null, entity.item)
-                    is ItemEntity -> LuaItemStack(null, entity.item)
+                    is ItemFrame -> LuaItemStack(L, entity.item)
+                    is ItemEntity -> LuaItemStack(L, entity.item)
                     else -> null
                 }
             }
@@ -159,7 +158,7 @@ class LuaEntity(L: Lua?, val entity: Entity): SimpleLuaWrapper(L) {
             "main_hand" -> {
                 if (entity is LivingEntity) {
                     val mainHandStack = entity.mainHandItem
-                    if (!mainHandStack.isEmpty) LuaItemStack(null, mainHandStack) else null
+                    if (!mainHandStack.isEmpty) LuaItemStack(L, mainHandStack) else null
                 } else {
                     null
                 }
@@ -167,7 +166,7 @@ class LuaEntity(L: Lua?, val entity: Entity): SimpleLuaWrapper(L) {
             "off_hand" -> {
                 if (entity is LivingEntity) {
                     val offHandStack = entity.offhandItem
-                    if (!offHandStack.isEmpty) LuaItemStack(null, offHandStack) else null
+                    if (!offHandStack.isEmpty) LuaItemStack(L, offHandStack) else null
                 } else {
                     null
                 }
@@ -175,7 +174,7 @@ class LuaEntity(L: Lua?, val entity: Entity): SimpleLuaWrapper(L) {
             "head" -> {
                 if (entity is LivingEntity) {
                     val head = entity.getItemBySlot(EquipmentSlot.HEAD)
-                    if (!head.isEmpty) LuaItemStack(null, head) else null
+                    if (!head.isEmpty) LuaItemStack(L, head) else null
                 } else {
                     null
                 }
@@ -183,7 +182,7 @@ class LuaEntity(L: Lua?, val entity: Entity): SimpleLuaWrapper(L) {
             "chest" -> {
                 if (entity is LivingEntity) {
                     val chest = entity.getItemBySlot(EquipmentSlot.CHEST)
-                    if (!chest.isEmpty) LuaItemStack(null, chest) else null
+                    if (!chest.isEmpty) LuaItemStack(L, chest) else null
                 } else {
                     null
                 }
@@ -191,7 +190,7 @@ class LuaEntity(L: Lua?, val entity: Entity): SimpleLuaWrapper(L) {
             "legs" -> {
                 if (entity is LivingEntity) {
                     val legs = entity.getItemBySlot(EquipmentSlot.LEGS)
-                    if (!legs.isEmpty) LuaItemStack(null, legs) else null
+                    if (!legs.isEmpty) LuaItemStack(L, legs) else null
                 } else {
                     null
                 }
@@ -199,7 +198,7 @@ class LuaEntity(L: Lua?, val entity: Entity): SimpleLuaWrapper(L) {
             "feet" -> {
                 if (entity is LivingEntity) {
                     val feet = entity.getItemBySlot(EquipmentSlot.FEET)
-                    if (!feet.isEmpty) LuaItemStack(null, feet) else null
+                    if (!feet.isEmpty) LuaItemStack(L, feet) else null
                 } else {
                     null
                 }

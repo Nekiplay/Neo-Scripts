@@ -10,7 +10,7 @@ import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 
-class NetworkObject(L: Lua?) : SimpleLuaWrapper(L) {
+class NetworkObject(L: Lua) : SimpleLuaWrapper(L) {
 
     override fun getFieldValue(l: Lua, key: String): Any? {
         return when (key) {

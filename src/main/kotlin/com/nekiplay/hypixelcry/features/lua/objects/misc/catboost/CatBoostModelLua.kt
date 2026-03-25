@@ -5,7 +5,7 @@ import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrap
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 
-class CatBoostModelLua(L: Lua?, val model: CatBoostModel) : SimpleLuaWrapper(L) {
+class CatBoostModelLua(L: Lua, val model: CatBoostModel) : SimpleLuaWrapper(L) {
 
     override fun getFieldValue(l: Lua, key: String): Any? {
         return when (key) {

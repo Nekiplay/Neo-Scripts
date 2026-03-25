@@ -1590,13 +1590,13 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 L.push(pos.z.toDouble()); L.setField(-2, "z")
 
                 if (old != null) {
-                    // LuaBlockState(L, old).pushValue() создает LuaValue с метатаблицей
-                    LuaBlockState(L, old).pushValue()
+                    // LuaBlockState(L, old).push() создает LuaValue с метатаблицей
+                    LuaBlockState(L, old).push()
                     L.setField(-2, "old")
                 }
 
                 if (new != null) {
-                    LuaBlockState(L, new).pushValue()
+                    LuaBlockState(L, new).push()
                     L.setField(-2, "new")
                 }
 

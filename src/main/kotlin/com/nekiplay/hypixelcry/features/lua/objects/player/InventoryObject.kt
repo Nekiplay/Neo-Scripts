@@ -17,7 +17,7 @@ import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 
 
-class InventoryObject(l: Lua?) : SimpleLuaWrapper(l) {
+class InventoryObject(l: Lua) : SimpleLuaWrapper(l) {
 
     override fun getFieldValue(l: Lua, key: String): Any? {
         return when (key) {
