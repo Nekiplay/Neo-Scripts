@@ -8,8 +8,8 @@ import party.iroiro.luajava.Lua
 import party.iroiro.luajava.value.LuaValue
 
 class LuaBox(l: Lua, val box: AABB) : SimpleLuaWrapper(l) {
-    override fun push(): LuaValue {
-        val luaValue = super.push()
+    override fun push() {
+        super.push()
 
         if (L.getMetatable(-1) != 0) {
             L.push(JFunction { l ->
@@ -19,8 +19,11 @@ class LuaBox(l: Lua, val box: AABB) : SimpleLuaWrapper(l) {
             L.setField(-2, "__tostring")
             L.pop(1)
         }
+    }
 
-        return luaValue
+    override fun pushValue(): LuaValue {
+        push()
+        return L.subIdx(-1, 1)
     }
 
     override fun getFieldValue(l: Lua, key: String): Any? {
