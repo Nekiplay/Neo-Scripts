@@ -214,10 +214,10 @@ class ImGuiLib(val L: Lua) {
             l.getField(t, "x"); val x1 = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
             l.getField(t, "y"); val y1 = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
 
-            l.getField(t, "red"); val r = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
-            l.getField(t, "green"); val g = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
-            l.getField(t, "blue"); val b = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
-            l.getField(t, "alpha"); val a = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
+            l.getField(t, "red"); val r = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
+            l.getField(t, "green"); val g = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
+            l.getField(t, "blue"); val b = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
+            l.getField(t, "alpha"); val a = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
 
             l.getField(t, "text"); val text = l.toString(-1) ?: ""; l.pop(1)
 
@@ -272,16 +272,16 @@ class ImGuiLib(val L: Lua) {
             l.getField(t, "x2"); val x2 = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
             l.getField(t, "y2"); val y2 = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 0f; l.pop(1)
 
-            l.getField(t, "red"); val r = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
-            l.getField(t, "green"); val g = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
-            l.getField(t, "blue"); val b = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
-            l.getField(t, "alpha"); val a = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
+            l.getField(t, "red"); val r = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
+            l.getField(t, "green"); val g = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
+            l.getField(t, "blue"); val b = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
+            l.getField(t, "alpha"); val a = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
 
             l.getField(t, "thickness"); val thickness = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
 
             queue.queue(DrawCommand(DrawType.LINE, mapOf(
                 "x1" to x1, "y1" to y1, "x2" to x2, "y2" to y2,
-                "color" to queue.makeImGuiColor(r, g, b, a),
+                "color" to queue.makeImGuiColorFloat(r, g, b, a),
                 "thickness" to thickness
             )))
             l.push(true)
@@ -319,7 +319,7 @@ class ImGuiLib(val L: Lua) {
                 if (points.size >= 3) {
                     queue.queue(DrawCommand(DrawType.POLYGON, mapOf(
                         "points" to points,
-                        "color" to queue.makeImGuiColor(r, g, b, a)
+                        "color" to queue.makeImGuiColorFloat(r, g, b, a)
                     )))
                     l.pop(1) // Убираем таблицу points
                     l.push(true)
