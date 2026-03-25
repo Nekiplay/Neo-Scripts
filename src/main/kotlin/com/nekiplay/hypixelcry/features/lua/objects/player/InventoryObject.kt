@@ -24,6 +24,14 @@ class InventoryObject(l: Lua) : SimpleLuaWrapper(l) {
             "isAnyScreenOpened" -> JFunction { it.push(mc.screen != null); 1 }
             "openInventory" -> JFunction { openInventory(it) }
             "getStackFromId" -> JFunction { getStackFromId(it) }
+            "getStack" -> JFunction { getStack(it) }
+            "getContainerSlots" -> JFunction { getContainerSlots(it) }
+            "getChestTitle" -> JFunction { getChestTitle(it) }
+            "middleClick" -> JFunction { middleClick(it) }
+            "leftClick" -> JFunction { leftClick(it) }
+            "rightClick" -> JFunction { rightClick(it) }
+            "drop" -> JFunction { drop(it) }
+            "getStackFromContainer" -> JFunction { getStackFromContainer(it) }
             "closeScreen" -> JFunction {
                 mc.execute { mc.setScreen(null) }
                 it.push(true)
@@ -31,7 +39,6 @@ class InventoryObject(l: Lua) : SimpleLuaWrapper(l) {
             }
 
             "isSignOpened" -> JFunction { isSignOpened(it) }
-            "closeScreen" -> JFunction { closeScreen(it) }
             "getSignText" -> JFunction { getSignText(it) }
             "setSignText" -> JFunction { setSignText(it) }
             "doneSign" -> JFunction { doneSign(it) }
