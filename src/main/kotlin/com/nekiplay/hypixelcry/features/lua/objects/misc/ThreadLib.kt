@@ -1,7 +1,9 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.smartPush
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
+import party.iroiro.luajava.luajit.LuaJit
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -43,35 +45,83 @@ class ThreadLib(val L: Lua) {
     }
 
     private fun startThread(l: Lua): Int {
-        if (!l.isFunction(1)) {
-            l.error("startThread expects a function as first argument")
-            return 0
-        }
+        // 1. Забираем аргументы из основного потока
+        val script = l.toString(1) // Код скрипта
+        val data = if (l.isTable(2)) luaTableToMap(l, 2) else null // Данные (если есть)
 
-        // l.get() забирает значение с вершины стека (нашу функцию)
-        // и возвращает LuaValue, который можно вызвать позже
-        val func = l.get()
-
-        val threadId = nextId.getAndIncrement()
         val thread = Thread {
+            val newL = LuaJit() // Ваша функция инициализации нового стейта
             try {
-                func.call() // Вызов Lua функции в новом потоке
+                if (data != null) {
+                    // Используем ваш smartPush для загрузки данных в новый поток
+                    newL.smartPush(data)
+                    newL.setGlobal("args") // Таблица будет доступна как глобальная переменная args
+                }
+
+                // Выполняем скрипт
+                try {
+                    newL.load(script)
+                    newL.pCall(0, 0)
+                } catch (e: Exception) {
+                    println("Lua Load Error: " + e)
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
-                threads.remove(threadId)
-                // Если ваша версия Luajava требует освобождения ресурсов LuaValue:
-                // func.close()
+                newL.close()
             }
-        }.apply {
-            isDaemon = true
         }
 
-        threads[threadId] = ThreadInfo(thread)
+        thread.isDaemon = true
         thread.start()
 
-        l.push(threadId)
+        l.push(true) // Возвращаем в Lua успех запуска
         return 1
+    }
+
+
+    fun luaTableToMap(l: Lua, index: Int): Map<String, Any?> {
+        val map = mutableMapOf<String, Any?>()
+
+        // Преобразуем относительный индекс (например, -1, -2) в абсолютный,
+        // так как внутри цикла стек будет меняться (l.next пушит новые элементы),
+        // и относительный индекс станет указывать не на ту таблицу.
+        val absIndex = if (index < 0) l.getTop() + index + 1 else index
+
+        l.pushNil() // Кладем nil на стек, чтобы lua_next начал итерацию с начала
+
+        // ИСПРАВЛЕНИЕ: Добавляем != 0, так как l.next(index) возвращает Int (1 или 0)
+        while (l.next(absIndex) != 0) {
+            // Теперь на стеке: ключ (key) под индексом -2, значение (value) под индексом -1
+
+            // 1. Получаем ключ (обычно строка или число)
+            val key = if (l.isNumber(-2)) {
+                l.toNumber(-2).toInt().toString()
+            } else {
+                l.toString(-2) ?: "unknown_key"
+            }
+
+            // 2. Получаем значение с помощью вашей логики (рекурсивно)
+            map[key] = luaToValue(l, -1)
+
+            // 3. Удаляем значение (-1), но ОСТАВЛЯЕМ ключ (-2) для следующей итерации l.next
+            l.pop(1)
+        }
+
+        return map
+    }
+
+    fun luaToValue(l: Lua, index: Int): Any? {
+        return when {
+            l.isNil(index) -> null
+            l.isBoolean(index) -> l.toBoolean(index)
+            l.isNumber(index) -> l.toNumber(index)
+            l.isString(index) -> l.toString(index)
+            l.isTable(index) -> luaTableToMap(l, index) // Рекурсия для таблиц
+            l.isUserdata(index) -> l.toJavaObject(index) // Java-объекты
+            l.isFunction(index) -> l.toObject(index) // LuaValue (функция)
+            else -> l.toObject(index) // Все остальное
+        }
     }
 
     private fun joinThread(l: Lua): Int {
