@@ -35,7 +35,7 @@ class DJLLib(val L: Lua) {
     val models = ConcurrentHashMap<String, Model>()
     val predictors = ConcurrentHashMap<String, Predictor<NDList, NDList>>()
     val inputShapes = ConcurrentHashMap<String, LongArray>()
-    val modelModes = ConcurrentHashMap<String, LongArray>()
+    val modelModes = ConcurrentHashMap<String, String>()
 
     companion object {
         private var initialized = false
