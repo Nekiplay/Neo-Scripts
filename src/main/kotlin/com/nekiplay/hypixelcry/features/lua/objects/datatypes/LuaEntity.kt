@@ -29,7 +29,7 @@ class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
 
     override fun pushValue(): LuaValue {
         push()
-        return L.subIdx(-1, 1)
+        return L.get()
     }
     override fun getFieldValue(l: Lua, key: String): Any? {
         return when (key) {

@@ -37,7 +37,7 @@ class LuaBlockState(L: Lua, val blockState: BlockState) : SimpleLuaWrapper(L) {
 
     override fun pushValue(): LuaValue {
         push()
-        return L.subIdx(-1, 1)
+        return L.get()
     }
     override fun getFieldValue(l: Lua, key: String): Any? {
         return when (key) {
