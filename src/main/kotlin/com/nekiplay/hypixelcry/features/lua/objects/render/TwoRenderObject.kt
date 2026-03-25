@@ -172,34 +172,44 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
         val y = l.optI(idx, "y", 0)
         val scale = l.optF(idx, "scale", 1.0f)
 
-        l.push("itemStack")
-        l.rawGet(idx)
-        val itemObj = l.toJavaObject(-1)
-        l.pop(1)
-
-        val stack: ItemStack? = when (itemObj) {
-            is LuaItemStack -> itemObj.stack
-            is ItemStack -> itemObj
-            else -> null
-        }
-
-        if (stack == null || stack.isEmpty) {
-            HypixelCry.LOGGER.info("renderItemStack: stack is null or empty, itemObj type: ${itemObj?.javaClass?.simpleName}")
-            return 0
-        }
-
-        HypixelCry.LOGGER.info("renderItemStack: x=$x, y=$y, scale=$scale, item=${stack.item.name.string}, count=${stack.count}")
-
-        stack.let {
-            if (scale != 1.0f) {
-                context!!.pose().pushMatrix()
-                context.pose().translate(x.toFloat(), y.toFloat())
-                context.pose().scale(scale, scale)
-                context.renderItem(it, 0, 0)
-                context.pose().popMatrix()
-            } else {
-                context!!.renderItem(it, x, y)
+        l.getField(idx, "itemStack")
+        val isTable = l.isTable(-1)
+        HypixelCry.LOGGER.info("renderItemStack: isTable=$isTable, type=${l.type(-1)}")
+        
+        if (isTable) {
+            l.push("__java_instance")
+            l.rawGet(-2)
+            val itemObj = l.toJavaObject(-1)
+            l.pop(2)
+            
+            HypixelCry.LOGGER.info("renderItemStack: __java_instance type: ${itemObj?.javaClass?.simpleName}")
+            
+            val stack: ItemStack? = when (itemObj) {
+                is LuaItemStack -> itemObj.stack
+                is ItemStack -> itemObj
+                else -> null
             }
+
+            if (stack == null || stack.isEmpty) {
+                HypixelCry.LOGGER.info("renderItemStack: stack is null or empty")
+                return 0
+            }
+
+            HypixelCry.LOGGER.info("renderItemStack: x=$x, y=$y, scale=$scale, item=${stack.item.name.string}, count=${stack.count}")
+
+            stack.let {
+                if (scale != 1.0f) {
+                    context!!.pose().pushMatrix()
+                    context.pose().translate(x.toFloat(), y.toFloat())
+                    context.pose().scale(scale, scale)
+                    context.renderItem(it, 0, 0)
+                    context.pose().popMatrix()
+                } else {
+                    context!!.renderItem(it, x, y)
+                }
+            }
+        } else {
+            HypixelCry.LOGGER.info("renderItemStack: not a table, value: ${l.toString(-1)}")
         }
         return 0
     }
