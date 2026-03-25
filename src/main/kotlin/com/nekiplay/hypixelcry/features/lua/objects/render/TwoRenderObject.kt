@@ -181,7 +181,14 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
             else -> null
         }
 
-        stack?.let {
+        if (stack == null || stack.isEmpty) {
+            HypixelCry.LOGGER.info("renderItemStack: stack is null or empty")
+            return 0
+        }
+
+        HypixelCry.LOGGER.info("renderItemStack: x=$x, y=$y, scale=$scale, item=${stack.item.name.string}, count=${stack.count}")
+
+        stack.let {
             if (scale != 1.0f) {
                 context!!.pose().pushMatrix()
                 context.pose().translate(x.toFloat(), y.toFloat())
