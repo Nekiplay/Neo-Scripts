@@ -9,9 +9,25 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ItemFrame
 import net.minecraft.world.entity.item.ItemEntity
+import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
+import party.iroiro.luajava.value.LuaValue
 
 class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
+    override fun push(): LuaValue {
+        val luaValue = super.push()
+
+        if (L.getMetatable(-1) != 0) {
+            L.push(JFunction { l ->
+                l.push(entity.name.string)
+                1
+            })
+            L.setField(-2, "__tostring")
+            L.pop(1)
+        }
+
+        return luaValue
+    }
     override fun getFieldValue(l: Lua, key: String): Any? {
         return when (key) {
             // Основная информация о сущности

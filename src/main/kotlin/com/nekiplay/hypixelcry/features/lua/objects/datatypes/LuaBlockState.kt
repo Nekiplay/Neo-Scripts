@@ -17,9 +17,25 @@ import net.minecraft.world.level.block.WallTorchBlock
 import net.minecraft.world.level.block.piston.PistonBaseBlock
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.properties.AttachFace
+import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
+import party.iroiro.luajava.value.LuaValue
 
 class LuaBlockState(L: Lua, val blockState: BlockState) : SimpleLuaWrapper(L) {
+    override fun push(): LuaValue {
+        val luaValue = super.push()
+
+        if (L.getMetatable(-1) != 0) {
+            L.push(JFunction { l ->
+                l.push(blockState.block.descriptionId)
+                1
+            })
+            L.setField(-2, "__tostring")
+            L.pop(1)
+        }
+
+        return luaValue
+    }
     override fun getFieldValue(l: Lua, key: String): Any? {
         return when (key) {
             "id" -> Block.getId(blockState)
