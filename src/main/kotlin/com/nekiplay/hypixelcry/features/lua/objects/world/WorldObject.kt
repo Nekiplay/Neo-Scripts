@@ -421,7 +421,7 @@ class WorldObject(private val lua: Lua) {
 
         val state = level.getBlockState(BlockPos(x, y, z))
 
-        LuaBlockState(null, state).push(l)
+        LuaBlockState(l, state).push()
         return 1
     }
 
