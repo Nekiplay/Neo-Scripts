@@ -52,9 +52,10 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
         lua.push(name) // Кладем имя
         lua.push(JFunction { l ->
             val result = func(l)
-            if (result !is Int) {
-                lua.smartPush(result)
+            if (result is Int) {
+                return@JFunction result
             }
+            lua.smartPush(result)
             1 // Возвращаем 1 значение в Lua
         })
         lua.setTable(tableIdx) // table[name] = closure
