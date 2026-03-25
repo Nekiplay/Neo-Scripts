@@ -172,7 +172,8 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
         val y = l.optI(idx, "y", 0)
         val scale = l.optF(idx, "scale", 1.0f)
 
-        l.getField(idx, "itemStack")
+        l.push("itemStack")
+        l.rawGet(idx)
         val itemObj = l.toJavaObject(-1)
         l.pop(1)
 
@@ -183,7 +184,7 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
         }
 
         if (stack == null || stack.isEmpty) {
-            HypixelCry.LOGGER.info("renderItemStack: stack is null or empty")
+            HypixelCry.LOGGER.info("renderItemStack: stack is null or empty, itemObj type: ${itemObj?.javaClass?.simpleName}")
             return 0
         }
 
