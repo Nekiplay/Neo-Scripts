@@ -78,10 +78,25 @@ class WorldObject(private val lua: Lua) {
         val z = l.toInteger(3).toInt()
         val blockPos = BlockPos(x, y, z)
 
-        val rawObject = l.toJavaObject(4)
-        val blockState: BlockState? = when (rawObject) {
-            is LuaBlockState -> rawObject.blockState
-            is BlockState -> rawObject
+        val blockState: BlockState? = when {
+            l.isUserdata(4) -> {
+                val rawObject = l.toJavaObject(4)
+                when (rawObject) {
+                    is LuaBlockState -> rawObject.blockState
+                    is BlockState -> rawObject
+                    else -> level.getBlockState(blockPos)
+                }
+            }
+            l.isTable(4) -> {
+                l.getField(4, "__java_instance")
+                val rawObject = if (l.isNoneOrNil(-1)) null else l.toJavaObject(-1)
+                l.pop(1)
+                when (rawObject) {
+                    is LuaBlockState -> rawObject.blockState
+                    is BlockState -> rawObject
+                    else -> level.getBlockState(blockPos)
+                }
+            }
             else -> level.getBlockState(blockPos)
         }
 
@@ -104,8 +119,7 @@ class WorldObject(private val lua: Lua) {
 
         var index = 1
         collisionShape.toAabbs().forEach { aabb ->
-            // Предполагаем, что LuaBox — это SimpleLuaWrapper(l, aabb)
-            val luaBoxValue = LuaBox(l, aabb).push()
+            LuaBox(l, aabb).push()
             l.rawSetI(-2, index++)
         }
 
@@ -137,11 +151,26 @@ class WorldObject(private val lua: Lua) {
 
         // 3. Извлекаем BlockState из Java-объекта
         // В iroiro то, что мы пушили через pushJavaObject, достается через toJavaObject
-        val rawObject = l.toJavaObject(4)
-        val blockState: BlockState? = when (rawObject) {
-            is LuaBlockState -> rawObject.blockState
-            is BlockState -> rawObject
-            else -> null
+        val blockState: BlockState? = when {
+            l.isUserdata(4) -> {
+                val rawObject = l.toJavaObject(4)
+                when (rawObject) {
+                    is LuaBlockState -> rawObject.blockState
+                    is BlockState -> rawObject
+                    else -> level.getBlockState(blockPos)
+                }
+            }
+            l.isTable(4) -> {
+                l.getField(4, "__java_instance")
+                val rawObject = if (l.isNoneOrNil(-1)) null else l.toJavaObject(-1)
+                l.pop(1)
+                when (rawObject) {
+                    is LuaBlockState -> rawObject.blockState
+                    is BlockState -> rawObject
+                    else -> level.getBlockState(blockPos)
+                }
+            }
+            else -> level.getBlockState(blockPos)
         }
 
         if (blockState == null) {
