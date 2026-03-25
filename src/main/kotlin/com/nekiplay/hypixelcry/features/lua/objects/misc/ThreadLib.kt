@@ -1,6 +1,8 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.smartPush
+import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
+import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesLib
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 import party.iroiro.luajava.luajit.LuaJit
@@ -57,6 +59,17 @@ class ThreadLib(val L: Lua) {
                         newL.smartPush(data)
                         newL.setGlobal("args") // Таблица будет доступна как глобальная переменная args
                     }
+
+
+                    DJLLib(newL).register()
+                    EncodingLib(newL).register()
+                    Creator(newL).register()
+                    JsonLib(newL).register()
+                    TCPLib(newL).register()
+                    ThreadLib(newL).register()
+                    HttpClientLib(newL).register()
+                    ImGuiLib(newL).register()
+                    ModulesLib(newL).register()
 
                     // Выполняем скрипт
                     try {
