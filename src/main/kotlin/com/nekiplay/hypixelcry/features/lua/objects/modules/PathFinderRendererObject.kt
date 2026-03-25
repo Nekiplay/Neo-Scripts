@@ -6,7 +6,7 @@ import net.minecraft.core.BlockPos
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 
-class PathFinderRendererObject(L: Lua) : SimpleLuaWrapper(L) {
+class PathFinderRendererObject(L: Lua?) : SimpleLuaWrapper(L) {
 
     override fun getFieldValue(l: Lua, key: String): Any? {
         return when (key) {

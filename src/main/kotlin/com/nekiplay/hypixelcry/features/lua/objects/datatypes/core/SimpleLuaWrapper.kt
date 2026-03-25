@@ -4,7 +4,7 @@ import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 import party.iroiro.luajava.value.LuaValue
 
-abstract class SimpleLuaWrapper(val L: Lua?) {
+abstract class SimpleLuaWrapper(protected val L: Lua?) {
     abstract fun getFieldValue(l: Lua, key: String): Any?
     open fun setFieldValue(l: Lua, key: String, value: LuaValue): Boolean = false
 
@@ -32,7 +32,7 @@ abstract class SimpleLuaWrapper(val L: Lua?) {
 
     open fun pushValue(): LuaValue {
         push()
-        return L?.get() ?: throw IllegalStateException("Lua instance not available")
+        return L!!.get()
     }
 }
 

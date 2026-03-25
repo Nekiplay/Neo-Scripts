@@ -7,7 +7,7 @@ import party.iroiro.luajava.Lua
 import party.iroiro.luajava.value.LuaValue
 import kotlin.jvm.optionals.getOrNull
 
-class LuaMapData(L: Lua, val mapData: MapItemSavedData) : SimpleLuaWrapper(L) {
+class LuaMapData(L: Lua?, val mapData: MapItemSavedData) : SimpleLuaWrapper(L) {
 
     override fun getFieldValue(l: Lua, key: String): Any? {
         return when (key) {

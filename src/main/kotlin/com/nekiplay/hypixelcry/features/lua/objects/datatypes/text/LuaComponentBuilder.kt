@@ -13,7 +13,7 @@ import party.iroiro.luajava.Lua
 import party.iroiro.luajava.value.LuaValue
 import java.net.URI
 
-class LuaComponentBuilder(L: Lua, private var text: String = "") : SimpleLuaWrapper(L) {
+class LuaComponentBuilder(L: Lua?, private var text: String = "") : SimpleLuaWrapper(L) {
 
     private var color: String? = null
     private var bold: Boolean? = null
@@ -148,16 +148,21 @@ class LuaComponentBuilder(L: Lua, private var text: String = "") : SimpleLuaWrap
     }
 
     override fun push() {
-        val res = super.push()
-        if (L.getMetatable(-1) != 0) {
-            L.push(JFunction { l ->
+        super.push()
+        val lua = L ?: return
+        if (lua.getMetatable(-1) != 0) {
+            lua.push(JFunction { l ->
                 l.push(buildComponent().string)
                 1
             })
-            L.setField(-2, "__tostring")
-            L.pop(1)
+            lua.setField(-2, "__tostring")
+            lua.pop(1)
         }
-        return res
+    }
+
+    override fun pushValue(): LuaValue {
+        push()
+        return L!!.get()
     }
 
     companion object {

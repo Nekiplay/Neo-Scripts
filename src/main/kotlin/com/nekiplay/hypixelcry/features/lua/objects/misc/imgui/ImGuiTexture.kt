@@ -14,7 +14,7 @@ import java.io.FileInputStream
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Supplier
 
-class ImGuiTexture(L: Lua, val texture: AtomicInteger = AtomicInteger(0)) : SimpleLuaWrapper(L) {
+class ImGuiTexture(L: Lua?, val texture: AtomicInteger = AtomicInteger(0)) : SimpleLuaWrapper(L) {
     private var _identifier: Identifier? = null
 
     override fun getFieldValue(l: Lua, key: String): Any? {
