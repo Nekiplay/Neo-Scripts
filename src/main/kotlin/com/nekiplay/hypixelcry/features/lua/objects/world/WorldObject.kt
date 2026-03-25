@@ -401,8 +401,9 @@ class WorldObject(private val lua: Lua) {
 
         val state = level.getBlockState(BlockPos(x, y, z))
 
-        // Используем обертку LuaBlockState
-        LuaBlockState(null, state).push(l)
+        // Используем обертку LuaBlockState из предыдущего ответа
+        // Она должна уметь "пушить" себя в стек
+        LuaBlockState(l, state).pushValue()
         return 1
     }
 

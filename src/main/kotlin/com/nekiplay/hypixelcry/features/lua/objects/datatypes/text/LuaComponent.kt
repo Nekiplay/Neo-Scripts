@@ -28,10 +28,10 @@ class LuaComponent(L: Lua?, val component: Component) : SimpleLuaWrapper(L) {
         }
     }
 
-    override fun push(targetLua: Lua?) {
-        super.push(targetLua)
+    override fun push() {
+        super.push()
 
-        val lua = targetLua ?: L ?: return
+        val lua = L ?: return
         if (lua.getMetatable(-1) != 0) {
             lua.push(JFunction { l ->
                 l.push(component.getString())
@@ -42,8 +42,8 @@ class LuaComponent(L: Lua?, val component: Component) : SimpleLuaWrapper(L) {
         }
     }
 
-    override fun pushValue(targetLua: Lua?): LuaValue {
-        push(targetLua)
-        return (targetLua ?: L)!!.get()
+    override fun pushValue(): LuaValue {
+        push()
+        return L!!.get()
     }
 }

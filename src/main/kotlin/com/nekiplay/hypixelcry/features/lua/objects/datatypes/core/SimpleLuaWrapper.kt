@@ -8,8 +8,8 @@ abstract class SimpleLuaWrapper(protected val L: Lua?) {
     abstract fun getFieldValue(l: Lua, key: String): Any?
     open fun setFieldValue(l: Lua, key: String, value: LuaValue): Boolean = false
 
-    open fun push(targetLua: Lua? = L) {
-        val lua = targetLua ?: L ?: return
+    open fun push() {
+        val lua = L ?: return
         val tableIdx = lua.getTop()
         lua.newTable()
 
@@ -30,9 +30,9 @@ abstract class SimpleLuaWrapper(protected val L: Lua?) {
         lua.setMetatable(tableIdx + 1)
     }
 
-    open fun pushValue(targetLua: Lua? = L): LuaValue {
-        push(targetLua)
-        return (targetLua ?: L)!!.get()
+    open fun pushValue(): LuaValue {
+        push()
+        return L!!.get()
     }
 }
 
@@ -45,7 +45,7 @@ fun Lua.smartPush(v: Any?) {
         is Number -> this.push(v.toDouble())
         is JFunction -> this.push(v)
         is LuaValue -> this.push(v)
-        is SimpleLuaWrapper -> v.push(this)
+        is SimpleLuaWrapper -> v.push()
         else -> this.pushJavaObject(v)
     }
 }

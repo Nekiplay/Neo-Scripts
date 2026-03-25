@@ -26,10 +26,10 @@ class LuaDirection(private val lua: Lua?, val direction: Direction): SimpleLuaWr
         }
     }
 
-    override fun push(targetLua: Lua?) {
-        super.push(targetLua)
+    override fun push() {
+        super.push()
 
-        val luaInstance = targetLua ?: L ?: return
+        val luaInstance = L ?: return
         if (luaInstance.getMetatable(-1) != 0) {
             luaInstance.push(JFunction { l ->
                 l.push(direction.name)
@@ -40,8 +40,8 @@ class LuaDirection(private val lua: Lua?, val direction: Direction): SimpleLuaWr
         }
     }
 
-    override fun pushValue(targetLua: Lua?): LuaValue {
-        push(targetLua)
-        return (targetLua ?: L)!!.get()
+    override fun pushValue(): LuaValue {
+        push()
+        return L!!.get()
     }
 }
