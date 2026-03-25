@@ -59,8 +59,8 @@ class ThreadLib(val L: Lua) {
             }
             l.isFunction(1) -> {
                 l.pushValue(1)
-                l.push(-1)
-                l.call(1, 1)
+                l.push("dump")
+                l.pCall(1, 1)
                 script = l.toString(-1)
                 l.pop(1)
                 if (script == null) {
