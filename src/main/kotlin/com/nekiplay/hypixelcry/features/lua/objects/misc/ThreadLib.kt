@@ -2,7 +2,6 @@ package com.nekiplay.hypixelcry.features.lua.objects.misc
 
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
-import party.iroiro.luajava.Lua.LuaType
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -17,7 +16,7 @@ class ThreadLib(val L: Lua) {
     )
 
     fun register() {
-        L.newTable() // Создаем таблицу threads
+        L.newTable()
 
         L.push(JFunction { startThread(it) })
         L.setField(-2, "startThread")
@@ -49,21 +48,13 @@ class ThreadLib(val L: Lua) {
             return 0
         }
 
-        // Сохраняем Lua инстанс для использования в потоке
-        val luaState = l.luaState
-
-        // Создаем копию функции на стеке и получаем LuaValue
         l.pushValue(1)
         val func = l.get()
 
         val threadId = nextId.getAndIncrement()
         val thread = Thread {
             try {
-                // Создаем новый Lua контекст для этого потока
-                val threadLua = Lua(LuaType.LUAJIT, luaState)
-                threadLua.pushValue(1)
-                val threadFunc = threadLua.get()
-                threadFunc.call()
+                func.call()
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
