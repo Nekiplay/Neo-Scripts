@@ -44,6 +44,7 @@ class WorldRendererObject(val lua: Lua, private val context: PrimitiveCollector?
         registerFunction(tIdx, "renderHologramBlock") { renderHologramBlock(it) }
         registerFunction(tIdx, "renderBlock") { renderBlock(it) }
         registerFunction(tIdx, "renderItem") { renderItem(it) }
+        registerFunction(tIdx, "renderText") { renderText(it) }
 
         return lua.get() // Забираем и возвращаем готовую таблицу
     }
