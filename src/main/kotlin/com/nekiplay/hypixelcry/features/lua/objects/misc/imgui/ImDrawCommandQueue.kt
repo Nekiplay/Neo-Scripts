@@ -53,6 +53,10 @@ class ImDrawCommandQueue {
         )
     }
 
+    fun makeImGuiColorFloat(red: Float, green: Float, blue: Float, alpha: Float): Int {
+        return ImGui.colorConvertFloat4ToU32(ImVec4(red, green, blue, alpha))
+    }
+
     private fun executeLine(data: Map<String, Any>) {
         val x1 = (data["x1"] as? Number)?.toFloat() ?: return
         val y1 = (data["y1"] as? Number)?.toFloat() ?: return

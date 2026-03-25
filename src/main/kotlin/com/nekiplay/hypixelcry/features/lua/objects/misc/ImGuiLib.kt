@@ -223,7 +223,7 @@ class ImGuiLib(val L: Lua) {
 
             queue.queue(DrawCommand(DrawType.TEXT, mapOf(
                 "x1" to x1, "y1" to y1,
-                "color" to queue.makeImGuiColor(r, g, b, a),
+                "color" to queue.makeImGuiColorFloat(r, g, b, a),
                 "text" to text
             )))
             l.push(true)
@@ -298,10 +298,10 @@ class ImGuiLib(val L: Lua) {
             if (l.isTable(-1)) {
                 val pointsIdx = l.getTop() // Индекс таблицы точек
 
-                l.getField(t, "red"); val r = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
-                l.getField(t, "green"); val g = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
-                l.getField(t, "blue"); val b = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
-                l.getField(t, "alpha"); val a = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
+            l.getField(t, "red"); val r = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
+            l.getField(t, "green"); val g = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
+            l.getField(t, "blue"); val b = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
+            l.getField(t, "alpha"); val a = if (l.isNumber(-1)) l.toNumber(-1).toFloat() else 1f; l.pop(1)
 
                 val points = mutableListOf<Pair<Float, Float>>()
                 val len = l.rawLength(pointsIdx)
