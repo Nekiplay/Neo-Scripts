@@ -65,12 +65,12 @@ class LuaBlockState(L: Lua, val blockState: BlockState) : SimpleLuaWrapper(L) {
             "facing" -> {
                 val facing = blockState.getOptionalValue(DoorBlock.FACING)
                 if (facing.isPresent) {
-                    LuaDirection(l, facing.get()).push();
+                    LuaDirection(l, facing.get())
                 }
                 else {
                     val facing = blockState.getOptionalValue(DirectionalBlock.FACING)
                     if (facing.isPresent) {
-                        LuaDirection(l, facing.get()).push();
+                        LuaDirection(l, facing.get())
                     }
                     else {
                         null

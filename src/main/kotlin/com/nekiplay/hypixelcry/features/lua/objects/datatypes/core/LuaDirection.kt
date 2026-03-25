@@ -6,11 +6,11 @@ import party.iroiro.luajava.Lua
 class LuaDirection(val lua: Lua, val direction: Direction): SimpleLuaWrapper(lua) {
     override fun getFieldValue(l: Lua, key: String): Any? {
         return when (key) {
-            "opposite" -> LuaDirection(l, direction.opposite).push()
+            "opposite" -> LuaDirection(l, direction.opposite)
             "name" -> direction.name
             "axisDirection" -> LuaAxisDirection(l, direction.axisDirection)
             "axis" -> LuaAxis(l, direction.axis)
-            "clockWise" -> LuaDirection(L, direction.clockWise).push()
+            "clockWise" -> LuaDirection(L, direction.clockWise)
             "step" -> {
                 L.newTable()
 

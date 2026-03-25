@@ -48,7 +48,7 @@ class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
                 l.get()
             }
 
-            "box" -> LuaBox(l, entity.boundingBox).push()
+            "box" -> LuaBox(l, entity.boundingBox)
 
             "velocity_x" -> entity.forward.x
             "velocity_y" -> entity.forward.y
@@ -80,11 +80,10 @@ class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
 
             // Дополнительные свойства
             "passengers" -> {
-
                 l.newTable()
 
-                entity.passengers.forEachIndexed { index, entity ->
-                    LuaEntity(l, entity).push()
+                entity.passengers.forEachIndexed { index, passenger ->
+                    LuaEntity(l, passenger)
                     l.rawSetI(-2, index + 1)
                 }
                 l.get()
@@ -102,17 +101,9 @@ class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
             // Специфичные для ItemFrameEntity
             "item" -> {
                 when (entity) {
-                    is ItemFrame -> {
-                        LuaItemStack(L, entity.item).push()
-                    }
-
-                    is ItemEntity -> {
-                        LuaItemStack(L, entity.item).push()
-                    }
-
-                    else -> {
-                        null
-                    }
+                    is ItemFrame -> LuaItemStack(L, entity.item)
+                    is ItemEntity -> LuaItemStack(L, entity.item)
+                    else -> null
                 }
             }
 
@@ -148,11 +139,7 @@ class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
             "main_hand" -> {
                 if (entity is LivingEntity) {
                     val mainHandStack = entity.mainHandItem
-                    if (!mainHandStack.isEmpty) {
-                        LuaItemStack(L, mainHandStack).push()
-                    } else {
-                        null
-                    }
+                    if (!mainHandStack.isEmpty) LuaItemStack(L, mainHandStack) else null
                 } else {
                     null
                 }
@@ -160,11 +147,7 @@ class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
             "off_hand" -> {
                 if (entity is LivingEntity) {
                     val offHandStack = entity.offhandItem
-                    if (!offHandStack.isEmpty) {
-                        LuaItemStack(L, offHandStack).push()
-                    } else {
-                        null
-                    }
+                    if (!offHandStack.isEmpty) LuaItemStack(L, offHandStack) else null
                 } else {
                     null
                 }
@@ -172,11 +155,7 @@ class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
             "head" -> {
                 if (entity is LivingEntity) {
                     val head = entity.getItemBySlot(EquipmentSlot.HEAD)
-                    if (!head.isEmpty) {
-                        LuaItemStack(L, head).push()
-                    } else {
-                        null
-                    }
+                    if (!head.isEmpty) LuaItemStack(L, head) else null
                 } else {
                     null
                 }
@@ -184,11 +163,7 @@ class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
             "chest" -> {
                 if (entity is LivingEntity) {
                     val chest = entity.getItemBySlot(EquipmentSlot.CHEST)
-                    if (!chest.isEmpty) {
-                        LuaItemStack(L, chest).push()
-                    } else {
-                        null
-                    }
+                    if (!chest.isEmpty) LuaItemStack(L, chest) else null
                 } else {
                     null
                 }
@@ -196,11 +171,7 @@ class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
             "legs" -> {
                 if (entity is LivingEntity) {
                     val legs = entity.getItemBySlot(EquipmentSlot.LEGS)
-                    if (!legs.isEmpty) {
-                        LuaItemStack(L, legs).push()
-                    } else {
-                        null
-                    }
+                    if (!legs.isEmpty) LuaItemStack(L, legs) else null
                 } else {
                     null
                 }
@@ -208,11 +179,7 @@ class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
             "feet" -> {
                 if (entity is LivingEntity) {
                     val feet = entity.getItemBySlot(EquipmentSlot.FEET)
-                    if (!feet.isEmpty) {
-                        LuaItemStack(L, feet).push()
-                    } else {
-                        null
-                    }
+                    if (!feet.isEmpty) LuaItemStack(L, feet) else null
                 } else {
                     null
                 }

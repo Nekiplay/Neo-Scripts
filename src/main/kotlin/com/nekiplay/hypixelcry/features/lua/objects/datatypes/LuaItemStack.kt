@@ -35,7 +35,7 @@ class LuaItemStack(L: Lua, val stack: ItemStack) : SimpleLuaWrapper(L) {
                     val level = mc.level ?: return null
                     val mapData = MapItem.getSavedData(stack, level);
                     if (mapData != null) {
-                        LuaMapData(l, mapData).push()
+                        LuaMapData(l, mapData)
                     }
                 }
                 null

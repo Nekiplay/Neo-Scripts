@@ -1,7 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.objects.render
 
 import com.mojang.blaze3d.platform.NativeImage
-import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.smartPush
@@ -173,43 +172,36 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
         val scale = l.optF(idx, "scale", 1.0f)
 
         l.getField(idx, "itemStack")
-        val isTable = l.isTable(-1)
-        HypixelCry.LOGGER.info("renderItemStack: isTable=$isTable, type=${l.type(-1)}")
-        
-        if (isTable) {
-            l.push("__java_instance")
-            l.rawGet(-2)
-            val itemObj = l.toJavaObject(-1)
-            l.pop(2)
-            
-            HypixelCry.LOGGER.info("renderItemStack: __java_instance type: ${itemObj?.javaClass?.simpleName}")
-            
-            val stack: ItemStack? = when (itemObj) {
-                is LuaItemStack -> itemObj.stack
-                is ItemStack -> itemObj
-                else -> null
-            }
+        if (!l.isTable(-1)) {
+            l.pop(1)
+            return 0
+        }
 
-            if (stack == null || stack.isEmpty) {
-                HypixelCry.LOGGER.info("renderItemStack: stack is null or empty")
-                return 0
-            }
+        l.push("__java_instance")
+        l.rawGet(-2)
+        val itemObj = l.toJavaObject(-1)
+        l.pop(2)
 
-            HypixelCry.LOGGER.info("renderItemStack: x=$x, y=$y, scale=$scale, item=${stack.item.name.string}, count=${stack.count}")
+        val stack: ItemStack? = when (itemObj) {
+            is LuaItemStack -> itemObj.stack
+            is ItemStack -> itemObj
+            else -> null
+        }
 
-            stack.let {
-                if (scale != 1.0f) {
-                    context!!.pose().pushMatrix()
-                    context.pose().translate(x.toFloat(), y.toFloat())
-                    context.pose().scale(scale, scale)
-                    context.renderItem(it, 0, 0)
-                    context.pose().popMatrix()
-                } else {
-                    context!!.renderItem(it, x, y)
-                }
+        if (stack == null || stack.isEmpty) {
+            return 0
+        }
+
+        stack.let {
+            if (scale != 1.0f) {
+                context!!.pose().pushMatrix()
+                context.pose().translate(x.toFloat(), y.toFloat())
+                context.pose().scale(scale, scale)
+                context.renderItem(it, 0, 0)
+                context.pose().popMatrix()
+            } else {
+                context!!.renderItem(it, x, y)
             }
-        } else {
-            HypixelCry.LOGGER.info("renderItemStack: not a table, value: ${l.toString(-1)}")
         }
         return 0
     }
