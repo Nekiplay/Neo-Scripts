@@ -1,0 +1,99 @@
+package com.nekiplay.hypixelcry.features.lua
+
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
+import com.nekiplay.hypixelcry.features.lua.objects.misc.Creator
+import com.nekiplay.hypixelcry.features.lua.objects.misc.DJLLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.EncodingLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.ImGuiLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.JsonLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.TCPLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.ThreadLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
+import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesLib
+import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
+import com.nekiplay.hypixelcry.features.lua.objects.world.WorldObject
+import com.nekiplay.hypixelcry.pathfinder.utils.mc
+import party.iroiro.luajava.ExternalLoader
+import party.iroiro.luajava.Lua
+import java.io.File
+import java.nio.ByteBuffer
+
+class LuaLibsRegister {
+    // Теперь переменные могут быть null
+    var djlLibrary: DJLLib? = null
+    var encoding: EncodingLib? = null
+    var creator: Creator? = null
+    var json: JsonLib? = null
+    var tcp: TCPLib? = null
+    var threads: ThreadLib? = null
+    var http: HttpClientLib? = null
+    var imgui: ImGuiLib? = null
+    var modules: ModulesLib? = null
+
+    fun register(lua: Lua) {
+        djlLibrary = DJLLib(lua)
+        encoding = EncodingLib(lua)
+        creator = Creator(lua)
+        json = JsonLib(lua)
+        tcp = TCPLib(lua)
+        threads = ThreadLib(lua)
+        http = HttpClientLib(lua)
+        imgui = ImGuiLib(lua)
+        modules = ModulesLib(lua)
+        LuaComponentBuilder.register(lua)
+
+        lua.openLibraries()
+        lua.setExternalLoader(object : ExternalLoader {
+            override fun load(moduleName: String, l: Lua): ByteBuffer? {
+                // 1. Normalize the path (handle both '.' and '/' in require)
+                val normalizedName = moduleName.replace('.', File.separatorChar)
+                    .replace('/', File.separatorChar)
+                val fileName = "$normalizedName.lua"
+
+                // 2. Define the search folders
+                // We search in the root scripts folder AND the libs folder
+                val scriptsRoot = File(mc.gameDirectory, "config/hypixelcry/scripts")
+                val libsFolder = File(scriptsRoot, "libs")
+
+                val candidatePaths = listOf(
+                    File(scriptsRoot, fileName),
+                    File(libsFolder, fileName)
+                )
+
+                for (scriptFile in candidatePaths) {
+                    // DEBUG: Uncomment this to see in console where it is looking
+                    // println("LuaLoader: Checking path: ${scriptFile.absolutePath}")
+
+                    if (scriptFile.exists()) {
+                        try {
+                            val bytes = scriptFile.readBytes()
+                            val buffer = ByteBuffer.allocateDirect(bytes.size)
+                            buffer.put(bytes)
+                            buffer.flip()
+                            return buffer
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            return null
+                        }
+                    }
+                }
+
+                // If we reach here, the file wasn't found in any candidate path
+                return null
+            }
+        })
+
+        WorldObject(lua).register()
+        PlayerObject(lua).register()
+    }
+
+    fun close() {
+        threads?.stopAllThreads()
+        tcp?.cleanup()
+        imgui?.queue?.clear()
+        djlLibrary?.models?.clear()
+        djlLibrary?.predictors?.clear()
+        djlLibrary?.inputShapes?.clear()
+        djlLibrary?.modelModes?.clear()
+    }
+}

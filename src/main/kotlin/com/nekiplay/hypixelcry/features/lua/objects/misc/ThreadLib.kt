@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
+import com.nekiplay.hypixelcry.features.lua.LuaLibsRegister
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.smartPush
 import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
 import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesLib
@@ -78,6 +79,7 @@ class ThreadLib(val L: Lua) {
         if (script != null) {
             val threadId = nextId.getAndIncrement()
             val thread = Thread {
+                val register =  LuaLibsRegister()
                 val newL = LuaJit() // Ваша функция инициализации нового стейта
                 try {
                     if (data != null) {
@@ -87,17 +89,7 @@ class ThreadLib(val L: Lua) {
                     }
 
 
-                    DJLLib(newL).register()
-                    EncodingLib(newL).register()
-                    Creator(newL).register()
-                    JsonLib(newL).register()
-                    TCPLib(newL).register()
-                    ThreadLib(newL).register()
-                    HttpClientLib(newL).register()
-                    ImGuiLib(newL).register()
-                    ModulesLib(newL).register()
-                    WorldObject(newL).register()
-                    PlayerObject(newL).register()
+                    register.register(newL)
 
                     // Выполняем скрипт
                     try {
@@ -109,6 +101,7 @@ class ThreadLib(val L: Lua) {
                 } catch (e: Exception) {
                     e.printStackTrace()
                 } finally {
+                    register.close()
                     newL.close()
                     threads.remove(threadId)
                 }

@@ -86,79 +86,13 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     // Script-specific globals
     var L = LuaJit()
 
-    // Script-specific libraries
-    private val djlLibrary = DJLLib(L)
-    private val encoding = EncodingLib(L)
-    private val creator = Creator(L)
-    private val json = JsonLib(L)
-    private val tcp = TCPLib(L)
-    private val threads = ThreadLib(L)
-    private val http = HttpClientLib(L)
-    val imgui = ImGuiLib(L)
-    private val modules = ModulesLib(L)
-
     // Dependency tracking for nested requires
     private val dependencies = ConcurrentHashMap<String, MutableList<String>>()
+    private val libs = LuaLibsRegister()
 
     init {
-        L.openLibraries()
-        L.setExternalLoader(object : ExternalLoader {
-            override fun load(moduleName: String, l: Lua): ByteBuffer? {
-                // 1. Normalize the path (handle both '.' and '/' in require)
-                val normalizedName = moduleName.replace('.', File.separatorChar)
-                                               .replace('/', File.separatorChar)
-                val fileName = "$normalizedName.lua"
-    
-                // 2. Define the search folders
-                // We search in the root scripts folder AND the libs folder
-                val scriptsRoot = File(mc.gameDirectory, "config/hypixelcry/scripts")
-                val libsFolder = File(scriptsRoot, "libs")
-                
-                val candidatePaths = listOf(
-                    File(scriptsRoot, fileName),
-                    File(libsFolder, fileName)
-                )
-    
-                for (scriptFile in candidatePaths) {
-                    // DEBUG: Uncomment this to see in console where it is looking
-                    // println("LuaLoader: Checking path: ${scriptFile.absolutePath}")
-    
-                    if (scriptFile.exists()) {
-                        try {
-                            val bytes = scriptFile.readBytes()
-                            val buffer = ByteBuffer.allocateDirect(bytes.size)
-                            buffer.put(bytes)
-                            buffer.flip()
-                            return buffer
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                            return null
-                        }
-                    }
-                }
-    
-                // If we reach here, the file wasn't found in any candidate path
-                return null
-            }
-        })
-
-        // Загрузка библиотек
-        djlLibrary.register()
-        encoding.register()
-        creator.register()
-        json.register()
-        tcp.register()
-        threads.register()
-        http.register()
-        imgui.register()
-        modules.register()
-        LuaComponentBuilder.register(L)
-
+        libs.register(L)
         registerCustomFunctions()
-
-        // Register global objects
-        WorldObject(L).register()
-        PlayerObject(L).register()
     }
 
     private fun registerCustomFunctions() {
@@ -1793,10 +1727,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
         }
 
-        // Очищаем библиотеки
-        threads.stopAllThreads()
-        tcp.cleanup()
-
         for (command in commandCallbacks.keys) {
             val dispatcher = commandDispatchers[command]
             if (dispatcher != null) {
@@ -1826,15 +1756,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             commandCallbacks.clear()
             commandSuggestionsCallbacks.clear()
         }
-        imgui.queue.clear()
-        djlLibrary.models.clear()
-        djlLibrary.predictors.clear()
-        djlLibrary.inputShapes.clear()
-        djlLibrary.modelModes.clear()
-        //ffi.loadedLibraries.forEach { lib ->
-        //    lib.value.dispose()
-        //}
-        //ffi.loadedLibraries.clear()
+        libs.close()
+
 
         commandDispatchers.clear()
 
