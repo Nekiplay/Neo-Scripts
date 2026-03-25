@@ -48,34 +48,35 @@ class ThreadLib(val L: Lua) {
         // 1. Забираем аргументы из основного потока
         val script = l.toString(1) // Код скрипта
         val data = if (l.isTable(2)) luaTableToMap(l, 2) else null // Данные (если есть)
-
-        val thread = Thread {
-            val newL = LuaJit() // Ваша функция инициализации нового стейта
-            try {
-                if (data != null) {
-                    // Используем ваш smartPush для загрузки данных в новый поток
-                    newL.smartPush(data)
-                    newL.setGlobal("args") // Таблица будет доступна как глобальная переменная args
-                }
-
-                // Выполняем скрипт
+        if (script != null) {
+            val thread = Thread {
+                val newL = LuaJit() // Ваша функция инициализации нового стейта
                 try {
-                    newL.load(script)
-                    newL.pCall(0, 0)
+                    if (data != null) {
+                        // Используем ваш smartPush для загрузки данных в новый поток
+                        newL.smartPush(data)
+                        newL.setGlobal("args") // Таблица будет доступна как глобальная переменная args
+                    }
+
+                    // Выполняем скрипт
+                    try {
+                        newL.load(script)
+                        newL.pCall(0, 0)
+                    } catch (e: Exception) {
+                        println("Lua Load Error: " + e)
+                    }
                 } catch (e: Exception) {
-                    println("Lua Load Error: " + e)
+                    e.printStackTrace()
+                } finally {
+                    newL.close()
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                newL.close()
             }
+
+            thread.isDaemon = true
+            thread.start()
+
+            l.push(true) // Возвращаем в Lua успех запуска
         }
-
-        thread.isDaemon = true
-        thread.start()
-
-        l.push(true) // Возвращаем в Lua успех запуска
         return 1
     }
 
