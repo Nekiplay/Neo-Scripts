@@ -110,6 +110,7 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
         l.newTable()
         l.push(mc.window.guiScaledWidth.toDouble()); l.setField(-2, "width")
         l.push(mc.window.guiScaledHeight.toDouble()); l.setField(-2, "height")
+        l.smartPush(l.get())
         return 1
     }
 

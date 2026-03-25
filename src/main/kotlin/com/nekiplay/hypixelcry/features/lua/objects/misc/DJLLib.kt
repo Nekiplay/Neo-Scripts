@@ -34,15 +34,25 @@ class DJLLib(val L: Lua) {
 
     val models = ConcurrentHashMap<String, Model>()
     val predictors = ConcurrentHashMap<String, Predictor<NDList, NDList>>()
-    val manager: NDManager = NDManager.newBaseManager()
     val inputShapes = ConcurrentHashMap<String, LongArray>()
-    val modelModes = ConcurrentHashMap<String, String>()
+    val modelModes = ConcurrentHashMap<String, LongArray>()
+
+    companion object {
+        private var initialized = false
+        val manager: NDManager by lazy { NDManager.newBaseManager() }
+
+        fun initOnce() {
+            if (initialized) return
+            val djlDir = LuaManager.configDir.resolve("hypixelcry/djl_cache/").toString() + "/"
+            System.setProperty("DJL_CACHE_DIR", djlDir)
+            System.setProperty("ENGINE_CACHE_DIR", djlDir)
+            System.setProperty("DJL_OFFLINE", "true")
+            initialized = true
+        }
+    }
 
     init {
-        val djlDir = LuaManager.configDir.resolve("hypixelcry/djl_cache/").toString() + "/"
-        System.setProperty("DJL_CACHE_DIR", djlDir)
-        System.setProperty("ENGINE_CACHE_DIR", djlDir)
-        System.setProperty("DJL_OFFLINE", "true")
+        initOnce()
     }
 
     /**
