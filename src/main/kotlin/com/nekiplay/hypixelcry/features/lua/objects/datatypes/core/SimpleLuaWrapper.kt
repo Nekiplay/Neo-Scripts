@@ -4,20 +4,19 @@ import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 import party.iroiro.luajava.value.LuaValue
 
-abstract class SimpleLuaWrapper(val L: Lua?) {
+abstract class SimpleLuaWrapper(val L: Lua) {
     abstract fun getFieldValue(l: Lua, key: String): Any?
     open fun setFieldValue(l: Lua, key: String, value: LuaValue): Boolean = false
 
     open fun push() {
-        val lua = L ?: return
-        val tableIdx = lua.getTop()
-        lua.newTable()
+        val tableIdx = L.getTop()
+        L.newTable()
 
-        lua.pushJavaObject(this)
-        lua.setField(tableIdx + 1, "__java_instance")
+        L.pushJavaObject(this)
+        L.setField(tableIdx + 1, "__java_instance")
 
-        lua.newTable()
-        lua.push(JFunction { l ->
+        L.newTable()
+        L.push(JFunction { l ->
             l.getField(1, "__java_instance")
             val wrapper = l.toJavaObject(-1) as? SimpleLuaWrapper
             l.pop(1)
@@ -25,14 +24,14 @@ abstract class SimpleLuaWrapper(val L: Lua?) {
             l.smartPush(wrapper?.getFieldValue(l, key))
             1
         })
-        lua.setField(-2, "__index")
+        L.setField(-2, "__index")
 
-        lua.setMetatable(tableIdx + 1)
+        L.setMetatable(tableIdx + 1)
     }
 
     open fun pushValue(): LuaValue {
         push()
-        return L?.get() ?: throw IllegalStateException("Lua instance not available")
+        return L.get()
     }
 }
 

@@ -1,9 +1,7 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes.core
 
 import net.minecraft.core.Direction
-import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
-import party.iroiro.luajava.value.LuaValue
 
 class LuaDirection(private val lua: Lua, val direction: Direction): SimpleLuaWrapper(lua) {
     override fun getFieldValue(l: Lua, key: String): Any? {
@@ -27,20 +25,17 @@ class LuaDirection(private val lua: Lua, val direction: Direction): SimpleLuaWra
     }
 
     override fun push() {
-        super.push()
+        val luaValue = super.push()
 
         if (L.getMetatable(-1) != 0) {
-            L.push(JFunction { l ->
+            L.push(party.iroiro.luajava.JFunction { l ->
                 l.push(direction.name)
                 1
             })
             L.setField(-2, "__tostring")
             L.pop(1)
         }
-    }
 
-    override fun pushValue(): LuaValue {
-        push()
-        return L.get()
+        return luaValue
     }
 }

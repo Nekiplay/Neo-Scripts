@@ -403,7 +403,7 @@ class WorldObject(private val lua: Lua) {
 
         // Используем обертку LuaBlockState из предыдущего ответа
         // Она должна уметь "пушить" себя в стек
-        LuaBlockState(l, state).pushValue()
+        LuaBlockState(l, state).push()
         return 1
     }
 
