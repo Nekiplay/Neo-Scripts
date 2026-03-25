@@ -70,6 +70,8 @@ class ThreadLib(val L: Lua) {
                     HttpClientLib(newL).register()
                     ImGuiLib(newL).register()
                     ModulesLib(newL).register()
+                    WorldObject(L).register()
+                    PlayerObject(L).register()
 
                     // Выполняем скрипт
                     try {
