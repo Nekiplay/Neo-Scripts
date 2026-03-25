@@ -52,7 +52,9 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
         lua.push(name) // Кладем имя
         lua.push(JFunction { l ->
             val result = func(l)
-            lua.smartPush(result)
+            if (result !is Int) {
+                lua.smartPush(result)
+            }
             1 // Возвращаем 1 значение в Lua
         })
         lua.setTable(tableIdx) // table[name] = closure
@@ -107,10 +109,9 @@ class TwoRenderObject(private val lua: Lua, private val context: GuiGraphics?, p
     // --- Реализация функций ---
 
     private fun getWindowScale(l: Lua): Int {
-        l.newTable()
-        l.push(mc.window.guiScaledWidth.toDouble()); l.setField(-2, "width")
-        l.push(mc.window.guiScaledHeight.toDouble()); l.setField(-2, "height")
-        return 1
+        l.push(mc.window.guiScaledWidth.toDouble())
+        l.push(mc.window.guiScaledHeight.toDouble())
+        return 2
     }
 
     private fun getTextWidth(l: Lua): Int {
