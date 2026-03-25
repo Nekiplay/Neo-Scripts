@@ -33,17 +33,17 @@ class LuaLibsRegister {
     var modules: ModulesLib? = null
 
     fun register(lua: Lua) {
-        djlLibrary = DJLLib(lua)
-        encoding = EncodingLib(lua)
-        creator = Creator(lua)
-        json = JsonLib(lua)
-        tcp = TCPLib(lua)
-        threads = ThreadLib(lua)
-        threads?.register()
-        http = HttpClientLib(lua)
-        imgui = ImGuiLib(lua)
-        imgui?.register()
-        modules = ModulesLib(lua)
+        djlLibrary = DJLLib(lua).register()
+        encoding = EncodingLib(lua).register()
+        creator = Creator(lua).register()
+        json = JsonLib(lua).register()
+        tcp = TCPLib(lua).register()
+        threads = ThreadLib(lua).register()
+        threads?.register().register()
+        http = HttpClientLib(lua).register()
+        imgui = ImGuiLib(lua).register()
+        modules = ModulesLib(lua).register()
+        
         LuaComponentBuilder.register(lua)
 
         lua.openLibraries()
