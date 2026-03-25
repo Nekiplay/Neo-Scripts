@@ -33,6 +33,11 @@ abstract class SimpleLuaWrapper(val L: Lua) {
         push()
         return L.subIdx(-1, 1)
     }
+
+    open fun pushValue(): LuaValue {
+        push()
+        return L.get()
+    }
 }
 
 fun Lua.smartPush(v: Any?) {
