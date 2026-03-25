@@ -49,10 +49,37 @@ class ThreadLib(val L: Lua) {
     }
 
     private fun startThread(l: Lua): Int {
-        // 1. Забираем аргументы из основного потока
-        val script = l.toString(1) // Код скрипта
-        val data = if (l.isTable(2)) luaTableToMap(l, 2) else null // Данные (если есть)
+        val script: String?
+        val data: Map<String, Any?>?
+
+        when {
+            l.isString(1) -> {
+                script = l.toString(1)
+                data = if (l.isTable(2)) luaTableToMap(l, 2) else null
+            }
+            l.isFunction(1) -> {
+                println("DEBUG: isFunction detected")
+                l.pushValue(1)
+                l.pushString("dump")
+                l.call(1, 1)
+                script = l.toString(-1)
+                l.pop(1)
+                println("DEBUG: script = $script")
+                if (script == null) {
+                    l.pushNil()
+                    return 1
+                }
+                data = if (l.isTable(2)) luaTableToMap(l, 2) else null
+            }
+            else -> {
+                println("DEBUG: neither string nor function")
+                l.pushNil()
+                return 1
+            }
+        }
+
         if (script != null) {
+            val threadId = nextId.getAndIncrement()
             val thread = Thread {
                 val newL = LuaJit() // Ваша функция инициализации нового стейта
                 try {
@@ -86,13 +113,15 @@ class ThreadLib(val L: Lua) {
                     e.printStackTrace()
                 } finally {
                     newL.close()
+                    threads.remove(threadId)
                 }
             }
 
             thread.isDaemon = true
+            threads[threadId] = ThreadInfo(thread)
             thread.start()
 
-            l.push(true) // Возвращаем в Lua успех запуска
+            l.push(threadId.toDouble()) // Возвращаем ID потока
         }
         return 1
     }
