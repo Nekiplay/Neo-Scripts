@@ -26,7 +26,7 @@ class ThreadLib(val L: Lua) {
         val startTime: Long = System.currentTimeMillis()
     )
 
-    fun register() {
+    fun register(): Int {
         println("ThreadLib.register: called, L=$L")
         L.newTable() // Создаем таблицу threads
 
@@ -53,6 +53,7 @@ class ThreadLib(val L: Lua) {
 
         L.setGlobal("threads")
         println("ThreadLib.register: threads global set, isNil=${L.isNil(L.getGlobal("threads"))}")
+        return 0
     }
 
     private fun startThread(l: Lua): Int {

@@ -40,7 +40,6 @@ class LuaLibsRegister {
         tcp = TCPLib(lua)
         threads = ThreadLib(lua)
         threads?.register()
-        println("LuaLibsRegister: threads registered, isNil=${lua.isNil(lua.getGlobal("threads"))}")
         http = HttpClientLib(lua)
         imgui = ImGuiLib(lua)
         modules = ModulesLib(lua)
