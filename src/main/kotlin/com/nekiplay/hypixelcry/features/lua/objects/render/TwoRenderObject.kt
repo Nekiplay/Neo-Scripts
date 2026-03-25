@@ -1,6 +1,7 @@
 package com.nekiplay.hypixelcry.features.lua.objects.render
 
 import com.mojang.blaze3d.platform.NativeImage
+import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.smartPush
