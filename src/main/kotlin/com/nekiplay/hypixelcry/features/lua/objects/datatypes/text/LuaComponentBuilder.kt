@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes.text
 
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
@@ -7,17 +8,12 @@ import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.MutableComponent
 import net.minecraft.network.chat.Style
 import net.minecraft.network.chat.TextColor
-import org.luaj.vm2.LuaError
-import org.luaj.vm2.LuaString
-import org.luaj.vm2.LuaTable
-import org.luaj.vm2.LuaUserdata
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.OneArgFunction
-import org.luaj.vm2.lib.TwoArgFunction
-import org.luaj.vm2.lib.ZeroArgFunction
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
+import party.iroiro.luajava.value.LuaValue
 import java.net.URI
 
-class LuaComponentBuilder(private var text: String = "") : LuaUserdata(LuaComponentBuilder) {
+class LuaComponentBuilder(L: Lua, private var text: String = "") : SimpleLuaWrapper(L) {
 
     private var color: String? = null
     private var bold: Boolean? = null
@@ -30,8 +26,92 @@ class LuaComponentBuilder(private var text: String = "") : LuaUserdata(LuaCompon
     private var insertion: String? = null
     private val children = mutableListOf<LuaComponentBuilder>()
 
-    init {
-        setmetatable(MT)
+    override fun getFieldValue(l: Lua, key: String): Any? {
+        return when (key) {
+            "text" -> JFunction {
+                this.text = it.toString(2) ?: ""
+                it.pushValue(1) // Возвращаем self
+                1
+            }
+            "color" -> JFunction {
+                this.color = it.toString(2)
+                it.pushValue(1)
+                1
+            }
+            "bold" -> JFunction { this.bold = it.toBoolean(2); it.pushValue(1); 1 }
+            "italic" -> JFunction { this.italic = it.toBoolean(2); it.pushValue(1); 1 }
+            "underlined" -> JFunction { this.underlined = it.toBoolean(2); it.pushValue(1); 1 }
+            "strikethrough" -> JFunction { this.strikethrough = it.toBoolean(2); it.pushValue(1); 1 }
+            "obfuscated" -> JFunction { this.obfuscated = it.toBoolean(2); it.pushValue(1); 1 }
+            "insertion" -> JFunction { this.insertion = it.toString(2); it.pushValue(1); 1 }
+
+            // Click Events
+            "clickRunCommand" -> JFunction {
+                val value = it.toString(2) ?: ""
+                this.clickEvent = ClickEvent.RunCommand(value)
+                it.pushValue(1)
+                1
+            }
+            "clickSuggestCommand" -> JFunction {
+                val value = it.toString(2) ?: ""
+                this.clickEvent = ClickEvent.SuggestCommand(value)
+                it.pushValue(1)
+                1
+            }
+            "clickOpenUrl" -> JFunction {
+                val value = it.toString(2) ?: ""
+                this.clickEvent = ClickEvent.OpenUrl(URI(value))
+                it.pushValue(1)
+                1
+            }
+            "clickCopyToClipboard" -> JFunction {
+                val value = it.toString(2) ?: ""
+                this.clickEvent = ClickEvent.CopyToClipboard(value)
+                it.pushValue(1)
+                1
+            }
+            "clickChangePage" -> JFunction {
+                val page = it.toNumber(2).toInt()
+                this.clickEvent = ClickEvent.ChangePage(page)
+                it.pushValue(1)
+                1
+            }
+
+            // Hover Events
+            "hoverText" -> JFunction { lInner ->
+                val arg = lInner.toJavaObject(2)
+                val hoverComp: Component = when (arg) {
+                    is LuaComponentBuilder -> arg.buildComponent()
+                    is LuaComponent -> arg.component.copy()
+                    else -> Component.literal(lInner.toString(2) ?: "")
+                }
+                this.hoverEvent = HoverEvent.ShowText(hoverComp)
+                lInner.pushValue(1)
+                1
+            }
+
+            // Structure
+            "append" -> JFunction { lInner ->
+                val arg = lInner.toJavaObject(2)
+                when (arg) {
+                    is LuaComponentBuilder -> this.children.add(arg)
+                    is String -> this.children.add(LuaComponentBuilder(lInner, arg))
+                    else -> {
+                        val str = lInner.toString(2)
+                        if (str != null) this.children.add(LuaComponentBuilder(lInner, str))
+                    }
+                }
+                lInner.pushValue(1)
+                1
+            }
+
+            // Build
+            "build" -> JFunction { lInner ->
+                LuaComponent(lInner, this.buildComponent()).push()
+                1
+            }
+            else -> null
+        }
     }
 
     fun buildComponent(): MutableComponent {
@@ -67,144 +147,36 @@ class LuaComponentBuilder(private var text: String = "") : LuaUserdata(LuaCompon
         return component
     }
 
-    companion object {
-
-        fun createLibrary(): LuaTable = LuaTable().apply {
-            set("new", object : OneArgFunction() {
-                override fun call(arg: LuaValue): LuaValue =
-                    LuaComponentBuilder(if (arg.isnil()) "" else arg.checkjstring())
+    override fun push() {
+        val res = super.push()
+        if (L.getMetatable(-1) != 0) {
+            L.push(JFunction { l ->
+                l.push(buildComponent().string)
+                1
             })
-            set("empty", object : ZeroArgFunction() {
-                override fun call(): LuaValue = LuaComponentBuilder()
-            })
+            L.setField(-2, "__tostring")
+            L.pop(1)
         }
+        return res
+    }
 
-        private val MT: LuaTable = LuaTable().apply {
-            val idx = LuaTable()
-            set("__index", idx)
-
-            set("__tostring", object : OneArgFunction() {
-                override fun call(self: LuaValue): LuaValue =
-                    valueOf((self as LuaComponentBuilder).buildComponent().getString())
+    companion object {
+        fun register(L: Lua) {
+            L.newTable()
+            L.push(JFunction { l ->
+                val text = if (l.isString(1)) l.toString(1)!! else ""
+                LuaComponentBuilder(l, text).push()
+                1
             })
+            L.setField(-2, "new")
 
-            // ═══════════════════ Text ═══════════════════
-
-            idx.set("text", object : TwoArgFunction() {
-                override fun call(self: LuaValue, arg: LuaValue): LuaValue {
-                    (self as LuaComponentBuilder).text = arg.checkjstring()
-                    return self
-                }
+            L.push(JFunction { l ->
+                LuaComponentBuilder(l, "").push()
+                1
             })
+            L.setField(-2, "empty")
 
-            // ═══════════════════ Formatting ═══════════════════
-
-            idx.set("color", object : TwoArgFunction() {
-                override fun call(self: LuaValue, arg: LuaValue): LuaValue {
-                    (self as LuaComponentBuilder).color = arg.checkjstring()
-                    return self
-                }
-            })
-
-            for ((name, setter) in listOf<Pair<String, (LuaComponentBuilder, Boolean) -> Unit>>(
-                "bold" to { b, v -> b.bold = v },
-                "italic" to { b, v -> b.italic = v },
-                "underlined" to { b, v -> b.underlined = v },
-                "strikethrough" to { b, v -> b.strikethrough = v },
-                "obfuscated" to { b, v -> b.obfuscated = v },
-            )) {
-                idx.set(name, object : TwoArgFunction() {
-                    override fun call(self: LuaValue, arg: LuaValue): LuaValue {
-                        setter(self as LuaComponentBuilder, arg.checkboolean())
-                        return self
-                    }
-                })
-            }
-
-            idx.set("insertion", object : TwoArgFunction() {
-                override fun call(self: LuaValue, arg: LuaValue): LuaValue {
-                    (self as LuaComponentBuilder).insertion = arg.checkjstring()
-                    return self
-                }
-            })
-
-            // ═══════════════════ Click Events ═══════════════════
-
-            idx.set("clickRunCommand", object : TwoArgFunction() {
-                override fun call(self: LuaValue, arg: LuaValue): LuaValue {
-                    (self as LuaComponentBuilder).clickEvent =
-                        ClickEvent.RunCommand(arg.checkjstring())
-                    return self
-                }
-            })
-
-            idx.set("clickSuggestCommand", object : TwoArgFunction() {
-                override fun call(self: LuaValue, arg: LuaValue): LuaValue {
-                    (self as LuaComponentBuilder).clickEvent =
-                        ClickEvent.SuggestCommand(arg.checkjstring())
-                    return self
-                }
-            })
-
-            idx.set("clickOpenUrl", object : TwoArgFunction() {
-                override fun call(self: LuaValue, arg: LuaValue): LuaValue {
-                    (self as LuaComponentBuilder).clickEvent =
-                        ClickEvent.OpenUrl(URI.create(arg.checkjstring()))
-                    return self
-                }
-            })
-
-            idx.set("clickCopyToClipboard", object : TwoArgFunction() {
-                override fun call(self: LuaValue, arg: LuaValue): LuaValue {
-                    (self as LuaComponentBuilder).clickEvent =
-                        ClickEvent.CopyToClipboard(arg.checkjstring())
-                    return self
-                }
-            })
-
-            idx.set("clickChangePage", object : TwoArgFunction() {
-                override fun call(self: LuaValue, arg: LuaValue): LuaValue {
-                    (self as LuaComponentBuilder).clickEvent =
-                        ClickEvent.ChangePage(arg.checkint())
-                    return self
-                }
-            })
-
-            // ═══════════════════ Hover Events ═══════════════════
-
-            idx.set("hoverText", object : TwoArgFunction() {
-                override fun call(self: LuaValue, arg: LuaValue): LuaValue {
-                    val builder = self as LuaComponentBuilder
-                    val hoverComp: Component = when (arg) {
-                        is LuaComponentBuilder -> arg.buildComponent()
-                        is LuaComponent -> arg.component.copy()
-                        else -> Component.literal(arg.checkjstring())
-                    }
-                    builder.hoverEvent = HoverEvent.ShowText(hoverComp)
-                    return self
-                }
-            })
-
-            // ═══════════════════ Structure ═══════════════════
-
-            idx.set("append", object : TwoArgFunction() {
-                override fun call(self: LuaValue, arg: LuaValue): LuaValue {
-                    val builder = self as LuaComponentBuilder
-                    when (arg) {
-                        is LuaComponentBuilder -> builder.children.add(arg)
-                        is LuaString -> builder.children.add(LuaComponentBuilder(arg.tojstring()))
-                        else -> throw LuaError("Expected ComponentBuilder or string, got ${arg.typename()}")
-                    }
-                    return self
-                }
-            })
-
-            // ═══════════════════ Build ═══════════════════
-
-            idx.set("build", object : OneArgFunction() {
-                override fun call(self: LuaValue): LuaValue =
-                    LuaComponent((self as LuaComponentBuilder).buildComponent())
-            })
+            L.setGlobal("ComponentBuilder")
         }
     }
 }

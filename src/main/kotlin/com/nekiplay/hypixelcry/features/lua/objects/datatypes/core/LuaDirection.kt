@@ -1,33 +1,41 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes.core
 
 import net.minecraft.core.Direction
-import org.luaj.vm2.LuaUserdata
-import org.luaj.vm2.LuaValue
+import party.iroiro.luajava.Lua
 
-class LuaDirection(val direction: Direction): LuaUserdata(direction) {
-    override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            "opposite" -> LuaDirection(direction.opposite)
-            "name" -> valueOf(direction.name)
-            "axisDirection" -> LuaAxisDirection(direction.axisDirection)
-            "axis" -> LuaAxis(direction.axis)
-            "clockWise" -> LuaDirection(direction.clockWise)
+class LuaDirection(private val lua: Lua, val direction: Direction): SimpleLuaWrapper(lua) {
+    override fun getFieldValue(l: Lua, key: String): Any? {
+        return when (key) {
+            "opposite" -> LuaDirection(l, direction.opposite)
+            "name" -> direction.name
+            "axisDirection" -> LuaAxisDirection(l, direction.axisDirection)
+            "axis" -> LuaAxis(l, direction.axis)
+            "clockWise" -> LuaDirection(L, direction.clockWise)
             "step" -> {
-                val t = tableOf()
-                t.set("y", valueOf(direction.stepY))
-                t.set("x", valueOf(direction.stepX))
-                t.set("z", valueOf(direction.stepZ))
-                t
+                L.newTable()
+
+                l.push(direction.stepX.toDouble()); l.setField(-2, "x")
+                l.push(direction.stepY.toDouble()); l.setField(-2, "y")
+                l.push(direction.stepZ.toDouble()); l.setField(-2, "z")
+
+                l.get()
             }
-            else -> NIL
+            else -> null
         }
     }
 
-    override fun tojstring(): String {
-        return direction.name;
-    }
+    override fun push() {
+        val luaValue = super.push()
 
-    override fun tostring(): LuaValue? {
-        return valueOf(direction.name)
+        if (L.getMetatable(-1) != 0) {
+            L.push(party.iroiro.luajava.JFunction { l ->
+                l.push(direction.name)
+                1
+            })
+            L.setField(-2, "__tostring")
+            L.pop(1)
+        }
+
+        return luaValue
     }
 }

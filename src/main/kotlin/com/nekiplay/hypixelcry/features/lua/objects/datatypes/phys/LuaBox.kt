@@ -1,224 +1,174 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys
 
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.luaj.vm2.LuaTable
-import org.luaj.vm2.LuaUserdata
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.Varargs
-import org.luaj.vm2.lib.OneArgFunction
-import org.luaj.vm2.lib.ThreeArgFunction
-import org.luaj.vm2.lib.VarArgFunction
-import org.luaj.vm2.lib.ZeroArgFunction
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
+import party.iroiro.luajava.value.LuaValue
 
-class LuaBox(val box: AABB) : LuaUserdata(box) {
-    override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            // --- Fields (Getters) ---
-            "minX" -> valueOf(box.minX)
-            "minY" -> valueOf(box.minY)
-            "minZ" -> valueOf(box.minZ)
-            "maxX" -> valueOf(box.maxX)
-            "maxY" -> valueOf(box.maxY)
-            "maxZ" -> valueOf(box.maxZ)
+class LuaBox(l: Lua, val box: AABB) : SimpleLuaWrapper(l) {
+    override fun push(): LuaValue {
+        val luaValue = super.push()
 
-            // Tables for min/max positions
-            "min" -> {
-                val t = tableOf()
-                t.set("x", valueOf(box.minX))
-                t.set("y", valueOf(box.minY))
-                t.set("z", valueOf(box.minZ))
-                t
-            }
-            "max" -> {
-                val t = tableOf()
-                t.set("x", valueOf(box.maxX))
-                t.set("y", valueOf(box.maxY))
-                t.set("z", valueOf(box.maxZ))
-                t
-            }
+        if (L.getMetatable(-1) != 0) {
+            L.push(JFunction { l ->
+                l.push("Box(${box.minX}, ${box.minY}, ${box.minZ} -> ${box.maxX}, ${box.maxY}, ${box.maxZ})")
+                1
+            })
+            L.setField(-2, "__tostring")
+            L.pop(1)
+        }
 
-            // --- Size Info ---
-            "getSize" -> object : ZeroArgFunction() {
-                override fun call(): LuaValue = valueOf(box.size)
-            }
-            "getXSize" -> object : ZeroArgFunction() {
-                override fun call(): LuaValue = valueOf(box.xsize)
-            }
-            "getYSize" -> object : ZeroArgFunction() {
-                override fun call(): LuaValue = valueOf(box.ysize)
-            }
-            "getZSize" -> object : ZeroArgFunction() {
-                override fun call(): LuaValue = valueOf(box.zsize)
-            }
-            "getCenter" -> object : ZeroArgFunction() {
-                override fun call(): LuaValue = vec3ToTable(box.center)
+        return luaValue
+    }
+
+    override fun getFieldValue(l: Lua, key: String): Any? {
+        return when (key) {
+            // --- Поля (Getters) ---
+            "minX" -> box.minX
+            "minY" -> box.minY
+            "minZ" -> box.minZ
+            "maxX" -> box.maxX
+            "maxY" -> box.maxY
+            "maxZ" -> box.maxZ
+
+            // Таблицы min/max
+            "min" -> vec3ToTable(l, box.minX, box.minY, box.minZ)
+            "max" -> vec3ToTable(l, box.maxX, box.maxY, box.maxZ)
+
+            // --- Размеры (Функции) ---
+            "getSize" -> JFunction { s -> s.push(box.size); 1 }
+            "getXSize" -> JFunction { s -> s.push(box.xsize); 1 }
+            "getYSize" -> JFunction { s -> s.push(box.ysize); 1 }
+            "getZSize" -> JFunction { s -> s.push(box.zsize); 1 }
+            "getCenter" -> JFunction { s ->
+                vec3ToTable(s, box.center.x, box.center.y, box.center.z)
+                1
             }
 
-            // --- Modification (Withers) ---
-            "setMinX" -> object : OneArgFunction() {
-                override fun call(arg: LuaValue): LuaValue = LuaBox(box.setMinX(arg.checkdouble()))
-            }
-            "setMinY" -> object : OneArgFunction() {
-                override fun call(arg: LuaValue): LuaValue = LuaBox(box.setMinY(arg.checkdouble()))
-            }
-            "setMinZ" -> object : OneArgFunction() {
-                override fun call(arg: LuaValue): LuaValue = LuaBox(box.setMinZ(arg.checkdouble()))
-            }
-            "setMaxX" -> object : OneArgFunction() {
-                override fun call(arg: LuaValue): LuaValue = LuaBox(box.setMaxX(arg.checkdouble()))
-            }
-            "setMaxY" -> object : OneArgFunction() {
-                override fun call(arg: LuaValue): LuaValue = LuaBox(box.setMaxY(arg.checkdouble()))
-            }
-            "setMaxZ" -> object : OneArgFunction() {
-                override fun call(arg: LuaValue): LuaValue = LuaBox(box.setMaxZ(arg.checkdouble()))
+            // --- Модификации (Возвращают новый LuaBox) ---
+            "setMinX" -> JFunction { s -> LuaBox(l, box.setMinX(s.toNumber(1))).push(); 1 }
+            "setMinY" -> JFunction { s -> LuaBox(l, box.setMinY(s.toNumber(1))).push(); 1 }
+            "setMinZ" -> JFunction { s -> LuaBox(l, box.setMinZ(s.toNumber(1))).push(); 1 }
+            "setMaxX" -> JFunction { s -> LuaBox(l, box.setMaxX(s.toNumber(1))).push(); 1 }
+            "setMaxY" -> JFunction { s -> LuaBox(l, box.setMaxY(s.toNumber(1))).push(); 1 }
+            "setMaxZ" -> JFunction { s -> LuaBox(l, box.setMaxZ(s.toNumber(1))).push(); 1 }
+
+            "contract" -> JFunction { s ->
+                LuaBox(l, box.contract(s.toNumber(1), s.toNumber(2), s.toNumber(3))).push()
+                1
             }
 
-            // --- Operations ---
-
-            // contract(x, y, z)
-            "contract" -> object : ThreeArgFunction() {
-                override fun call(arg1: LuaValue, arg2: LuaValue, arg3: LuaValue): LuaValue {
-                    return LuaBox(box.contract(arg1.checkdouble(), arg2.checkdouble(), arg3.checkdouble()))
+            "expand" -> JFunction { s ->
+                val result = if (s.isTable(1)) {
+                    box.expandTowards(tableToVec3(s, 1))
+                } else {
+                    box.expandTowards(s.toNumber(1), s.toNumber(2), s.toNumber(3))
                 }
+                LuaBox(l, result).push()
+                1
             }
 
-            // expand(x, y, z) or expand(Vec3Table)
-            "expand" -> object : VarArgFunction() {
-                override fun invoke(args: Varargs): LuaValue {
-                    if (args.narg() == 1 && args.arg1().istable()) {
-                        val vec = tableToVec3(args.arg1().checktable())
-                        return LuaBox(box.expandTowards(vec))
-                    } else if (args.narg() >= 3) {
-                        return LuaBox(box.expandTowards(args.arg(1).checkdouble(), args.arg(2).checkdouble(), args.arg(3).checkdouble()))
-                    }
-                    return NIL
+            "inflate" -> JFunction { s ->
+                val result = if (s.getTop() == 1) {
+                    box.inflate(s.toNumber(1))
+                } else {
+                    box.inflate(s.toNumber(1), s.toNumber(2), s.toNumber(3))
                 }
+                LuaBox(l, result).push()
+                1
             }
 
-            // inflate(value) or inflate(x, y, z)
-            "inflate" -> object : VarArgFunction() {
-                override fun invoke(args: Varargs): LuaValue {
-                    return if (args.narg() == 1) {
-                        LuaBox(box.inflate(args.arg1().checkdouble()))
-                    } else {
-                        LuaBox(box.inflate(args.arg(1).checkdouble(), args.arg(2).checkdouble(), args.arg(3).checkdouble()))
-                    }
+            "deflate" -> JFunction { s ->
+                val result = if (s.getTop() == 1) {
+                    box.deflate(s.toNumber(1))
+                } else {
+                    box.deflate(s.toNumber(1), s.toNumber(2), s.toNumber(3))
                 }
+                LuaBox(l, result).push()
+                1
             }
 
-            // deflate(value) or deflate(x, y, z)
-            "deflate" -> object : VarArgFunction() {
-                override fun invoke(args: Varargs): LuaValue {
-                    return if (args.narg() == 1) {
-                        LuaBox(box.deflate(args.arg1().checkdouble()))
-                    } else {
-                        LuaBox(box.deflate(args.arg(1).checkdouble(), args.arg(2).checkdouble(), args.arg(3).checkdouble()))
-                    }
+            "intersect" -> JFunction { s ->
+                val other = s.toJavaObject(1) as? LuaBox
+                if (other != null) {
+                    LuaBox(l, box.intersect(other.box)).push()
+                    1
+                } else 0
+            }
+
+            "union" -> JFunction { s ->
+                val other = s.toJavaObject(1) as? LuaBox
+                if (other != null) {
+                    LuaBox(l, box.minmax(other.box)).push()
+                    1
+                } else 0
+            }
+
+            "move", "offset" -> JFunction { s ->
+                val result = if (s.isTable(1)) {
+                    box.move(tableToVec3(s, 1))
+                } else {
+                    box.move(s.toNumber(1), s.toNumber(2), s.toNumber(3))
                 }
+                LuaBox(l, result).push()
+                1
             }
 
-            // intersect(LuaBox) -> returns new LuaBox representing the intersection
-            "intersect" -> object : OneArgFunction() {
-                override fun call(arg: LuaValue): LuaValue {
-                    if (arg is LuaBox) {
-                        return LuaBox(box.intersect(arg.box))
-                    }
-                    return NIL
+            // --- Проверки ---
+            "intersects" -> JFunction { s ->
+                val result = if (s.getTop() == 1) {
+                    val other = s.toJavaObject(1) as? LuaBox
+                    other?.let { box.intersects(it.box) } ?: false
+                } else {
+                    box.intersects(
+                        s.toNumber(1), s.toNumber(2), s.toNumber(3),
+                        s.toNumber(4), s.toNumber(5), s.toNumber(6)
+                    )
                 }
+                s.push(result)
+                1
             }
 
-            // union(LuaBox) -> maps to minmax (bounding box of both)
-            "union" -> object : OneArgFunction() {
-                override fun call(arg: LuaValue): LuaValue {
-                    if (arg is LuaBox) {
-                        return LuaBox(box.minmax(arg.box))
-                    }
-                    return NIL
+            "contains" -> JFunction { s ->
+                val result = if (s.isTable(1)) {
+                    box.contains(tableToVec3(s, 1))
+                } else {
+                    box.contains(s.toNumber(1), s.toNumber(2), s.toNumber(3))
                 }
+                s.push(result)
+                1
             }
 
-            // move(x, y, z) or move(Vec3Table)
-            "move" -> object : VarArgFunction() {
-                override fun invoke(args: Varargs): LuaValue {
-                    if (args.narg() == 1 && args.arg1().istable()) {
-                        val vec = tableToVec3(args.arg1().checktable())
-                        return LuaBox(box.move(vec))
-                    } else if (args.narg() >= 3) {
-                        return LuaBox(box.move(args.arg(1).checkdouble(), args.arg(2).checkdouble(), args.arg(3).checkdouble()))
-                    }
-                    return NIL
-                }
+            "clip" -> JFunction { s ->
+                val start = tableToVec3(s, 1)
+                val end = tableToVec3(s, 2)
+                val result = box.clip(start, end)
+                if (result.isPresent) {
+                    vec3ToTable(s, result.get().x, result.get().y, result.get().z)
+                    1
+                } else 0
             }
 
-            // offset -> alias for move
-            "offset" -> get("move")
-
-            // --- Checks ---
-
-            // intersects(LuaBox) or intersects(x1, y1, z1, x2, y2, z2)
-            "intersects" -> object : VarArgFunction() {
-                override fun invoke(args: Varargs): LuaValue {
-                    if (args.narg() == 1 && args.arg1() is LuaBox) {
-                        return valueOf(box.intersects((args.arg1() as LuaBox).box))
-                    } else if (args.narg() >= 6) {
-                        return valueOf(box.intersects(
-                            args.arg(1).checkdouble(), args.arg(2).checkdouble(), args.arg(3).checkdouble(),
-                            args.arg(4).checkdouble(), args.arg(5).checkdouble(), args.arg(6).checkdouble()
-                        ))
-                    }
-                    return FALSE
-                }
-            }
-
-            // contains(x, y, z) or contains(Vec3Table)
-            "contains" -> object : VarArgFunction() {
-                override fun invoke(args: Varargs): LuaValue {
-                    if (args.narg() == 1 && args.arg1().istable()) {
-                        val vec = tableToVec3(args.arg1().checktable())
-                        return valueOf(box.contains(vec))
-                    } else if (args.narg() >= 3) {
-                        return valueOf(box.contains(args.arg(1).checkdouble(), args.arg(2).checkdouble(), args.arg(3).checkdouble()))
-                    }
-                    return FALSE
-                }
-            }
-
-            // --- Calculation ---
-
-            // clip(startVecTable, endVecTable) -> returns Optional hit Vec3Table or nil
-            "clip" -> object : VarArgFunction() {
-                override fun invoke(args: Varargs): LuaValue {
-                    if (args.narg() >= 2) {
-                        val start = tableToVec3(args.arg(1).checktable())
-                        val end = tableToVec3(args.arg(2).checktable())
-                        val result = box.clip(start, end)
-                        if (result.isPresent) {
-                            return vec3ToTable(result.get())
-                        }
-                    }
-                    return NIL
-                }
-            }
-            else -> super.get(key)
+            else -> null
         }
     }
 
-    // --- Helpers ---
+    // --- Помощники ---
 
-    private fun vec3ToTable(vec: Vec3): LuaTable {
-        val t = tableOf()
-        t.set("x", valueOf(vec.x))
-        t.set("y", valueOf(vec.y))
-        t.set("z", valueOf(vec.z))
-        return t
+    private fun vec3ToTable(l: Lua, x: Double, y: Double, z: Double): LuaValue {
+        l.newTable()
+        l.push(x); l.setField(-2, "x")
+        l.push(y); l.setField(-2, "y")
+        l.push(z); l.setField(-2, "z")
+        return l.get()
     }
 
-    private fun tableToVec3(table: LuaTable): Vec3 {
-        val x = table.get("x").checkdouble()
-        val y = table.get("y").checkdouble()
-        val z = table.get("z").checkdouble()
+    private fun tableToVec3(l: Lua, index: Int): Vec3 {
+        l.getField(index, "x"); val x = l.toNumber(-1); l.pop(1)
+        l.getField(index, "y"); val y = l.toNumber(-1); l.pop(1)
+        l.getField(index, "z"); val z = l.toNumber(-1); l.pop(1)
         return Vec3(x, y, z)
     }
 }

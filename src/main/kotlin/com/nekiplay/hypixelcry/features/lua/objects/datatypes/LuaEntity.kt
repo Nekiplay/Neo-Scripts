@@ -1,6 +1,7 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 
 import com.nekiplay.hypixelcry.HypixelCry.mc
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.sugar.getFormattedString
 import net.minecraft.world.entity.Entity
@@ -8,220 +9,239 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ItemFrame
 import net.minecraft.world.entity.item.ItemEntity
-import org.luaj.vm2.LuaUserdata
-import org.luaj.vm2.LuaValue
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
+import party.iroiro.luajava.value.LuaValue
 
-class LuaEntity(val entity: Entity): LuaUserdata(entity) {
-    override fun get(key: LuaValue): LuaValue {
-        return when (val field = key.tojstring()) {
+class LuaEntity(L: Lua, val entity: Entity): SimpleLuaWrapper(L) {
+    override fun push(): LuaValue {
+        val luaValue = super.push()
+
+        if (L.getMetatable(-1) != 0) {
+            L.push(JFunction { l ->
+                l.push(entity.name.string)
+                1
+            })
+            L.setField(-2, "__tostring")
+            L.pop(1)
+        }
+
+        return luaValue
+    }
+    override fun getFieldValue(l: Lua, key: String): Any? {
+        return when (key) {
             // Основная информация о сущности
-            "id" -> valueOf(entity.id)
-            "uuid" -> valueOf(entity.stringUUID)
-            "name" -> valueOf(entity.name.string)
-            "display_name" -> valueOf(entity.displayName?.getFormattedString()) ?: NIL
-            "type" -> valueOf(entity.type.toString())
+            "id" -> entity.id
+            "uuid" -> entity.stringUUID
+            "name" -> entity.name.string
+            "display_name" -> entity.displayName?.getFormattedString() ?: null
+            "type" -> entity.type.toString()
 
             // Позиция и движение
             "x" -> {
                 val pos = entity.getPosition(1f)
-                valueOf(pos.x)
+                pos.x
             }
             "y" -> {
                 val pos = entity.getPosition(1f)
-                valueOf(pos.y)
+                pos.y
             }
             "z" -> {
                 val pos = entity.getPosition(1f)
-                valueOf(pos.z)
+                pos.z
             }
             "pos", "position" -> {
-                val t = tableOf()
+                l.newTable()
                 val pos = entity.getPosition(1f)
-                t.set("x", valueOf(pos.x))
-                t.set("y", valueOf(pos.y))
-                t.set("z", valueOf(pos.z))
-                t
+
+                l.push(pos.x)
+                l.setField(-2, "x")
+                l.push(pos.y)
+                l.setField(-2, "y")
+                l.push(pos.z)
+                l.setField(-2, "z")
+
+                l.get()
             }
 
-            "box" -> LuaBox(entity.boundingBox)
+            "box" -> LuaBox(l, entity.boundingBox)
 
-            "velocity_x" -> valueOf(entity.forward.x)
-            "velocity_y" -> valueOf(entity.forward.y)
-            "velocity_z" -> valueOf(entity.forward.z)
+            "velocity_x" -> entity.forward.x
+            "velocity_y" -> entity.forward.y
+            "velocity_z" -> entity.forward.z
             "velocity" -> {
-                val t = tableOf()
-                t.set("x", valueOf(entity.forward.x))
-                t.set("y", valueOf(entity.forward.y))
-                t.set("z", valueOf(entity.forward.z))
-                t
+                l.newTable()
+                l.push(entity.forward.x)
+                l.setField(-2, "x")
+                l.push(entity.forward.y)
+                l.setField(-2, "y")
+                l.push(entity.forward.z)
+                l.setField(-2, "z")
+
+                l.get()
             }
 
             // Размеры и вращение
-            "width" -> valueOf(entity.bbWidth.toDouble())
-            "height" -> valueOf(entity.bbHeight.toDouble())
-            "yaw" -> valueOf(entity.xRot.toDouble())
-            "pitch" -> valueOf(entity.yRot.toDouble())
+            "width" -> entity.bbWidth.toDouble()
+            "height" -> entity.bbHeight.toDouble()
+            "yaw" -> entity.xRot.toDouble()
+            "pitch" -> entity.yRot.toDouble()
 
             // Состояния
-            "is_on_ground" -> valueOf(entity.onGround())
-            "is_touching_water" -> valueOf(entity.isInWater)
-            "is_in_lava" -> valueOf(entity.isInLava)
-            "is_sneaking" -> valueOf(entity.isShiftKeyDown)
-            "is_sprinting" -> valueOf(entity.isSprinting)
+            "is_on_ground" -> entity.onGround()
+            "is_touching_water" -> entity.isInWater
+            "is_in_lava" -> entity.isInLava
+            "is_sneaking" -> entity.isShiftKeyDown
+            "is_sprinting" -> entity.isSprinting
 
             // Дополнительные свойства
             "passengers" -> {
-                val t = tableOf()
-                entity.passengers.forEachIndexed { index, entity ->
-                    t.set(index + 1, LuaEntity(entity))
+                l.newTable()
+
+                entity.passengers.forEachIndexed { index, passenger ->
+                    LuaEntity(l, passenger)
+                    l.rawSetI(-2, index + 1)
                 }
-                t
+                l.get()
             }
-            "age" -> valueOf(entity.tickCount)
+            "age" -> entity.tickCount
             "distance_to_player" -> {
                 val player = mc.player
                 if (player != null) {
-                    valueOf(entity.distanceToSqr(player))
+                    entity.distanceToSqr(player)
                 } else {
-                    valueOf(0.0)
+                    0.0
                 }
             }
 
             // Специфичные для ItemFrameEntity
             "item" -> {
                 when (entity) {
-                    is ItemFrame -> {
-                        LuaItemStack(entity.item)
-                    }
-
-                    is ItemEntity -> {
-                        LuaItemStack(entity.item)
-                    }
-
-                    else -> {
-                        LuaValue.NIL
-                    }
+                    is ItemFrame -> LuaItemStack(L, entity.item)
+                    is ItemEntity -> LuaItemStack(L, entity.item)
+                    else -> null
                 }
             }
 
             // Специфичные для LivingEntity
             "health" -> {
                 if (entity is LivingEntity) {
-                    valueOf(entity.health.toDouble())
+                    entity.health.toDouble()
                 } else {
-                    LuaValue.NIL
+                    null
                 }
             }
             "max_health" -> {
                 if (entity is LivingEntity) {
-                    valueOf(entity.maxHealth.toDouble())
+                    entity.maxHealth.toDouble()
                 } else {
-                    LuaValue.NIL
+                    null
                 }
             }
             "is_alive" -> {
                 if (entity is LivingEntity) {
-                    valueOf(entity.isAlive)
+                    entity.isAlive
                 } else {
-                    LuaValue.NIL
+                    null
                 }
             }
             "is_child", "is_baby" -> {
                 if (entity is LivingEntity) {
-                    valueOf(entity.isBaby)
+                    entity.isBaby
                 } else {
-                    LuaValue.NIL
+                    null
                 }
             }
             "main_hand" -> {
                 if (entity is LivingEntity) {
                     val mainHandStack = entity.mainHandItem
-                    if (!mainHandStack.isEmpty) {
-                        LuaItemStack(mainHandStack)
-                    } else {
-                        LuaValue.NIL
-                    }
+                    if (!mainHandStack.isEmpty) LuaItemStack(L, mainHandStack) else null
                 } else {
-                    LuaValue.NIL
+                    null
                 }
             }
             "off_hand" -> {
                 if (entity is LivingEntity) {
                     val offHandStack = entity.offhandItem
-                    if (!offHandStack.isEmpty) {
-                        LuaItemStack(offHandStack)
-                    } else {
-                        LuaValue.NIL
-                    }
+                    if (!offHandStack.isEmpty) LuaItemStack(L, offHandStack) else null
                 } else {
-                    LuaValue.NIL
+                    null
                 }
             }
             "head" -> {
                 if (entity is LivingEntity) {
                     val head = entity.getItemBySlot(EquipmentSlot.HEAD)
-                    if (!head.isEmpty) {
-                        LuaItemStack(head)
-                    } else {
-                        LuaValue.NIL
-                    }
+                    if (!head.isEmpty) LuaItemStack(L, head) else null
                 } else {
-                    LuaValue.NIL
+                    null
                 }
             }
             "chest" -> {
                 if (entity is LivingEntity) {
                     val chest = entity.getItemBySlot(EquipmentSlot.CHEST)
-                    if (!chest.isEmpty) {
-                        LuaItemStack(chest)
-                    } else {
-                        LuaValue.NIL
-                    }
+                    if (!chest.isEmpty) LuaItemStack(L, chest) else null
                 } else {
-                    LuaValue.NIL
+                    null
                 }
             }
             "legs" -> {
                 if (entity is LivingEntity) {
                     val legs = entity.getItemBySlot(EquipmentSlot.LEGS)
-                    if (!legs.isEmpty) {
-                        LuaItemStack(legs)
-                    } else {
-                        LuaValue.NIL
-                    }
+                    if (!legs.isEmpty) LuaItemStack(L, legs) else null
                 } else {
-                    LuaValue.NIL
+                    null
                 }
             }
             "feet" -> {
                 if (entity is LivingEntity) {
                     val feet = entity.getItemBySlot(EquipmentSlot.FEET)
-                    if (!feet.isEmpty) {
-                        LuaItemStack(feet)
-                    } else {
-                        LuaValue.NIL
-                    }
+                    if (!feet.isEmpty) LuaItemStack(L, feet) else null
                 } else {
-                    LuaValue.NIL
+                    null
                 }
             }
             "active_effects" -> {
                 if (entity is LivingEntity) {
-                    val effectsTable = tableOf()
+                    // 1. Создаем главную таблицу (список всех эффектов)
+                    l.newTable()
+                    // Сейчас главная таблица на индексе -1
+
                     var effectIndex = 1
+                    // Проходим по мапе эффектов Minecraft
                     entity.activeEffectsMap.forEach { (effect, instance) ->
-                        val effectTable = tableOf()
-                        effectTable.set("type", valueOf(effect.registeredName))
-                        effectTable.set("duration", valueOf(instance.duration.toDouble()))
-                        effectTable.set("amplifier", valueOf(instance.amplifier.toDouble()))
-                        effectsTable.set(effectIndex++, effectTable)
+                        // 2. Создаем под-таблицу для данных одного эффекта
+                        l.newTable()
+                        // Теперь под-таблица на -1, а главная сместилась на -2
+
+                        // Наполняем под-таблицу данными
+                        // Устанавливаем "type" (имя эффекта)
+                        // Примечание: в зависимости от версии MC может быть effect.value().registeredName или просто effect.registeredName
+                        l.push(effect.registeredName)
+                        l.setField(-2, "type")
+
+                        // Устанавливаем "duration"
+                        l.push(instance.duration.toDouble())
+                        l.setField(-2, "duration")
+
+                        // Устанавливаем "amplifier"
+                        l.push(instance.amplifier.toDouble())
+                        l.setField(-2, "amplifier")
+
+                        // 3. Кладем под-таблицу (-1) в главную таблицу (-2)
+                        // Метод rawSetI заберет под-таблицу со стека и положит её под номером effectIndex
+                        l.rawSetI(-2, effectIndex)
+
+                        effectIndex++
                     }
-                    effectsTable
+
+                    // 4. Забираем готовую главную таблицу со стека и возвращаем её как LuaValue
+                    l.get()
                 } else {
-                    LuaValue.NIL
+                    // Если сущность не LivingEntity, возвращаем nil
+                    null
                 }
             }
-            else -> super.get(key)
+            else -> null
         }
     }
 }

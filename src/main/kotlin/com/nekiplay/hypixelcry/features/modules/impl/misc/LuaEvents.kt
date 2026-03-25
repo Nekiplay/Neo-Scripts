@@ -10,45 +10,33 @@ import com.nekiplay.hypixelcry.events.network.PacketEvent
 import com.nekiplay.hypixelcry.events.player.AddItemInventoryEvent
 import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent
 import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent.BlockUpdateCallback
-import com.nekiplay.hypixelcry.features.lua.LuaScript
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.features.modules.ClientModule
-import com.nekiplay.hypixelcry.imgui.ImguiLoader
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.sugar.getJsonString
 import com.nekiplay.hypixelcry.utils.render.WorldRenderExtractionCallback
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
-import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
-import net.minecraft.client.Minecraft
 import net.minecraft.commands.SharedSuggestionProvider
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
-import net.minecraft.core.Direction8
 import net.minecraft.core.registries.BuiltInRegistries
-import net.minecraft.network.chat.Component
-import net.minecraft.network.protocol.game.ClientboundBlockChangedAckPacket
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket
-import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket
-import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
-import net.minecraft.network.protocol.game.ClientboundRespawnPacket
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.HitResult
-import org.luaj.vm2.LuaValue
 
 
 object LuaEvents : ClientModule() {
@@ -74,9 +62,9 @@ object LuaEvents : ClientModule() {
         }
 
         WorldRenderExtractionCallback.EVENT.register({ context: PrimitiveCollector? ->
-            val renderContext = WorldRendererObject(context)
             LUA_MANAGER.scripts.values.forEach { script ->
                 try {
+                    val renderContext = WorldRendererObject(script.L, context)
                     script.onRenderTick(renderContext)
                 } catch (e: Exception) {
                     // Обработка ошибок
@@ -254,38 +242,16 @@ object LuaEvents : ClientModule() {
         }
 
         BlockUpdateEvent.EVENT.register(BlockUpdateCallback { event ->
-            val blockPos = event.blockPos
-            val oldState = event.old
-            val newState = event.new
-
-            val table = LuaValue.tableOf()
-
-            table.set("x", blockPos.x)
-            table.set("y", blockPos.y)
-            table.set("z", blockPos.z)
-            if (oldState != null) {
-                table.set("old", LuaBlockState(oldState))
-            }
-            if (newState != null) {
-                table.set("new", LuaBlockState(newState))
-            }
-
             var allow = true
+
+            // Передаем чистые объекты Minecraft
             LUA_MANAGER.scripts.values.forEach { script ->
-                try {
-                    if (!script.onBlockUpdateEvent(table)) {
-                        allow = false
-                    }
-                } catch (e: Exception) {
-                    // Обработка ошибок
+                if (!script.onBlockUpdateEvent(event.blockPos, event.old, event.new)) {
+                    allow = false
                 }
             }
 
-            if (allow) {
-                InteractionResult.PASS
-            } else {
-                InteractionResult.FAIL
-            }
+            if (allow) InteractionResult.PASS else InteractionResult.FAIL
         })
 
         PacketEvent.RECEIVE.register { event ->
@@ -302,27 +268,17 @@ object LuaEvents : ClientModule() {
             }
             else if (event.packet is ClientboundBlockUpdatePacket) {
                 val packet = event.packet as ClientboundBlockUpdatePacket
-
-                val table = LuaValue.tableOf()
-
-                table.set("x", packet.pos.x)
-                table.set("y", packet.pos.y)
-                table.set("z", packet.pos.z)
+                var allow = true
                 val oldState = mc.level?.getBlockState(packet.pos)
                 if (oldState != null) {
-                    table.set("old", LuaBlockState(oldState))
-                }
-                if (packet.blockState != null) {
-                    table.set("new", LuaBlockState(packet.blockState))
-                }
-
-                LUA_MANAGER.scripts.values.forEach { script ->
-                    try {
-                        script.onBlockUpdateEvent(table)
-                    } catch (e: Exception) {
-                        // Обработка ошибок
+                    LUA_MANAGER.scripts.values.forEach { script ->
+                        if (!script.onBlockUpdateEvent(packet.pos, oldState, packet.blockState)) {
+                            allow = false
+                        }
                     }
                 }
+
+                if (allow) InteractionResult.PASS else InteractionResult.FAIL
             }
             val allow = when (val packet = event.packet) {
                 is ClientboundPlayerRotationPacket -> {

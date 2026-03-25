@@ -1,111 +1,113 @@
 package com.nekiplay.hypixelcry.features.lua.objects.modules
 
 import com.nekiplay.hypixelcry.features.esp.pathfinder.PathFinderWorker
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
 import net.minecraft.core.BlockPos
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.OneArgFunction
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
 
-class PathFinderRendererObject: LuaValue() {
-    override fun call(): LuaValue {
-        return this
-    }
+class PathFinderRendererObject(L: Lua) : SimpleLuaWrapper(L) {
 
-    override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            "isHasPath" -> IsHasPathFunction()
-            "removePath" -> RemovePathFunction()
-            "addOrUpdatePath" -> AddOrUpdatePathFunction()
-            "getPathBlocks" -> GetPathBlocksFunction()
-            else -> NIL
-        } as LuaValue
-    }
-
-    private inner class IsHasPathFunction : OneArgFunction() {
-        override fun call(string: LuaValue): LuaValue {
-            if (string.isstring()) {
-                return valueOf(PathFinderWorker.hasPath(string.tojstring()));
-            }
-            return NIL;
+    override fun getFieldValue(l: Lua, key: String): Any? {
+        return when (key) {
+            "isHasPath" -> JFunction { isHasPath(it) }
+            "removePath" -> JFunction { removePath(it) }
+            "addOrUpdatePath" -> JFunction { addOrUpdatePath(it) }
+            "getPathBlocks" -> JFunction { getPathBlocks(it) }
+            else -> null
         }
     }
 
-    private inner class RemovePathFunction : OneArgFunction() {
-        override fun call(string: LuaValue): LuaValue {
-            if (string.isstring()) {
-                if (PathFinderWorker.hasPath(string.tojstring())) {
-                    PathFinderWorker.removePath(string.tojstring())
-                    return valueOf(true);
-                }
-                return valueOf(false);
-            }
-            return NIL;
+    private fun isHasPath(l: Lua): Int {
+        if (l.isString(1)) {
+            val id = l.toString(1) ?: ""
+            l.push(PathFinderWorker.hasPath(id))
+            return 1
         }
+        l.pushNil()
+        return 1
     }
 
-    private inner class AddOrUpdatePathFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable()) {
-                val id = if (table.get("id").isstring()) table.get("id").tojstring() else "empty"
-
-                val x = if (table.get("x").isnumber()) table.get("x").toint() else 0
-                val y = if (table.get("y").isnumber()) table.get("y").toint() else 0
-                val z = if (table.get("z").isnumber()) table.get("z").toint() else 0
-
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 0
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 0
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 0
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
-
-                val smooth = if (table.get("smooth").isboolean()) table.get("smooth").toboolean() else false
-                val updater = if (table.get("updater").isboolean()) table.get("updater").toboolean() else true
-
-                val colorComponents = floatArrayOf(
-                    red.toFloat() / 255.0f,
-                    green.toFloat() / 255.0f,
-                    blue.toFloat() / 255.0f,
-                    alpha.toFloat() / 255.0f
-                )
-
-                val endText = if (table.get("end_text").isstring()) table.get("end_text").tojstring() else "empty"
-
-                PathFinderWorker.addOrUpdatePath(
-                    id, BlockPos(x, y, z),
-                    colorComponents,
-                    endText,
-                    smooth,
-                    updater
-                )
-                return valueOf(true);
+    private fun removePath(l: Lua): Int {
+        if (l.isString(1)) {
+            val id = l.toString(1) ?: ""
+            if (PathFinderWorker.hasPath(id)) {
+                PathFinderWorker.removePath(id)
+                l.push(true)
+            } else {
+                l.push(false)
             }
-            return NIL;
+            return 1
         }
+        l.pushNil()
+        return 1
     }
 
-    private inner class GetPathBlocksFunction : OneArgFunction() {
-        override fun call(string: LuaValue): LuaValue {
-            if (string.isstring()) {
-                val list = PathFinderWorker.getPathBlocks(string.tojstring())
-                var index = 0;
-                val table = tableOf();
-                for (item in list) {
-                    val table_item = tableOf();
-                    table_item.set("x", item.x)
-                    table_item.set("y", item.y)
-                    table_item.set("z", item.z)
+    private fun addOrUpdatePath(l: Lua): Int {
+        if (l.isTable(1)) {
+            val t = 1 // Индекс таблицы-конфига в стеке
 
-                    table.set(index, table_item)
-                    index++
-                }
-                return table
-            }
-            return NIL;
+            // Читаем ID
+            l.getField(t, "id")
+            val id = if (l.isString(-1)) l.toString(-1)!! else "empty"
+            l.pop(1)
+
+            // Читаем координаты
+            l.getField(t, "x"); val x = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 0; l.pop(1)
+            l.getField(t, "y"); val y = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 0; l.pop(1)
+            l.getField(t, "z"); val z = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 0; l.pop(1)
+
+            // Читаем цвета
+            l.getField(t, "red"); val r = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 0; l.pop(1)
+            l.getField(t, "green"); val g = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 0; l.pop(1)
+            l.getField(t, "blue"); val b = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 0; l.pop(1)
+            l.getField(t, "alpha"); val a = if (l.isNumber(-1)) l.toNumber(-1).toInt() else 255; l.pop(1)
+
+            // Читаем настройки
+            l.getField(t, "smooth"); val smooth = if (l.isBoolean(-1)) l.toBoolean(-1) else false; l.pop(1)
+            l.getField(t, "updater"); val updater = if (l.isBoolean(-1)) l.toBoolean(-1) else true; l.pop(1)
+            l.getField(t, "end_text"); val endText = if (l.isString(-1)) l.toString(-1)!! else "empty"; l.pop(1)
+
+            val colorComponents = floatArrayOf(
+                r.toFloat() / 255.0f,
+                g.toFloat() / 255.0f,
+                b.toFloat() / 255.0f,
+                a.toFloat() / 255.0f
+            )
+
+            PathFinderWorker.addOrUpdatePath(
+                id, BlockPos(x, y, z),
+                colorComponents,
+                endText,
+                smooth,
+                updater
+            )
+            l.push(true)
+            return 1
         }
+        l.pushNil()
+        return 1
     }
 
-    override fun typename(): String = "path_finder_renderer"
-    override fun tojstring(): String = "PathFinderRendererObject"
-    override fun isnil(): Boolean = false
-    override fun type(): Int {
-        return TUSERDATA
+    private fun getPathBlocks(l: Lua): Int {
+        if (l.isString(1)) {
+            val id = l.toString(1) ?: ""
+            val list = PathFinderWorker.getPathBlocks(id)
+
+            l.newTable() // Создаем основную таблицу
+            list.forEachIndexed { index, item ->
+                l.newTable() // Создаем таблицу-элемент {x, y, z}
+
+                l.push(item.x.toDouble()); l.setField(-2, "x")
+                l.push(item.y.toDouble()); l.setField(-2, "y")
+                l.push(item.z.toDouble()); l.setField(-2, "z")
+
+                // Сохраняем логику: в оригинале index начинался с 0
+                l.rawSetI(-2, index)
+            }
+            return 1
+        }
+        l.pushNil()
+        return 1
     }
 }

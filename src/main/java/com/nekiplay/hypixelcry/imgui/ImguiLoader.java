@@ -207,7 +207,7 @@ public class ImguiLoader {
             }
 
             HypixelCry.LUA_MANAGER.getScripts().values().forEach((script) -> {
-                script.getImguiLib().getQueue().executeAndClear();
+                script.getImgui().getQueue().executeAndClear();
                 script.onImGuiRenderEvent();
 
             });

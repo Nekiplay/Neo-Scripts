@@ -1,11 +1,11 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
-import org.luaj.vm2.*
-import org.luaj.vm2.lib.*
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-class ThreadLib : TwoArgFunction() {
+class ThreadLib(val L: Lua) {
 
     private val threads = ConcurrentHashMap<Int, ThreadInfo>()
     private val nextId = AtomicInteger(1)
@@ -15,122 +15,143 @@ class ThreadLib : TwoArgFunction() {
         val startTime: Long = System.currentTimeMillis()
     )
 
-    override fun call(modname: LuaValue, env: LuaValue): LuaValue {
-        val library = LuaTable()
-        library.set("startThread", StartThread())
-        library.set("joinThread", JoinThread())
-        library.set("isAlive", IsAlive())
-        library.set("interruptThread", InterruptThread())
-        library.set("stopThread", StopThread())
-        library.set("sleep", Sleep())
-        library.set("getThreadCount", GetThreadCount())
-        env.set("threads", library)
+    fun register() {
+        L.newTable() // Создаем таблицу threads
 
-        return library
+        L.push(JFunction { startThread(it) })
+        L.setField(-2, "startThread")
+
+        L.push(JFunction { joinThread(it) })
+        L.setField(-2, "joinThread")
+
+        L.push(JFunction { isAlive(it) })
+        L.setField(-2, "isAlive")
+
+        L.push(JFunction { interruptThread(it) })
+        L.setField(-2, "interruptThread")
+
+        L.push(JFunction { stopThread(it) })
+        L.setField(-2, "stopThread")
+
+        L.push(JFunction { sleep(it) })
+        L.setField(-2, "sleep")
+
+        L.push(JFunction { getThreadCount(it) })
+        L.setField(-2, "getThreadCount")
+
+        L.setGlobal("threads")
     }
 
-    inner class StartThread : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val luaFunc = args.arg(1)
-            if (!luaFunc.isfunction()) error("startThread expects a function as first argument")
-            val func = luaFunc.checkfunction()
-
-            val threadId = nextId.getAndIncrement()
-            val thread = Thread {
-                try {
-                    func.call()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                } finally {
-                    threads.remove(threadId)
-                }
-            }.apply {
-                isDaemon = true
-            }
-
-            threads[threadId] = ThreadInfo(thread)
-            thread.start()
-            return LuaValue.valueOf(threadId)
+    private fun startThread(l: Lua): Int {
+        if (!l.isFunction(1)) {
+            l.error("startThread expects a function as first argument")
+            return 0
         }
-    }
 
-    inner class JoinThread : OneArgFunction() {
-        override fun call(arg: LuaValue): LuaValue {
-            val threadId = arg.checkint()
-            val info = threads[threadId] ?: return LuaValue.NIL
+        // l.get() забирает значение с вершины стека (нашу функцию)
+        // и возвращает LuaValue, который можно вызвать позже
+        val func = l.get()
+
+        val threadId = nextId.getAndIncrement()
+        val thread = Thread {
             try {
-                info.thread.join()
-            } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
+                func.call() // Вызов Lua функции в новом потоке
+            } catch (e: Exception) {
+                e.printStackTrace()
             } finally {
-                // Всегда удаляем поток после join
                 threads.remove(threadId)
+                // Если ваша версия Luajava требует освобождения ресурсов LuaValue:
+                // func.close()
             }
-            return LuaValue.NIL
+        }.apply {
+            isDaemon = true
         }
+
+        threads[threadId] = ThreadInfo(thread)
+        thread.start()
+
+        l.push(threadId)
+        return 1
     }
 
-    inner class IsAlive : OneArgFunction() {
-        override fun call(arg: LuaValue): LuaValue {
-            val threadId = arg.checkint()
-            val info = threads[threadId] ?: return LuaValue.FALSE
-
-            // Проверяем жив ли поток
-            return if (info.thread.isAlive) {
-                LuaValue.TRUE
-            } else {
-                // Если поток не жив, удаляем его из списка
-                threads.remove(threadId)
-                LuaValue.FALSE
-            }
+    private fun joinThread(l: Lua): Int {
+        val threadId = l.toNumber(1).toInt()
+        val info = threads[threadId] ?: run {
+            l.pushNil()
+            return 1
         }
-    }
 
-    inner class InterruptThread : OneArgFunction() {
-        override fun call(arg: LuaValue): LuaValue {
-            val threadId = arg.checkint()
-            val info = threads[threadId] ?: return LuaValue.FALSE
-            info.thread.interrupt()
-            return LuaValue.TRUE
-        }
-    }
-
-    inner class StopThread : OneArgFunction() {
-        override fun call(arg: LuaValue): LuaValue {
-            val threadId = arg.checkint()
-            val info = threads[threadId] ?: return LuaValue.FALSE
-            
-            // Прерываем поток
-            info.thread.interrupt()
-            
-            // Удаляем поток из списка без ожидания завершения
+        try {
+            info.thread.join()
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+        } finally {
             threads.remove(threadId)
-            return LuaValue.TRUE
         }
+
+        l.pushNil()
+        return 1
     }
 
-    inner class Sleep : OneArgFunction() {
-        override fun call(arg: LuaValue): LuaValue {
-            val ms = arg.checklong()
+    private fun isAlive(l: Lua): Int {
+        val threadId = l.toNumber(1).toInt()
+        val info = threads[threadId] ?: run {
+            l.push(false)
+            return 1
+        }
+
+        if (info.thread.isAlive) {
+            l.push(true)
+        } else {
+            threads.remove(threadId)
+            l.push(false)
+        }
+        return 1
+    }
+
+    private fun interruptThread(l: Lua): Int {
+        val threadId = l.toNumber(1).toInt()
+        val info = threads[threadId] ?: run {
+            l.push(false)
+            return 1
+        }
+        info.thread.interrupt()
+        l.push(true)
+        return 1
+    }
+
+    private fun stopThread(l: Lua): Int {
+        val threadId = l.toNumber(1).toInt()
+        val info = threads[threadId] ?: run {
+            l.push(false)
+            return 1
+        }
+
+        info.thread.interrupt()
+        threads.remove(threadId)
+        l.push(true)
+        return 1
+    }
+
+    private fun sleep(l: Lua): Int {
+        if (l.isNumber(1)) {
+            val ms = l.toNumber(1).toLong()
             try {
                 Thread.sleep(ms)
-            } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt() // Восстанавливаем флаг прерывания
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
             }
-            return LuaValue.NIL
         }
+        return 0
     }
 
-    inner class GetThreadCount : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return LuaValue.valueOf(threads.size)
-        }
+    private fun getThreadCount(l: Lua): Int {
+        l.push(threads.size.toDouble())
+        return 1
     }
-
 
     fun stopAllThreads() {
         threads.values.forEach { it.thread.interrupt() }
-
         threads.clear()
     }
 }

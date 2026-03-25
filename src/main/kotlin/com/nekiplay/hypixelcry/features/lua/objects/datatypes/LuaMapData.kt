@@ -1,152 +1,132 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 
-import com.nekiplay.hypixelcry.features.lua.customArgs.FourArgFunction
-import com.nekiplay.hypixelcry.sugar.getFormattedString
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
 import net.minecraft.world.level.saveddata.maps.MapItemSavedData
-import org.luaj.vm2.LuaUserdata
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.ThreeArgFunction
-import org.luaj.vm2.lib.TwoArgFunction
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
+import party.iroiro.luajava.value.LuaValue
 import kotlin.jvm.optionals.getOrNull
 
-class LuaMapData(val mapData: MapItemSavedData) : LuaUserdata(mapData) {
+class LuaMapData(L: Lua, val mapData: MapItemSavedData) : SimpleLuaWrapper(L) {
 
-    override fun get(key: LuaValue): LuaValue {
-        return when (val field = key.tojstring()) {
-            "scale" -> valueOf(mapData.scale.toDouble())
-            "locked" -> valueOf(mapData.locked)
-            "tracking_position" -> valueOf(mapData.trackingPosition)
-            "unlimited_tracking" -> valueOf(mapData.unlimitedTracking)
-            "dimension" -> valueOf(mapData.dimension.identifier().toString())
-            "center_x" -> valueOf(mapData.centerX.toDouble())
-            "center_z" -> valueOf(mapData.centerZ.toDouble())
-            "is_exploration_map" -> valueOf(mapData.isExplorationMap)
-            "tracked_decoration_count" -> valueOf(mapData.trackedDecorationCount.toDouble())
-            "banners" -> getBanners()
-            "decorations" -> getDecorations()
-            "frame_markers" -> getFrameMarkers()
-            "color_data" -> getColorData()
-            "colors" -> getColorsArray()
-            "getColor" -> GetColor()
-            "updateColor" -> UpdateColor()
-            else -> super.get(key)
-        }
-    }
+    override fun getFieldValue(l: Lua, key: String): Any? {
+        return when (key) {
+            "scale" -> mapData.scale.toDouble()
+            "locked" -> mapData.locked
+            "tracking_position" -> mapData.trackingPosition
+            "unlimited_tracking" -> mapData.unlimitedTracking
+            "dimension" -> mapData.dimension.identifier().toString()
+            "center_x" -> mapData.centerX.toDouble()
+            "center_z" -> mapData.centerZ.toDouble()
+            "is_exploration_map" -> mapData.isExplorationMap
+            "tracked_decoration_count" -> mapData.trackedDecorationCount.toDouble()
 
-    private fun getBanners(): LuaValue {
-        val bannersTable = tableOf()
-        var index = 1
+            "banners" -> getBanners(l)
+            "decorations" -> getDecorations(l)
+            "frame_markers" -> getFrameMarkers(l)
+            "color_data" -> getColorData(l)
+            "colors" -> getColorsArray(l)
 
-        mapData.banners.forEach { banner ->
-            val bannerTable = tableOf()
-            bannerTable.set("id", banner.id)
-            bannerTable.set("name", banner.name?.getOrNull()?.getFormattedString() ?: "")
-            bannerTable.set("color", banner.color.getName())
-            bannerTable.set("x", banner.pos.x.toDouble())
-            bannerTable.set("z", banner.pos.z.toDouble())
-            bannerTable.set("y", banner.pos.y.toDouble())
-            bannersTable.set(index, bannerTable)
-            index++
-        }
-
-        return bannersTable
-    }
-
-    private fun getDecorations(): LuaValue {
-        val decorationsTable = tableOf()
-        var index = 1
-
-        mapData.decorations.forEach { decoration ->
-            val decorationTable = tableOf()
-            decorationTable.set("type", decoration.type().unwrapKey().get().identifier().toString())
-            decorationTable.set("x", decoration.x().toDouble())
-            decorationTable.set("y", decoration.y().toDouble())
-            decorationTable.set("rot", decoration.rot().toDouble())
-            decoration.name().ifPresent { name ->
-                decorationTable.set("name", name.string)
+            // Функции регистрируем как JFunction
+            "getColor" -> JFunction { stack ->
+                val x = stack.toInteger(1).toInt()
+                val y = stack.toInteger(2).toInt()
+                if (x in 0..127 && y in 0..127) {
+                    stack.push(mapData.colors[x + y * 128].toInt().toDouble())
+                    1
+                } else 0
             }
-            decorationsTable.set(index, decorationTable)
-            index++
+            "updateColor" -> JFunction { stack ->
+                val x = stack.toInteger(1).toInt()
+                val y = stack.toInteger(2).toInt()
+                val color = stack.toInteger(3).toByte()
+                stack.push(mapData.updateColor(x, y, color))
+                1
+            }
+            else -> null
         }
-
-        return decorationsTable
     }
 
-    private fun getFrameMarkers(): LuaValue {
-        val framesTable = tableOf()
+    private fun getBanners(l: Lua): LuaValue {
+        l.newTable()
         var index = 1
+        mapData.banners.forEach { banner ->
+            l.newTable()
+            l.push(banner.id); l.setField(-2, "id")
+            // В новых версиях MC работа с компонентами текста может отличаться
+            l.push(banner.name?.getOrNull()?.string ?: ""); l.setField(-2, "name")
+            l.push(banner.color.getName()); l.setField(-2, "color")
+            l.push(banner.pos.x.toDouble()); l.setField(-2, "x")
+            l.push(banner.pos.y.toDouble()); l.setField(-2, "y")
+            l.push(banner.pos.z.toDouble()); l.setField(-2, "z")
 
-        mapData.frameMarkers.forEach { (key, frame) ->
-            val frameTable = tableOf()
-            frameTable.set("id", frame.id)
-            frameTable.set("entity_id", frame.entityId.toDouble())
-            frameTable.set("x", frame.pos.x.toDouble())
-            frameTable.set("z", frame.pos.z.toDouble())
-            frameTable.set("y", frame.pos.y.toDouble())
-            frameTable.set("rotation", frame.rotation.toDouble())
-            framesTable.set(index, frameTable)
-            index++
+            l.rawSetI(-2, index++)
         }
-
-        return framesTable
+        return l.get()
     }
 
-    private fun getColorData(): LuaValue {
-        val colorsTable = tableOf()
+    private fun getDecorations(l: Lua): LuaValue {
+        l.newTable()
+        var index = 1
+        mapData.decorations.forEach { decoration ->
+            l.newTable()
+            l.push(decoration.type().unwrapKey().get().identifier().toString()); l.setField(-2, "type")
+            l.push(decoration.x().toDouble()); l.setField(-2, "x")
+            l.push(decoration.y().toDouble()); l.setField(-2, "y")
+            l.push(decoration.rot().toDouble()); l.setField(-2, "rot")
+            decoration.name().ifPresent { name ->
+                l.push(name.string); l.setField(-2, "name")
+            }
 
+            l.rawSetI(-2, index++)
+        }
+        return l.get()
+    }
+
+    private fun getFrameMarkers(l: Lua): LuaValue {
+        l.newTable()
+        var index = 1
+        mapData.frameMarkers.forEach { (_, frame) ->
+            l.newTable()
+            l.push(frame.id); l.setField(-2, "id")
+            l.push(frame.entityId.toDouble()); l.setField(-2, "entity_id")
+            l.push(frame.pos.x.toDouble()); l.setField(-2, "x")
+            l.push(frame.pos.y.toDouble()); l.setField(-2, "y")
+            l.push(frame.pos.z.toDouble()); l.setField(-2, "z")
+            l.push(frame.rotation.toDouble()); l.setField(-2, "rotation")
+
+            l.rawSetI(-2, index++)
+        }
+        return l.get()
+    }
+
+    private fun getColorData(l: Lua): LuaValue {
+        l.newTable() // Главная таблица [128][128]
         for (x in 0..127) {
-            val rowTable = tableOf()
+            l.newTable() // Таблица ряда
             for (z in 0..127) {
                 val color = mapData.colors[x + z * 128]
                 if (color != 0.toByte()) {
-                    val colorTable = tableOf()
-                    colorTable.set("value", color.toDouble())
-                    rowTable.set(z + 1, colorTable)
+                    l.newTable()
+                    l.push(color.toDouble()); l.setField(-2, "value")
+                    l.rawSetI(-2, z + 1)
                 } else {
-                    rowTable.set(z + 1, LuaValue.NIL)
+                    l.pushNil()
+                    l.rawSetI(-2, z + 1)
                 }
             }
-            colorsTable.set(x + 1, rowTable)
+            l.rawSetI(-2, x + 1)
         }
-
-        return colorsTable
+        return l.get()
     }
 
-    private fun getColorsArray(): LuaValue {
-        val colorsArray = tableOf()
-
+    private fun getColorsArray(l: Lua): LuaValue {
+        l.newTable()
         for (i in mapData.colors.indices) {
-            colorsArray.set(i + 1, valueOf(mapData.colors[i].toDouble()))
+            l.push(mapData.colors[i].toDouble())
+            l.rawSetI(-2, i + 1)
         }
-
-        return colorsArray
-    }
-
-    private inner class GetColor : TwoArgFunction() {
-        override fun call(
-            arg1: LuaValue?,
-            arg2: LuaValue?
-        ): LuaValue {
-            if (arg1?.isnumber() == true && arg2?.isnumber() == true) {
-                return valueOf(mapData.colors[arg1.toint() + arg2.toint() * 128].toInt())
-            }
-            return NIL
-        }
-
-    }
-
-    private inner class UpdateColor : ThreeArgFunction() {
-        override fun call(
-            arg1: LuaValue?,
-            arg2: LuaValue?,
-            arg3: LuaValue?
-        ): LuaValue {
-            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
-                return valueOf(mapData.updateColor(arg1.toint(), arg2.toint(), arg3.tobyte()))
-            }
-            return NIL
-        }
-
+        return l.get()
     }
 
     override fun toString(): String {

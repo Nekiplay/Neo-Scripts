@@ -1,39 +1,38 @@
 package com.nekiplay.hypixelcry.features.lua.objects.modules
 
 import com.nekiplay.hypixelcry.HypixelCry.LUA_MANAGER
-import com.nekiplay.hypixelcry.pathfinder.utils.mc
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.ZeroArgFunction
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
 
-class ModulesObject: LuaValue() {
-    override fun call(): LuaValue {
-        return this
+class ModulesLib(val L: Lua) {
+
+    fun register() {
+        L.newTable() // Создаем таблицу 'modules'
+
+        // Регистрируем функцию getLoadedScripts
+        L.push(JFunction { getLoadedScripts(it) })
+        L.setField(-2, "getLoadedScripts")
+
+        // Регистрируем объект pathFinder
+        // Мы используем .push(), так как PathFinderRendererObject — это SimpleLuaWrapper
+        val pathFinder = PathFinderRendererObject(L)
+        pathFinder.push()
+        L.setField(-2, "pathFinder")
+
+        // Делаем таблицу глобальной
+        L.setGlobal("modules")
     }
 
-    override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            "getLoadedScripts" -> GetLoadedScriptsFunction()
-            "pathFinder" -> PathFinderRendererObject()
-            else -> NIL
-        } as LuaValue
-    }
+    private fun getLoadedScripts(l: Lua): Int {
+        val scripts = LUA_MANAGER.getLoadedScripts()
 
-    private inner class GetLoadedScriptsFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            val table = tableOf()
-            var index = 1
-            for (script in LUA_MANAGER.getLoadedScripts()) {
-                table.set(index, script.scriptName)
-                index++
-            }
-            return table
+        l.newTable() // Создаем таблицу-результат
+        scripts.forEachIndexed { index, script ->
+            l.push(script.scriptName)
+            // В Lua массивы начинаются с 1, используем index + 1
+            l.rawSetI(-2, index + 1)
         }
-    }
 
-    override fun typename(): String = "modules"
-    override fun tojstring(): String = "ModulesObject"
-    override fun isnil(): Boolean = false
-    override fun type(): Int {
-        return TUSERDATA
+        return 1
     }
 }

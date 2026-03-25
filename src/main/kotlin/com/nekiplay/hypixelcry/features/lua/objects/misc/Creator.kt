@@ -3,57 +3,70 @@ package com.nekiplay.hypixelcry.features.lua.objects.misc
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.SimpleLuaWrapper
 import com.nekiplay.hypixelcry.utils.itemlist.ItemRepository
 import net.minecraft.core.Direction
 import net.minecraft.world.phys.AABB
-import org.luaj.vm2.LuaTable
-import org.luaj.vm2.LuaValue
-import org.luaj.vm2.Varargs
-import org.luaj.vm2.lib.TwoArgFunction
-import org.luaj.vm2.lib.VarArgFunction
+import party.iroiro.luajava.JFunction
+import party.iroiro.luajava.Lua
 
-class Creator : TwoArgFunction() {
-    override fun call(modname: LuaValue, env: LuaValue): LuaValue {
-        val library = LuaTable()
-        library.set("createAABB", CreateBox())
-        library.set("createBox", CreateBox())
-        library.set("createDirection", CreateDirection())
-        library.set("createItemStackFromId", CreateStackFromID())
-        env.set("creator", library)
-        return library
+class Creator(val L: Lua) {
+    fun register() {
+        L.newTable()
+        val tIdx = L.getTop()
+        L.push("createItemStackFromId"); L.push(JFunction { createStackFromId(it) }); L.setTable(tIdx)
+        L.push("createBox"); L.push(JFunction { createBox(it) }); L.setTable(tIdx)
+        L.push("createAABB"); L.push(JFunction { createBox(it) }); L.setTable(tIdx)
+        L.push("createDirection"); L.push(JFunction { createDirection(it) }); L.setTable(tIdx)
+        L.setGlobal("creator")
     }
 
-    inner class CreateDirection : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            if (args.arg(1).isstring()) {
-                return LuaDirection(Direction.valueOf(args.arg1().tojstring().uppercase()))
-            }
-            return NIL
+    private fun createBox(l: Lua): Int {
+        if (l.isNumber(1) && l.isNumber(2) && l.isNumber(3) &&
+            l.isNumber(4) && l.isNumber(5) && l.isNumber(6)) {
+
+            val box = AABB(
+                l.toNumber(1), l.toNumber(2), l.toNumber(3),
+                l.toNumber(4), l.toNumber(5), l.toNumber(6)
+            )
+
+            // Оборачиваем в ваш LuaBox
+            LuaBox(l, box).push()
+        } else {
+            l.pushNil()
         }
+        return 1
     }
 
-    inner class CreateBox : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            if (args.arg(1).isnumber() && args.arg(2).isnumber() && args.arg(3).isnumber() && args.arg(4).isnumber() && args.arg(5).isnumber() && args.arg(6).isnumber()) {
-                return LuaBox(AABB(args.arg(1).todouble(), args.arg(2).todouble(), args.arg(3).todouble(), args.arg(4).todouble(), args.arg(5).todouble(), args.arg(6).todouble()))
-            }
-            return NIL
+    private fun createDirection(l: Lua): Int {
+        if (l.isString(1)) {
+            val dirStr = l.toString(1)?.uppercase()
+            try {
+                if (dirStr != null) {
+                    val dir = Direction.valueOf(dirStr)
+                    LuaDirection(l, dir).push()
+                    return 1
+                }
+            } catch (e: Exception) {}
         }
+        l.pushNil()
+        return 1
     }
 
-    inner class CreateStackFromID : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            if (!args.arg(1).isstring()) {
-                error("create item expects a string as 1st argument (item neu id)")
-            }
-            val idString = args.arg(1).checkjstring()
-
-            val stack = ItemRepository.getItemStack(idString)
-            return if (stack != null) {
-                LuaItemStack(stack)
-            } else {
-                NIL
-            }
+    private fun createStackFromId(l: Lua): Int {
+        if (!l.isString(1)) {
+            l.pushNil()
+            return 1
         }
+
+        val idString = l.toString(1) ?: ""
+        val stack = ItemRepository.getItemStack(idString)
+
+        if (stack != null) {
+            LuaItemStack(l, stack).push()
+        } else {
+            l.pushNil()
+        }
+        return 1
     }
 }

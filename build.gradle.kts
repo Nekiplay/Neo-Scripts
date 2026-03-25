@@ -55,9 +55,28 @@ dependencies {
     minecraft("com.mojang:minecraft:${property("minecraft_version")}")
     mappings(loom.officialMojangMappings())
 
-    implementation("org.luaj:luaj-jse:3.0.1")
-    include("org.luaj:luaj-jse:3.0.1")
-    shadowModImpl("org.luaj:luaj-jse:3.0.1")
+    val luajava_version = "4.1.0"
+    val jnigen_version = "3.1.1"
+
+    // 1. Luajava Core
+    implementation("party.iroiro.luajava:luajava:$luajava_version")
+    include("party.iroiro.luajava:luajava:$luajava_version")
+
+    // 2. Lua 5.5 Implementation
+    implementation("party.iroiro.luajava:luajit:$luajava_version")
+    include("party.iroiro.luajava:luajit:$luajava_version")
+
+    // 3. The Natives
+    val jitNatives = "party.iroiro.luajava:luajit-platform:$luajava_version:natives-desktop"
+    implementation(jitNatives)
+    include(jitNatives)
+
+    // 4. The Native Loader
+    implementation("com.badlogicgames.jnigen:jnigen-loader:$jnigen_version")
+    include("com.badlogicgames.jnigen:jnigen-loader:$jnigen_version")
+
+    implementation("com.badlogicgames.jnigen:jnigen-commons:$jnigen_version")
+    include("com.badlogicgames.jnigen:jnigen-commons:$jnigen_version")
 
     modImplementation("net.fabricmc:fabric-loader:${property("loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_version")}")
