@@ -52,7 +52,6 @@ class ThreadLib(val L: Lua) {
         L.setField(-2, "getThreadCount")
 
         L.setGlobal("threads")
-        println("ThreadLib.register: threads global set, isNil=${L.isNil(L.getGlobal("threads"))}")
         return 0
     }
 
