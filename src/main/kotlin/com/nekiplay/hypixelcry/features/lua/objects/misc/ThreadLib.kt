@@ -58,13 +58,11 @@ class ThreadLib(val L: Lua) {
                 data = if (l.isTable(2)) luaTableToMap(l, 2) else null
             }
             l.isFunction(1) -> {
-                println("DEBUG: isFunction detected")
                 l.pushValue(1)
-                l.pushString("dump")
+                l.push(-1)
                 l.call(1, 1)
                 script = l.toString(-1)
                 l.pop(1)
-                println("DEBUG: script = $script")
                 if (script == null) {
                     l.pushNil()
                     return 1
@@ -72,7 +70,6 @@ class ThreadLib(val L: Lua) {
                 data = if (l.isTable(2)) luaTableToMap(l, 2) else null
             }
             else -> {
-                println("DEBUG: neither string nor function")
                 l.pushNil()
                 return 1
             }
