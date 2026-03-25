@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua
 
+import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
 import com.nekiplay.hypixelcry.features.lua.objects.misc.Creator
 import com.nekiplay.hypixelcry.features.lua.objects.misc.DJLLib
@@ -14,6 +15,7 @@ import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
 import com.nekiplay.hypixelcry.features.lua.objects.world.WorldObject
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import party.iroiro.luajava.ExternalLoader
+import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 import java.io.File
 import java.nio.ByteBuffer
@@ -82,6 +84,29 @@ class LuaLibsRegister {
                 return null
             }
         })
+
+        lua.push(JFunction { l ->
+            val n = l.getTop() // Получаем количество переданных аргументов
+            val message = StringBuilder()
+
+            for (i in 1..n) {
+                if (i > 1) message.append("\t") // В стандартном Lua print использует табуляцию
+
+                // l.toString(i) преобразует значение в строку (аналог tojstring)
+                // Если значение nil или его нельзя превратить в строку, вернется null
+                val str = l.toString(i) ?: "nil"
+                message.append(str)
+            }
+
+            val finalMessage = message.toString()
+
+            // Вывод в лог Minecraft
+            HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}$finalMessage")
+
+            // print в Lua обычно ничего не возвращает
+            0
+        })
+        lua.setGlobal("print")
 
         WorldObject(lua).register()
         PlayerObject(lua).register()

@@ -785,31 +785,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
         L.push(scriptName)
         L.setGlobal("currentScriptName")
-
-
-        // Register print function
-        L.push(JFunction { l ->
-            val n = l.getTop() // Получаем количество переданных аргументов
-            val message = StringBuilder()
-
-            for (i in 1..n) {
-                if (i > 1) message.append("\t") // В стандартном Lua print использует табуляцию
-
-                // l.toString(i) преобразует значение в строку (аналог tojstring)
-                // Если значение nil или его нельзя превратить в строку, вернется null
-                val str = l.toString(i) ?: "nil"
-                message.append(str)
-            }
-
-            val finalMessage = message.toString()
-
-            // Вывод в лог Minecraft
-            HypixelCry.LOGGER.info("${HypixelCry.LOG_PREFIX}$finalMessage")
-
-            // print в Lua обычно ничего не возвращает
-            0
-        })
-        L.setGlobal("print")
     }
 
     fun addCommandCallback(commandName: String, callback: LuaValue, suggestionsCallback: LuaValue?): Boolean {
