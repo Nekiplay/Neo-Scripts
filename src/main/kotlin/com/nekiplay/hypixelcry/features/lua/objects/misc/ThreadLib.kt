@@ -82,21 +82,9 @@ class ThreadLib(val L: Lua) {
             }
         }
 
-        if (script != null) {
-            val threadId = nextId.getAndIncrement()
-            val thread = Thread {
-                val register =  LuaLibsRegister()
-                val newL = LuaJit() // Ваша функция инициализации нового стейта
-                try {
-                    if (data != null) {
-                        // Используем ваш smartPush для загрузки данных в новый поток
-                        newL.smartPush(data)
-                        newL.setGlobal("args") // Таблица будет доступна как глобальная переменная args
-                    }
-
-                    register.register(newL)
         val threadId = nextId.getAndIncrement()
         val thread = Thread {
+            val register = LuaLibsRegister()
             val newL = LuaJit()
             try {
                 if (data != null) {
@@ -104,6 +92,7 @@ class ThreadLib(val L: Lua) {
                     newL.setGlobal("args")
                 }
 
+                register.register(newL)
                 script?.let {
                     try {
                         newL.load(it)
@@ -111,18 +100,19 @@ class ThreadLib(val L: Lua) {
                     } catch (e: Exception) {
                         println("Lua Load Error: " + e)
                     }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                } finally {
-                    register.close()
-                    newL.close()
-                    threads.remove(threadId)
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                register.close()
+                newL.close()
+                threads.remove(threadId)
             }
+        }
 
-            thread.isDaemon = true
-            threads[threadId] = ThreadInfo(thread)
-            thread.start()
+        thread.isDaemon = true
+        threads[threadId] = ThreadInfo(thread)
+        thread.start()
 
         l.push(threadId)
         return 1
