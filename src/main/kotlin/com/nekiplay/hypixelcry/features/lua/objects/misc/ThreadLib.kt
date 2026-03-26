@@ -80,11 +80,13 @@ class ThreadLib(val L: Lua) {
                     newL.setGlobal("args")
                 }
 
-                try {
-                    newL.load(script)
-                    newL.pCall(0, 0)
-                } catch (e: Exception) {
-                    println("Lua Load Error: " + e)
+                script?.let {
+                    try {
+                        newL.load(it)
+                        newL.pCall(0, 0)
+                    } catch (e: Exception) {
+                        println("Lua Load Error: " + e)
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
