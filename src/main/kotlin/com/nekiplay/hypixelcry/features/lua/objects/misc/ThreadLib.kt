@@ -5,7 +5,7 @@ import org.luaj.vm2.lib.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-class ThreadLib : TwoArgFunction() {
+class ThreadLib : LuaValue() {
 
     private val threads = ConcurrentHashMap<Int, ThreadInfo>()
     private val nextId = AtomicInteger(1)
@@ -15,18 +15,28 @@ class ThreadLib : TwoArgFunction() {
         val startTime: Long = System.currentTimeMillis()
     )
 
-    override fun call(modname: LuaValue, env: LuaValue): LuaValue {
-        val library = LuaTable()
-        library.set("startThread", StartThread())
-        library.set("joinThread", JoinThread())
-        library.set("isAlive", IsAlive())
-        library.set("interruptThread", InterruptThread())
-        library.set("stopThread", StopThread())
-        library.set("sleep", Sleep())
-        library.set("getThreadCount", GetThreadCount())
-        env.set("threads", library)
+    override fun call(): LuaValue {
+        return this
+    }
 
-        return library
+    override fun typename(): String = "threads"
+    override fun tojstring(): String = "ThreadsObject"
+    override fun isnil(): Boolean = false
+    override fun type(): Int {
+        return TUSERDATA
+    }
+
+    override fun get(key: LuaValue): LuaValue {
+        return when (key.tojstring()) {
+            "startThread" -> StartThread()
+            "joinThread" -> JoinThread()
+            "isAlive" -> IsAlive()
+            "interruptThread" -> InterruptThread()
+            "stopThread" -> StopThread()
+            "sleep" -> Sleep()
+            "getThreadCount" -> GetThreadCount()
+            else -> super.get(key)
+        }
     }
 
     inner class StartThread : VarArgFunction() {

@@ -27,8 +27,8 @@ class FFILib : LuaValue() {
         return this
     }
 
-    override fun typename(): String = "creator"
-    override fun tojstring(): String = "CreatorObject"
+    override fun typename(): String = "ffi"
+    override fun tojstring(): String = "FFIObject"
     override fun isnil(): Boolean = false
     override fun type(): Int {
         return TUSERDATA

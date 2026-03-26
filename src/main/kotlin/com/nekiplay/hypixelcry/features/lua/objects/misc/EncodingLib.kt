@@ -31,8 +31,8 @@ class EncodingLib : LuaValue() {
         return this
     }
 
-    override fun typename(): String = "creator"
-    override fun tojstring(): String = "CreatorObject"
+    override fun typename(): String = "encoding"
+    override fun tojstring(): String = "EncodingObject"
     override fun isnil(): Boolean = false
     override fun type(): Int {
         return TUSERDATA

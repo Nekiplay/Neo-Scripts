@@ -21,8 +21,8 @@ import java.util.function.Function
 class HttpClientLib : LuaValue() {
     private val asyncExecutor: ExecutorService = Executors.newCachedThreadPool()
 
-    override fun typename(): String = "catboost"
-    override fun tojstring(): String = "CatBoostObject"
+    override fun typename(): String = "http"
+    override fun tojstring(): String = "HttpObject"
     override fun isnil(): Boolean = false
     override fun type(): Int {
         return TUSERDATA
