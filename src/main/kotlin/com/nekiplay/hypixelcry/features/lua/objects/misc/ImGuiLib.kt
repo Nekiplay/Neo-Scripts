@@ -280,7 +280,7 @@ class ImGuiLib : TwoArgFunction() {
         dl.set("renderText", RenderDLTextFunction())
         library.set("dl", dl)
 
-        env.set("imgui", library)
+        //env.set("imgui", library)
         return library
     }
 

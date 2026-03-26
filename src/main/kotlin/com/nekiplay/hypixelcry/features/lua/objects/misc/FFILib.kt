@@ -90,7 +90,7 @@ class FFILib : TwoArgFunction() {
             }
         })
 
-        env.set("ffi", ffi)
+        //env.set("ffi", ffi)
         return ffi
     }
 

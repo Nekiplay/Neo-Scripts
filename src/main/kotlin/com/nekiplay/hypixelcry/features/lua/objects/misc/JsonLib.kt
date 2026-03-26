@@ -8,15 +8,22 @@ import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.VarArgFunction
 
-class JsonLib : TwoArgFunction() {
-    override fun call(modname: LuaValue, env: LuaValue): LuaValue {
-        val library = LuaValue.tableOf().apply {
-            set("parse", SimpleParseFunction())
-            set("stringify", StringifyFunction())
-        }
-        env.set("json", library)
-        return library
+class JsonLib : LuaValue() {
+    override fun typename(): String = "json"
+    override fun tojstring(): String = "JsonObject"
+    override fun isnil(): Boolean = false
+    override fun type(): Int {
+        return TUSERDATA
     }
+
+    override fun get(key: LuaValue): LuaValue {
+        return when (key.tojstring()) {
+            "parse", "totable" -> SimpleParseFunction()
+            "stringify", "tojson" -> StringifyFunction()
+            else -> super.get(key)
+        }
+    }
+
 
     inner class SimpleParseFunction : OneArgFunction() {
         override fun call(jsonString: LuaValue): LuaValue {

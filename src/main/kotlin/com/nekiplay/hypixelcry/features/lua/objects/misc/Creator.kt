@@ -19,7 +19,7 @@ class Creator : TwoArgFunction() {
         library.set("createBox", CreateBox())
         library.set("createDirection", CreateDirection())
         library.set("createItemStackFromId", CreateStackFromID())
-        env.set("creator", library)
+        //env.set("creator", library)
         return library
     }
 

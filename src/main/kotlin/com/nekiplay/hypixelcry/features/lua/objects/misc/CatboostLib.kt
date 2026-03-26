@@ -11,7 +11,7 @@ class CatboostLib : TwoArgFunction() {
     override fun call(modname: LuaValue, env: LuaValue): LuaValue {
         val library = LuaTable()
         library.set("loadModel", LoadModel())
-        env.set("catboost", library)
+        //env.set("catboost", library)
         return library
     }
 

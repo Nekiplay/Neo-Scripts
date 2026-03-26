@@ -58,7 +58,7 @@ class DJLLuaTrainer : TwoArgFunction() {
         djl["close"] = CloseFunction()
         djl["get_model_info"] = GetModelInfoFunction()
 
-        env?.set("djl", djl)
+        //env?.set("djl", djl)
         return djl
     }
 

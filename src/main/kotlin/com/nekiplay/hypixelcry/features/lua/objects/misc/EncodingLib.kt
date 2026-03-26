@@ -39,7 +39,7 @@ class EncodingLib : TwoArgFunction() {
         library.set("hexDecode", HexDecode())
         library.set("base64Encode", Base64Encode())
         library.set("base64Decode", Base64Decode())
-        env.set("encoding", library)
+        //env.set("encoding", library)
 
         return library
     }

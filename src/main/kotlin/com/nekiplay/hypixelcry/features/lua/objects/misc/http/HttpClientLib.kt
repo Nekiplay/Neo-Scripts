@@ -40,7 +40,7 @@ class HttpClientLib : TwoArgFunction() {
         http.set("post_async_callback", postAsyncCallbackFunction())
         http.set("post_async_with_headers_callback", postAsyncWithHeadersCallbackFunction())
 
-        env.set("http", http)
+        //env.set("http", http)
         return http
     }
 
