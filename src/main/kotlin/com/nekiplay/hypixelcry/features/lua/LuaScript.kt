@@ -98,7 +98,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     // Script-specific libraries
     private var tcpLib: TCPLib? = null
     private var threadLib: ThreadLib? = null
-    private var imguiLib: ImGuiLib? = null
+    var imguiLib: ImGuiLib? = null
     private var djlLibrary: DJLLuaTrainer? = null
     private var ffi: FFILib? = null
 
