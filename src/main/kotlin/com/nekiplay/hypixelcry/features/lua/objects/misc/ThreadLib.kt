@@ -94,9 +94,7 @@ class ThreadLib(val L: Lua) {
                         newL.setGlobal("args") // Таблица будет доступна как глобальная переменная args
                     }
 
-
                     register.register(newL)
-
                     // Выполняем скрипт
                     try {
                         newL.load(script)
@@ -117,7 +115,15 @@ class ThreadLib(val L: Lua) {
             threads[threadId] = ThreadInfo(thread)
             thread.start()
 
-            l.push(threadId.toDouble()) // Возвращаем ID потока
+            l.push(threadId) /
+                    newL.close()
+                }
+            }
+    
+            thread.isDaemon = true
+            thread.start()
+    
+            l.push(true) // Возвращаем в Lua успех запуска
         }
         return 1
     }
