@@ -23,10 +23,6 @@ import java.util.concurrent.atomic.AtomicInteger
 class ImGuiLib : TwoArgFunction() {
     public val queue: ImDrawCommandQueue = ImDrawCommandQueue()
 
-    override fun call(): LuaValue {
-        return this
-    }
-
     override fun typename(): String = "imgui"
     override fun tojstring(): String = "ImGuiObject"
     override fun isnil(): Boolean = false
