@@ -10,13 +10,21 @@ import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
+import com.nekiplay.hypixelcry.features.lua.objects.misc.CatboostLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.Creator
 import com.nekiplay.hypixelcry.features.lua.objects.misc.DJLLuaTrainer
+import com.nekiplay.hypixelcry.features.lua.objects.misc.EncodingLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.FFILib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ImGuiLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.JsonLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.TCPLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ThreadLib
+import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
+import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesObject
+import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
+import com.nekiplay.hypixelcry.features.lua.objects.world.WorldObject
 import com.nekiplay.hypixelcry.utils.Location
 import com.nekiplay.hypixelcry.utils.misc.input.KeyAction
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
@@ -50,6 +58,7 @@ import java.util.concurrent.ConcurrentHashMap
 class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     // Локальный стек загрузки для этого конкретного экземпляра скрипта
     private val loadingStack = java.util.Stack<String>()
+    private val systemModuleCache = ConcurrentHashMap<String, LuaValue>()
     // Локальный граф зависимостей для этого конкретного экземпляра скрипта
     // Ключ: имя файла, Значение: список имен, которые этот файл запросил через require
     val localDependencyGraph = ConcurrentHashMap<String, MutableSet<String>>()
@@ -87,11 +96,11 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val callbacksLock = Any()
 
     // Script-specific libraries
-    private val tcpLib = TCPLib()
-    private val threadLib = ThreadLib()
-    val imguiLib = ImGuiLib()
-    private val djlLibrary = DJLLuaTrainer()
-    private val ffi = FFILib()
+    private var tcpLib: TCPLib? = null
+    private var threadLib: ThreadLib? = null
+    private var imguiLib: ImGuiLib? = null
+    private var djlLibrary: DJLLuaTrainer? = null
+    private var ffi: FFILib? = null
 
     // Dependency tracking for nested requires
     private val dependencies = ConcurrentHashMap<String, MutableList<String>>()
@@ -104,15 +113,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         scriptGlobals.load(LuajavaLib())
 
         registerCustomFunctions()
-
-        // Load libraries into script-specific globals
-        scriptGlobals.load(threadLib)
-        scriptGlobals.load(tcpLib)
-        scriptGlobals.load(imguiLib)
-        scriptGlobals.load(ffi)
-
-        // Register global objects
-        registerGlobalObjects()
     }
 
     private fun registerCustomFunctions() {
@@ -537,25 +537,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 return LuaValue.valueOf(addScriptUnloadCallback(callback))
             }
         })
-
-        djlLibrary.call(
-            org.luaj.vm2.LuaValue.valueOf("djl"), // имя модуля
-            scriptGlobals                                        // окружение, куда регистрировать
-        )
-    }
-
-    private fun registerGlobalObjects() {
-        // Register global objects
-        scriptGlobals.set("player", luaManager.playerObj)
-        scriptGlobals.set("world", luaManager.worldObj)
-        scriptGlobals.set("modules", luaManager.modulesObj)
-        scriptGlobals.set("ComponentBuilder", LuaComponentBuilder.createLibrary())
-
-        scriptGlobals.load(luaManager.jsonLib)
-        scriptGlobals.load(luaManager.httpLib)
-        scriptGlobals.load(luaManager.catboostLib)
-        scriptGlobals.load(luaManager.creatorLib)
-        scriptGlobals.load(luaManager.encodingLib)
     }
 
     // Methods for adding callbacks
@@ -1121,7 +1102,59 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         return allow
     }
 
+    private fun getSystemModule(name: String): LuaValue? {
+        systemModuleCache[name]?.let { return it }
+
+        val module: LuaValue = when (name) {
+            "player" -> PlayerObject()
+            "world" -> WorldObject()
+            "modules" -> ModulesObject()
+
+            "imgui" -> {
+                if (imguiLib == null) imguiLib = ImGuiLib()
+                imguiLib!!
+            }
+            "tcp" -> {
+                if (tcpLib == null) tcpLib = TCPLib()
+                tcpLib!!
+            }
+            "threads" -> {
+                if (threadLib == null) threadLib = ThreadLib()
+                threadLib!!
+            }
+            "ffi" -> {
+                if (ffi == null) ffi = FFILib()
+                ffi!!
+            }
+            "djl", "ai" -> {
+                if (djlLibrary == null) djlLibrary = DJLLuaTrainer()
+                // DJL требует вызова call для регистрации функций в таблице
+                djlLibrary!!.call(LuaValue.valueOf("djl"), scriptGlobals)
+                scriptGlobals.get("djl")
+            }
+            "json" -> {
+                JsonLib()
+            }
+            "http" -> {
+                HttpClientLib()
+            }
+            "encoding" -> {
+                EncodingLib()
+            }
+
+            else -> return null
+        }
+
+        systemModuleCache[name] = module
+        return module
+    }
+
     fun requireModule(moduleName: String): LuaValue {
+        val systemModule = getSystemModule(moduleName)
+        if (systemModule != null) {
+            return systemModule
+        }
+
         val moduleFile = LuaManager.findModuleFile(moduleName)
             ?: throw LuaError("module '$moduleName' not found")
 
@@ -1179,8 +1212,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         }
 
         // Очищаем библиотеки
-        threadLib.stopAllThreads()
-        tcpLib.cleanup()
+        threadLib?.stopAllThreads()
+        tcpLib?.cleanup()
 
         for (command in commandCallbacks.keys) {
             val dispatcher = commandDispatchers[command]
@@ -1211,15 +1244,15 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             commandCallbacks.clear()
             commandSuggestionsCallbacks.clear()
         }
-        imguiLib.queue.clear()
-        djlLibrary.models.clear()
-        djlLibrary.predictors.clear()
-        djlLibrary.inputShapes.clear()
-        djlLibrary.modelModes.clear()
-        ffi.loadedLibraries.forEach { lib ->
+        imguiLib?.queue?.clear()
+        djlLibrary?.models?.clear()
+        djlLibrary?.predictors?.clear()
+        djlLibrary?.inputShapes?.clear()
+        djlLibrary?.modelModes?.clear()
+        ffi?.loadedLibraries?.forEach { lib ->
             lib.value.dispose()
         }
-        ffi.loadedLibraries.clear()
+        ffi?.loadedLibraries?.clear()
 
         commandDispatchers.clear()
 
