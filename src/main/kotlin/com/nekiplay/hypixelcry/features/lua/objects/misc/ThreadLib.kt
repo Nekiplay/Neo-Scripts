@@ -95,9 +95,18 @@ class ThreadLib(val L: Lua) {
                     }
 
                     register.register(newL)
-                    // Выполняем скрипт
+        val threadId = nextId.getAndIncrement()
+        val thread = Thread {
+            val newL = LuaJit()
+            try {
+                if (data != null) {
+                    newL.smartPush(data)
+                    newL.setGlobal("args")
+                }
+
+                script?.let {
                     try {
-                        newL.load(script)
+                        newL.load(it)
                         newL.pCall(0, 0)
                     } catch (e: Exception) {
                         println("Lua Load Error: " + e)
@@ -115,16 +124,7 @@ class ThreadLib(val L: Lua) {
             threads[threadId] = ThreadInfo(thread)
             thread.start()
 
-            l.push(threadId) /
-                    newL.close()
-                }
-            }
-    
-            thread.isDaemon = true
-            thread.start()
-    
-            l.push(true) // Возвращаем в Lua успех запуска
-        }
+        l.push(threadId)
         return 1
     }
 
