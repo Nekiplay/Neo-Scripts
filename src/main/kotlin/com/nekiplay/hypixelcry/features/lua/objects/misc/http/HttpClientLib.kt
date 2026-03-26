@@ -18,30 +18,37 @@ import java.util.function.Consumer
 import java.util.function.Function
 
 
-class HttpClientLib : TwoArgFunction() {
+class HttpClientLib : LuaValue() {
     private val asyncExecutor: ExecutorService = Executors.newCachedThreadPool()
 
-    override fun call(modname: LuaValue?, env: LuaValue): LuaValue {
-        val http: LuaValue = tableOf()
+    override fun typename(): String = "catboost"
+    override fun tojstring(): String = "CatBoostObject"
+    override fun isnil(): Boolean = false
+    override fun type(): Int {
+        return TUSERDATA
+    }
 
-        // GET функции
-        http.set("get", this.function)
-        http.set("get_with_headers", this.withHeadersFunction)
-        http.set("get_async", this.asyncFunction)
-        http.set("get_async_with_headers", this.asyncWithHeadersFunction)
-        http.set("get_async_callback", this.asyncCallbackFunction)
-        http.set("get_async_with_headers_callback", this.asyncWithHeadersCallbackFunction)
+    override fun call(): LuaValue {
+        return this
+    }
 
-        // POST функции
-        http.set("post", postFunction())
-        http.set("post_with_headers", postWithHeadersFunction())
-        http.set("post_async", postAsyncFunction())
-        http.set("post_async_with_headers", postAsyncWithHeadersFunction())
-        http.set("post_async_callback", postAsyncCallbackFunction())
-        http.set("post_async_with_headers_callback", postAsyncWithHeadersCallbackFunction())
+    override fun get(key: LuaValue): LuaValue {
+        return when (key.tojstring()) {
+            "get" -> this.function
+            "get_with_headers" -> this.withHeadersFunction
+            "get_async" -> this.asyncFunction
+            "get_async_with_headers" -> this.asyncWithHeadersFunction
+            "get_async_callback" -> this.asyncCallbackFunction
+            "get_async_with_headers_callback" -> this.asyncWithHeadersCallbackFunction
 
-        //env.set("http", http)
-        return http
+            "post" -> postFunction()
+            "post_with_headers" ->  postWithHeadersFunction()
+            "post_async" ->  postAsyncFunction()
+            "post_async_with_headers" ->  postAsyncWithHeadersFunction()
+            "post_async_callback" ->  postAsyncCallbackFunction()
+            "post_async_with_headers_callback" ->  postAsyncWithHeadersCallbackFunction()
+            else -> super.get(key)
+        }
     }
 
     private fun parseHeaders(headersTable: LuaValue): MutableMap<String?, String?> {
