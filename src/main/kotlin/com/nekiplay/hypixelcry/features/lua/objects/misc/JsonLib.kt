@@ -13,6 +13,10 @@ class JsonLib : LuaValue() {
         return TUSERDATA
     }
 
+    override fun call(): LuaValue {
+        return this
+    }
+
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "parse", "totable" -> SimpleParseFunction()

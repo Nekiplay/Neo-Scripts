@@ -18,80 +18,103 @@ import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.VarArgFunction
 
-class FFILib : TwoArgFunction() {
+class FFILib : LuaValue() {
     // Реестр типов для sizeof и cast
     val structRegistry = mutableMapOf<String, LuaStructDefinition>()
     val loadedLibraries = mutableMapOf<String, NativeLibrary>()
 
-    override fun call(modname: LuaValue, env: LuaValue): LuaValue {
-        val ffi = LuaTable()
+    override fun call(): LuaValue {
+        return this
+    }
 
-        ffi.set("load", object : OneArgFunction() {
-            override fun call(arg: LuaValue): LuaValue {
-                val name = arg.checkjstring()
-                // Если библиотека уже загружена, возвращаем её, иначе загружаем новую
-                val lib = loadedLibraries.getOrPut(name) {
-                    NativeLibrary.getInstance(name)
-                }
-                return NativeLibWrapper(lib, name)
-            }
-        })
-        ffi.set("new_struct", object : TwoArgFunction() {
-            override fun call(name: LuaValue, layout: LuaValue): LuaValue {
-                val definition = LuaStructDefinition(layout.checktable())
-                structRegistry[name.checkjstring()] = definition
-                return definition
-            }
-        })
-        ffi.set("new", object : TwoArgFunction() {
-            override fun call(type: LuaValue, count: LuaValue): LuaValue {
-                val t = type.checkjstring()
-                val n = count.optint(1)
+    override fun typename(): String = "creator"
+    override fun tojstring(): String = "CreatorObject"
+    override fun isnil(): Boolean = false
+    override fun type(): Int {
+        return TUSERDATA
+    }
 
-                val structDef = structRegistry[t]
-                if (structDef != null) {
-                    val mem = Memory(structDef.totalSize.toLong() * n)
-                    mem.clear()
-                    return LuaStructInstance(structDef, mem)
-                }
+    override fun get(key: LuaValue): LuaValue {
+        return when (val field = key.tojstring()) {
+            "sizeOf" -> sizeOf()
+            "load" -> load()
+            "new_struct" -> new_struct()
+            "cast" -> cast()
+            "string" -> string()
+            "callback" -> callback()
+            "new" -> newObject()
+            else -> super.get(key)
+        }
+    }
 
-                val typeSize = getTypeSize(t)
-                if (typeSize <= 0) error("FFI: Unknown type or struct: $t")
+    inner class load : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            val name = arg.checkjstring()
+            // Если библиотека уже загружена, возвращаем её, иначе загружаем новую
+            val lib = loadedLibraries.getOrPut(name) {
+                NativeLibrary.getInstance(name)
+            }
+            return NativeLibWrapper(lib, name)
+        }
+    }
 
-                val size = typeSize * n
-                return LuaPointer(Memory(size.toLong()), t)
-            }
-        })
-        ffi.set("cast", object : TwoArgFunction() {
-            override fun call(type: LuaValue, ptr: LuaValue): LuaValue {
-                val t = type.checkjstring()
-                val p = (ptr as? LuaPointer)?.memory ?: return NIL
-                val def = structRegistry[t] ?: return LuaPointer(p, t)
-                return LuaStructInstance(def, p)
-            }
-        })
-        ffi.set("string", object : TwoArgFunction() {
-            override fun call(ptr: LuaValue, len: LuaValue): LuaValue {
-                val p = (ptr as? LuaPointer)?.memory ?: return NIL
-                return if (len.isnil()) valueOf(p.getString(0))
-                else valueOf(p.getByteArray(0, len.checkint()))
-            }
-        })
-        ffi.set("sizeof", object : OneArgFunction() {
-            override fun call(arg: LuaValue): LuaValue {
-                val t = arg.checkjstring()
-                val size = structRegistry[t]?.totalSize ?: getTypeSize(t)
-                return valueOf(size)
-            }
-        })
-        ffi.set("callback", object : ThreeArgFunction() {
-            override fun call(func: LuaValue, retType: LuaValue, argTypes: LuaValue): LuaValue {
-                return createCallback(func, retType.checkjstring(), argTypes.checktable())
-            }
-        })
+    inner class new_struct : TwoArgFunction() {
+        override fun call(name: LuaValue, layout: LuaValue): LuaValue {
+            val definition = LuaStructDefinition(layout.checktable())
+            structRegistry[name.checkjstring()] = definition
+            return definition
+        }
+    }
 
-        //env.set("ffi", ffi)
-        return ffi
+    inner class cast : TwoArgFunction() {
+        override fun call(type: LuaValue, ptr: LuaValue): LuaValue {
+            val t = type.checkjstring()
+            val p = (ptr as? LuaPointer)?.memory ?: return NIL
+            val def = structRegistry[t] ?: return LuaPointer(p, t)
+            return LuaStructInstance(def, p)
+        }
+    }
+
+    inner class string : TwoArgFunction() {
+        override fun call(ptr: LuaValue, len: LuaValue): LuaValue {
+            val p = (ptr as? LuaPointer)?.memory ?: return NIL
+            return if (len.isnil()) valueOf(p.getString(0))
+            else valueOf(p.getByteArray(0, len.checkint()))
+        }
+    }
+
+    inner class callback : ThreeArgFunction() {
+        override fun call(func: LuaValue, retType: LuaValue, argTypes: LuaValue): LuaValue {
+            return createCallback(func, retType.checkjstring(), argTypes.checktable())
+        }
+    }
+
+    inner class newObject : TwoArgFunction() {
+        override fun call(type: LuaValue, count: LuaValue): LuaValue {
+            val t = type.checkjstring()
+            val n = count.optint(1)
+
+            val structDef = structRegistry[t]
+            if (structDef != null) {
+                val mem = Memory(structDef.totalSize.toLong() * n)
+                mem.clear()
+                return LuaStructInstance(structDef, mem)
+            }
+
+            val typeSize = getTypeSize(t)
+            if (typeSize <= 0) error("FFI: Unknown type or struct: $t")
+
+            val size = typeSize * n
+            return LuaPointer(Memory(size.toLong()), t)
+        }
+    }
+
+    inner class sizeOf : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            val t = arg.checkjstring()
+            val size = structRegistry[t]?.totalSize ?: getTypeSize(t)
+            return valueOf(size)
+        }
     }
 
     class LuaPointer(val memory: Pointer, val type: String) : LuaTable() {

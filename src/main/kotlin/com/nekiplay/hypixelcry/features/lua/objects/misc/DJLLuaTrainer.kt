@@ -32,7 +32,7 @@ import net.fabricmc.loader.api.FabricLoader
 /**
  * Библиотека-обертка для доступа к DJL из LuaJ на Kotlin
  */
-class DJLLuaTrainer : TwoArgFunction() {
+class DJLLuaTrainer : LuaValue() {
 
     init {
         val djlDir = LuaManager.Companion.configDir.resolve("hypixelcry/djl_cache/").toString() + "/";
@@ -47,19 +47,28 @@ class DJLLuaTrainer : TwoArgFunction() {
     val inputShapes = ConcurrentHashMap<String, LongArray>()
     val modelModes = ConcurrentHashMap<String, String>()
 
-    override fun call(modname: LuaValue?, env: LuaValue?): LuaValue {
-        val djl = LuaTable()
+    override fun typename(): String = "creator"
+    override fun tojstring(): String = "CreatorObject"
+    override fun isnil(): Boolean = false
+    override fun type(): Int {
+        return TUSERDATA
+    }
 
-        djl["create_model"] = CreateModelFunction()
-        djl["train"] = TrainFunction()
-        djl["save_model"] = SaveModelFunction()
-        djl["load_model"] = LoadModelFunction()
-        djl["predict"] = PredictFunction()
-        djl["close"] = CloseFunction()
-        djl["get_model_info"] = GetModelInfoFunction()
+    override fun call(): LuaValue {
+        return this
+    }
 
-        //env?.set("djl", djl)
-        return djl
+    override fun get(key: LuaValue): LuaValue {
+        return when (key.tojstring()) {
+            "create_model" -> CreateModelFunction()
+            "train" -> TrainFunction()
+            "save_model" -> SaveModelFunction()
+            "load_model" -> LoadModelFunction()
+            "predict" -> PredictFunction()
+            "close" -> CloseFunction()
+            "get_model_info" -> GetModelInfoFunction()
+            else -> super.get(key)
+        }
     }
 
     private fun luaToNDArray(table: LuaValue, shape: LongArray): NDArray {

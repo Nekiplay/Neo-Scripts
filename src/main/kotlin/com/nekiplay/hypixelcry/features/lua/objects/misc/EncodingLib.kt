@@ -9,7 +9,7 @@ import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.util.*
 
-class EncodingLib : TwoArgFunction() {
+class EncodingLib : LuaValue() {
     private val supportedCharsets = mapOf(
         "UTF-8" to StandardCharsets.UTF_8,
         "UTF-16" to StandardCharsets.UTF_16,
@@ -27,21 +27,31 @@ class EncodingLib : TwoArgFunction() {
         "WINDOWS-1251" to Charset.forName("WINDOWS-1251")
     )
 
-    override fun call(modname: LuaValue, env: LuaValue): LuaValue {
-        val library = LuaTable()
-        library.set("stringToBytes", StringToBytes())
-        library.set("bytesToString", BytesToString())
-        library.set("getSupportedEncodings", GetSupportedEncodings())
-        library.set("isValidEncoding", IsValidEncoding())
-        library.set("detectEncoding", DetectEncoding())
-        library.set("convertEncoding", ConvertEncoding())
-        library.set("hexEncode", HexEncode())
-        library.set("hexDecode", HexDecode())
-        library.set("base64Encode", Base64Encode())
-        library.set("base64Decode", Base64Decode())
-        //env.set("encoding", library)
+    override fun call(): LuaValue {
+        return this
+    }
 
-        return library
+    override fun typename(): String = "creator"
+    override fun tojstring(): String = "CreatorObject"
+    override fun isnil(): Boolean = false
+    override fun type(): Int {
+        return TUSERDATA
+    }
+
+    override fun get(key: LuaValue): LuaValue {
+        return when (key.tojstring()) {
+            "stringToBytes" -> StringToBytes()
+            "bytesToString" -> BytesToString()
+            "getSupportedEncodings" -> GetSupportedEncodings()
+            "isValidEncoding" -> IsValidEncoding()
+            "detectEncoding" -> DetectEncoding()
+            "convertEncoding" -> ConvertEncoding()
+            "hexEncode" -> HexEncode()
+            "hexDecode" -> HexDecode()
+            "base64Encode" -> Base64Encode()
+            "base64Decode" -> Base64Decode()
+            else -> super.get(key)
+        }
     }
 
     inner class StringToBytes : VarArgFunction() {

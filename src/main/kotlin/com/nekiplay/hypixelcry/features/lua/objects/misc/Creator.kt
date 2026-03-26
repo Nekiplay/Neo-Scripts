@@ -12,15 +12,21 @@ import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.VarArgFunction
 
-class Creator : TwoArgFunction() {
-    override fun call(modname: LuaValue, env: LuaValue): LuaValue {
-        val library = LuaTable()
-        library.set("createAABB", CreateBox())
-        library.set("createBox", CreateBox())
-        library.set("createDirection", CreateDirection())
-        library.set("createItemStackFromId", CreateStackFromID())
-        //env.set("creator", library)
-        return library
+class Creator : LuaValue() {
+    override fun typename(): String = "creator"
+    override fun tojstring(): String = "CreatorObject"
+    override fun isnil(): Boolean = false
+    override fun type(): Int {
+        return TUSERDATA
+    }
+
+    override fun get(key: LuaValue): LuaValue {
+        return when (key.tojstring()) {
+            "createAABB", "createBox" -> CreateBox()
+            "createDirection" -> CreateDirection()
+            "createItemStackFromId" -> CreateStackFromID()
+            else -> super.get(key)
+        }
     }
 
     inner class CreateDirection : VarArgFunction() {

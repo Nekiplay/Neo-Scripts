@@ -1129,7 +1129,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             "djl", "ai" -> {
                 if (djlLibrary == null) djlLibrary = DJLLuaTrainer()
                 // DJL требует вызова call для регистрации функций в таблице
-                djlLibrary!!.call(LuaValue.valueOf("djl"), scriptGlobals)
+                djlLibrary!!
                 //scriptGlobals.get("djl")
             }
             "json" -> {

@@ -10,7 +10,7 @@ import java.net.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-class TCPLib : TwoArgFunction() {
+class TCPLib : LuaValue() {
     private val connections = ConcurrentHashMap<Int, TCPConnection>()
     private val nextId = AtomicInteger(1)
     private val scriptConnections = ArrayList<Int>()
@@ -23,23 +23,33 @@ class TCPLib : TwoArgFunction() {
         val writer: BufferedWriter
     )
 
-    override fun call(modname: LuaValue, env: LuaValue): LuaValue {
-        val library = LuaTable()
-        library.set("connect", Connect())
-        library.set("disconnect", Disconnect())
-        library.set("send", Send())
-        library.set("receive", Receive())
-        library.set("sendBytes", SendBytes())
-        library.set("receiveBytes", ReceiveBytes())
-        library.set("isConnected", IsConnected())
-        library.set("getLocalAddress", GetLocalAddress())
-        library.set("getRemoteAddress", GetRemoteAddress())
-        library.set("setBlocking", SetBlocking())
-        library.set("setTimeout", SetTimeout())
-        library.set("getSocketCount", GetSocketCount())
-        env.set("tcp", library)
+    override fun typename(): String = "tcp"
+    override fun tojstring(): String = "TCPObject"
+    override fun isnil(): Boolean = false
+    override fun type(): Int {
+        return TUSERDATA
+    }
 
-        return library
+    override fun call(): LuaValue {
+        return this
+    }
+
+    override fun get(key: LuaValue): LuaValue {
+        return when (key.tojstring()) {
+            "connect" -> Connect()
+            "disconnect" -> Disconnect()
+            "send" -> Send()
+            "receive" -> Receive()
+            "sendBytes" -> SendBytes()
+            "receiveBytes" -> ReceiveBytes()
+            "isConnected" -> IsConnected()
+            "getLocalAddress" -> GetLocalAddress()
+            "getRemoteAddress" -> GetRemoteAddress()
+            "setBlocking" -> SetBlocking()
+            "setTimeout" -> SetTimeout()
+            "getSocketCount" -> GetSocketCount()
+            else -> super.get(key)
+        }
     }
 
     inner class Connect : VarArgFunction() {
