@@ -45,38 +45,60 @@ class ThreadLib(val L: Lua) {
     }
 
     private fun startThread(l: Lua): Int {
-        // 1. Забираем аргументы из основного потока
-        val script = l.toString(1) // Код скрипта
-        val data = if (l.isTable(2)) luaTableToMap(l, 2) else null // Данные (если есть)
-        if (script) {
-            val thread = Thread {
-                val newL = LuaJit() // Ваша функция инициализации нового стейта
-                try {
-                    if (data != null) {
-                        // Используем ваш smartPush для загрузки данных в новый поток
-                        newL.smartPush(data)
-                        newL.setGlobal("args") // Таблица будет доступна как глобальная переменная args
-                    }
-    
-                    // Выполняем скрипт
-                    try {
-                        newL.load(script)
-                        newL.pCall(0, 0)
-                    } catch (e: Exception) {
-                        println("Lua Load Error: " + e)
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                } finally {
-                    newL.close()
-                }
+        val script: String?
+        val data: Map<String, Any?>?
+
+        when {
+            l.isString(1) -> {
+                script = l.toString(1)
+                data = if (l.isTable(2)) luaTableToMap(l, 2) else null
             }
-    
-            thread.isDaemon = true
-            thread.start()
-    
-            l.push(true) // Возвращаем в Lua успех запуска
+            l.isFunction(1) -> {
+                l.pushValue(1)
+                l.push("dump")
+                l.pCall(1, 1)
+                script = l.toString(-1)
+                l.pop(1)
+                if (script == null) {
+                    l.pushNil()
+                    return 1
+                }
+                data = if (l.isTable(2)) luaTableToMap(l, 2) else null
+            }
+            else -> {
+                l.pushNil()
+                return 1
+            }
         }
+
+        val threadId = nextId.getAndIncrement()
+        val thread = Thread {
+            val newL = LuaJit()
+            try {
+                if (data != null) {
+                    newL.smartPush(data)
+                    newL.setGlobal("args")
+                }
+
+                try {
+                    newL.load(script)
+                    newL.pCall(0, 0)
+                } catch (e: Exception) {
+                    println("Lua Load Error: " + e)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                newL.close()
+                threads.remove(threadId)
+            }
+        }
+
+        thread.isDaemon = true
+        threads[threadId] = ThreadInfo(thread)
+        thread.start()
+
+        l.push(threadId)
         return 1
     }
 
