@@ -23,265 +23,253 @@ import java.util.concurrent.atomic.AtomicInteger
 class ImGuiLib : TwoArgFunction() {
     public val queue: ImDrawCommandQueue = ImDrawCommandQueue()
 
+    override fun call(): LuaValue {
+        return this
+    }
+
+    override fun typename(): String = "imgui"
+    override fun tojstring(): String = "ImGuiObject"
+    override fun isnil(): Boolean = false
+    override fun type(): Int {
+        return TUSERDATA
+    }
+
+    override fun get(key: LuaValue): LuaValue {
+        return when (val field = key.tojstring()) {
+            // Window management
+            "begin" -> begin()
+            "endBegin" -> endFunc()
+            "newFrame" -> newFrame()
+            "render" -> render()
+            // Text
+            "text" -> text()
+            "textColored" -> textColored()
+            "textDisabled" -> textDisabled()
+            "bulletText" -> bulletText()
+            // Images
+            "createImageObject" -> createImageObject()
+            "image" -> image()
+            // Buttons
+            "button" -> button()
+            "smallButton" -> smallButton()
+            "arrowButton" -> arrowButton()
+            "checkbox" -> checkbox()
+            // Input
+            "inputText" -> inputText()
+            "inputTextMultiline" -> inputTextMultiline()
+            "inputInt" -> inputInt()
+            "inputFloat" -> inputFloat()
+            "inputDouble" -> inputDouble()
+            // Layout
+            "sameLine" -> sameLine()
+            "newLine" -> newLine()
+            "spacing" -> spacing()
+            "separator" -> separator()
+            // Groups
+            "beginGroup" -> beginGroup()
+            "endGroup" -> endGroup()
+            // Indentation
+            "indent" -> indent()
+            "unindent" -> unindent()
+            // Indentation
+            "setCursorPos" -> setCursorPos()
+            "getCursorPos" -> getCursorPos()
+            "getCursorScreenPos" -> getCursorScreenPos()
+            // Indentation
+            "treeNode" -> treeNode()
+            "treeNodeEx" -> treeNodeEx()
+            "treePop" -> treePop()
+            "collapsingHeader" -> collapsingHeader()
+            // Selectables
+            "selectable" -> selectable()
+            // Lists
+            "listBox" -> listBox()
+            // Tooltips
+            "setTooltip" -> setTooltip()
+            "beginTooltip" -> beginTooltip()
+            "endTooltip" -> endTooltip()
+            // Popups
+            "beginPopup" -> beginPopup()
+            "beginPopupModal" -> beginPopupModal()
+            "endPopup" -> endPopup()
+            "closeCurrentPopup" -> closeCurrentPopup()
+            // Menus
+            "beginMenuBar" -> beginMenuBar()
+            "endMenuBar" -> endMenuBar()
+            "beginMainMenuBar" -> beginMainMenuBar()
+            "endMainMenuBar" -> endMainMenuBar()
+            "beginMenu" -> beginMenu()
+            "endMenu" -> endMenu()
+            "menuItem" -> menuItem()
+            // Tabs
+            "beginTabBar" -> beginTabBar()
+            "endTabBar" -> endTabBar()
+            "beginTabItem" -> beginTabItem()
+            "endTabItem" -> endMainMenuBar()
+            // Child windows
+            "beginChild" -> beginChild()
+            "endChild" -> endChild()
+            // Style
+            "pushStyleColor" -> pushStyleColor()
+            "popStyleColor" -> popStyleColor()
+            "pushStyleVar" -> pushStyleVar()
+            "popStyleVar" -> popStyleVar()
+            // Font
+            "pushFont" -> pushFont()
+            "popFont" -> popFont()
+            // ID stack
+            "pushID" -> pushID()
+            "popID" -> popID()
+            // Utilities
+            "setNextItemWidth" -> setNextItemWidth()
+            "isItemHovered" -> isItemHovered()
+            "isItemClicked" -> isItemClicked()
+            "isItemActive" -> isItemActive()
+            "isWindowAppearing" -> isWindowAppearing()
+            "isWindowCollapsed" -> isWindowCollapsed()
+            "isWindowFocused" -> isWindowFocused()
+            "isWindowHovered" -> isWindowHovered()
+            // Window manipulation
+            "setNextWindowSize" -> setNextWindowSize()
+            "setNextWindowPos" -> setNextWindowPos()
+            "setNextWindowCollapsed" -> setNextWindowCollapsed()
+            "setNextWindowFocus" -> setNextWindowFocus()
+            // State queries
+            "getWindowSize" -> getWindowSize()
+            "getWindowPos" -> getWindowPos()
+            "getWindowWidth" -> getWindowWidth()
+            "getWindowHeight" -> getWindowHeight()
+            // Table
+            "beginTable" -> beginTable()
+            "tableSetupColumn" -> tableSetupColumn()
+            "tableHeadersRow" -> tableHeadersRow()
+            "tableNextRow" -> tableNextRow()
+            "tableSetColumnIndex" -> tableSetColumnIndex()
+            "endTable" -> endTable()
+            // Sliders
+            "sliderFloat" -> sliderFloat()
+            "sliderInt" -> sliderInt()
+            "vSliderFloat" -> vSliderFloat()
+            "vSliderInt" -> vSliderInt()
+            // Constants
+            "constants" -> {
+                val constants = LuaTable()
+                constants.set("WindowFlags_None", ImGuiWindowFlags.None.toInt())
+                constants.set("WindowFlags_NoTitleBar", ImGuiWindowFlags.NoTitleBar.toInt())
+                constants.set("WindowFlags_NoResize", ImGuiWindowFlags.NoResize.toInt())
+                constants.set("WindowFlags_NoMove", ImGuiWindowFlags.NoMove.toInt())
+                constants.set("WindowFlags_NoScrollbar", ImGuiWindowFlags.NoScrollbar.toInt())
+                constants.set("WindowFlags_NoCollapse", ImGuiWindowFlags.NoCollapse.toInt())
+
+                constants.set("Cond_Always", ImGuiCond.Always.toInt())
+                constants.set("Cond_Once", ImGuiCond.Once.toInt())
+                constants.set("Cond_FirstUseEver", ImGuiCond.FirstUseEver.toInt())
+
+                constants.set("ColorEditFlags_None", ImGuiColorEditFlags.None.toInt())
+                constants.set("ColorEditFlags_NoAlpha", ImGuiColorEditFlags.NoAlpha.toInt())
+                constants.set("ColorEditFlags_NoPicker", ImGuiColorEditFlags.NoPicker.toInt())
+
+                constants.set("Col_Text", ImGuiCol.Text.toInt())
+                constants.set("Col_TextDisabled", ImGuiCol.TextDisabled.toInt())
+                constants.set("Col_WindowBg", ImGuiCol.WindowBg.toInt())
+                constants.set("Col_ChildBg", ImGuiCol.ChildBg.toInt())
+                constants.set("Col_PopupBg", ImGuiCol.PopupBg.toInt())
+                constants.set("Col_Border", ImGuiCol.Border.toInt())
+                constants.set("Col_BorderShadow", ImGuiCol.BorderShadow.toInt())
+                constants.set("Col_FrameBg", ImGuiCol.FrameBg.toInt())
+                constants.set("Col_FrameBgHovered", ImGuiCol.FrameBgHovered.toInt())
+                constants.set("Col_FrameBgActive", ImGuiCol.FrameBgActive.toInt())
+                constants.set("Col_TitleBg", ImGuiCol.TitleBg.toInt())
+                constants.set("Col_TitleBgActive", ImGuiCol.TitleBgActive.toInt())
+                constants.set("Col_TitleBgCollapsed", ImGuiCol.TitleBgCollapsed.toInt())
+                constants.set("Col_MenuBarBg", ImGuiCol.MenuBarBg.toInt())
+                constants.set("Col_ScrollbarBg", ImGuiCol.ScrollbarBg.toInt())
+                constants.set("Col_ScrollbarGrab", ImGuiCol.ScrollbarGrab.toInt())
+                constants.set("Col_ScrollbarGrabHovered", ImGuiCol.ScrollbarGrabHovered.toInt())
+                constants.set("Col_ScrollbarGrabActive", ImGuiCol.ScrollbarGrabActive.toInt())
+                constants.set("Col_CheckMark", ImGuiCol.CheckMark.toInt())
+                constants.set("Col_SliderGrab", ImGuiCol.SliderGrab.toInt())
+                constants.set("Col_SliderGrabActive", ImGuiCol.SliderGrabActive.toInt())
+                constants.set("Col_Button", ImGuiCol.Button.toInt())
+                constants.set("Col_ButtonHovered", ImGuiCol.ButtonHovered.toInt())
+                constants.set("Col_ButtonActive", ImGuiCol.ButtonActive.toInt())
+                constants.set("Col_Header", ImGuiCol.Header.toInt())
+                constants.set("Col_HeaderHovered", ImGuiCol.HeaderHovered.toInt())
+                constants.set("Col_HeaderActive", ImGuiCol.HeaderActive.toInt())
+                constants.set("Col_Separator", ImGuiCol.Separator.toInt())
+                constants.set("Col_SeparatorHovered", ImGuiCol.SeparatorHovered.toInt())
+                constants.set("Col_SeparatorActive", ImGuiCol.SeparatorActive.toInt())
+                constants.set("Col_ResizeGrip", ImGuiCol.ResizeGrip.toInt())
+                constants.set("Col_ResizeGripHovered", ImGuiCol.ResizeGripHovered.toInt())
+                constants.set("Col_ResizeGripActive", ImGuiCol.ResizeGripActive.toInt())
+                constants.set("Col_Tab", ImGuiCol.Tab.toInt())
+                constants.set("Col_TabHovered", ImGuiCol.TabHovered.toInt())
+                constants.set("Col_TabActive", ImGuiCol.TabActive.toInt())
+                constants.set("Col_TabUnfocused", ImGuiCol.TabUnfocused.toInt())
+                constants.set("Col_TabUnfocusedActive", ImGuiCol.TabUnfocusedActive.toInt())
+                constants.set("Col_PlotLines", ImGuiCol.PlotLines.toInt())
+                constants.set("Col_PlotLinesHovered", ImGuiCol.PlotLinesHovered.toInt())
+                constants.set("Col_PlotHistogram", ImGuiCol.PlotHistogram.toInt())
+                constants.set("Col_PlotHistogramHovered", ImGuiCol.PlotHistogramHovered.toInt())
+                constants.set("Col_TableHeaderBg", ImGuiCol.TableHeaderBg.toInt())
+                constants.set("Col_TableBorderStrong", ImGuiCol.TableBorderStrong.toInt())
+                constants.set("Col_TableBorderLight", ImGuiCol.TableBorderLight.toInt())
+                constants.set("Col_TableRowBg", ImGuiCol.TableRowBg.toInt())
+                constants.set("Col_TableRowBgAlt", ImGuiCol.TableRowBgAlt.toInt())
+                constants.set("Col_TextSelectedBg", ImGuiCol.TextSelectedBg.toInt())
+                constants.set("Col_DragDropTarget", ImGuiCol.DragDropTarget.toInt())
+                constants.set("Col_NavHighlight", ImGuiCol.NavHighlight.toInt())
+                constants.set("Col_NavWindowingHighlight", ImGuiCol.NavWindowingHighlight.toInt())
+                constants.set("Col_NavWindowingDimBg", ImGuiCol.NavWindowingDimBg.toInt())
+                constants.set("Col_ModalWindowDimBg", ImGuiCol.ModalWindowDimBg.toInt())
+
+                // Style vars
+                constants.set("StyleVar_Alpha", ImGuiStyleVar.Alpha.toInt())
+                constants.set("StyleVar_DisabledAlpha", ImGuiStyleVar.DisabledAlpha.toInt())
+                constants.set("StyleVar_WindowPadding", ImGuiStyleVar.WindowPadding.toInt())
+                constants.set("StyleVar_WindowRounding", ImGuiStyleVar.WindowRounding.toInt())
+                constants.set("StyleVar_WindowBorderSize", ImGuiStyleVar.WindowBorderSize.toInt())
+                constants.set("StyleVar_WindowMinSize", ImGuiStyleVar.WindowMinSize.toInt())
+                constants.set("StyleVar_WindowTitleAlign", ImGuiStyleVar.WindowTitleAlign.toInt())
+                constants.set("StyleVar_ChildRounding", ImGuiStyleVar.ChildRounding.toInt())
+                constants.set("StyleVar_ChildBorderSize", ImGuiStyleVar.ChildBorderSize.toInt())
+                constants.set("StyleVar_PopupRounding", ImGuiStyleVar.PopupRounding.toInt())
+                constants.set("StyleVar_PopupBorderSize", ImGuiStyleVar.PopupBorderSize.toInt())
+                constants.set("StyleVar_FramePadding", ImGuiStyleVar.FramePadding.toInt())
+                constants.set("StyleVar_FrameRounding", ImGuiStyleVar.FrameRounding.toInt())
+                constants.set("StyleVar_FrameBorderSize", ImGuiStyleVar.FrameBorderSize.toInt())
+                constants.set("StyleVar_ItemSpacing", ImGuiStyleVar.ItemSpacing.toInt())
+                constants.set("StyleVar_ItemInnerSpacing", ImGuiStyleVar.ItemInnerSpacing.toInt())
+                constants.set("StyleVar_IndentSpacing", ImGuiStyleVar.IndentSpacing.toInt())
+                constants.set("StyleVar_CellPadding", ImGuiStyleVar.CellPadding.toInt())
+                constants.set("StyleVar_ScrollbarSize", ImGuiStyleVar.ScrollbarSize.toInt())
+                constants.set("StyleVar_ScrollbarRounding", ImGuiStyleVar.ScrollbarRounding.toInt())
+                constants.set("StyleVar_GrabMinSize", ImGuiStyleVar.GrabMinSize.toInt())
+                constants.set("StyleVar_GrabRounding", ImGuiStyleVar.GrabRounding.toInt())
+                constants.set("StyleVar_TabRounding", ImGuiStyleVar.TabRounding.toInt())
+                constants.set("StyleVar_ButtonTextAlign", ImGuiStyleVar.ButtonTextAlign.toInt())
+                constants.set("StyleVar_SelectableTextAlign", ImGuiStyleVar.SelectableTextAlign.toInt())
+
+                constants.set("TableFlags_BordersInner", ImGuiTableFlags.BordersInner.toInt())
+                constants.set("TableFlags_BordersInnerH", ImGuiTableFlags.BordersInnerH.toInt())
+                constants.set("TableFlags_BordersInnerV", ImGuiTableFlags.BordersInnerV.toInt())
+                constants.set("TableFlags_Resizable", ImGuiTableFlags.Resizable.toInt())
+                constants
+            }
+            "dl" -> {
+                val dl = LuaTable()
+                dl.set("renderLine", RenderDLLineFunction())
+                dl.set("renderPolygon", RenderDLPolygonFunction())
+                dl.set("renderImage", RenderDLImageFunction())
+                dl.set("renderText", RenderDLTextFunction())
+                dl
+            }
+            else -> super.get(key)
+        }
+    }
 
     override fun call(modname: LuaValue, env: LuaValue): LuaValue {
-        val library = LuaTable()
-
-        // Window management
-        library.set("begin", begin())
-        library.set("endBegin", endFunc())
-        library.set("newFrame", newFrame())
-        library.set("render", render())
-
-        // Text
-        library.set("text", text())
-        library.set("textColored", textColored())
-        library.set("textDisabled", textDisabled())
-        library.set("bulletText", bulletText())
-
-        // Images
-        library.set("createImageObject", createImageObject())
-        library.set("image", image())
-
-        // Buttons
-        library.set("button", button())
-        library.set("smallButton", smallButton())
-        library.set("arrowButton", arrowButton())
-        library.set("checkbox", checkbox())
-
-        // Input
-        library.set("inputText", inputText())
-        library.set("inputTextMultiline", inputTextMultiline())
-        library.set("inputInt", inputInt())
-        library.set("inputFloat", inputFloat())
-        library.set("inputDouble", inputDouble())
-
-        // Layout
-        library.set("sameLine", sameLine())
-        library.set("newLine", newLine())
-        library.set("spacing", spacing())
-        library.set("separator", separator())
-
-        // Groups
-        library.set("beginGroup", beginGroup())
-        library.set("endGroup", endGroup())
-
-        // Indentation
-        library.set("indent", indent())
-        library.set("unindent", unindent())
-
-        // Cursor position
-        library.set("setCursorPos", setCursorPos())
-        library.set("getCursorPos", getCursorPos())
-        library.set("getCursorScreenPos", getCursorScreenPos())
-
-        // Tree nodes
-        library.set("treeNode", treeNode())
-        library.set("treeNodeEx", treeNodeEx())
-        library.set("treePop", treePop())
-        library.set("collapsingHeader", collapsingHeader())
-
-        // Selectables
-        library.set("selectable", selectable())
-
-        // Lists
-        library.set("listBox", listBox())
-
-        // Tooltips
-        library.set("setTooltip", setTooltip())
-        library.set("beginTooltip", beginTooltip())
-        library.set("endTooltip", endTooltip())
-
-        // Popups
-        library.set("beginPopup", beginPopup())
-        library.set("beginPopupModal", beginPopupModal())
-        library.set("endPopup", endPopup())
-        library.set("openPopup", openPopup())
-        library.set("closeCurrentPopup", closeCurrentPopup())
-
-        // Menus
-        library.set("beginMenuBar", beginMenuBar())
-        library.set("endMenuBar", endMenuBar())
-        library.set("beginMainMenuBar", beginMainMenuBar())
-        library.set("endMainMenuBar", endMainMenuBar())
-        library.set("beginMenu", beginMenu())
-        library.set("endMenu", endMenu())
-        library.set("menuItem", menuItem())
-
-        // Tabs
-        library.set("beginTabBar", beginTabBar())
-        library.set("endTabBar", endTabBar())
-        library.set("beginTabItem", beginTabItem())
-        library.set("endTabItem", endTabItem())
-
-        // Child windows
-        library.set("beginChild", beginChild())
-        library.set("endChild", endChild())
-
-        // Style
-        library.set("pushStyleColor", pushStyleColor())
-        library.set("popStyleColor", popStyleColor())
-        library.set("pushStyleVar", pushStyleVar())
-        library.set("popStyleVar", popStyleVar())
-
-        // Font
-        library.set("pushFont", pushFont())
-        library.set("popFont", popFont())
-
-        // ID stack
-        library.set("pushID", pushID())
-        library.set("popID", popID())
-
-        // Utilities
-        library.set("setNextItemWidth", setNextItemWidth())
-        library.set("isItemHovered", isItemHovered())
-        library.set("isItemClicked", isItemClicked())
-        library.set("isItemActive", isItemActive())
-        library.set("isWindowAppearing", isWindowAppearing())
-        library.set("isWindowCollapsed", isWindowCollapsed())
-        library.set("isWindowFocused", isWindowFocused())
-        library.set("isWindowHovered", isWindowHovered())
-
-        // Window manipulation
-        library.set("setNextWindowSize", setNextWindowSize())
-        library.set("setNextWindowPos", setNextWindowPos())
-        library.set("setNextWindowCollapsed", setNextWindowCollapsed())
-        library.set("setNextWindowFocus", setNextWindowFocus())
-
-        // State queries
-        library.set("getWindowSize", getWindowSize())
-        library.set("getWindowPos", getWindowPos())
-        library.set("getWindowWidth", getWindowWidth())
-        library.set("getWindowHeight", getWindowHeight())
-
-        // Table
-        library.set("beginTable", beginTable())
-        library.set("tableSetupColumn", tableSetupColumn())
-        library.set("tableHeadersRow", tableHeadersRow())
-        library.set("tableNextRow", tableNextRow())
-        library.set("tableSetColumnIndex", tableSetColumnIndex())
-        library.set("endTable", endTable())
-
-        // Sliders
-        library.set("sliderFloat", sliderFloat())
-        library.set("sliderInt", sliderInt())
-        library.set("vSliderFloat", vSliderFloat())
-        library.set("vSliderInt", vSliderInt())
-
-        // Constants
-        val constants = LuaTable()
-        constants.set("WindowFlags_None", ImGuiWindowFlags.None.toInt())
-        constants.set("WindowFlags_NoTitleBar", ImGuiWindowFlags.NoTitleBar.toInt())
-        constants.set("WindowFlags_NoResize", ImGuiWindowFlags.NoResize.toInt())
-        constants.set("WindowFlags_NoMove", ImGuiWindowFlags.NoMove.toInt())
-        constants.set("WindowFlags_NoScrollbar", ImGuiWindowFlags.NoScrollbar.toInt())
-        constants.set("WindowFlags_NoCollapse", ImGuiWindowFlags.NoCollapse.toInt())
-
-        constants.set("Cond_Always", ImGuiCond.Always.toInt())
-        constants.set("Cond_Once", ImGuiCond.Once.toInt())
-        constants.set("Cond_FirstUseEver", ImGuiCond.FirstUseEver.toInt())
-
-        constants.set("ColorEditFlags_None", ImGuiColorEditFlags.None.toInt())
-        constants.set("ColorEditFlags_NoAlpha", ImGuiColorEditFlags.NoAlpha.toInt())
-        constants.set("ColorEditFlags_NoPicker", ImGuiColorEditFlags.NoPicker.toInt())
-
-        constants.set("Col_Text", ImGuiCol.Text.toInt())
-        constants.set("Col_TextDisabled", ImGuiCol.TextDisabled.toInt())
-        constants.set("Col_WindowBg", ImGuiCol.WindowBg.toInt())
-        constants.set("Col_ChildBg", ImGuiCol.ChildBg.toInt())
-        constants.set("Col_PopupBg", ImGuiCol.PopupBg.toInt())
-        constants.set("Col_Border", ImGuiCol.Border.toInt())
-        constants.set("Col_BorderShadow", ImGuiCol.BorderShadow.toInt())
-        constants.set("Col_FrameBg", ImGuiCol.FrameBg.toInt())
-        constants.set("Col_FrameBgHovered", ImGuiCol.FrameBgHovered.toInt())
-        constants.set("Col_FrameBgActive", ImGuiCol.FrameBgActive.toInt())
-        constants.set("Col_TitleBg", ImGuiCol.TitleBg.toInt())
-        constants.set("Col_TitleBgActive", ImGuiCol.TitleBgActive.toInt())
-        constants.set("Col_TitleBgCollapsed", ImGuiCol.TitleBgCollapsed.toInt())
-        constants.set("Col_MenuBarBg", ImGuiCol.MenuBarBg.toInt())
-        constants.set("Col_ScrollbarBg", ImGuiCol.ScrollbarBg.toInt())
-        constants.set("Col_ScrollbarGrab", ImGuiCol.ScrollbarGrab.toInt())
-        constants.set("Col_ScrollbarGrabHovered", ImGuiCol.ScrollbarGrabHovered.toInt())
-        constants.set("Col_ScrollbarGrabActive", ImGuiCol.ScrollbarGrabActive.toInt())
-        constants.set("Col_CheckMark", ImGuiCol.CheckMark.toInt())
-        constants.set("Col_SliderGrab", ImGuiCol.SliderGrab.toInt())
-        constants.set("Col_SliderGrabActive", ImGuiCol.SliderGrabActive.toInt())
-        constants.set("Col_Button", ImGuiCol.Button.toInt())
-        constants.set("Col_ButtonHovered", ImGuiCol.ButtonHovered.toInt())
-        constants.set("Col_ButtonActive", ImGuiCol.ButtonActive.toInt())
-        constants.set("Col_Header", ImGuiCol.Header.toInt())
-        constants.set("Col_HeaderHovered", ImGuiCol.HeaderHovered.toInt())
-        constants.set("Col_HeaderActive", ImGuiCol.HeaderActive.toInt())
-        constants.set("Col_Separator", ImGuiCol.Separator.toInt())
-        constants.set("Col_SeparatorHovered", ImGuiCol.SeparatorHovered.toInt())
-        constants.set("Col_SeparatorActive", ImGuiCol.SeparatorActive.toInt())
-        constants.set("Col_ResizeGrip", ImGuiCol.ResizeGrip.toInt())
-        constants.set("Col_ResizeGripHovered", ImGuiCol.ResizeGripHovered.toInt())
-        constants.set("Col_ResizeGripActive", ImGuiCol.ResizeGripActive.toInt())
-        constants.set("Col_Tab", ImGuiCol.Tab.toInt())
-        constants.set("Col_TabHovered", ImGuiCol.TabHovered.toInt())
-        constants.set("Col_TabActive", ImGuiCol.TabActive.toInt())
-        constants.set("Col_TabUnfocused", ImGuiCol.TabUnfocused.toInt())
-        constants.set("Col_TabUnfocusedActive", ImGuiCol.TabUnfocusedActive.toInt())
-        constants.set("Col_PlotLines", ImGuiCol.PlotLines.toInt())
-        constants.set("Col_PlotLinesHovered", ImGuiCol.PlotLinesHovered.toInt())
-        constants.set("Col_PlotHistogram", ImGuiCol.PlotHistogram.toInt())
-        constants.set("Col_PlotHistogramHovered", ImGuiCol.PlotHistogramHovered.toInt())
-        constants.set("Col_TableHeaderBg", ImGuiCol.TableHeaderBg.toInt())
-        constants.set("Col_TableBorderStrong", ImGuiCol.TableBorderStrong.toInt())
-        constants.set("Col_TableBorderLight", ImGuiCol.TableBorderLight.toInt())
-        constants.set("Col_TableRowBg", ImGuiCol.TableRowBg.toInt())
-        constants.set("Col_TableRowBgAlt", ImGuiCol.TableRowBgAlt.toInt())
-        constants.set("Col_TextSelectedBg", ImGuiCol.TextSelectedBg.toInt())
-        constants.set("Col_DragDropTarget", ImGuiCol.DragDropTarget.toInt())
-        constants.set("Col_NavHighlight", ImGuiCol.NavHighlight.toInt())
-        constants.set("Col_NavWindowingHighlight", ImGuiCol.NavWindowingHighlight.toInt())
-        constants.set("Col_NavWindowingDimBg", ImGuiCol.NavWindowingDimBg.toInt())
-        constants.set("Col_ModalWindowDimBg", ImGuiCol.ModalWindowDimBg.toInt())
-
-        // Style vars
-        constants.set("StyleVar_Alpha", ImGuiStyleVar.Alpha.toInt())
-        constants.set("StyleVar_DisabledAlpha", ImGuiStyleVar.DisabledAlpha.toInt())
-        constants.set("StyleVar_WindowPadding", ImGuiStyleVar.WindowPadding.toInt())
-        constants.set("StyleVar_WindowRounding", ImGuiStyleVar.WindowRounding.toInt())
-        constants.set("StyleVar_WindowBorderSize", ImGuiStyleVar.WindowBorderSize.toInt())
-        constants.set("StyleVar_WindowMinSize", ImGuiStyleVar.WindowMinSize.toInt())
-        constants.set("StyleVar_WindowTitleAlign", ImGuiStyleVar.WindowTitleAlign.toInt())
-        constants.set("StyleVar_ChildRounding", ImGuiStyleVar.ChildRounding.toInt())
-        constants.set("StyleVar_ChildBorderSize", ImGuiStyleVar.ChildBorderSize.toInt())
-        constants.set("StyleVar_PopupRounding", ImGuiStyleVar.PopupRounding.toInt())
-        constants.set("StyleVar_PopupBorderSize", ImGuiStyleVar.PopupBorderSize.toInt())
-        constants.set("StyleVar_FramePadding", ImGuiStyleVar.FramePadding.toInt())
-        constants.set("StyleVar_FrameRounding", ImGuiStyleVar.FrameRounding.toInt())
-        constants.set("StyleVar_FrameBorderSize", ImGuiStyleVar.FrameBorderSize.toInt())
-        constants.set("StyleVar_ItemSpacing", ImGuiStyleVar.ItemSpacing.toInt())
-        constants.set("StyleVar_ItemInnerSpacing", ImGuiStyleVar.ItemInnerSpacing.toInt())
-        constants.set("StyleVar_IndentSpacing", ImGuiStyleVar.IndentSpacing.toInt())
-        constants.set("StyleVar_CellPadding", ImGuiStyleVar.CellPadding.toInt())
-        constants.set("StyleVar_ScrollbarSize", ImGuiStyleVar.ScrollbarSize.toInt())
-        constants.set("StyleVar_ScrollbarRounding", ImGuiStyleVar.ScrollbarRounding.toInt())
-        constants.set("StyleVar_GrabMinSize", ImGuiStyleVar.GrabMinSize.toInt())
-        constants.set("StyleVar_GrabRounding", ImGuiStyleVar.GrabRounding.toInt())
-        constants.set("StyleVar_TabRounding", ImGuiStyleVar.TabRounding.toInt())
-        constants.set("StyleVar_ButtonTextAlign", ImGuiStyleVar.ButtonTextAlign.toInt())
-        constants.set("StyleVar_SelectableTextAlign", ImGuiStyleVar.SelectableTextAlign.toInt())
-
-        constants.set("TableFlags_BordersInner", ImGuiTableFlags.BordersInner.toInt())
-        constants.set("TableFlags_BordersInnerH", ImGuiTableFlags.BordersInnerH.toInt())
-        constants.set("TableFlags_BordersInnerV", ImGuiTableFlags.BordersInnerV.toInt())
-        constants.set("TableFlags_Resizable", ImGuiTableFlags.Resizable.toInt())
-        library.set("constants", constants)
-
-        // Constants
-        val dl = LuaTable()
-        dl.set("renderLine", RenderDLLineFunction())
-        dl.set("renderPolygon", RenderDLPolygonFunction())
-        dl.set("renderImage", RenderDLImageFunction())
-        dl.set("renderText", RenderDLTextFunction())
-        library.set("dl", dl)
-
-        //env.set("imgui", library)
-        return library
+        return this
     }
 
     private inner class RenderDLTextFunction : OneArgFunction() {
