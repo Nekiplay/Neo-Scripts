@@ -2,6 +2,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.render
 
 import com.logisticscraft.occlusionculling.util.Vec3d
 import com.mojang.blaze3d.platform.NativeImage
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
 import net.minecraft.client.renderer.texture.DynamicTexture
@@ -249,17 +250,19 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
 
-            val x = args.optdouble(1, 0.0)
-            val y = args.optdouble(2, 0.0)
-            val z = args.optdouble(3, 0.0)
-            val x2 = args.optdouble(4, 0.0)
-            val y2 = args.optdouble(5, 0.0)
-            val z2 = args.optdouble(6, 0.0)
-            val red = args.optint(7, 0)
-            val green = args.optint(8, 0)
-            val blue = args.optint(9, 0)
-            val alpha = args.optint(10, 0)
-            val throughWalls = args.optboolean(11, true)
+            val boxArg = args.arg(1)
+            val box = when {
+                boxArg.isuserdata() && boxArg.touserdata() is LuaBox -> (boxArg.touserdata() as LuaBox).box
+                boxArg.isuserdata() && boxArg.touserdata() is AABB -> boxArg.touserdata() as AABB
+                else -> null
+            }
+            if (box == null) return NIL
+
+            val red = args.optint(2, 0)
+            val green = args.optint(3, 0)
+            val blue = args.optint(4, 0)
+            val alpha = args.optint(5, 0)
+            val throughWalls = args.optboolean(6, true)
 
             val colorComponents = floatArrayOf(
                 red.toFloat() / 255.0f,
@@ -268,12 +271,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             )
             val alphaComponent = alpha.toFloat() / 255.0f
 
-            val hasSecondPosition = args.narg() >= 6 && (x2 != 0.0 || y2 != 0.0 || z2 != 0.0)
-            if (hasSecondPosition) {
-                context.submitFilledBox(AABB(Vec3(x, y, z), Vec3(x2, y2, z2)), colorComponents, alphaComponent, throughWalls)
-            } else {
-                context.submitFilledBox(BlockPos(x.toInt(), y.toInt(), z.toInt()), colorComponents, alphaComponent, throughWalls)
-            }
+            context.submitFilledBox(box, colorComponents, alphaComponent, throughWalls)
             return TRUE
         }
     }
@@ -282,18 +280,20 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
 
-            val x = args.optdouble(1, 0.0)
-            val y = args.optdouble(2, 0.0)
-            val z = args.optdouble(3, 0.0)
-            val x2 = args.optdouble(4, 0.0)
-            val y2 = args.optdouble(5, 0.0)
-            val z2 = args.optdouble(6, 0.0)
-            val red = args.optint(7, 0)
-            val green = args.optint(8, 0)
-            val blue = args.optint(9, 0)
-            val alpha = args.optint(10, 0)
-            val lineWidth = args.optdouble(11, 1.0).toFloat()
-            val throughWalls = args.optboolean(12, true)
+            val boxArg = args.arg(1)
+            val box = when {
+                boxArg.isuserdata() && boxArg.touserdata() is LuaBox -> (boxArg.touserdata() as LuaBox).box
+                boxArg.isuserdata() && boxArg.touserdata() is AABB -> boxArg.touserdata() as AABB
+                else -> null
+            }
+            if (box == null) return NIL
+
+            val red = args.optint(2, 0)
+            val green = args.optint(3, 0)
+            val blue = args.optint(4, 0)
+            val alpha = args.optint(5, 0)
+            val lineWidth = args.optdouble(6, 1.0).toFloat()
+            val throughWalls = args.optboolean(7, true)
 
             val colorComponents = floatArrayOf(
                 red.toFloat() / 255.0f,
@@ -302,12 +302,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 alpha.toFloat() / 255.0f
             )
 
-            val hasSecondPosition = args.narg() >= 6 && (x2 != 0.0 || y2 != 0.0 || z2 != 0.0)
-            if (hasSecondPosition) {
-                context.submitOutlinedBox(AABB(Vec3(x, y, z), Vec3(x2, y2, z2)), colorComponents, lineWidth, throughWalls)
-            } else {
-                context.submitOutlinedBox(BlockPos(x.toInt(), y.toInt(), z.toInt()), colorComponents, lineWidth, throughWalls)
-            }
+            context.submitOutlinedBox(box, colorComponents, lineWidth, throughWalls)
             return TRUE
         }
     }
