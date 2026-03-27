@@ -300,128 +300,105 @@ class ImGuiLib : LuaValue() {
         return this
     }
 
-    private inner class RenderDLTextFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable()) {
-                val x1: Float = if (table.get("x").isnumber()) table.get("x").tofloat() else 0f
-                val y1: Float = if (table.get("y").isnumber()) table.get("y").tofloat() else 0f
+    private inner class RenderDLTextFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val x = args.optfloat(1, 0f)
+            val y = args.optfloat(2, 0f)
+            val text = args.optjstring(3, "")
+            val red = args.optint(4, 255)
+            val green = args.optint(5, 255)
+            val blue = args.optint(6, 255)
+            val alpha = args.optint(7, 255)
 
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
-
-                val text: String = if (table.get("text").isstring()) table.get("text").tojstring() else ""
-
-                // создаём запрос для отрисовки линии
-                queue.queue(DrawCommand(DrawType.TEXT, mapOf(
-                    "x1" to x1, "y1" to y1,
-                    "color" to queue.makeImGuiColor(red, green, blue, alpha),
-                    "text" to text
-                )))
-                return TRUE
-            }
-            return NIL
+            queue.queue(DrawCommand(DrawType.TEXT, mapOf(
+                "x1" to x, "y1" to y,
+                "color" to queue.makeImGuiColor(red, green, blue, alpha),
+                "text" to text
+            )))
+            return TRUE
         }
     }
 
-    private inner class RenderDLImageFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable()) {
-                val textureID: Long = if (table.get("textureID").isnumber()) table.get("textureID").tolong() else 0
+    private inner class RenderDLImageFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val textureID = args.optlong(1, 0)
+            val x = args.optfloat(2, 0f)
+            val y = args.optfloat(3, 0f)
+            val width = args.optfloat(4, 0f)
+            val height = args.optfloat(5, 0f)
+            val uvMinX = args.optfloat(6, 0f)
+            val uvMinY = args.optfloat(7, 0f)
+            val uvMaxX = args.optfloat(8, 1f)
+            val uvMaxY = args.optfloat(9, 1f)
 
-                val pMinX: Float = if (table.get("x").isnumber()) table.get("x").tofloat() else 0f
-                val pMinY: Float = if (table.get("y").isnumber()) table.get("y").tofloat() else 0f
-                val pMaxX: Float = if (table.get("width").isnumber()) table.get("width").tofloat() else 0f
-                val pMaxY: Float = if (table.get("height").isnumber()) table.get("height").tofloat() else 0f
-
-                val uvMinX: Float = if (table.get("uvMinX").isnumber()) table.get("uvMinX").tofloat() else 0f
-                val uvMinY: Float = if (table.get("uvMinY").isnumber()) table.get("uvMinY").tofloat() else 0f
-                val uvMaxX: Float = if (table.get("uvMaxX").isnumber()) table.get("uvMaxX").tofloat() else 1f
-                val uvMaxY: Float = if (table.get("uvMaxY").isnumber()) table.get("uvMaxY").tofloat() else 1f
-
-                // создаём запрос для отрисовки линии
-                queue.queue(DrawCommand(DrawType.IMAGE, mapOf(
-                    "textureID" to textureID,
-
-                    "pMinX" to pMinX, "pMinY" to pMinY,
-                    "pMaxX" to pMaxX, "pMaxY" to pMaxY,
-
-                    "uvMinX" to uvMinX, "uvMinY" to uvMinY,
-                    "uvMaxX" to uvMaxX, "uvMaxY" to uvMaxY
-                )))
-                return TRUE
-            }
-            return NIL
+            queue.queue(DrawCommand(DrawType.IMAGE, mapOf(
+                "textureID" to textureID,
+                "pMinX" to x, "pMinY" to y,
+                "pMaxX" to width, "pMaxY" to height,
+                "uvMinX" to uvMinX, "uvMinY" to uvMinY,
+                "uvMaxX" to uvMaxX, "uvMaxY" to uvMaxY
+            )))
+            return TRUE
         }
     }
 
-    private inner class RenderDLLineFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable()) {
-                val x1: Float = if (table.get("x1").isnumber()) table.get("x1").tofloat() else 0f
-                val y1: Float = if (table.get("y1").isnumber()) table.get("y1").tofloat() else 0f
-                val x2: Float = if (table.get("x2").isnumber()) table.get("x2").tofloat() else 0f
-                val y2: Float = if (table.get("y2").isnumber()) table.get("y2").tofloat() else 0f
+    private inner class RenderDLLineFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val x1 = args.optfloat(1, 0f)
+            val y1 = args.optfloat(2, 0f)
+            val x2 = args.optfloat(3, 0f)
+            val y2 = args.optfloat(4, 0f)
+            val red = args.optint(5, 255)
+            val green = args.optint(6, 255)
+            val blue = args.optint(7, 255)
+            val alpha = args.optint(8, 255)
+            val thickness = args.optfloat(9, 1f)
 
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
-
-                val thickness: Float = if (table.get("thickness").isnumber()) table.get("thickness").tofloat() else 1f
-
-                // создаём запрос для отрисовки линии
-                queue.queue(DrawCommand(DrawType.LINE, mapOf(
-                    "x1" to x1, "y1" to y1, "x2" to x2, "y2" to y2,
-                    "color" to queue.makeImGuiColor(red, green, blue, alpha),
-                    "thickness" to thickness
-                )))
-                return TRUE
-            }
-            return NIL
+            queue.queue(DrawCommand(DrawType.LINE, mapOf(
+                "x1" to x1, "y1" to y1, "x2" to x2, "y2" to y2,
+                "color" to queue.makeImGuiColor(red, green, blue, alpha),
+                "thickness" to thickness
+            )))
+            return TRUE
         }
     }
 
-    private inner class RenderDLPolygonFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable()) {
-                val pointsTable = table.get("points")
-                if (pointsTable.istable()) {
-                    val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                    val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                    val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                    val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
+    private inner class RenderDLPolygonFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val pointsTable = args.arg(1)
+            if (!pointsTable.istable()) return NIL
 
-                    val points = mutableListOf<Pair<Float, Float>>()
-                    var i = 1
-                    while (true) {
-                        val pointTable = pointsTable.get(i)
-                        if (pointTable.istable()) {
-                            val x = if (pointTable.get("x").isnumber()) pointTable.get("x").tofloat() else 0f
-                            val y = if (pointTable.get("y").isnumber()) pointTable.get("y").tofloat() else 0f
-                            points.add(x to y)
-                            i++
-                        } else {
-                            break
-                        }
-                    }
+            val red = args.optint(2, 255)
+            val green = args.optint(3, 255)
+            val blue = args.optint(4, 255)
+            val alpha = args.optint(5, 255)
 
-                    if (points.size >= 3) {
-                        queue.queue(
-                            DrawCommand(
-                                DrawType.POLYGON, mapOf(
-                                    "points" to points,
-                                    "color" to queue.makeImGuiColor(red, green, blue, alpha)
-                                )
-                            )
-                        )
-                        return TRUE
-                    }
+            val points = mutableListOf<Pair<Float, Float>>()
+            var i = 1
+            while (true) {
+                val pointTable = pointsTable.get(i)
+                if (pointTable.istable()) {
+                    val x = pointTable.get("x").optdouble(0.0).toFloat()
+                    val y = pointTable.get("y").optdouble(0.0).toFloat()
+                    points.add(x to y)
+                    i++
+                } else {
+                    break
                 }
-                return FALSE
             }
-            return NIL
+
+            if (points.size >= 3) {
+                queue.queue(
+                    DrawCommand(
+                        DrawType.POLYGON, mapOf(
+                            "points" to points,
+                            "color" to queue.makeImGuiColor(red, green, blue, alpha)
+                        )
+                    )
+                )
+                return TRUE
+            }
+            return FALSE
         }
     }
 
