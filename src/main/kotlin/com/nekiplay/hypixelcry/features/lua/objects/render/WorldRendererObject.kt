@@ -2,7 +2,6 @@ package com.nekiplay.hypixelcry.features.lua.objects.render
 
 import com.logisticscraft.occlusionculling.util.Vec3d
 import com.mojang.blaze3d.platform.NativeImage
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
 import net.minecraft.client.renderer.texture.DynamicTexture
@@ -121,7 +120,6 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         }
     }
 
-
     private inner class RenderHologramBlockFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
@@ -134,17 +132,6 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             val blockState = Block.stateById(id)
             context.submitBlockHologram(BlockPos(x, y, z), blockState)
             return TRUE
-        }
-    }
-                val z = if (table.get("z").isnumber()) table.get("z").toint() else 0
-                val id = if (table.get("id").isnumber()) table.get("id").toint() else 1
-
-                val blockState = Block.stateById(id)
-
-                context.submitBlockHologram(BlockPos(x, y, z), blockState)
-                return TRUE
-            }
-            return NIL
         }
     }
 
@@ -324,7 +311,6 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             return TRUE
         }
     }
-    }
 
     fun getArgb(alpha: Int, red: Int, green: Int, blue: Int): Int {
         return (alpha shl 24) or (red shl 16) or (green shl 8) or blue
@@ -382,11 +368,6 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                     throughWalls
                 )
             }
-            return TRUE
-        }
-    }
-            }
-
             return TRUE
         }
     }
@@ -515,13 +496,9 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         }
     }
 
-    /**
-     * Загружает текстуру из файла и возвращает её Identifier
-     */
     private fun loadTexture(path: String): Identifier? {
         val scriptCacheId = "wd_global"
 
-        // Проверяем кэш для текущего скрипта
         val scriptCache = TwoRenderObject.Companion.textureCache.getOrPut(scriptCacheId) { ConcurrentHashMap() }
         if (scriptCache.containsKey(path)) {
             return scriptCache[path]
@@ -536,18 +513,15 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             FileInputStream(file).use { inputStream ->
                 val nativeImage = NativeImage.read(inputStream)
 
-                // Используем правильный конструктор NativeImageBackedTexture
                 val textureName = "hypixelcry:texture_${scriptCacheId}_${TwoRenderObject.Companion.textureCounter.getAndIncrement()}"
                 val texture = DynamicTexture(
                     Supplier { textureName },
                     nativeImage
                 )
 
-                // Создаем идентификатор
                 val identifier = Identifier.fromNamespaceAndPath("hypixelcry", "texture_${scriptCacheId}_${TwoRenderObject.Companion.textureCounter.get()}")
                 mc.textureManager.register(identifier, texture)
 
-                // Сохраняем в кэш текущего скрипта
                 scriptCache[path] = identifier
 
                 return identifier
