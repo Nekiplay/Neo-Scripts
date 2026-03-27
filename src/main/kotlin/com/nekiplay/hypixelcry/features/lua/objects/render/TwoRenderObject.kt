@@ -11,8 +11,8 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import net.minecraft.world.item.ItemStack
 import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.OneArgFunction
-import org.luaj.vm2.lib.ZeroArgFunction
+import org.luaj.vm2.Varargs
+import org.luaj.vm2.lib.VarArgFunction
 import java.io.File
 import java.io.FileInputStream
 import java.util.concurrent.ConcurrentHashMap
@@ -62,8 +62,9 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         } as LuaValue
     }
 
-    private inner class GetTextWidthFunction : OneArgFunction() {
-        override fun call(text: LuaValue): LuaValue {
+    private inner class GetTextWidthFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val text = args.arg1()
             if (text.isstring()) {
                 val textRenderer: Font? = mc.font
                 val width: Int? = textRenderer?.width(text.tojstring())
@@ -75,9 +76,9 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         }
     }
 
-    private inner class GetWindowScaleFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            val table = tableOf()
+    private inner class GetWindowScaleFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val table = LuaValue.tableOf()
             val width: Int = mc.window.guiScaledWidth
             val height: Int = mc.window.guiScaledHeight
 
@@ -87,83 +88,80 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         }
     }
 
-    private inner class RenderTextFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val text = if (table.get("text").isstring()) table.get("text").tojstring() else "Empty"
+    private inner class RenderTextFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (context == null) return NIL
 
-                val x: Int = if (table.get("x").isnumber()) table.get("x").toint() else 0
-                val y: Int = if (table.get("y").isnumber()) table.get("y").toint() else 0
+            val x = args.optint(1, 0)
+            val y = args.optint(2, 0)
+            val text = args.optjstring(3, "Empty")
+            val red = args.optint(4, 255)
+            val green = args.optint(5, 255)
+            val blue = args.optint(6, 255)
+            val alpha = args.optint(7, 255)
+            val shadow = args.optboolean(8, true)
+            val scale = args.optdouble(9, 1.0).toFloat()
 
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
+            val color = (alpha and 0xFF shl 24) or
+                    (red and 0xFF shl 16) or
+                    (green and 0xFF shl 8) or
+                    (blue and 0xFF)
 
-                val color = (alpha and 0xFF shl 24) or
-                        (red and 0xFF shl 16) or
-                        (green and 0xFF shl 8) or
-                        (blue and 0xFF)
+            val textRenderer: Font? = mc.font
+            if (textRenderer != null) {
+                if (scale != 1.0f) {
+                    context.pose().pushMatrix()
+                    context.pose().translate(x.toFloat(), y.toFloat())
+                    context.pose().scale(scale, scale)
 
-                val isShadow = if (table.get("shadow").isboolean()) table.get("shadow").toboolean() else true
-                val scale = if (table.get("scale").isnumber()) table.get("scale").tofloat() else 1.0f
+                    context.drawString(textRenderer, Component.literal(text), 0, 0, color, shadow)
 
-
-                val textRenderer: Font? = mc.font
-                if (textRenderer != null) {
-                    if (scale != 1.0f) {
-                        context.pose().pushMatrix()
-                        context.pose().translate(x.toFloat(), y.toFloat())
-                        context.pose().scale(scale, scale)
-
-                        context.drawString(textRenderer, Component.literal(text), 0, 0, color, isShadow)
-
-                        context.pose().popMatrix()
-                    } else {
-                        context.drawString(textRenderer, Component.literal(text), x, y, color, isShadow)
-                    }
+                    context.pose().popMatrix()
+                } else {
+                    context.drawString(textRenderer, Component.literal(text), x, y, color, shadow)
                 }
             }
-            return NIL
+            return TRUE
         }
     }
 
-    private inner class RenderImageFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val path = if (table.get("path").isstring()) table.get("path").tojstring() else return NIL
-                val x: Int = if (table.get("x").isnumber()) table.get("x").toint() else 0
-                val y: Int = if (table.get("y").isnumber()) table.get("y").toint() else 0
-                val width: Int = if (table.get("width").isnumber()) table.get("width").toint() else 0
-                val height: Int = if (table.get("height").isnumber()) table.get("height").toint() else 0
+    private inner class RenderImageFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (context == null) return NIL
 
-                val u: Int = if (table.get("u").isnumber()) table.get("u").toint() else 0
-                val v: Int = if (table.get("v").isnumber()) table.get("v").toint() else 0
-                val regionWidth: Int = if (table.get("region_width").isnumber()) table.get("region_width").toint() else width
-                val regionHeight: Int = if (table.get("region_height").isnumber()) table.get("region_height").toint() else height
+            val path = args.optjstring(1, "") ?: return NIL
+            if (path.isEmpty()) return NIL
 
-                try {
-                    val identifier = loadTexture(path)
-                    if (identifier != null) {
-                        context.blit(
-                            RenderPipelines.GUI_TEXTURED, identifier,
-                            x, y,
-                            u.toFloat(), v.toFloat(),
-                            width, height,
-                            regionWidth, regionHeight,
-                            regionWidth, regionHeight
-                        )
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
+            val x = args.optint(2, 0)
+            val y = args.optint(3, 0)
+            val width = args.optint(4, 0)
+            val height = args.optint(5, 0)
+            val u = args.optint(6, 0)
+            val v = args.optint(7, 0)
+            val regionWidth = args.optint(8, width)
+            val regionHeight = args.optint(9, height)
+
+            try {
+                val identifier = loadTexture(path)
+                if (identifier != null) {
+                    context.blit(
+                        RenderPipelines.GUI_TEXTURED, identifier,
+                        x, y,
+                        u.toFloat(), v.toFloat(),
+                        width, height,
+                        regionWidth, regionHeight,
+                        regionWidth, regionHeight
+                    )
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-            return NIL
+            return TRUE
         }
     }
 
-    private inner class ClearImageCacheFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
+    private inner class ClearImageCacheFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
             // Очищаем кэш текстур только для текущего скрипта
             scriptId?.let { TwoRenderObject.clearScriptCache(it) }
             return NIL
@@ -213,29 +211,27 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         }
     }
 
-    private inner class RenderLineFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x1: Int = if (table.get("x1").isnumber()) table.get("x1").toint() else 0
-                val y1: Int = if (table.get("y1").isnumber()) table.get("y1").toint() else 0
-                val x2: Int = if (table.get("x2").isnumber()) table.get("x2").toint() else 0
-                val y2: Int = if (table.get("y2").isnumber()) table.get("y2").toint() else 0
+    private inner class RenderLineFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (context == null) return NIL
 
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
+            val x1 = args.optint(1, 0)
+            val y1 = args.optint(2, 0)
+            val x2 = args.optint(3, 0)
+            val y2 = args.optint(4, 0)
+            val red = args.optint(5, 255)
+            val green = args.optint(6, 255)
+            val blue = args.optint(7, 255)
+            val alpha = args.optint(8, 255)
+            val thickness = args.optint(9, 1)
 
-                val color = (alpha and 0xFF shl 24) or
-                        (red and 0xFF shl 16) or
-                        (green and 0xFF shl 8) or
-                        (blue and 0xFF)
+            val color = (alpha and 0xFF shl 24) or
+                    (red and 0xFF shl 16) or
+                    (green and 0xFF shl 8) or
+                    (blue and 0xFF)
 
-                val thickness: Int = if (table.get("thickness").isnumber()) table.get("thickness").toint() else 1
-
-                drawLine(context, x1, y1, x2, y2, color, thickness)
-            }
-            return NIL
+            drawLine(context, x1, y1, x2, y2, color, thickness)
+            return TRUE
         }
     }
 
@@ -346,65 +342,67 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         }
     }
 
-    private inner class RenderPolygonFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val pointsTable = table.get("points")
-                if (pointsTable.istable()) {
-                    val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                    val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                    val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                    val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
+    private inner class RenderPolygonFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (context == null) return NIL
 
-                    val color = (alpha and 0xFF shl 24) or
-                            (red and 0xFF shl 16) or
-                            (green and 0xFF shl 8) or
-                            (blue and 0xFF)
+            val table = args.arg1()
+            if (!table.istable()) return NIL
 
-                    val points = mutableListOf<Pair<Float, Float>>()
-                    var i = 1
-                    while (true) {
-                        val pointTable = pointsTable.get(i)
-                        if (pointTable.istable()) {
-                            val x = if (pointTable.get("x").isnumber()) pointTable.get("x").tofloat() else 0f
-                            val y = if (pointTable.get("y").isnumber()) pointTable.get("y").tofloat() else 0f
-                            points.add(x to y)
-                            i++
-                        } else {
-                            break
-                        }
-                    }
+            val pointsTable = table.get("points")
+            if (!pointsTable.istable()) return NIL
 
-                    if (points.size >= 3) {
-                        drawPolygon(context, points, color)
-                    }
+            val red = table.get("red").optint(255)
+            val green = table.get("green").optint(255)
+            val blue = table.get("blue").optint(255)
+            val alpha = table.get("alpha").optint(255)
+
+            val color = (alpha and 0xFF shl 24) or
+                    (red and 0xFF shl 16) or
+                    (green and 0xFF shl 8) or
+                    (blue and 0xFF)
+
+            val points = mutableListOf<Pair<Float, Float>>()
+            var i = 1
+            while (true) {
+                val pointTable = pointsTable.get(i)
+                if (pointTable.istable()) {
+                    val x = pointTable.get("x").optdouble(0.0).toFloat()
+                    val y = pointTable.get("y").optdouble(0.0).toFloat()
+                    points.add(x to y)
+                    i++
+                } else {
+                    break
                 }
             }
-            return NIL
+
+            if (points.size >= 3) {
+                drawPolygon(context, points, color)
+            }
+            return TRUE
         }
     }
 
-    private inner class RenderRectFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x: Int = if (table.get("x").isnumber()) table.get("x").toint() else 0
-                val y: Int = if (table.get("y").isnumber()) table.get("y").toint() else 0
-                val width: Int = if (table.get("width").isnumber()) table.get("width").toint() else 0
-                val height: Int = if (table.get("height").isnumber()) table.get("height").toint() else 0
+    private inner class RenderRectFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (context == null) return NIL
 
-                val red = if (table.get("red").isnumber()) table.get("red").toint() else 255
-                val green = if (table.get("green").isnumber()) table.get("green").toint() else 255
-                val blue = if (table.get("blue").isnumber()) table.get("blue").toint() else 255
-                val alpha = if (table.get("alpha").isnumber()) table.get("alpha").toint() else 255
+            val x = args.optint(1, 0)
+            val y = args.optint(2, 0)
+            val width = args.optint(3, 0)
+            val height = args.optint(4, 0)
+            val red = args.optint(5, 255)
+            val green = args.optint(6, 255)
+            val blue = args.optint(7, 255)
+            val alpha = args.optint(8, 255)
 
-                val color = (alpha and 0xFF shl 24) or
-                        (red and 0xFF shl 16) or
-                        (green and 0xFF shl 8) or
-                        (blue and 0xFF)
+            val color = (alpha and 0xFF shl 24) or
+                    (red and 0xFF shl 16) or
+                    (green and 0xFF shl 8) or
+                    (blue and 0xFF)
 
-                context.fill(x, y, x + width, y + height, color)
-            }
-            return NIL
+            context.fill(x, y, x + width, y + height, color)
+            return TRUE
         }
     }
 
@@ -423,32 +421,36 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         }
     }
 
-    private inner class RenderItemStackFunction : OneArgFunction() {
-        override fun call(table: LuaValue): LuaValue {
-            if (table.istable() && context != null) {
-                val x = if (table.get("x").isnumber()) table.get("x").toint() else 0
-                val y = if (table.get("y").isnumber()) table.get("y").toint() else 0
-                val scale = if (table.get("scale").isnumber()) table.get("scale").tofloat() else 1.0f
+    private inner class RenderItemStackFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (context == null) return NIL
 
-                val itemStackObj = table.get("itemStack")
-                val itemStack = when {
-                    itemStackObj.isuserdata() && itemStackObj.touserdata() is LuaItemStack -> (itemStackObj.touserdata() as LuaItemStack).stack
-                    itemStackObj is LuaItemStack -> itemStackObj.stack
-                    itemStackObj.isuserdata() && itemStackObj.touserdata() is ItemStack -> itemStackObj.touserdata() as ItemStack
-                    else -> null
-                }
+            val table = args.arg1()
+            if (!table.istable()) return NIL
 
-                if (itemStack != null) {
-                    if (scale != 1.0f) {
-                        context.pose().pushMatrix()
-                        context.pose().translate(x.toFloat(), y.toFloat())
-                        context.pose().scale(scale, scale)
-                        context.renderItem(itemStack, 0, 0)
-                        context.pose().popMatrix()
-                    } else {
-                        context.renderItem(itemStack, x, y)
-                    }
+            val x = table.get("x").optint(0)
+            val y = table.get("y").optint(0)
+            val scale = table.get("scale").optdouble(1.0).toFloat()
+
+            val itemStackObj = table.get("itemStack")
+            val itemStack = when {
+                itemStackObj.isuserdata() && itemStackObj.touserdata() is LuaItemStack -> (itemStackObj.touserdata() as LuaItemStack).stack
+                itemStackObj is LuaItemStack -> itemStackObj.stack
+                itemStackObj.isuserdata() && itemStackObj.touserdata() is ItemStack -> itemStackObj.touserdata() as ItemStack
+                else -> null
+            }
+
+            if (itemStack != null) {
+                if (scale != 1.0f) {
+                    context.pose().pushMatrix()
+                    context.pose().translate(x.toFloat(), y.toFloat())
+                    context.pose().scale(scale, scale)
+                    context.renderItem(itemStack, 0, 0)
+                    context.pose().popMatrix()
+                } else {
+                    context.renderItem(itemStack, x, y)
                 }
+                return TRUE
             }
             return NIL
         }
