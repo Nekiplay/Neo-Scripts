@@ -302,8 +302,8 @@ class ImGuiLib : LuaValue() {
 
     private inner class RenderDLTextFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val x = args.optfloat(1, 0f)
-            val y = args.optfloat(2, 0f)
+            val x = args.optdouble(1, 0.0).toFloat()
+            val y = args.optdouble(2, 0.0).toFloat()
             val text = args.optjstring(3, "")
             val red = args.optint(4, 255)
             val green = args.optint(5, 255)
@@ -322,14 +322,14 @@ class ImGuiLib : LuaValue() {
     private inner class RenderDLImageFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val textureID = args.optlong(1, 0)
-            val x = args.optfloat(2, 0f)
-            val y = args.optfloat(3, 0f)
-            val width = args.optfloat(4, 0f)
-            val height = args.optfloat(5, 0f)
-            val uvMinX = args.optfloat(6, 0f)
-            val uvMinY = args.optfloat(7, 0f)
-            val uvMaxX = args.optfloat(8, 1f)
-            val uvMaxY = args.optfloat(9, 1f)
+            val x = args.optdouble(2, 0.0).toFloat()
+            val y = args.optdouble(3, 0.0).toFloat()
+            val width = args.optdouble(4, 0.0).toFloat()
+            val height = args.optdouble(5, 0.0).toFloat()
+            val uvMinX = args.optdouble(6, 0.0).toFloat()
+            val uvMinY = args.optdouble(7, 0.0).toFloat()
+            val uvMaxX = args.optdouble(8, 1.0).toFloat()
+            val uvMaxY = args.optdouble(9, 1.0).toFloat()
 
             queue.queue(DrawCommand(DrawType.IMAGE, mapOf(
                 "textureID" to textureID,
@@ -344,15 +344,15 @@ class ImGuiLib : LuaValue() {
 
     private inner class RenderDLLineFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val x1 = args.optfloat(1, 0f)
-            val y1 = args.optfloat(2, 0f)
-            val x2 = args.optfloat(3, 0f)
-            val y2 = args.optfloat(4, 0f)
+            val x1 = args.optdouble(1, 0.0).toFloat()
+            val y1 = args.optdouble(2, 0.0).toFloat()
+            val x2 = args.optdouble(3, 0.0).toFloat()
+            val y2 = args.optdouble(4, 0.0).toFloat()
             val red = args.optint(5, 255)
             val green = args.optint(6, 255)
             val blue = args.optint(7, 255)
             val alpha = args.optint(8, 255)
-            val thickness = args.optfloat(9, 1f)
+            val thickness = args.optdouble(9, 1.0).toFloat()
 
             queue.queue(DrawCommand(DrawType.LINE, mapOf(
                 "x1" to x1, "y1" to y1, "x2" to x2, "y2" to y2,
