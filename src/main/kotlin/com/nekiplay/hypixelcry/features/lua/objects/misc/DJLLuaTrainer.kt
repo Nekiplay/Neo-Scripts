@@ -101,6 +101,61 @@ class DJLLuaTrainer : LuaValue() {
         return t
     }
 
+    private fun buildBlock(config: LuaValue): Block {
+        val type = config["type"].optjstring("sequential").lowercase()
+
+        return when (type) {
+            "sequential" -> {
+                val block = SequentialBlock()
+                val layers = config["layers"]
+                if (layers.istable()) {
+                    for (i in 1..layers.length()) {
+                        val entry = layers[i]
+                        if (entry.istable()) {
+                            val entryType = entry["type"].optjstring("linear").lowercase()
+                            if (entryType == "sequential" || entryType == "parallel") {
+                                block.add(buildBlock(entry))
+                            } else {
+                                parseLayer(block, entryType, entry)
+                            }
+                        } else {
+                            block.add(Linear.builder().setUnits(entry.tolong()).build())
+                            block.add(Activation::relu)
+                        }
+                    }
+                }
+                block
+            }
+
+            "parallel" -> {
+                val mode = config["mode"].optjstring("concat").lowercase()
+                val layers = config["layers"]
+                val parallelBlock = ParallelBlock { lists ->
+                    if (lists.isEmpty()) return@ParallelBlock ai.djl.ndarray.NDList()
+                    val arrays = lists.map { it.head() }
+                    val result = when (mode) {
+                        "sum" -> {
+                            var res = arrays[0]
+                            for (i in 1 until arrays.size) res = res.add(arrays[i])
+                            res
+                        }
+                        else -> ai.djl.ndarray.NDArrays.concat(ai.djl.ndarray.NDList(arrays))
+                    }
+                    ai.djl.ndarray.NDList(result) // Исправлено
+                }
+
+                if (layers.istable()) {
+                    for (i in 1..layers.length()) {
+                        parallelBlock.add(buildBlock(layers[i]))
+                    }
+                }
+                parallelBlock
+            }
+
+            else -> SequentialBlock()
+        }
+    }
+
     inner class CreateModelFunction : TwoArgFunction() {
         override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
             val id = arg1.checkstring().tojstring()
@@ -109,33 +164,28 @@ class DJLLuaTrainer : LuaValue() {
             return try {
                 val model = Model.newInstance(id)
                 val inputSize = config["input_size"].optint(10)
-                val outputSize = config["output_size"].optint(1)
                 val mode = config["mode"].optjstring("classification")
-                val layersConfig = config["layers"]
 
                 modelModes[id] = mode
                 inputShapes[id] = longArrayOf(1, inputSize.toLong())
 
-                val block = SequentialBlock()
+                // 1. Строим основной блок рекурсивно
+                // buildBlock сам обработает все слои, указанные в config["layers"]
+                val mainBlock = buildBlock(config)
 
-                if (layersConfig != null && layersConfig.istable()) {
-                    for (i in 1..layersConfig.length()) {
-                        val entry = layersConfig[i]
-                        if (entry.istable()) {
-                            val type = entry["type"].optjstring("linear").lowercase()
-                            parseLayer(block, type, entry)
-                        } else {
-                            val units = entry.tolong()
-                            block.add(Linear.builder().setUnits(units).build())
-                            block.add(Activation::relu)
-                        }
-                    }
+                // 2. Обработка финального слоя
+                val finalLayerConfig = config["final_layer"]
+                if (finalLayerConfig.istable()) {
+                    // Если указана таблица: final_layer = {type = "linear", units = 5, activation = "sigmoid"}
+                    val fType = finalLayerConfig["type"].optjstring("linear").lowercase()
+                    parseLayer(mainBlock, fType, finalLayerConfig)
+                } else if (finalLayerConfig.optjstring("") != "none") {
+                    // По умолчанию (если не указано "none"), создаем обычный Linear
+                    val outputSize = config["output_size"].optint(1)
+                    addToBlock(mainBlock, Linear.builder().setUnits(outputSize.toLong()).build())
                 }
 
-                // Финальный слой
-                block.add(Linear.builder().setUnits(outputSize.toLong()).build())
-
-                model.block = block
+                model.block = mainBlock
                 models[id] = model
 
                 LuaTable().apply {
@@ -143,27 +193,26 @@ class DJLLuaTrainer : LuaValue() {
                     set("mode", LuaValue.valueOf(mode))
                 }
             } catch (e: Exception) {
-                e.printStackTrace() // Чтобы видеть подробности в консоли
+                e.printStackTrace()
                 LuaValue.error("Failed to create model: ${e.message}")
             }
         }
     }
 
-    private fun parseLayer(block: SequentialBlock, type: String, params: LuaValue) {
+    private fun addToBlock(parent: Block, child: Block) {
+        when (parent) {
+            is SequentialBlock -> parent.add(child)
+            is ParallelBlock -> parent.add(child)
+            else -> throw IllegalArgumentException("Block of type ${parent.javaClass.simpleName} does not support adding layers")
+        }
+    }
+
+    private fun parseLayer(block: Block, type: String, params: LuaValue) {
         when (type) {
             "linear", "dense" -> {
                 val units = params["units"].checklong()
-                block.add(Linear.builder().setUnits(units).build())
+                addToBlock(block, Linear.builder().setUnits(units).build())
                 addActivation(block, params["activation"].optjstring("relu"))
-            }
-
-            "dropout" -> {
-                val rate = params["rate"].optdouble(0.5).toFloat()
-                block.add(Dropout.builder().optRate(rate).build())
-            }
-
-            "batchnorm" -> {
-                block.add(BatchNorm.builder().build())
             }
 
             "conv2d" -> {
@@ -172,7 +221,7 @@ class DJLLuaTrainer : LuaValue() {
                 val stride = parseShape(params["stride"], 1)
                 val padding = parseShape(params["padding"], 0)
 
-                block.add(Conv2d.builder()
+                addToBlock(block, Conv2d.builder()
                     .setFilters(filters)
                     .setKernelShape(kernel)
                     .optStride(stride)
@@ -184,40 +233,45 @@ class DJLLuaTrainer : LuaValue() {
             "maxpool2d" -> {
                 val kernel = parseShape(params["kernel"], 2)
                 val stride = parseShape(params["stride"], 2)
-                val padding = parseShape(params["padding"], 0)
-                // Используем метод из вашего файла: Pool.maxPool2dBlock(kernel, stride, padding)
-                block.add(Pool.maxPool2dBlock(kernel, stride, padding))
+                addToBlock(block, Pool.maxPool2dBlock(kernel, stride))
             }
 
             "avgpool2d" -> {
                 val kernel = parseShape(params["kernel"], 2)
                 val stride = parseShape(params["stride"], 2)
-                val padding = parseShape(params["padding"], 0)
-                // Используем метод из вашего файла: Pool.avgPool2dBlock(kernel, stride, padding)
-                block.add(Pool.avgPool2dBlock(kernel, stride, padding))
+                addToBlock(block, Pool.avgPool2dBlock(kernel, stride))
             }
 
-            "relu" -> block.add(Activation::relu)
-            "sigmoid" -> block.add(Activation::sigmoid)
-            "tanh" -> block.add(Activation::tanh)
+            "dropout" -> {
+                val rate = params["rate"].optdouble(0.5).toFloat()
+                addToBlock(block, Dropout.builder().optRate(rate).build())
+            }
+
+            "batchnorm" -> {
+                addToBlock(block, BatchNorm.builder().build())
+            }
+
+            "relu" -> addToBlock(block, Activation.reluBlock())
+            "sigmoid" -> addToBlock(block, Activation.sigmoidBlock())
+            "tanh" -> addToBlock(block, Activation.tanhBlock())
             "leaky_relu" -> {
                 val alpha = params["alpha"].optdouble(0.01).toFloat()
-                block.add(Activation.leakyReluBlock(alpha))
+                addToBlock(block, Activation.leakyReluBlock(alpha))
             }
 
             else -> LuaValue.error("Unsupported layer type: $type")
         }
     }
 
-    private fun addActivation(block: SequentialBlock, name: String) {
-        when (name.lowercase()) {
-            "relu" -> block.add(Activation::relu)
-            "sigmoid" -> block.add(Activation::sigmoid)
-            "tanh" -> block.add(Activation::tanh)
-            "leaky_relu" -> block.add(Activation.leakyReluBlock(0.01f))
-            "none" -> { /* пропуск */
-            }
+    private fun addActivation(block: Block, name: String) {
+        val activationBlock: Block? = when (name.lowercase()) {
+            "relu" -> Activation.reluBlock()
+            "sigmoid" -> Activation.sigmoidBlock()
+            "tanh" -> Activation.tanhBlock()
+            "leaky_relu" -> Activation.leakyReluBlock(0.01f)
+            else -> null
         }
+        activationBlock?.let { addToBlock(block, it) }
     }
 
     private fun parseShape(value: LuaValue, defaultValue: Long): Shape {
@@ -367,45 +421,35 @@ class DJLLuaTrainer : LuaValue() {
             return try {
                 val model = Model.newInstance(id)
 
-                // Если передана конфигурация, строим структуру слоев перед загрузкой
+                // Если передана конфигурация, воссоздаем структуру блоков
                 if (config != null) {
                     val inputSize = config["input_size"].optint(10)
-                    val outputSize = config["output_size"].optint(1)
                     val mode = config["mode"].optjstring("classification")
-                    val layersConfig = config["layers"]
 
                     modelModes[id] = mode
                     inputShapes[id] = longArrayOf(1, inputSize.toLong())
 
-                    val block = SequentialBlock()
+                    // 1. Рекурсивно строим блоки (включая все вложенные слои из config["layers"])
+                    val mainBlock = buildBlock(config)
 
-                    if (layersConfig != null && layersConfig.istable()) {
-                        for (i in 1..layersConfig.length()) {
-                            val entry = layersConfig[i]
-
-                            if (entry.istable()) {
-                                // Новый стиль: {type = "conv2d", ...}
-                                val type = entry["type"].optjstring("linear").lowercase()
-                                parseLayer(block, type, entry)
-                            } else {
-                                // Старый стиль: просто число (Linear + ReLU)
-                                val units = entry.tolong()
-                                block.add(Linear.builder().setUnits(units).build())
-                                block.add(Activation::relu)
-                            }
-                        }
+                    // 2. Обработка финального слоя (логика должна быть такой же, как при создании)
+                    val finalLayerConfig = config["final_layer"]
+                    if (finalLayerConfig.istable()) {
+                        val fType = finalLayerConfig["type"].optjstring("linear").lowercase()
+                        parseLayer(mainBlock, fType, finalLayerConfig)
+                    } else if (finalLayerConfig.optjstring("") != "none") {
+                        val outputSize = config["output_size"].optint(1)
+                        addToBlock(mainBlock, Linear.builder().setUnits(outputSize.toLong()).build())
                     }
 
-                    // Финальный полносвязный слой
-                    block.add(Linear.builder().setUnits(outputSize.toLong()).build())
-
-                    model.block = block
+                    model.block = mainBlock
                 }
 
-                // Загружаем веса. DJL сопоставит их со структурой блоков
+                // Загружаем веса. Путь должен указывать на папку или файл .params
                 model.load(java.nio.file.Paths.get(path), id)
                 models[id] = model
 
+                // Создаем предиктор для инференса
                 val predictor = model.newPredictor(ai.djl.translate.NoopTranslator())
                 predictors[id] = predictor
 
