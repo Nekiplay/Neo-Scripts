@@ -19,8 +19,8 @@ class JsonLib : LuaValue() {
 
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
-            "parse", "totable" -> SimpleParseFunction()
-            "stringify", "tojson" -> StringifyFunction()
+            "parse", "totable", "decode" -> SimpleParseFunction()
+            "stringify", "tojson", "encode" -> StringifyFunction()
             else -> super.get(key)
         }
     }

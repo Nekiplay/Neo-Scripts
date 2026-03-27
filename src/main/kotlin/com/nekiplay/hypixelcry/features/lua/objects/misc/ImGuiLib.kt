@@ -37,58 +37,72 @@ class ImGuiLib : TwoArgFunction() {
             "endBegin" -> endFunc()
             "newFrame" -> newFrame()
             "render" -> render()
+
             // Text
             "text" -> text()
             "textColored" -> textColored()
             "textDisabled" -> textDisabled()
             "bulletText" -> bulletText()
+
             // Images
             "createImageObject" -> createImageObject()
             "image" -> image()
+
             // Buttons
             "button" -> button()
             "smallButton" -> smallButton()
             "arrowButton" -> arrowButton()
             "checkbox" -> checkbox()
+
             // Input
             "inputText" -> inputText()
             "inputTextMultiline" -> inputTextMultiline()
             "inputInt" -> inputInt()
             "inputFloat" -> inputFloat()
             "inputDouble" -> inputDouble()
+
             // Layout
             "sameLine" -> sameLine()
             "newLine" -> newLine()
             "spacing" -> spacing()
             "separator" -> separator()
+
             // Groups
             "beginGroup" -> beginGroup()
             "endGroup" -> endGroup()
+
             // Indentation
             "indent" -> indent()
             "unindent" -> unindent()
+
             // Indentation
             "setCursorPos" -> setCursorPos()
             "getCursorPos" -> getCursorPos()
             "getCursorScreenPos" -> getCursorScreenPos()
+
             // Indentation
             "treeNode" -> treeNode()
             "treeNodeEx" -> treeNodeEx()
             "treePop" -> treePop()
             "collapsingHeader" -> collapsingHeader()
+
             // Selectables
             "selectable" -> selectable()
+
             // Lists
             "listBox" -> listBox()
+
             // Tooltips
             "setTooltip" -> setTooltip()
             "beginTooltip" -> beginTooltip()
             "endTooltip" -> endTooltip()
+
             // Popups
             "beginPopup" -> beginPopup()
             "beginPopupModal" -> beginPopupModal()
             "endPopup" -> endPopup()
             "closeCurrentPopup" -> closeCurrentPopup()
+
             // Menus
             "beginMenuBar" -> beginMenuBar()
             "endMenuBar" -> endMenuBar()
@@ -97,25 +111,31 @@ class ImGuiLib : TwoArgFunction() {
             "beginMenu" -> beginMenu()
             "endMenu" -> endMenu()
             "menuItem" -> menuItem()
+
             // Tabs
             "beginTabBar" -> beginTabBar()
             "endTabBar" -> endTabBar()
             "beginTabItem" -> beginTabItem()
             "endTabItem" -> endMainMenuBar()
+
             // Child windows
             "beginChild" -> beginChild()
             "endChild" -> endChild()
+
             // Style
             "pushStyleColor" -> pushStyleColor()
             "popStyleColor" -> popStyleColor()
             "pushStyleVar" -> pushStyleVar()
             "popStyleVar" -> popStyleVar()
+
             // Font
             "pushFont" -> pushFont()
             "popFont" -> popFont()
+
             // ID stack
             "pushID" -> pushID()
             "popID" -> popID()
+
             // Utilities
             "setNextItemWidth" -> setNextItemWidth()
             "isItemHovered" -> isItemHovered()
@@ -125,16 +145,19 @@ class ImGuiLib : TwoArgFunction() {
             "isWindowCollapsed" -> isWindowCollapsed()
             "isWindowFocused" -> isWindowFocused()
             "isWindowHovered" -> isWindowHovered()
+
             // Window manipulation
             "setNextWindowSize" -> setNextWindowSize()
             "setNextWindowPos" -> setNextWindowPos()
             "setNextWindowCollapsed" -> setNextWindowCollapsed()
             "setNextWindowFocus" -> setNextWindowFocus()
+
             // State queries
             "getWindowSize" -> getWindowSize()
             "getWindowPos" -> getWindowPos()
             "getWindowWidth" -> getWindowWidth()
             "getWindowHeight" -> getWindowHeight()
+
             // Table
             "beginTable" -> beginTable()
             "tableSetupColumn" -> tableSetupColumn()
@@ -142,11 +165,13 @@ class ImGuiLib : TwoArgFunction() {
             "tableNextRow" -> tableNextRow()
             "tableSetColumnIndex" -> tableSetColumnIndex()
             "endTable" -> endTable()
+
             // Sliders
             "sliderFloat" -> sliderFloat()
             "sliderInt" -> sliderInt()
             "vSliderFloat" -> vSliderFloat()
             "vSliderInt" -> vSliderInt()
+
             // Constants
             "constants" -> {
                 val constants = LuaTable()
@@ -252,7 +277,8 @@ class ImGuiLib : TwoArgFunction() {
                 constants.set("TableFlags_Resizable", ImGuiTableFlags.Resizable.toInt())
                 constants
             }
-            "dl" -> {
+
+            "dl", "DL" -> {
                 val dl = LuaTable()
                 dl.set("renderLine", RenderDLLineFunction())
                 dl.set("renderPolygon", RenderDLPolygonFunction())
