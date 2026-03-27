@@ -147,91 +147,91 @@ class DJLLuaTrainer : LuaValue() {
                 LuaValue.error("Failed to create model: ${e.message}")
             }
         }
+    }
 
-        private fun parseLayer(block: SequentialBlock, type: String, params: LuaValue) {
-            when (type) {
-                "linear", "dense" -> {
-                    val units = params["units"].checklong()
-                    block.add(Linear.builder().setUnits(units).build())
-                    addActivation(block, params["activation"].optjstring("relu"))
-                }
+    private fun parseLayer(block: SequentialBlock, type: String, params: LuaValue) {
+        when (type) {
+            "linear", "dense" -> {
+                val units = params["units"].checklong()
+                block.add(Linear.builder().setUnits(units).build())
+                addActivation(block, params["activation"].optjstring("relu"))
+            }
 
-                "dropout" -> {
-                    val rate = params["rate"].optdouble(0.5).toFloat()
-                    block.add(Dropout.builder().optRate(rate).build())
-                }
+            "dropout" -> {
+                val rate = params["rate"].optdouble(0.5).toFloat()
+                block.add(Dropout.builder().optRate(rate).build())
+            }
 
-                "batchnorm" -> {
-                    block.add(BatchNorm.builder().build())
-                }
+            "batchnorm" -> {
+                block.add(BatchNorm.builder().build())
+            }
 
-                "conv2d" -> {
-                    val filters = params["filters"].optint(params["channels"].optint(32))
-                    val kernel = parseShape(params["kernel"], 3)
-                    val stride = parseShape(params["stride"], 1)
-                    val padding = parseShape(params["padding"], 0)
+            "conv2d" -> {
+                val filters = params["filters"].optint(params["channels"].optint(32))
+                val kernel = parseShape(params["kernel"], 3)
+                val stride = parseShape(params["stride"], 1)
+                val padding = parseShape(params["padding"], 0)
 
-                    block.add(Conv2d.builder()
-                        .setFilters(filters)
-                        .setKernelShape(kernel)
-                        .optStride(stride)
-                        .optPadding(padding)
-                        .build())
-                    addActivation(block, params["activation"].optjstring("relu"))
-                }
+                block.add(Conv2d.builder()
+                    .setFilters(filters)
+                    .setKernelShape(kernel)
+                    .optStride(stride)
+                    .optPadding(padding)
+                    .build())
+                addActivation(block, params["activation"].optjstring("relu"))
+            }
 
-                "maxpool2d" -> {
-                    val kernel = parseShape(params["kernel"], 2)
-                    val stride = parseShape(params["stride"], 2)
-                    val padding = parseShape(params["padding"], 0)
-                    // Используем метод из вашего файла: Pool.maxPool2dBlock(kernel, stride, padding)
-                    block.add(Pool.maxPool2dBlock(kernel, stride, padding))
-                }
+            "maxpool2d" -> {
+                val kernel = parseShape(params["kernel"], 2)
+                val stride = parseShape(params["stride"], 2)
+                val padding = parseShape(params["padding"], 0)
+                // Используем метод из вашего файла: Pool.maxPool2dBlock(kernel, stride, padding)
+                block.add(Pool.maxPool2dBlock(kernel, stride, padding))
+            }
 
-                "avgpool2d" -> {
-                    val kernel = parseShape(params["kernel"], 2)
-                    val stride = parseShape(params["stride"], 2)
-                    val padding = parseShape(params["padding"], 0)
-                    // Используем метод из вашего файла: Pool.avgPool2dBlock(kernel, stride, padding)
-                    block.add(Pool.avgPool2dBlock(kernel, stride, padding))
-                }
+            "avgpool2d" -> {
+                val kernel = parseShape(params["kernel"], 2)
+                val stride = parseShape(params["stride"], 2)
+                val padding = parseShape(params["padding"], 0)
+                // Используем метод из вашего файла: Pool.avgPool2dBlock(kernel, stride, padding)
+                block.add(Pool.avgPool2dBlock(kernel, stride, padding))
+            }
 
-                "relu" -> block.add(Activation::relu)
-                "sigmoid" -> block.add(Activation::sigmoid)
-                "tanh" -> block.add(Activation::tanh)
-                "leaky_relu" -> {
-                    val alpha = params["alpha"].optdouble(0.01).toFloat()
-                    block.add(Activation.leakyReluBlock(alpha))
-                }
+            "relu" -> block.add(Activation::relu)
+            "sigmoid" -> block.add(Activation::sigmoid)
+            "tanh" -> block.add(Activation::tanh)
+            "leaky_relu" -> {
+                val alpha = params["alpha"].optdouble(0.01).toFloat()
+                block.add(Activation.leakyReluBlock(alpha))
+            }
 
-                else -> LuaValue.error("Unsupported layer type: $type")
+            else -> LuaValue.error("Unsupported layer type: $type")
+        }
+    }
+
+    private fun addActivation(block: SequentialBlock, name: String) {
+        when (name.lowercase()) {
+            "relu" -> block.add(Activation::relu)
+            "sigmoid" -> block.add(Activation::sigmoid)
+            "tanh" -> block.add(Activation::tanh)
+            "leaky_relu" -> block.add(Activation.leakyReluBlock(0.01f))
+            "none" -> { /* пропуск */
             }
         }
+    }
 
-        private fun addActivation(block: SequentialBlock, name: String) {
-            when (name.lowercase()) {
-                "relu" -> block.add(Activation::relu)
-                "sigmoid" -> block.add(Activation::sigmoid)
-                "tanh" -> block.add(Activation::tanh)
-                "leaky_relu" -> block.add(Activation.leakyReluBlock(0.01f))
-                "none" -> { /* пропуск */
+    private fun parseShape(value: LuaValue, defaultValue: Long): Shape {
+        return when {
+            value.isint() -> Shape(value.tolong(), value.tolong())
+            value.istable() -> {
+                if (value.length() >= 2) {
+                    Shape(value[1].tolong(), value[2].tolong())
+                } else {
+                    Shape(value[1].tolong(), value[1].tolong())
                 }
             }
-        }
 
-        private fun parseShape(value: LuaValue, defaultValue: Long): Shape {
-            return when {
-                value.isint() -> Shape(value.tolong(), value.tolong())
-                value.istable() -> {
-                    if (value.length() >= 2) {
-                        Shape(value[1].tolong(), value[2].tolong())
-                    } else {
-                        Shape(value[1].tolong(), value[1].tolong())
-                    }
-                }
-
-                else -> Shape(defaultValue, defaultValue)
-            }
+            else -> Shape(defaultValue, defaultValue)
         }
     }
 
@@ -367,30 +367,43 @@ class DJLLuaTrainer : LuaValue() {
             return try {
                 val model = Model.newInstance(id)
 
-                // ЕСЛИ передана конфигурация, строим структуру слоев ПЕРЕД загрузкой
+                // Если передана конфигурация, строим структуру слоев перед загрузкой
                 if (config != null) {
                     val inputSize = config["input_size"].optint(10)
                     val outputSize = config["output_size"].optint(1)
-                    val layersConfig = config["layers"]
                     val mode = config["mode"].optjstring("classification")
-                    modelModes[id] = mode
+                    val layersConfig = config["layers"]
 
+                    modelModes[id] = mode
                     inputShapes[id] = longArrayOf(1, inputSize.toLong())
 
                     val block = SequentialBlock()
+
                     if (layersConfig != null && layersConfig.istable()) {
                         for (i in 1..layersConfig.length()) {
-                            val layerSize = layersConfig[i].toint()
-                            block.add(Linear.builder().setUnits(layerSize.toLong()).build())
-                            block.add(Activation::relu)
+                            val entry = layersConfig[i]
+
+                            if (entry.istable()) {
+                                // Новый стиль: {type = "conv2d", ...}
+                                val type = entry["type"].optjstring("linear").lowercase()
+                                parseLayer(block, type, entry)
+                            } else {
+                                // Старый стиль: просто число (Linear + ReLU)
+                                val units = entry.tolong()
+                                block.add(Linear.builder().setUnits(units).build())
+                                block.add(Activation::relu)
+                            }
                         }
                     }
+
+                    // Финальный полносвязный слой
                     block.add(Linear.builder().setUnits(outputSize.toLong()).build())
+
                     model.block = block
                 }
 
-                // Теперь загружаем веса. DJL найдет id-0000.params и вставит их в блоки.
-                model.load(Path(path), id)
+                // Загружаем веса. DJL сопоставит их со структурой блоков
+                model.load(java.nio.file.Paths.get(path), id)
                 models[id] = model
 
                 val predictor = model.newPredictor(ai.djl.translate.NoopTranslator())
