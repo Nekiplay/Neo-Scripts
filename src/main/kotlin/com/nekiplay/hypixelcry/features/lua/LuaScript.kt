@@ -1141,6 +1141,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             "encoding" -> {
                 EncodingLib()
             }
+            "creator" -> {
+                Creator()
+            }
             else -> return null
         }
 
