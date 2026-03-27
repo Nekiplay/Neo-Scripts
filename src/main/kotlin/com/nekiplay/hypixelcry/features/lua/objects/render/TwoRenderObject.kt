@@ -425,18 +425,16 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
 
-            val table = args.arg1()
-            if (!table.istable()) return NIL
+            if (args.narg() < 3) return NIL
 
-            val x = table.get("x").optint(0)
-            val y = table.get("y").optint(0)
-            val scale = table.get("scale").optdouble(1.0).toFloat()
+            val x = args.optint(1, 0)
+            val y = args.optint(2, 0)
+            val itemStackArg = args.arg(3)
+            val scale = args.optdouble(4, 1.0).toFloat()
 
-            val itemStackObj = table.get("itemStack")
             val itemStack = when {
-                itemStackObj.isuserdata() && itemStackObj.touserdata() is LuaItemStack -> (itemStackObj.touserdata() as LuaItemStack).stack
-                itemStackObj is LuaItemStack -> itemStackObj.stack
-                itemStackObj.isuserdata() && itemStackObj.touserdata() is ItemStack -> itemStackObj.touserdata() as ItemStack
+                itemStackArg.isuserdata() && itemStackArg.touserdata() is LuaItemStack -> (itemStackArg.touserdata() as LuaItemStack).stack
+                itemStackArg.isuserdata() && itemStackArg.touserdata() is ItemStack -> itemStackArg.touserdata() as ItemStack
                 else -> null
             }
 
