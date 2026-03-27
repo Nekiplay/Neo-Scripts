@@ -45,7 +45,7 @@ class TCPLib : LuaValue() {
             "setBlocking" -> SetBlocking()
             "setTimeout" -> SetTimeout()
             "getSocketCount" -> GetSocketCount()
-            
+
             "listen" -> Listen()
             "accept" -> Accept()
             "closeServer" -> CloseServer()

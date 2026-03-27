@@ -40,8 +40,8 @@ class EncodingLib : LuaValue() {
 
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
-            "stringToBytes" -> StringToBytes()
-            "bytesToString" -> BytesToString()
+            "stringToBytes", "tobytes" -> StringToBytes()
+            "bytesToString", "tostring" -> BytesToString()
             "getSupportedEncodings" -> GetSupportedEncodings()
             "isValidEncoding" -> IsValidEncoding()
             "detectEncoding" -> DetectEncoding()
