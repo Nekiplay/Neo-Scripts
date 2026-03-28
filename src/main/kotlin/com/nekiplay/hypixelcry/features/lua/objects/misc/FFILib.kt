@@ -51,7 +51,7 @@ class FFILib : LuaTable() {
     private val gcEntries = ConcurrentHashMap<Long, Pair<Pointer, LuaValue>>()
     private val metatypeRegistry = ConcurrentHashMap<String, LuaTable>()
     private val typeOfRegistry = ConcurrentHashMap<String, CType>()
-    private var debugMode = AtomicBoolean(false)
+    private var debugMode = AtomicBoolean(true)
 
     init {
         registerBasicTypes()
@@ -88,6 +88,7 @@ class FFILib : LuaTable() {
 
     private fun parseCDef(cdefString: String): CType? {
         val trimmed = cdefString.trim()
+        log("parseCDef input: $trimmed")
         
         val enumRegex = Regex("""enum\s+(\w+)\s*\{([^}]+)\}""")
         val enumMatch = enumRegex.find(trimmed)
@@ -103,19 +104,22 @@ class FFILib : LuaTable() {
                 values[name] = currentValue++
             }
             registerEnum(enumName, values, 4)
+            log("Parsed enum: $enumName")
             return typeRegistry[enumName]
         }
 
-        val structRegex = Regex("""struct\s+(\w+)\s*\{([\s\S]*?)\}(?:\s*__attribute__\(\(packed\)\))?""")
+        val structRegex = Regex("""struct\s+(\w+)\s*\{([\s\S]*?)\s*\}(?:\s*__attribute__\(\(packed\)\))?""")
         val structMatch = structRegex.find(trimmed)
+        log("Struct regex match: ${structMatch?.groupValues}")
         if (structMatch != null) {
             val structName = structMatch.groupValues[1]
             val body = structMatch.groupValues[2]
             val isPacked = trimmed.contains("__attribute__((packed))")
+            log("Parsing struct: $structName, body: $body")
             return parseStructBody(structName, body, isPacked)
         }
 
-        val unionRegex = Regex("""union\s+(\w+)\s*\{([\s\S]*?)\}""")
+        val unionRegex = Regex("""union\s+(\w+)\s*\{([\s\S]*?)\s*\}(?:\s*__attribute__\(\(packed\)\))?""")
         val unionMatch = unionRegex.find(trimmed)
         if (unionMatch != null) {
             val unionName = unionMatch.groupValues[1]
@@ -133,6 +137,7 @@ class FFILib : LuaTable() {
             return typeRegistry[newName]
         }
 
+        log("parseCDef: no match found")
         return null
     }
 
@@ -547,17 +552,16 @@ class FFILib : LuaTable() {
                     }
                     is LuaNumber -> if (v.isint()) v.toint() else v.todouble()
                     is LuaString -> v.tojstring()
-                    else -> null
+                    else -> return error("FFI: unsupported argument type ${v.typename()} for parameter $i")
                 }
             }
 
             val res = try { 
                 jnaFunc.invoke(Pointer::class.java, jnaArgs) 
+            } catch (e: UnsatisfiedLinkError) {
+                return error("FFI: Unable to call ${jnaFunc.name}: ${e.message}")
             } catch (e: Exception) { 
-                if (ffi.debugMode.get()) {
-                    log("FFI Error: ${e.message}")
-                }
-                null 
+                return error("FFI: Error calling ${jnaFunc.name}: ${e.message}")
             }
 
             val voidType = typeRegistry["void"]!!
