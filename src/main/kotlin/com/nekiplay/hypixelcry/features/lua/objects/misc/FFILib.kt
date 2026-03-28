@@ -278,31 +278,51 @@ class FFILib : LuaTable() {
             val returnType = parseCallbackReturnType(protoStr)
             val argTypes = parseCallbackArgTypes(protoStr)
 
-            val cb = object : Callback {
-                @Suppress("UNCHECKED_CAST")
-                override fun callback(args: Array<out Any>): Any {
-                    val luaArgs = mutableListOf<LuaValue>()
-                    for (i in argTypes.indices) {
-                        val arg = args[i]
-                        luaArgs.add(convertArgToLua(arg, argTypes[i]))
-                    }
+            val callbackObj = createCallback(returnType, argTypes, luaFunc)
 
-                    val res = try {
-                        luaFunc.invoke(LuaValue.varargsOf(luaArgs.toTypedArray()))
-                    } catch (e: Exception) {
-                        log("Callback error: ${e.message}")
-                        NIL
-                    }
-
-                    return convertReturnFromLua(res, returnType)
-                }
-            }
-
-            val ptr = CallbackReference.getFunctionPointer(cb)
-            callbackCache[ptr.hashCode().toLong()] = WeakReference(cb)
+            val ptr = CallbackReference.getFunctionPointer(callbackObj)
+            callbackCache[ptr.hashCode().toLong()] = WeakReference(callbackObj)
 
             val ptrType = typeRegistry["ptr"]!!
             return CData(ptr, ptrType, this@FFILib)
+        }
+
+        private fun createCallback(returnType: CType?, argTypes: List<CType>, luaFunc: LuaValue): Callback {
+            val ffi = this@FFILib
+            return when (argTypes.size) {
+                0 -> object : Callback {
+                    fun invoke(): Any = invokeCallback(emptyList(), returnType, luaFunc, ffi)
+                }
+                1 -> object : Callback {
+                    @Suppress("UNCHECKED_CAST")
+                    fun invoke(a1: Any): Any = invokeCallback(listOf(a1), returnType, luaFunc, ffi)
+                }
+                2 -> object : Callback {
+                    @Suppress("UNCHECKED_CAST")
+                    fun invoke(a1: Any, a2: Any): Any = invokeCallback(listOf(a1, a2), returnType, luaFunc, ffi)
+                }
+                3 -> object : Callback {
+                    @Suppress("UNCHECKED_CAST")
+                    fun invoke(a1: Any, a2: Any, a3: Any): Any = invokeCallback(listOf(a1, a2, a3), returnType, luaFunc, ffi)
+                }
+                else -> object : Callback {
+                    @Suppress("UNCHECKED_CAST")
+                    fun invoke(a1: Any, a2: Any, a3: Any, a4: Any, a5: Any): Any = invokeCallback(listOf(a1, a2, a3, a4, a5), returnType, luaFunc, ffi)
+                }
+            }
+        }
+
+        private fun invokeCallback(args: List<Any>, returnType: CType?, luaFunc: LuaValue, ffi: FFILib): Any {
+            val luaArgs = args.map { convertArgToLua(it, null, ffi) }
+
+            val res = try {
+                luaFunc.invoke(LuaValue.varargsOf(luaArgs.toTypedArray()))
+            } catch (e: Exception) {
+                log("Callback error: ${e.message}")
+                NIL
+            }
+
+            return convertReturnFromLua(res, returnType)
         }
 
         private fun parseCallbackReturnType(proto: String): CType? {
@@ -327,16 +347,13 @@ class FFILib : LuaTable() {
             return listOf(typeRegistry["int"]!!, typeRegistry["int"]!!, typeRegistry["int"]!!)
         }
 
-        private fun convertArgToLua(arg: Any, type: CType?): LuaValue {
+        private fun convertArgToLua(arg: Any, type: CType?, ffi: FFILib): LuaValue {
             return when (arg) {
                 is Int -> valueOf(arg.toDouble())
                 is Long -> valueOf(arg.toDouble())
                 is Float -> valueOf(arg.toDouble())
                 is Double -> valueOf(arg)
-                is Pointer -> {
-                    if (type != null) CData(arg, type, this@FFILib) 
-                    else CData(arg, typeRegistry["ptr"]!!, this@FFILib)
-                }
+                is Pointer -> CData(arg, typeRegistry["ptr"]!!, ffi)
                 else -> NIL
             }
         }
