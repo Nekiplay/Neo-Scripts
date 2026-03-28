@@ -320,9 +320,7 @@ class FFILib : LuaTable() {
                     0 -> luaFunc.call()
                     1 -> luaFunc.call(luaArgs[0])
                     2 -> luaFunc.call(luaArgs[0], luaArgs[1])
-                    3 -> luaFunc.call(luaArgs[0], luaArgs[1], luaArgs[2])
-                    4 -> luaFunc.call(luaArgs[0], luaArgs[1], luaArgs[2], luaArgs[3])
-                    else -> luaFunc.call(luaArgs[0], luaArgs[1], luaArgs[2], luaArgs[3], luaArgs[4])
+                    else -> luaFunc.call(luaArgs[0], luaArgs[1], luaArgs[2])
                 }
             } catch (e: Exception) {
                 log("Callback error: ${e.message}")
