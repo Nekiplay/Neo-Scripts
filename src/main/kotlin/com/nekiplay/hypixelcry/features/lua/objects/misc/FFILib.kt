@@ -289,33 +289,45 @@ class FFILib : LuaTable() {
 
         private fun createCallback(returnType: CType?, argTypes: List<CType>, luaFunc: LuaValue): Callback {
             val ffi = this@FFILib
+            
+            val arg0Type = argTypes.getOrNull(0)?.name
+            val arg1Type = argTypes.getOrNull(1)?.name
+            val arg2Type = argTypes.getOrNull(2)?.name
+            
             return when (argTypes.size) {
                 0 -> object : Callback {
-                    fun invoke(): Int = invokeCallbackInt(emptyList(), returnType, luaFunc, ffi)
+                    fun invoke(): Unit = invokeCallbackVoid(emptyList(), returnType, luaFunc, ffi)
                 }
-                1 -> object : Callback {
-                    @Suppress("UNCHECKED_CAST")
-                    fun invoke(a1: Int): Int = invokeCallbackInt(listOf(a1.toLong()), returnType, luaFunc, ffi)
+                1 -> {
+                    if (arg0Type == "ptr") {
+                        object : Callback {
+                            fun invoke(a1: Pointer): Unit = invokeCallbackVoid(listOf(a1), returnType, luaFunc, ffi)
+                        }
+                    } else {
+                        object : Callback {
+                            fun invoke(a1: Int): Unit = invokeCallbackVoid(listOf(a1.toLong()), returnType, luaFunc, ffi)
+                        }
+                    }
                 }
                 2 -> object : Callback {
                     @Suppress("UNCHECKED_CAST")
-                    fun invoke(a1: Int, a2: Pointer): Int = invokeCallbackInt(listOf(a1.toLong(), a2), returnType, luaFunc, ffi)
+                    fun invoke(a1: Pointer, a2: Pointer): Unit = invokeCallbackVoid(listOf(a1, a2), returnType, luaFunc, ffi)
                 }
                 3 -> object : Callback {
                     @Suppress("UNCHECKED_CAST")
-                    fun invoke(a1: Int, a2: Pointer, a3: Int): Int = invokeCallbackInt(listOf(a1.toLong(), a2, a3.toLong()), returnType, luaFunc, ffi)
+                    fun invoke(a1: Pointer, a2: Pointer, a3: Pointer): Unit = invokeCallbackVoid(listOf(a1, a2, a3), returnType, luaFunc, ffi)
                 }
                 else -> object : Callback {
                     @Suppress("UNCHECKED_CAST")
-                    fun invoke(a1: Int, a2: Pointer, a3: Int, a4: Pointer): Int = invokeCallbackInt(listOf(a1.toLong(), a2, a3.toLong(), a4), returnType, luaFunc, ffi)
+                    fun invoke(a1: Pointer, a2: Pointer, a3: Pointer, a4: Pointer): Unit = invokeCallbackVoid(listOf(a1, a2, a3, a4), returnType, luaFunc, ffi)
                 }
             }
         }
 
-        private fun invokeCallbackInt(args: List<Any>, returnType: CType?, luaFunc: LuaValue, ffi: FFILib): Int {
+        private fun invokeCallbackVoid(args: List<Any>, returnType: CType?, luaFunc: LuaValue, ffi: FFILib) {
             val luaArgs = args.map { convertArgToLua(it, null, ffi) }
 
-            val res = try {
+            try {
                 when (luaArgs.size) {
                     0 -> luaFunc.call()
                     1 -> luaFunc.call(luaArgs[0])
@@ -323,10 +335,7 @@ class FFILib : LuaTable() {
                 }
             } catch (e: Exception) {
                 log("Callback error: ${e.message}")
-                NIL
             }
-
-            return convertReturnFromLuaInt(res, returnType)
         }
 
         private fun parseCallbackReturnType(proto: String): CType? {
