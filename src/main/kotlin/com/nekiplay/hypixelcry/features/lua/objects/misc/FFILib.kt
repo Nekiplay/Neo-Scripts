@@ -313,12 +313,11 @@ class FFILib : LuaTable() {
             
             when (src) {
                 is LuaString -> {
-                    val srcBytes = src.tojstring().toByteArray()
+                    val srcStr = src.tojstring()
+                    val srcBytes = srcStr.toByteArray()
                     val copyLen = if (len.isnil()) srcBytes.size else minOf(len.checkint(), srcBytes.size)
                     destPtr.write(0, srcBytes, 0, copyLen)
-                    if (copyLen < destPtr.getByteArray(0, destPtr.indexOf(0.toByte()).toInt()).size) {
-                        destPtr.setByte(copyLen.toLong(), 0)
-                    }
+                    destPtr.setByte(copyLen.toLong(), 0.toByte())
                     return NIL
                 }
                 is CData -> {
