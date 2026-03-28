@@ -51,7 +51,7 @@ class FFILib : LuaTable() {
     private val gcEntries = ConcurrentHashMap<Long, Pair<Pointer, LuaValue>>()
     private val metatypeRegistry = ConcurrentHashMap<String, LuaTable>()
     private val typeOfRegistry = ConcurrentHashMap<String, CType>()
-    private var debugMode = AtomicBoolean(true)
+    private var debugMode = AtomicBoolean(false)
 
     init {
         registerBasicTypes()
