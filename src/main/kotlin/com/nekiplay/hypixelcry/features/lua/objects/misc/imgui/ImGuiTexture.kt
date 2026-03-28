@@ -2,7 +2,7 @@ package com.nekiplay.hypixelcry.features.lua.objects.misc.imgui
 
 import com.mojang.blaze3d.opengl.GlTextureView
 import com.mojang.blaze3d.platform.NativeImage
-import com.nekiplay.hypixelcry.pathfinder.utils.mc
+import com.nekiplay.hypixelcry.HypixelCry.mc
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.resources.Identifier
 import org.luaj.vm2.LuaUserdata

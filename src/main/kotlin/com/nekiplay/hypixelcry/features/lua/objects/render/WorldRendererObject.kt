@@ -2,13 +2,12 @@ package com.nekiplay.hypixelcry.features.lua.objects.render
 
 import com.logisticscraft.occlusionculling.util.Vec3d
 import com.mojang.blaze3d.platform.NativeImage
+import com.nekiplay.hypixelcry.HypixelCry.mc
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
-import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.TextColor
 import net.minecraft.resources.Identifier
 import net.minecraft.util.CommonColors
 import net.minecraft.world.level.block.Block

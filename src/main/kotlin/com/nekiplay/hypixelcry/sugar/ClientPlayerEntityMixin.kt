@@ -1,7 +1,7 @@
 package com.nekiplay.hypixelcry.sugar
 
+import com.nekiplay.hypixelcry.HypixelCry.mc
 import com.nekiplay.hypixelcry.mixins.PlayerListHudAccessor
-import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.utils.Utils
 import net.minecraft.client.player.LocalPlayer
 import net.minecraft.network.chat.Component

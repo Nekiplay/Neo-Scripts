@@ -1,6 +1,7 @@
 package com.nekiplay.hypixelcry.features.modules
 
-import com.nekiplay.hypixelcry.pathfinder.utils.mc
+import com.nekiplay.hypixelcry.HypixelCry.mc
+
 
 open class ClientModule {
     val player by lazy { mc.player }  // Инициализируется при первом обращении

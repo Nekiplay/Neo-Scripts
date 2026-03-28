@@ -1129,9 +1129,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             "json" -> {
                 JsonLib()
             }
-            "pathfinder" -> {
-                PathFinderLib()
-            }
             "http" -> {
                 HttpClientLib()
             }

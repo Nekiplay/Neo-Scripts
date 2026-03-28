@@ -1,9 +1,9 @@
 package com.nekiplay.hypixelcry.features.lua.objects.player
 
+import com.nekiplay.hypixelcry.HypixelCry.mc
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponent
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
-import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.sugar.getScorebordLines
 import com.nekiplay.hypixelcry.sugar.getTab

@@ -1,6 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.objects.player
 
-import com.nekiplay.hypixelcry.pathfinder.utils.mc
+import com.nekiplay.hypixelcry.HypixelCry.mc
 import com.nekiplay.hypixelcry.sugar.attackBlock
 import com.nekiplay.hypixelcry.sugar.attackEntity
 import com.nekiplay.hypixelcry.sugar.interactBlock

@@ -3,6 +3,7 @@ package com.nekiplay.hypixelcry.features.modules.impl.misc
 import com.mojang.brigadier.CommandDispatcher
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.HypixelCry.LUA_MANAGER
+import com.nekiplay.hypixelcry.HypixelCry.mc
 import com.nekiplay.hypixelcry.events.KeyEvent
 import com.nekiplay.hypixelcry.events.MouseButtonEvent
 import com.nekiplay.hypixelcry.events.SkyblockEvents
@@ -15,7 +16,6 @@ import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.features.modules.ClientModule
 import com.nekiplay.hypixelcry.imgui.ImguiLoader
-import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import com.nekiplay.hypixelcry.sugar.getFormattedString
 import com.nekiplay.hypixelcry.sugar.getJsonString
 import com.nekiplay.hypixelcry.utils.render.WorldRenderExtractionCallback
