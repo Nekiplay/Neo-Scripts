@@ -233,7 +233,12 @@ class FFILib : LuaTable() {
 
             val cdefString = arg.checkjstring()
             val parsed = parseCDef(cdefString)
-            return if (parsed != null) valueOf(parsed.name) else error("FFI: Failed to parse cdef")
+            if (parsed != null) {
+                typeRegistry[parsed.name] = parsed
+                log("Registered type: ${parsed.name}")
+                return valueOf(parsed.name)
+            }
+            return error("FFI: Failed to parse cdef")
         }
     }
 
