@@ -552,17 +552,33 @@ class FFILib : LuaTable() {
             val jnaArgs = arrayOfNulls<Any>(args.narg())
             for (i in 1..args.narg()) {
                 val v = args.arg(i)
-                jnaArgs[i-1] = when (v) {
+                val argValue: Any? = when (v) {
                     is CData -> {
                         if (v.peer == Pointer.NULL) {
                             return error("FFI: null pointer passed to ${jnaFunc.name}")
                         }
+                        if (ffi.debugMode.get()) {
+                            log("Arg $i: CData peer=${v.peer}, cType=${v.cType.name}")
+                        }
                         v.peer
                     }
-                    is LuaNumber -> if (v.isint()) v.toint() else v.todouble()
-                    is LuaString -> v.tojstring()
+                    is LuaNumber -> {
+                        val num = if (v.isint()) v.toint() else v.todouble()
+                        if (ffi.debugMode.get()) {
+                            log("Arg $i: Number=$num")
+                        }
+                        num
+                    }
+                    is LuaString -> {
+                        val str = v.tojstring()
+                        if (ffi.debugMode.get()) {
+                            log("Arg $i: String='$str'")
+                        }
+                        str
+                    }
                     else -> return error("FFI: unsupported argument type ${v.typename()} for parameter $i")
                 }
+                jnaArgs[i-1] = argValue
             }
 
             val res = try { 
