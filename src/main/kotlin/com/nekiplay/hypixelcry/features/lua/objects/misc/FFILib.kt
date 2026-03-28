@@ -310,15 +310,31 @@ class FFILib : LuaTable() {
                 is LuaNumber -> Pointer(dest.tolong())
                 else -> return NIL
             }
-            val srcPtr = when (src) {
-                is CData -> src.peer
-                is LuaNumber -> Pointer(src.tolong())
+            
+            when (src) {
+                is LuaString -> {
+                    val srcBytes = src.tojstring().toByteArray()
+                    val copyLen = if (len.isnil()) srcBytes.size else minOf(len.checkint(), srcBytes.size)
+                    destPtr.write(0, srcBytes, 0, copyLen)
+                    if (copyLen < destPtr.getByteArray(0, destPtr.indexOf(0.toByte()).toInt()).size) {
+                        destPtr.setByte(copyLen.toLong(), 0)
+                    }
+                    return NIL
+                }
+                is CData -> {
+                    val srcPtr = src.peer
+                    val length = if (len.isnil()) 1024 else len.checkint()
+                    val srcArray = srcPtr.getByteArray(0, length)
+                    destPtr.write(0, srcArray, 0, length)
+                }
+                is LuaNumber -> {
+                    val srcPtr = Pointer(src.tolong())
+                    val length = if (len.isnil()) 1024 else len.checkint()
+                    val srcArray = srcPtr.getByteArray(0, length)
+                    destPtr.write(0, srcArray, 0, length)
+                }
                 else -> return NIL
             }
-            val length = if (len.isnil()) 1024 else len.checkint()
-
-            val srcArray = srcPtr.getByteArray(0, length)
-            destPtr.write(0, srcArray, 0, length)
             
             return NIL
         }
@@ -515,10 +531,13 @@ class FFILib : LuaTable() {
 
     inner class StringFunction : TwoArgFunction() {
         override fun call(ptr: LuaValue, len: LuaValue): LuaValue {
-            val p = (ptr as? CData)?.peer ?: return NIL
-            if (p == Pointer.NULL) return NIL
-            return if (len.isnil()) valueOf(p.getString(0))
-            else valueOf(p.getByteArray(0, len.checkint()))
+            log("StringFunction: ptr type=${ptr.typename()}")
+            val p = (ptr as? CData)?.peer
+            log("StringFunction: peer=$p, cType=${(ptr as? CData)?.cType?.name}")
+            if (p == null || p == Pointer.NULL) return NIL
+            val result = if (len.isnil()) p.getString(0) else String(p.getByteArray(0, len.checkint()))
+            log("StringFunction: result='$result'")
+            return valueOf(result)
         }
     }
 
