@@ -1,11 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc.catboost
 
 import ai.catboost.CatBoostModel
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaEntity
-import com.nekiplay.hypixelcry.pathfinder.utils.mc
-import imgui.ImGui
-import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.level.block.state.BlockState
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
