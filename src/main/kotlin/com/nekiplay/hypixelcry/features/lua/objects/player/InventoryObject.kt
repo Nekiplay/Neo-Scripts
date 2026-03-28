@@ -34,7 +34,6 @@ class InventoryObject: LuaValue() {
 
             "getStackFromContainer" -> GetStackFromContainerFunction()
             "getStack" -> GetStackFunction()
-            "getStackFromId" -> GetStackFromIDFunction()
             "getSignText" -> GetSignTextFunction()
             "setSignText" -> SetSignTextFunction()
             "doneSign" -> DoneSignFunction()
@@ -60,22 +59,6 @@ class InventoryObject: LuaValue() {
             }
             else {
                 return FALSE
-            }
-        }
-    }
-
-    private inner class GetStackFromIDFunction : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            if (!args.arg(1).isstring()) {
-                error("create item expects a string as 1st argument (item neu id)")
-            }
-            val idString = args.arg(1).checkjstring()
-
-            val stack = ItemRepository.getItemStack(idString)
-            return if (stack != null) {
-                LuaItemStack(stack)
-            } else {
-                NIL
             }
         }
     }

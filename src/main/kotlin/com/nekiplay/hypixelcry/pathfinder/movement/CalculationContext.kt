@@ -12,5 +12,5 @@ class CalculationContext(sprintFactor: Double = 0.13, walkFactor: Double = 0.1, 
     val maxFallHeight = 20
     val world = Minecraft.getInstance().level;
     var stepSize = 1
-    var maxIterations = 15000
+    var maxIterations = 50000
 }

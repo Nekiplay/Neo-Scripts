@@ -84,19 +84,6 @@ class LuaManager() {
         }
     }
 
-    // Initialize objects once
-    val playerObj = PlayerObject()
-    val worldObj = WorldObject()
-    val modulesObj = ModulesObject()
-
-    val imguiLib = ImGuiLib()
-    val jsonLib = JsonLib()
-    val httpLib = HttpClientLib()
-    val catboostLib = CatboostLib()
-    val creatorLib = Creator()
-    val encodingLib = EncodingLib()
-
-
     fun executeScript(file: File): Any {
         if (!file.exists() || !file.isFile) {
             throw FileNotFoundException("Script file not found: ${file.path}")

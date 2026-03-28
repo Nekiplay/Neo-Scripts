@@ -21,6 +21,7 @@ import com.nekiplay.hypixelcry.features.lua.objects.misc.TCPLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ThreadLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
 import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesObject
+import com.nekiplay.hypixelcry.features.lua.objects.modules.PathFinderLib
 import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
@@ -133,6 +134,13 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     private fun registerEventRegistrationFunctions() {
+        scriptGlobals.set("registerUnloadCallback", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                return LuaValue.valueOf(addScriptUnloadCallback(callback))
+            }
+        })
+
         scriptGlobals.set("registerUnloadCallback", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 if (!callback.isfunction()) return FALSE
@@ -509,9 +517,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     private fun registerOtherCustomFunctions() {
-        // Register HypixelCry global
-        scriptGlobals.set("HypixelCry", CoerceJavaToLua.coerce(HypixelCry.getInstance()))
-
         scriptGlobals.set("currentScriptName", LuaValue.valueOf(scriptName))
 
         // Register print function
@@ -527,14 +532,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 val messageStr = message.toString()
                 HypixelCry.LOGGER.info(HypixelCry.LOG_PREFIX + messageStr)
                 return NIL
-            }
-        })
-
-        // Register registerUnloadCallback function
-        scriptGlobals.set("registerUnloadCallback", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                return LuaValue.valueOf(addScriptUnloadCallback(callback))
             }
         })
     }
@@ -1056,23 +1053,21 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             particleCallbacks.toTypedArray()
         }
 
+        val t = LuaValue.tableOf()
+        t.set("id", id)
+
+        t.set("x", x)
+        t.set("y", y)
+        t.set("z", z)
+
+        t.set("x_dist", xDist.toDouble())
+        t.set("y_dist", yDist.toDouble())
+        t.set("z_dist", zDist.toDouble())
+
+        t.set("max_speed", maxSpeed.toDouble())
+        t.set("count", count)
         for (callback in callbacks) {
             try {
-
-                val t = LuaValue.tableOf()
-                t.set("id", id)
-
-                t.set("x", x)
-                t.set("y", y)
-                t.set("z", z)
-
-                t.set("x_dist", xDist.toDouble())
-                t.set("y_dist", yDist.toDouble())
-                t.set("z_dist", zDist.toDouble())
-
-                t.set("max_speed", maxSpeed.toDouble())
-                t.set("count", count)
-
                 callback.call(t)
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in particle callback in ${scriptName}: ${e.message}")
@@ -1126,7 +1121,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 if (ffi == null) ffi = FFILib()
                 ffi!!
             }
-            "djl", "ai" -> {
+            "djl", -> {
                 if (djlLibrary == null) djlLibrary = DJLLuaTrainer()
                 // DJL требует вызова call для регистрации функций в таблице
                 djlLibrary!!
@@ -1134,6 +1129,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
             "json" -> {
                 JsonLib()
+            }
+            "pathfinder" -> {
+                PathFinderLib()
             }
             "http" -> {
                 HttpClientLib()
