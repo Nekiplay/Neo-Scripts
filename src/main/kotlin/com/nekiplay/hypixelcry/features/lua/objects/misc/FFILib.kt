@@ -273,16 +273,28 @@ class FFILib : LuaTable() {
     inner class CallbackFunction : TwoArgFunction() {
         override fun call(proto: LuaValue, func: LuaValue): LuaValue {
             val luaFunc = func
+            val protoStr = proto.checkjstring()
 
-            val cb = object : LuaCallback {
-                override fun invoke(a1: Long, a2: Long, a3: Long): Long {
+            val returnType = parseCallbackReturnType(protoStr)
+            val argTypes = parseCallbackArgTypes(protoStr)
+
+            val cb = object : Callback {
+                @Suppress("UNCHECKED_CAST")
+                override fun callback(args: Array<out Any>): Any {
+                    val luaArgs = mutableListOf<LuaValue>()
+                    for (i in argTypes.indices) {
+                        val arg = args[i]
+                        luaArgs.add(convertArgToLua(arg, argTypes[i]))
+                    }
+
                     val res = try {
-                        luaFunc.call(valueOf(a1.toDouble()), valueOf(a2.toDouble()), valueOf(a3.toDouble()))
+                        luaFunc.invoke(LuaValue.varargsOf(luaArgs.toTypedArray()))
                     } catch (e: Exception) {
                         log("Callback error: ${e.message}")
                         NIL
                     }
-                    return if (res.isnumber()) res.tolong() else 0L
+
+                    return convertReturnFromLua(res, returnType)
                 }
             }
 
@@ -291,6 +303,53 @@ class FFILib : LuaTable() {
 
             val ptrType = typeRegistry["ptr"]!!
             return CData(ptr, ptrType, this@FFILib)
+        }
+
+        private fun parseCallbackReturnType(proto: String): CType? {
+            val match = Regex("""(\w+)\s*\([^)]*\)""").find(proto)
+            if (match != null) {
+                val retTypeName = match.groupValues[1]
+                return typeRegistry[retTypeName]
+            }
+            return typeRegistry["int"]
+        }
+
+        private fun parseCallbackArgTypes(proto: String): List<CType> {
+            val match = Regex("""\w+\s*\(([^)]*)\)""").find(proto)
+            if (match != null) {
+                val argsStr = match.groupValues[1].trim()
+                if (argsStr.isEmpty()) return emptyList()
+                return argsStr.split(",").mapNotNull { arg ->
+                    val typeName = arg.trim().split(Regex("\\s+")).last()
+                    typeRegistry[typeName]
+                }
+            }
+            return listOf(typeRegistry["int"]!!, typeRegistry["int"]!!, typeRegistry["int"]!!)
+        }
+
+        private fun convertArgToLua(arg: Any, type: CType?): LuaValue {
+            return when (arg) {
+                is Int -> valueOf(arg.toDouble())
+                is Long -> valueOf(arg.toDouble())
+                is Float -> valueOf(arg.toDouble())
+                is Double -> valueOf(arg)
+                is Pointer -> {
+                    if (type != null) CData(arg, type, this@FFILib) 
+                    else CData(arg, typeRegistry["ptr"]!!, this@FFILib)
+                }
+                else -> NIL
+            }
+        }
+
+        private fun convertReturnFromLua(res: LuaValue, returnType: CType?): Any {
+            if (res.isnil()) return 0L
+            return when (returnType?.name) {
+                "void" -> 0L
+                "int" -> res.checkint().toLong()
+                "long" -> res.checklong()
+                "float", "double" -> res.checkdouble()
+                else -> if (res.isnumber()) res.tolong() else 0L
+            }
         }
     }
 
@@ -502,10 +561,6 @@ class FFILib : LuaTable() {
                 "bool" -> p.setByte(offset, if (v.checkboolean()) 1.toByte() else 0.toByte())
             }
         }
-    }
-
-    interface LuaCallback : Callback {
-        fun invoke(a1: Long, a2: Long, a3: Long): Long
     }
 
     inner class SizeOfFunction : OneArgFunction() {
