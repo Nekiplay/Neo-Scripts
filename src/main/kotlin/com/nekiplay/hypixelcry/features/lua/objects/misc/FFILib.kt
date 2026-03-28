@@ -316,7 +316,7 @@ class FFILib : LuaTable() {
             val luaArgs = args.map { convertArgToLua(it, null, ffi) }
 
             val res = try {
-                luaFunc.invoke(LuaValue.varargsOf(luaArgs.toTypedArray()))
+                luaFunc.call(LuaValue.varargsOf(luaArgs.toTypedArray()))
             } catch (e: Exception) {
                 log("Callback error: ${e.message}")
                 NIL
