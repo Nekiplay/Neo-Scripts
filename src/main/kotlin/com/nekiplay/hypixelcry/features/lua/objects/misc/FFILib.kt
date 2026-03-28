@@ -291,43 +291,42 @@ class FFILib : LuaTable() {
             val ffi = this@FFILib
             return when (argTypes.size) {
                 0 -> object : Callback {
-                    fun invoke(): Any = invokeCallback(emptyList(), returnType, luaFunc, ffi)
+                    fun invoke(): Int = invokeCallbackInt(emptyList(), returnType, luaFunc, ffi)
                 }
                 1 -> object : Callback {
                     @Suppress("UNCHECKED_CAST")
-                    fun invoke(a1: Any): Any = invokeCallback(listOf(a1), returnType, luaFunc, ffi)
+                    fun invoke(a1: Int): Int = invokeCallbackInt(listOf(a1.toLong()), returnType, luaFunc, ffi)
                 }
                 2 -> object : Callback {
                     @Suppress("UNCHECKED_CAST")
-                    fun invoke(a1: Any, a2: Any): Any = invokeCallback(listOf(a1, a2), returnType, luaFunc, ffi)
+                    fun invoke(a1: Int, a2: Pointer): Int = invokeCallbackInt(listOf(a1.toLong(), a2), returnType, luaFunc, ffi)
                 }
                 3 -> object : Callback {
                     @Suppress("UNCHECKED_CAST")
-                    fun invoke(a1: Any, a2: Any, a3: Any): Any = invokeCallback(listOf(a1, a2, a3), returnType, luaFunc, ffi)
+                    fun invoke(a1: Int, a2: Pointer, a3: Int): Int = invokeCallbackInt(listOf(a1.toLong(), a2, a3.toLong()), returnType, luaFunc, ffi)
                 }
                 else -> object : Callback {
                     @Suppress("UNCHECKED_CAST")
-                    fun invoke(a1: Any, a2: Any, a3: Any, a4: Any, a5: Any): Any = invokeCallback(listOf(a1, a2, a3, a4, a5), returnType, luaFunc, ffi)
+                    fun invoke(a1: Int, a2: Pointer, a3: Int, a4: Pointer): Int = invokeCallbackInt(listOf(a1.toLong(), a2, a3.toLong(), a4), returnType, luaFunc, ffi)
                 }
             }
         }
 
-        private fun invokeCallback(args: List<Any>, returnType: CType?, luaFunc: LuaValue, ffi: FFILib): Any {
+        private fun invokeCallbackInt(args: List<Any>, returnType: CType?, luaFunc: LuaValue, ffi: FFILib): Int {
             val luaArgs = args.map { convertArgToLua(it, null, ffi) }
 
             val res = try {
                 when (luaArgs.size) {
                     0 -> luaFunc.call()
                     1 -> luaFunc.call(luaArgs[0])
-                    2 -> luaFunc.call(luaArgs[0], luaArgs[1])
-                    else -> luaFunc.call(luaArgs[0], luaArgs[1], luaArgs[2])
+                    else -> luaFunc.call(luaArgs[0], luaArgs[1])
                 }
             } catch (e: Exception) {
                 log("Callback error: ${e.message}")
                 NIL
             }
 
-            return convertReturnFromLua(res, returnType)
+            return convertReturnFromLuaInt(res, returnType)
         }
 
         private fun parseCallbackReturnType(proto: String): CType? {
@@ -363,14 +362,14 @@ class FFILib : LuaTable() {
             }
         }
 
-        private fun convertReturnFromLua(res: LuaValue, returnType: CType?): Any {
-            if (res.isnil()) return 0L
+        private fun convertReturnFromLuaInt(res: LuaValue, returnType: CType?): Int {
+            if (res.isnil()) return 0
             return when (returnType?.name) {
-                "void" -> 0L
-                "int" -> res.checkint().toLong()
-                "long" -> res.checklong()
-                "float", "double" -> res.checkdouble()
-                else -> if (res.isnumber()) res.tolong() else 0L
+                "void" -> 0
+                "int" -> res.checkint()
+                "long" -> res.checklong().toInt()
+                "float", "double" -> res.checkdouble().toInt()
+                else -> if (res.isnumber()) res.toint() else 0
             }
         }
     }
