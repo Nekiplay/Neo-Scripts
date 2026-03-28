@@ -12,7 +12,6 @@ class LuaLong(val value: Long) : LuaValue() {
     override fun toint(): Int = value.toInt()
     override fun tolong(): Long = value
 
-    // ИСПРАВЛЕНО: Используем конструктор LuaLong вместо valueOf
     override fun add(rhs: LuaValue): LuaValue = LuaLong(value + rhs.tolong())
     override fun sub(rhs: LuaValue): LuaValue = LuaLong(value - rhs.tolong())
 
