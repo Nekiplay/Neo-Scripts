@@ -33,7 +33,12 @@ class PathFinderLib: LuaValue() {
             val end_y = args.checkint(5)
             val end_z = args.checkint(6)
 
+            val iterations = args.optint(7, 50000)
+            val maxFallHeight = args.optint(8, 20)
+
             val ctx = CalculationContext()
+            ctx.maxIterations = iterations
+            ctx.maxFallHeight = maxFallHeight
 
             val finder = AStarPathFinder(
                 start_x, start_y, start_z,
