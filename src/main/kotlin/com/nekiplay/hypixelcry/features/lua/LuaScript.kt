@@ -21,7 +21,6 @@ import com.nekiplay.hypixelcry.features.lua.objects.misc.TCPLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.ThreadLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.http.HttpClientLib
 import com.nekiplay.hypixelcry.features.lua.objects.modules.ModulesObject
-import com.nekiplay.hypixelcry.features.lua.objects.modules.PathFinderLib
 import com.nekiplay.hypixelcry.features.lua.objects.player.PlayerObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject

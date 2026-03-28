@@ -1,7 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.objects.modules
 
 import com.nekiplay.hypixelcry.HypixelCry.LUA_MANAGER
-import com.nekiplay.hypixelcry.pathfinder.utils.mc
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.ZeroArgFunction
 
@@ -13,7 +12,6 @@ class ModulesObject: LuaValue() {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "getLoadedScripts" -> GetLoadedScriptsFunction()
-            "pathFinder" -> PathFinderRendererObject()
             else -> NIL
         } as LuaValue
     }
