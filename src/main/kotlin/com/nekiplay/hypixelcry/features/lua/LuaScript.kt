@@ -1251,10 +1251,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         djlLibrary?.predictors?.clear()
         djlLibrary?.inputShapes?.clear()
         djlLibrary?.modelModes?.clear()
-        ffi?.loadedLibraries?.forEach { lib ->
-            lib.value.dispose()
-        }
-        ffi?.loadedLibraries?.clear()
+        ffi?.disposeLoadedLibraries()
 
         commandDispatchers.clear()
 

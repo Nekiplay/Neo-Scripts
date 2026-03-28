@@ -572,4 +572,9 @@ class FFILib : LuaTable() {
     fun setDebugMode(enabled: Boolean) {
         debugMode.set(enabled)
     }
+
+    fun disposeLoadedLibraries() {
+        loadedLibraries.forEach { it.value.dispose() }
+        loadedLibraries.clear()
+    }
 }
