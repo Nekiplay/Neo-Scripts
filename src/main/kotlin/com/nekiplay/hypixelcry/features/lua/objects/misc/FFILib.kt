@@ -406,6 +406,10 @@ class FFILib : LuaTable() {
 
             val field = cType.fields?.get(key.tojstring())
             if (field != null) {
+                if (field.type.arraySize > 0) {
+                    val arrayPtr = peer.share(field.offset.toLong())
+                    return CData(arrayPtr, field.type, ffi)
+                }
                 return getValueAt(peer, field.offset.toLong(), field.type)
             }
 
