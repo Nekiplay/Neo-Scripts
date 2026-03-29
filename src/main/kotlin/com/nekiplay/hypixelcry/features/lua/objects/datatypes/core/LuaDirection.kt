@@ -3,6 +3,8 @@ package com.nekiplay.hypixelcry.features.lua.objects.datatypes.core
 import net.minecraft.core.Direction
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
+import java.util.Locale
+import java.util.Locale.getDefault
 
 class LuaDirection(val direction: Direction): LuaUserdata(direction) {
     override fun get(key: LuaValue): LuaValue {
@@ -24,10 +26,10 @@ class LuaDirection(val direction: Direction): LuaUserdata(direction) {
     }
 
     override fun tojstring(): String {
-        return direction.name;
+        return direction.name.lowercase(getDefault());
     }
 
     override fun tostring(): LuaValue? {
-        return valueOf(direction.name)
+        return valueOf(direction.name.lowercase(getDefault()))
     }
 }

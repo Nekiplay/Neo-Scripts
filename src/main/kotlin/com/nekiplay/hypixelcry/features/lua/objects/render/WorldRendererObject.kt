@@ -3,7 +3,10 @@ package com.nekiplay.hypixelcry.features.lua.objects.render
 import com.logisticscraft.occlusionculling.util.Vec3d
 import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.hypixelcry.HypixelCry.mc
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaBlockPos
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.hypixelcry.utils.render.primitive.PrimitiveCollector
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.core.BlockPos
@@ -11,6 +14,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import net.minecraft.util.CommonColors
 import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.joml.Quaternionf
@@ -25,6 +29,68 @@ import java.util.function.Supplier
 class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() {
     override fun call(): LuaValue {
         return this
+    }
+
+    private fun parseBlockPos(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): BlockPos? {
+        return when {
+            arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
+                (arg1.touserdata() as LuaBlockPos).pos
+            }
+            arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
+                BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
+            }
+            else -> null
+        }
+    }
+
+    private fun parseBlockPosWithBlockState(
+        arg1: LuaValue?,
+        arg2: LuaValue?,
+        arg3: LuaValue?,
+        arg4: LuaValue?
+    ): Pair<BlockPos, BlockState>? {
+        return when {
+            arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
+                val pos = (arg1.touserdata() as LuaBlockPos).pos
+                val state = parseBlockState(arg2)
+                if (state != null) pos to state else null
+            }
+            arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
+                val pos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
+                val state = parseBlockState(arg4)
+                if (state != null) pos to state else null
+            }
+            else -> null
+        }
+    }
+
+    private fun parseBlockState(arg: LuaValue?): BlockState? {
+        return when {
+            arg?.isuserdata(LuaBlockState::class.java) == true -> {
+                (arg.touserdata() as? LuaBlockState)?.blockState
+            }
+            arg?.isuserdata(BlockState::class.java) == true -> {
+                arg.touserdata() as? BlockState
+            }
+            arg?.isnumber() == true -> {
+                Block.stateById(arg.toint())
+            }
+            else -> null
+        }
+    }
+
+    private fun parseVec3(args: Varargs): Pair<Vec3, Int>? {
+        return when {
+            args.arg(1).isuserdata() && args.arg(1).touserdata() is LuaVector3d -> {
+                val vec = (args.arg(1).touserdata() as LuaVector3d).location
+                vec to 2
+            }
+            args.arg(1).isnumber() && args.arg(2).isnumber() && args.arg(3).isnumber() -> {
+                val vec = Vec3(args.arg(1).todouble(), args.arg(2).todouble(), args.arg(3).todouble())
+                vec to 4
+            }
+            else -> null
+        }
     }
 
     override fun get(key: LuaValue): LuaValue {
@@ -52,19 +118,17 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
 
-            val x = args.optdouble(1, 0.0)
-            val y = args.optdouble(2, 0.0)
-            val z = args.optdouble(3, 0.0)
-            val radius = args.optdouble(4, 1.0)
-            val segments = args.optint(5, 1)
-            val rings = args.optint(6, 4)
-            val red = args.optint(7, 0)
-            val green = args.optint(8, 0)
-            val blue = args.optint(9, 0)
-            val alpha = args.optint(10, 0)
-            val throughWalls = args.optboolean(11, true)
+            val (pos, offset) = parseVec3(args) ?: return NIL
+            val radius = args.optdouble(offset, 1.0)
+            val segments = args.optint(offset + 1, 1)
+            val rings = args.optint(offset + 2, 4)
+            val red = args.optint(offset + 3, 0)
+            val green = args.optint(offset + 4, 0)
+            val blue = args.optint(offset + 5, 0)
+            val alpha = args.optint(offset + 6, 0)
+            val throughWalls = args.optboolean(offset + 7, true)
 
-            context.submitSphere(Vec3(x, y, z), radius.toFloat(), segments, rings, getArgb(alpha, red, green, blue), throughWalls)
+            context.submitSphere(pos, radius.toFloat(), segments, rings, getArgb(alpha, red, green, blue), throughWalls)
             return TRUE
         }
     }
@@ -73,19 +137,17 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
 
-            val x = args.optdouble(1, 0.0)
-            val y = args.optdouble(2, 0.0)
-            val z = args.optdouble(3, 0.0)
-            val radius = args.optdouble(4, 1.0)
-            val height = args.optdouble(5, 1.0)
-            val segments = args.optint(6, 1)
-            val red = args.optint(7, 0)
-            val green = args.optint(8, 0)
-            val blue = args.optint(9, 0)
-            val alpha = args.optint(10, 0)
-            val throughWalls = args.optboolean(11, true)
+            val (pos, offset) = parseVec3(args) ?: return NIL
+            val radius = args.optdouble(offset, 1.0)
+            val height = args.optdouble(offset + 1, 1.0)
+            val segments = args.optint(offset + 2, 1)
+            val red = args.optint(offset + 3, 0)
+            val green = args.optint(offset + 4, 0)
+            val blue = args.optint(offset + 5, 0)
+            val alpha = args.optint(offset + 6, 0)
+            val throughWalls = args.optboolean(offset + 7, true)
 
-            context.submitCylinder(Vec3(x, y, z), radius.toFloat(), height.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
+            context.submitCylinder(pos, radius.toFloat(), height.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
             return TRUE
         }
     }
@@ -94,13 +156,11 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
 
-            val x = args.optdouble(1, 0.0)
-            val y = args.optdouble(2, 0.0)
-            val z = args.optdouble(3, 0.0)
-            val id = args.optjstring(4, "minecraft:stone")
+            val (pos, offset) = parseVec3(args) ?: return NIL
+            val id = args.optjstring(offset, "minecraft:stone")
 
             val identifier = Identifier.bySeparator(id, ':')
-            context.submitItem(Vec3d(x, y, z), identifier)
+            context.submitItem(Vec3d(pos.x, pos.y, pos.z), identifier)
             return TRUE
         }
     }
@@ -109,13 +169,10 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
 
-            val x = args.optint(1, 0)
-            val y = args.optint(2, 0)
-            val z = args.optint(3, 0)
-            val id = args.optint(4, 1)
+            val (blockPos, blockState) = parseBlockPosWithBlockState(args.arg(1), args.arg(2), args.arg(3), args.arg(4))
+                ?: return NIL
 
-            val blockState = Block.stateById(id)
-            context.submitBlock(BlockPos(x, y, z), blockState)
+            context.submitBlock(blockPos, blockState)
             return TRUE
         }
     }
@@ -124,13 +181,10 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
 
-            val x = args.optint(1, 0)
-            val y = args.optint(2, 0)
-            val z = args.optint(3, 0)
-            val id = args.optint(4, 1)
+            val (blockPos, blockState) = parseBlockPosWithBlockState(args.arg(1), args.arg(2), args.arg(3), args.arg(4))
+                ?: return NIL
 
-            val blockState = Block.stateById(id)
-            context.submitBlockHologram(BlockPos(x, y, z), blockState)
+            context.submitBlockHologram(blockPos, blockState)
             return TRUE
         }
     }
@@ -186,9 +240,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
 
-            val x = args.optint(1, 0)
-            val y = args.optint(2, 0)
-            val z = args.optint(3, 0)
+            val blockPos = parseBlockPos(args.arg(1), args.arg(2), args.arg(3)) ?: BlockPos(0, 0, 0)
             val red = args.optint(4, 0)
             val green = args.optint(5, 0)
             val blue = args.optint(6, 0)
@@ -199,7 +251,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 blue.toFloat() / 255.0f
             )
 
-            context.submitBeaconBeam(BlockPos(x, y, z), colorComponents)
+            context.submitBeaconBeam(blockPos, colorComponents)
             return TRUE
         }
     }
@@ -208,18 +260,16 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
 
-            val x = args.optdouble(1, 0.0)
-            val y = args.optdouble(2, 0.0)
-            val z = args.optdouble(3, 0.0)
-            val radius = args.optdouble(4, 1.0)
-            val segments = args.optint(5, 8)
-            val red = args.optint(6, 0)
-            val green = args.optint(7, 0)
-            val blue = args.optint(8, 0)
-            val alpha = args.optint(9, 0)
-            val throughWalls = args.optboolean(10, true)
+            val (pos, offset) = parseVec3(args) ?: return NIL
+            val radius = args.optdouble(offset, 1.0)
+            val segments = args.optint(offset + 1, 8)
+            val red = args.optint(offset + 2, 0)
+            val green = args.optint(offset + 3, 0)
+            val blue = args.optint(offset + 4, 0)
+            val alpha = args.optint(offset + 5, 0)
+            val throughWalls = args.optboolean(offset + 6, true)
 
-            context.submitFilledCircle(Vec3(x, y, z), radius.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
+            context.submitFilledCircle(pos, radius.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
             return TRUE
         }
     }
@@ -228,19 +278,17 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
 
-            val x = args.optdouble(1, 0.0)
-            val y = args.optdouble(2, 0.0)
-            val z = args.optdouble(3, 0.0)
-            val radius = args.optdouble(4, 1.0)
-            val segments = args.optint(5, 8)
-            val thickness = args.optdouble(6, 1.0)
-            val red = args.optint(7, 0)
-            val green = args.optint(8, 0)
-            val blue = args.optint(9, 0)
-            val alpha = args.optint(10, 0)
-            val throughWalls = args.optboolean(11, true)
+            val (pos, offset) = parseVec3(args) ?: return NIL
+            val radius = args.optdouble(offset, 1.0)
+            val segments = args.optint(offset + 1, 8)
+            val thickness = args.optdouble(offset + 2, 1.0)
+            val red = args.optint(offset + 3, 0)
+            val green = args.optint(offset + 4, 0)
+            val blue = args.optint(offset + 5, 0)
+            val alpha = args.optint(offset + 6, 0)
+            val throughWalls = args.optboolean(offset + 7, true)
 
-            context.submitOutlinedCircle(Vec3(x, y, z), radius.toFloat(), thickness.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
+            context.submitOutlinedCircle(pos, radius.toFloat(), thickness.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
             return TRUE
         }
     }
@@ -252,6 +300,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             val boxArg = args.arg(1)
             val box = when {
                 boxArg.isuserdata() && boxArg.touserdata() is LuaBox -> (boxArg.touserdata() as LuaBox).box
+                boxArg.istable() && boxArg.touserdata() is LuaBox -> (boxArg.touserdata() as LuaBox).box
                 boxArg.isuserdata() && boxArg.touserdata() is AABB -> boxArg.touserdata() as AABB
                 else -> null
             }
@@ -282,6 +331,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             val boxArg = args.arg(1)
             val box = when {
                 boxArg.isuserdata() && boxArg.touserdata() is LuaBox -> (boxArg.touserdata() as LuaBox).box
+                boxArg.istable() && boxArg.touserdata() is LuaBox -> (boxArg.touserdata() as LuaBox).box
                 boxArg.isuserdata() && boxArg.touserdata() is AABB -> boxArg.touserdata() as AABB
                 else -> null
             }
@@ -314,18 +364,15 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
 
-            val x = args.optdouble(1, 0.0)
-            val y = args.optdouble(2, 0.0)
-            val z = args.optdouble(3, 0.0)
-            val pos = Vec3(x, y, z)
+            val (pos, offset) = parseVec3(args) ?: return NIL
 
-            val text = args.optjstring(4, "Empty")
-            val scale = args.optdouble(5, 1.0).toFloat()
-            val throughWalls = args.optboolean(6, true)
+            val text = args.optjstring(offset, "Empty")
+            val scale = args.optdouble(offset + 1, 1.0).toFloat()
+            val throughWalls = args.optboolean(offset + 2, true)
 
-            val red = args.optint(7, -1)
-            val green = args.optint(8, -1)
-            val blue = args.optint(9, -1)
+            val red = args.optint(offset + 3, -1)
+            val green = args.optint(offset + 4, -1)
+            val blue = args.optint(offset + 5, -1)
 
             val color: Int = if (red in 0..255 && green in 0..255 && blue in 0..255) {
                 (255 shl 24) or (red shl 16) or (green shl 8) or blue
@@ -333,10 +380,10 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 CommonColors.WHITE
             }
 
-            val qx = args.optdouble(10, 0.0)
-            val qy = args.optdouble(11, 0.0)
-            val qz = args.optdouble(12, 0.0)
-            val qw = args.optdouble(13, 0.0)
+            val qx = args.optdouble(offset + 6, 0.0)
+            val qy = args.optdouble(offset + 7, 0.0)
+            val qz = args.optdouble(offset + 8, 0.0)
+            val qw = args.optdouble(offset + 9, 0.0)
 
             val hasRotation = (qx != 0.0 || qy != 0.0 || qz != 0.0 || qw != 0.0)
             val component = Component.literal(text)
@@ -426,14 +473,12 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
 
-            val x = args.optdouble(1, 0.0)
-            val y = args.optdouble(2, 0.0)
-            val z = args.optdouble(3, 0.0)
-            val red = args.optint(4, 0)
-            val green = args.optint(5, 0)
-            val blue = args.optint(6, 0)
-            val alpha = args.optint(7, 0)
-            val lineWidth = args.optdouble(8, 1.0).toFloat()
+            val (pos, offset) = parseVec3(args) ?: return NIL
+            val red = args.optint(offset, 0)
+            val green = args.optint(offset + 1, 0)
+            val blue = args.optint(offset + 2, 0)
+            val alpha = args.optint(offset + 3, 0)
+            val lineWidth = args.optdouble(offset + 4, 1.0).toFloat()
 
             val colorComponents = floatArrayOf(
                 red.toFloat() / 255.0f,
@@ -442,7 +487,6 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             )
             val alphaComponent = alpha.toFloat() / 255.0f
 
-            val pos = Vec3(x, y, z)
             context.submitLineFromCursor(pos, colorComponents, alphaComponent, lineWidth)
             return TRUE
         }
@@ -455,21 +499,30 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             val path = args.optjstring(1, "") ?: return NIL
             if (path.isEmpty()) return NIL
 
-            val x = args.optdouble(2, 0.0)
-            val y = args.optdouble(3, 0.0)
-            val z = args.optdouble(4, 0.0)
-            val width = args.optdouble(5, 0.0).toFloat()
-            val height = args.optdouble(6, 0.0).toFloat()
-            val regionWidth = args.optdouble(7, 1.0).toFloat()
-            val regionHeight = args.optdouble(8, 1.0).toFloat()
-            val ox = args.optdouble(9, 0.0)
-            val oy = args.optdouble(10, 0.0)
-            val oz = args.optdouble(11, 0.0)
-            val red = args.optint(12, 255)
-            val green = args.optint(13, 255)
-            val blue = args.optint(14, 255)
-            val alpha = args.optint(15, 255)
-            val throughWalls = args.optboolean(16, true)
+            val (pos, offset) = when {
+                args.arg(1).isuserdata() && args.arg(1).touserdata() is LuaVector3d -> {
+                    val vec = (args.arg(1).touserdata() as LuaVector3d).location
+                    vec to 2
+                }
+                args.arg(2).isnumber() && args.arg(3).isnumber() && args.arg(4).isnumber() -> {
+                    val vec = Vec3(args.arg(2).todouble(), args.arg(3).todouble(), args.arg(4).todouble())
+                    vec to 5
+                }
+                else -> return NIL
+            }
+
+            val width = args.optdouble(offset, 0.0).toFloat()
+            val height = args.optdouble(offset + 1, 0.0).toFloat()
+            val regionWidth = args.optdouble(offset + 2, 1.0).toFloat()
+            val regionHeight = args.optdouble(offset + 3, 1.0).toFloat()
+            val ox = args.optdouble(offset + 4, 0.0)
+            val oy = args.optdouble(offset + 5, 0.0)
+            val oz = args.optdouble(offset + 6, 0.0)
+            val red = args.optint(offset + 7, 255)
+            val green = args.optint(offset + 8, 255)
+            val blue = args.optint(offset + 9, 255)
+            val alpha = args.optint(offset + 10, 255)
+            val throughWalls = args.optboolean(offset + 11, true)
 
             val rgb = floatArrayOf(
                 red.toFloat() / 255.0f,
@@ -481,7 +534,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             try {
                 val identifier = loadTexture(path)
                 if (identifier != null) {
-                    context.submitTexturedQuad(Vec3(x, y, z), width, height, regionWidth, regionHeight, Vec3(ox, oy, oz), identifier, rgb, alphaFloat, throughWalls)
+                    context.submitTexturedQuad(pos, width, height, regionWidth, regionHeight, Vec3(ox, oy, oz), identifier, rgb, alphaFloat, throughWalls)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

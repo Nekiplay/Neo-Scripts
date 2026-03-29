@@ -1,11 +1,18 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
+import com.logisticscraft.occlusionculling.util.Vec3d
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.hypixelcry.utils.itemlist.ItemRepository
+import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
@@ -24,8 +31,38 @@ class Creator : LuaValue() {
         return when (key.tojstring()) {
             "createAABB", "createBox" -> CreateBox()
             "createDirection" -> CreateDirection()
+            "createBlockPos" -> CreateBlockPos()
+            "createBlockState" -> CreateBlockState()
+            "createVector3" -> CreateVector3()
             "createItemStackFromId" -> CreateStackFromID()
             else -> super.get(key)
+        }
+    }
+
+    inner class CreateVector3 : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (args.arg(1).isnumber() && args.arg(2).isnumber() && args.arg(3).isnumber()) {
+                return LuaVector3d(Vec3(args.arg(1).todouble(), args.arg(2).todouble(), args.arg(3).todouble()))
+            }
+            return NIL
+        }
+    }
+
+    inner class CreateBlockState : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (args.arg(1).isint()) {
+                return LuaBlockState(Block.stateById(args.arg(1).toint()))
+            }
+            return NIL
+        }
+    }
+
+    inner class CreateBlockPos : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (args.arg(1).isint() && args.arg(2).isint() && args.arg(3).isint()) {
+                return LuaBlockPos(BlockPos(args.arg(1).toint(), args.arg(2).toint(), args.arg(3).toint()))
+            }
+            return NIL
         }
     }
 

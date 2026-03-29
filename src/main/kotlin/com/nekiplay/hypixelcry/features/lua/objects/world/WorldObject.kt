@@ -5,6 +5,9 @@ import com.nekiplay.hypixelcry.features.lua.customArgs.FourArgFunction
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaEntity
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaBlockPos
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.hypixelcry.utils.RaycastUtils
 import com.nekiplay.hypixelcry.utils.Rotations
 import net.minecraft.client.multiplayer.ClientLevel
@@ -31,6 +34,57 @@ import kotlin.collections.forEachIndexed
 class WorldObject : LuaValue() {
     override fun call(): LuaValue {
         return this
+    }
+
+    private fun parseBlockPos(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): BlockPos? {
+        return when {
+            arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
+                (arg1.touserdata() as LuaBlockPos).pos
+            }
+            arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
+                BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
+            }
+            arg1?.istable() == true -> {
+                val x = arg1.get("x").toint()
+                val y = arg1.get("y").toint()
+                val z = arg1.get("z").toint()
+                BlockPos(x, y, z)
+            }
+            else -> null
+        }
+    }
+
+    private fun parseBlockPosWithBlockState(
+        arg1: LuaValue?,
+        arg2: LuaValue?,
+        arg3: LuaValue?,
+        arg4: LuaValue?
+    ): Pair<BlockPos, BlockState>? {
+        return when {
+            arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
+                val pos = (arg1.touserdata() as LuaBlockPos).pos
+                val state = parseBlockState(arg2)
+                if (pos != null && state != null) pos to state else null
+            }
+            arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
+                val pos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
+                val state = parseBlockState(arg4)
+                if (state != null) pos to state else null
+            }
+            else -> null
+        }
+    }
+
+    private fun parseBlockState(arg: LuaValue?): BlockState? {
+        return when {
+            arg?.isuserdata(LuaBlockState::class.java) == true -> {
+                (arg.touserdata() as? LuaBlockState)?.blockState
+            }
+            arg?.isuserdata(BlockState::class.java) == true -> {
+                arg.touserdata() as? BlockState
+            }
+            else -> null
+        }
     }
 
     override fun get(key: LuaValue): LuaValue {
@@ -61,55 +115,24 @@ class WorldObject : LuaValue() {
 
     private inner class GetOutlineBoxesFunction : FourArgFunction() {
         override fun invoke(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?, arg4: LuaValue?): LuaValue {
-            // Проверяем обязательные аргументы (координаты)
-            if (arg1?.isnumber() != true || arg2?.isnumber() != true || arg3?.isnumber() != true) {
-                return LuaValue.error("Expected three number arguments for coordinates")
-            }
             val level: ClientLevel = mc.level ?: return LuaValue.error("No world loaded")
 
-            // Проверяем blockState аргумент
-            if (arg4 == null) {
-                return LuaValue.error("BlockState argument is required")
-            }
+            val (blockPos, blockState) = parseBlockPosWithBlockState(arg1, arg2, arg3, arg4) 
+                ?: return LuaValue.error("Invalid arguments: expected BlockPos + BlockState or x, y, z + BlockState")
 
-            val x = arg1.toint()
-            val y = arg2.toint()
-            val z = arg3.toint()
-            val blockPos = BlockPos(x, y, z)
-
-            val blockState = when {
-                arg4.isuserdata(LuaBlockState::class.java) -> {
-                    val luaBlockState = arg4.touserdata() as? LuaBlockState
-                    luaBlockState?.blockState
-                }
-                arg4.isuserdata(BlockState::class.java) -> {
-                    arg4.touserdata() as? BlockState
-                }
-                else -> null
-            }
-
-            // Если не удалось получить BlockState, возвращаем пустой список
-            if (blockState == null) {
-                return LuaValue.error("Invalid BlockState provided")
-            }
-
-            // Получаем collision shape
-            val collisionShape = try {
+            val shape = try {
                 blockState.getShape(level, blockPos)
             } catch (e: Exception) {
-                return LuaValue.error("Error getting collision shape: ${e.message}")
+                return LuaValue.error("Error getting shape: ${e.message}")
             }
 
-            // Если shape пустой, возвращаем пустую таблицу
-            if (collisionShape.isEmpty) {
+            if (shape.isEmpty) {
                 return LuaValue.tableOf()
             }
 
-            // Конвертируем VoxelShape в Lua таблицу с bounding boxes
             val result = LuaValue.tableOf()
-
             var index = 1
-            collisionShape.toAabbs().forEach { voxel ->
+            shape.toAabbs().forEach { voxel ->
                 result.set(index, LuaBox(voxel))
                 index++
             }
@@ -120,39 +143,11 @@ class WorldObject : LuaValue() {
 
     private inner class GetCollisionBoxesFunction : FourArgFunction() {
         override fun invoke(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?, arg4: LuaValue?): LuaValue {
-            // Проверяем обязательные аргументы (координаты)
-            if (arg1?.isnumber() != true || arg2?.isnumber() != true || arg3?.isnumber() != true) {
-                return LuaValue.error("Expected three number arguments for coordinates")
-            }
-
-            // Проверяем blockState аргумент
-            if (arg4 == null) {
-                return LuaValue.error("BlockState argument is required")
-            }
             val level: ClientLevel = mc.level ?: return LuaValue.error("No world loaded")
 
-            val x = arg1.toint()
-            val y = arg2.toint()
-            val z = arg3.toint()
-            val blockPos = BlockPos(x, y, z)
+            val (blockPos, blockState) = parseBlockPosWithBlockState(arg1, arg2, arg3, arg4) 
+                ?: return LuaValue.error("Invalid arguments: expected BlockPos + BlockState or x, y, z + BlockState")
 
-            val blockState = when {
-                arg4.isuserdata(LuaBlockState::class.java) -> {
-                    val luaBlockState = arg4.touserdata() as? LuaBlockState
-                    luaBlockState?.blockState
-                }
-                arg4.isuserdata(BlockState::class.java) -> {
-                    arg4.touserdata() as? BlockState
-                }
-                else -> null
-            }
-
-            // Если не удалось получить BlockState, возвращаем пустой список
-            if (blockState == null) {
-                return LuaValue.error("Invalid BlockState provided")
-            }
-
-            // Получаем collision shape
             val collisionShape = try {
                 blockState.getCollisionShape(level, blockPos)
             } catch (e: Exception) {
@@ -297,16 +292,10 @@ class WorldObject : LuaValue() {
                 val result = hitResult as BlockHitResult
                 val table = tableOf()
                 table.set("type", "block")
-                table.set("x", valueOf(result.blockPos.x))
-                table.set("y", valueOf(result.blockPos.y))
-                table.set("z", valueOf(result.blockPos.z))
-                table.set("side", valueOf(result.direction.toString()))
+                table.set("location", LuaVector3d(result.location))
+                table.set("side", LuaDirection(result.direction))
 
-                val blockPos = tableOf()
-                blockPos.set("x", valueOf(result.blockPos.x))
-                blockPos.set("y", valueOf(result.blockPos.y))
-                blockPos.set("z", valueOf(result.blockPos.z))
-                table.set("blockPos", blockPos)
+                table.set("blockPos", LuaBlockPos(result.blockPos))
 
                 return table
             }
@@ -332,6 +321,16 @@ class WorldObject : LuaValue() {
                 table.set("pitch", valueOf(pitch))
                 table
             }
+            else if (arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos) {
+                val pos = arg1.touserdata() as LuaBlockPos
+
+                val yaw = Rotations.getYaw(Vec3(pos.pos.x.toDouble(), pos.pos.y.toDouble(), pos.pos.z.toDouble()))
+                val pitch = Rotations.getPitch(Vec3(pos.pos.x.toDouble(), pos.pos.y.toDouble(), pos.pos.z.toDouble()))
+                val table = tableOf()
+                table.set("yaw", valueOf(yaw))
+                table.set("pitch", valueOf(pitch))
+                table
+            }
             else {
                 NIL
             }
@@ -351,14 +350,6 @@ class WorldObject : LuaValue() {
                 val blockState = Block.stateById(blockId)
 
                 mc.level?.setBlockAndUpdate(blockPos, blockState)
-
-                /*mc.worldRenderer.updateBlock(
-                    mc.level,
-                    blockPos,
-                    mc.level?.getBlockState(blockPos),
-                    blockState,
-                    0
-                )*/
                 mc.level?.updateNeighborsAt(blockPos, blockState.block)
                 return TRUE
             }
@@ -372,16 +363,15 @@ class WorldObject : LuaValue() {
                 val blockState = Block.stateById(id)
 
                 mc.level?.setBlockAndUpdate(blockPos, blockState)
-
-                /*mc.worldRenderer.updateBlock(
-                    mc.world,
-                    blockPos,
-                    mc.world?.getBlockState(blockPos),
-                    blockState,
-                    0
-                )*/
                 mc.level?.updateNeighborsAt(blockPos, blockState.block)
                 return TRUE
+            }
+            else if (arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos) {
+                val pos = arg1.touserdata() as LuaBlockPos
+                val blockId = arg2?.optint(1) ?: 1
+                val blockState = Block.stateById(blockId)
+                mc.level?.setBlockAndUpdate(pos.pos, blockState)
+                mc.level?.updateNeighborsAt(pos.pos, blockState.block)
             }
             return NIL
         }
@@ -393,18 +383,8 @@ class WorldObject : LuaValue() {
             arg2: LuaValue?,
             arg3: LuaValue?
         ): LuaValue? {
-            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
-                val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
-                val state = mc.level?.getBlockState(blockPos)
-                if (state != null) {
-                    return LuaBlockState(state);
-                }
-            }
-            else if (arg1?.istable() == true) {
-                val x: Int = if (arg1.get("x").isnumber()) arg1.get("x").toint() else 0
-                val y: Int = if (arg1.get("y").isnumber()) arg1.get("y").toint() else 0
-                val z: Int = if (arg1.get("z").isnumber()) arg1.get("z").toint() else 0
-                val blockPos = BlockPos(x, y, z)
+            val blockPos = parseBlockPos(arg1, arg2, arg3)
+            if (blockPos != null) {
                 val state = mc.level?.getBlockState(blockPos)
                 if (state != null) {
                     return LuaBlockState(state);
@@ -420,15 +400,8 @@ class WorldObject : LuaValue() {
             arg2: LuaValue?,
             arg3: LuaValue?
         ): LuaValue? {
-            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
-                val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
-                return valueOf(mc.level?.isLoaded(blockPos) ?: false);
-            }
-            else if (arg1?.istable() == true) {
-                val x: Int = if (arg1.get("x").isnumber()) arg1.get("x").toint() else 0
-                val y: Int = if (arg1.get("y").isnumber()) arg1.get("y").toint() else 0
-                val z: Int = if (arg1.get("z").isnumber()) arg1.get("z").toint() else 0
-                val blockPos = BlockPos(x, y, z)
+            val blockPos = parseBlockPos(arg1, arg2, arg3)
+            if (blockPos != null) {
                 return valueOf(mc.level?.isLoaded(blockPos) ?: false);
             }
             return NIL

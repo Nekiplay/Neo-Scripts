@@ -1,6 +1,7 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 
 import com.nekiplay.hypixelcry.HypixelCry.mc
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.sugar.getFormattedString
 import net.minecraft.world.entity.Entity
@@ -34,27 +35,14 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 val pos = entity.getPosition(1f)
                 valueOf(pos.z)
             }
-            "pos", "position" -> {
-                val t = tableOf()
-                val pos = entity.getPosition(1f)
-                t.set("x", valueOf(pos.x))
-                t.set("y", valueOf(pos.y))
-                t.set("z", valueOf(pos.z))
-                t
-            }
+            "pos", "position" -> LuaVector3d(entity.getPosition(1f))
 
             "box" -> LuaBox(entity.boundingBox)
 
             "velocity_x" -> valueOf(entity.forward.x)
             "velocity_y" -> valueOf(entity.forward.y)
             "velocity_z" -> valueOf(entity.forward.z)
-            "velocity" -> {
-                val t = tableOf()
-                t.set("x", valueOf(entity.forward.x))
-                t.set("y", valueOf(entity.forward.y))
-                t.set("z", valueOf(entity.forward.z))
-                t
-            }
+            "velocity" -> LuaVector3d(entity.forward)
 
             // Размеры и вращение
             "width" -> valueOf(entity.bbWidth.toDouble())

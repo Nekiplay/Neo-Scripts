@@ -2,6 +2,9 @@ package com.nekiplay.hypixelcry.features.lua.objects.player
 
 import com.nekiplay.hypixelcry.HypixelCry.mc
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaEntity
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaBlockPos
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponent
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
 import com.nekiplay.hypixelcry.sugar.getFormattedString
@@ -255,9 +258,7 @@ class PlayerObject : LuaValue() {
             if (arg1.isnumber() && arg2.isnumber()) {
                 val table = tableOf()
                 val rotations = Rotations.getDirectionFromYawPitch(arg1.tofloat(), arg2.tofloat())
-                table.set("x", valueOf(rotations.x))
-                table.set("y", valueOf(rotations.y))
-                table.set("z", valueOf(rotations.z))
+                table.set("direction", LuaVector3d(rotations))
                 return table
             }
             return NIL
@@ -293,16 +294,10 @@ class PlayerObject : LuaValue() {
                 val result = hitResult as BlockHitResult
                 val table = tableOf()
                 table.set("type", "block")
-                table.set("x", valueOf(result.blockPos.x))
-                table.set("y", valueOf(result.blockPos.y))
-                table.set("z", valueOf(result.blockPos.z))
-                table.set("side", valueOf(result.direction.toString()))
+                table.set("location", LuaVector3d(result.location))
+                table.set("side", LuaDirection(result.direction))
 
-                val blockPos = tableOf()
-                blockPos.set("x", valueOf(result.blockPos.x))
-                blockPos.set("y", valueOf(result.blockPos.y))
-                blockPos.set("z", valueOf(result.blockPos.z))
-                table.set("blockPos", blockPos)
+                table.set("blockPos", LuaBlockPos(result.blockPos))
 
                 return table
             }
@@ -415,11 +410,7 @@ class PlayerObject : LuaValue() {
         override fun call(): LuaValue {
             val player = mc.player
             return if (player != null) {
-                val table = tableOf()
-                table.set("x", valueOf(player.x))
-                table.set("y", valueOf(player.y))
-                table.set("z", valueOf(player.z))
-                table
+                LuaVector3d(player.getPosition(1f))
             } else {
                 NIL
             }

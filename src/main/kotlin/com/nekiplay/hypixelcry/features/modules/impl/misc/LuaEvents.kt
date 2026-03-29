@@ -252,42 +252,6 @@ object LuaEvents : ClientModule() {
                 }
             }
         }
-
-        BlockUpdateEvent.EVENT.register(BlockUpdateCallback { event ->
-            val blockPos = event.blockPos
-            val oldState = event.old
-            val newState = event.new
-
-            val table = LuaValue.tableOf()
-
-            table.set("x", blockPos.x)
-            table.set("y", blockPos.y)
-            table.set("z", blockPos.z)
-            if (oldState != null) {
-                table.set("old", LuaBlockState(oldState))
-            }
-            if (newState != null) {
-                table.set("new", LuaBlockState(newState))
-            }
-
-            var allow = true
-            LUA_MANAGER.scripts.values.forEach { script ->
-                try {
-                    if (!script.onBlockUpdateEvent(table)) {
-                        allow = false
-                    }
-                } catch (e: Exception) {
-                    // Обработка ошибок
-                }
-            }
-
-            if (allow) {
-                InteractionResult.PASS
-            } else {
-                InteractionResult.FAIL
-            }
-        })
-
         PacketEvent.RECEIVE.register { event ->
             if (event.packet is ClientboundLevelParticlesPacket) {
                 val packet = event.packet as ClientboundLevelParticlesPacket
@@ -369,7 +333,6 @@ object LuaEvents : ClientModule() {
 
             if (allow) InteractionResult.PASS else InteractionResult.FAIL
         }
-
         AddItemInventoryEvent.EVENT.register { event ->
             var allow = true
             LUA_MANAGER.scripts.values.forEach { script ->
