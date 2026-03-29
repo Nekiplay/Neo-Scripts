@@ -41,6 +41,9 @@ class WorldObject : LuaValue() {
             arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
                 (arg1.touserdata() as LuaBlockPos).pos
             }
+            arg1?.isuserdata() == true && arg1.touserdata() is BlockPos -> {
+                arg1.touserdata() as BlockPos
+            }
             arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
                 BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
             }
@@ -63,6 +66,11 @@ class WorldObject : LuaValue() {
         return when {
             arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
                 val pos = (arg1.touserdata() as LuaBlockPos).pos
+                val state = parseBlockState(arg2)
+                if (pos != null && state != null) pos to state else null
+            }
+            arg1?.isuserdata() == true && arg1.touserdata() is BlockPos -> {
+                val pos = arg1.touserdata() as BlockPos
                 val state = parseBlockState(arg2)
                 if (pos != null && state != null) pos to state else null
             }

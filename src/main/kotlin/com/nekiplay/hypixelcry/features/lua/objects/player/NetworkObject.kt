@@ -22,6 +22,9 @@ class NetworkObject : LuaValue() {
             arg?.isuserdata() == true && arg.touserdata() is LuaDirection -> {
                 (arg.touserdata() as LuaDirection).direction
             }
+            arg?.isuserdata() == true && arg.touserdata() is Direction -> {
+                arg.touserdata() as Direction
+            }
             arg?.isstring() == true -> {
                 val dirStr = arg.tojstring()?.uppercase()
                 try {
@@ -98,6 +101,11 @@ class NetworkObject : LuaValue() {
                     val dir = parseDirection(arg2)
                     pos to dir
                 }
+                arg1?.isuserdata() == true && arg1.touserdata() is BlockPos -> {
+                    val pos = arg1.touserdata() as BlockPos
+                    val dir = parseDirection(arg2)
+                    pos to dir
+                }
                 arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
                     val pos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
                     val dir = parseDirection(arg4)
@@ -138,6 +146,11 @@ class NetworkObject : LuaValue() {
                     val dir = parseDirection(arg2)
                     pos to dir
                 }
+                arg1?.isuserdata() == true && arg1.touserdata() is BlockPos -> {
+                    val pos = arg1.touserdata() as BlockPos
+                    val dir = parseDirection(arg2)
+                    pos to dir
+                }
                 arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
                     val pos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
                     val dir = parseDirection(arg4)
@@ -175,6 +188,11 @@ class NetworkObject : LuaValue() {
             val (blockPos, direction) = when {
                 arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
                     val pos = (arg1.touserdata() as LuaBlockPos).pos
+                    val dir = parseDirection(arg2)
+                    pos to dir
+                }
+                arg1?.isuserdata() == true && arg1.touserdata() is BlockPos -> {
+                    val pos = arg1.touserdata() as BlockPos
                     val dir = parseDirection(arg2)
                     pos to dir
                 }

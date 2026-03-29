@@ -85,6 +85,10 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 val vec = (args.arg(1).touserdata() as LuaVector3d).location
                 vec to 2
             }
+            args.arg(1).isuserdata() && args.arg(1).touserdata() is Vec3 -> {
+                val vec = args.arg(1).touserdata() as Vec3
+                vec to 2
+            }
             args.arg(1).isnumber() && args.arg(2).isnumber() && args.arg(3).isnumber() -> {
                 val vec = Vec3(args.arg(1).todouble(), args.arg(2).todouble(), args.arg(3).todouble())
                 vec to 4
@@ -502,6 +506,10 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             val (pos, offset) = when {
                 args.arg(1).isuserdata() && args.arg(1).touserdata() is LuaVector3d -> {
                     val vec = (args.arg(1).touserdata() as LuaVector3d).location
+                    vec to 2
+                }
+                args.arg(1).isuserdata() && args.arg(1).touserdata() is Vec3 -> {
+                    val vec = args.arg(1).touserdata() as Vec3
                     vec to 2
                 }
                 args.arg(2).isnumber() && args.arg(3).isnumber() && args.arg(4).isnumber() -> {

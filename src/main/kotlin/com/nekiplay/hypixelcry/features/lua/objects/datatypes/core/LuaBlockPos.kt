@@ -7,7 +7,7 @@ import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.VarArgFunction
 
-class LuaBlockPos(val pos: BlockPos): LuaUserdata(LuaBlockPos::class.java) {
+class LuaBlockPos(val pos: BlockPos): LuaUserdata(this) {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "x" -> valueOf(pos.x)

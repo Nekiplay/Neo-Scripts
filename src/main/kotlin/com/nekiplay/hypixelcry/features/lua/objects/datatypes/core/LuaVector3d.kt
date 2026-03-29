@@ -6,7 +6,7 @@ import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.VarArgFunction
 
-class LuaVector3d(val location: Vec3): LuaUserdata(LuaVector3d::class.java) {
+class LuaVector3d(val location: Vec3): LuaUserdata(this) {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "x" -> valueOf(location.x)
@@ -201,6 +201,9 @@ class LuaVector3d(val location: Vec3): LuaUserdata(LuaVector3d::class.java) {
         return when {
             args.arg(1).isuserdata() && args.arg(1).touserdata() is LuaVector3d -> {
                 (args.arg(1).touserdata() as LuaVector3d).location
+            }
+            args.arg(1).isuserdata() && args.arg(1).touserdata() is Vec3 -> {
+                args.arg(1).touserdata() as Vec3
             }
             args.arg(1).isnumber() && args.arg(2).isnumber() && args.arg(3).isnumber() -> {
                 Vec3(args.arg(1).todouble(), args.arg(2).todouble(), args.arg(3).todouble())
