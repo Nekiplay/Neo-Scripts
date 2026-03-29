@@ -13,6 +13,7 @@ import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent
 import com.nekiplay.hypixelcry.events.world.BlockUpdateEvent.BlockUpdateCallback
 import com.nekiplay.hypixelcry.features.lua.LuaScript
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaBlockState
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.hypixelcry.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.hypixelcry.features.modules.ClientModule
 import com.nekiplay.hypixelcry.imgui.ImguiLoader
@@ -269,9 +270,7 @@ object LuaEvents : ClientModule() {
 
                 val table = LuaValue.tableOf()
 
-                table.set("x", packet.pos.x)
-                table.set("y", packet.pos.y)
-                table.set("z", packet.pos.z)
+                table.set("position", LuaBlockPos(packet.pos))
                 val oldState = mc.level?.getBlockState(packet.pos)
                 if (oldState != null) {
                     table.set("old", LuaBlockState(oldState))
