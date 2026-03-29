@@ -211,6 +211,7 @@ class ImGuiLib : LuaValue() {
             // Popups
             "beginPopup" -> beginPopup()
             "beginPopupModal" -> beginPopupModal()
+            "openPopup" -> openPopup()
             "endPopup" -> endPopup()
             "closeCurrentPopup" -> closeCurrentPopup()
 
