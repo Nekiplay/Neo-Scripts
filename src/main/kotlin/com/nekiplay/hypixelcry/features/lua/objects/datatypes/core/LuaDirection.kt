@@ -6,7 +6,7 @@ import org.luaj.vm2.LuaValue
 import java.util.Locale
 import java.util.Locale.getDefault
 
-class LuaDirection(val direction: Direction): LuaUserdata(direction) {
+class LuaDirection(val direction: Direction): LuaUserdata(LuaDirection::class.java) {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "opposite" -> LuaDirection(direction.opposite)

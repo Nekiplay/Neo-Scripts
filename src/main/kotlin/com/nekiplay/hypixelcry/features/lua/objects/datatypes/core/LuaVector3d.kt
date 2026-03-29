@@ -6,7 +6,7 @@ import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.VarArgFunction
 
-class LuaVector3d(val location: Vec3): LuaUserdata(location) {
+class LuaVector3d(val location: Vec3): LuaUserdata(LuaVector3d::class.java) {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "x" -> valueOf(location.x)
