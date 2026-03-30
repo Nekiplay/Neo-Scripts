@@ -43,6 +43,7 @@ import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
 import net.minecraft.network.protocol.game.ClientboundRespawnPacket
+import net.minecraft.network.protocol.game.ClientboundSetTimePacket
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
@@ -254,36 +255,57 @@ object LuaEvents : ClientModule() {
             }
         }
         PacketEvent.RECEIVE.register { event ->
-            if (event.packet is ClientboundLevelParticlesPacket) {
-                val packet = event.packet as ClientboundLevelParticlesPacket
+            when (event.packet) {
+                is ClientboundLevelParticlesPacket -> {
+                    val packet = event.packet as ClientboundLevelParticlesPacket
 
-                LUA_MANAGER.scripts.values.forEach { script ->
-                    try {
-                        script.onSpawnParticleEvent(BuiltInRegistries.PARTICLE_TYPE.getId(packet.particle.type), packet.x, packet.y, packet.z, packet.xDist, packet.yDist, packet.zDist, packet.maxSpeed, packet.count)
-                    } catch (e: Exception) {
-                        // Обработка ошибок
+                    LUA_MANAGER.scripts.values.forEach { script ->
+                        try {
+                            script.onSpawnParticleEvent(
+                                BuiltInRegistries.PARTICLE_TYPE.getId(packet.particle.type),
+                                packet.x,
+                                packet.y,
+                                packet.z,
+                                packet.xDist,
+                                packet.yDist,
+                                packet.zDist,
+                                packet.maxSpeed,
+                                packet.count
+                            )
+                        } catch (e: Exception) {
+                            // Обработка ошибок
+                        }
                     }
                 }
-            }
-            else if (event.packet is ClientboundBlockUpdatePacket) {
-                val packet = event.packet as ClientboundBlockUpdatePacket
 
-                val table = LuaValue.tableOf()
+                is ClientboundSetTimePacket -> {
+                    val packet = event.packet as ClientboundSetTimePacket
 
-                table.set("position", LuaBlockPos(packet.pos))
-                val oldState = mc.level?.getBlockState(packet.pos)
-                if (oldState != null) {
-                    table.set("old", LuaBlockState(oldState))
-                }
-                if (packet.blockState != null) {
-                    table.set("new", LuaBlockState(packet.blockState))
+                    LUA_MANAGER.scripts.values.forEach { script ->
+                        script.onServerSideSetTimeEvent(packet.dayTime, packet.gameTime, packet.tickDayTime)
+                    }
                 }
 
-                LUA_MANAGER.scripts.values.forEach { script ->
-                    try {
-                        script.onBlockUpdateEvent(table)
-                    } catch (e: Exception) {
-                        // Обработка ошибок
+                is ClientboundBlockUpdatePacket -> {
+                    val packet = event.packet as ClientboundBlockUpdatePacket
+
+                    val table = LuaValue.tableOf()
+
+                    table.set("position", LuaBlockPos(packet.pos))
+                    val oldState = mc.level?.getBlockState(packet.pos)
+                    if (oldState != null) {
+                        table.set("old", LuaBlockState(oldState))
+                    }
+                    if (packet.blockState != null) {
+                        table.set("new", LuaBlockState(packet.blockState))
+                    }
+
+                    LUA_MANAGER.scripts.values.forEach { script ->
+                        try {
+                            script.onBlockUpdateEvent(table)
+                        } catch (e: Exception) {
+                            // Обработка ошибок
+                        }
                     }
                 }
             }

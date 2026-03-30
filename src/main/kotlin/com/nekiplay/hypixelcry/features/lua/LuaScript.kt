@@ -8,8 +8,10 @@ import com.mojang.brigadier.tree.CommandNode
 import com.mojang.brigadier.tree.RootCommandNode
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaLong
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
 import com.nekiplay.hypixelcry.features.lua.objects.misc.CatboostLib
 import com.nekiplay.hypixelcry.features.lua.objects.misc.Creator
@@ -45,6 +47,7 @@ import net.minecraft.network.protocol.game.ClientboundCommandsPacket
 import net.minecraft.resources.Identifier
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaError
 import org.luaj.vm2.LuaValue
@@ -84,6 +87,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     // Packet events
     private val serverSideRotationCallbacks = ArrayList<LuaValue>()
     private val serverSideTeleportCallbacks = ArrayList<LuaValue>()
+    private val serverSideSetTimeCallbacks = ArrayList<LuaValue>()
 
     // Command events
     val commandCallbacks = ConcurrentHashMap<String, LuaValue>()
@@ -330,6 +334,16 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 }
             }
         })
+
+        scriptGlobals.set("registerServerSetTimeEvent", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(serverSideSetTimeCallbacks.add(callback))
+                }
+            }
+        })
     }
 
     private fun registerEventUnregistrationFunctions() {
@@ -492,6 +506,16 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 val callback = args.arg(1)
                 synchronized(callbacksLock) {
                     return valueOf(serverSideTeleportCallbacks.remove(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("unregisterServerSetTimeEvent", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(serverSideSetTimeCallbacks.remove(callback))
                 }
             }
         })
@@ -1053,9 +1077,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         val t = LuaValue.tableOf()
         t.set("id", id)
 
-        t.set("x", x)
-        t.set("y", y)
-        t.set("z", z)
+        t.set("position", LuaVector3d(Vec3(x, y, z)))
 
         t.set("x_dist", xDist.toDouble())
         t.set("y_dist", yDist.toDouble())
@@ -1094,10 +1116,24 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         return allow
     }
 
-    private fun getSystemModule(name: String): LuaValue? {
-        systemModuleCache[name]?.let { return it }
+    fun onServerSideSetTimeEvent(dayTime: Long, gameTime: Long, tickDayTime: Boolean) {
+        val callbacks = synchronized(callbacksLock) {
+            serverSideSetTimeCallbacks.toTypedArray()
+        }
 
-        val module: LuaValue = when (name) {
+        for (callback in callbacks) {
+            try {
+                callback.call(LuaLong(dayTime), LuaLong(gameTime), LuaValue.valueOf(tickDayTime))
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in server side time callback in ${scriptName}: ${e.message}")
+            }
+        }
+    }
+
+    private fun getSystemModule(name: String): LuaValue? {
+        systemModuleCache[name.lowercase()]?.let { return it }
+
+        val module: LuaValue = when (name.lowercase()) {
             "player" -> PlayerObject()
             "world" -> WorldObject()
             "modules" -> ModulesObject()
@@ -1136,10 +1172,13 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             "creator" -> {
                 Creator()
             }
+            "catboost" -> {
+                CatboostLib()
+            }
             else -> return null
         }
 
-        systemModuleCache[name] = module
+        systemModuleCache[name.lowercase()] = module
         return module
     }
 

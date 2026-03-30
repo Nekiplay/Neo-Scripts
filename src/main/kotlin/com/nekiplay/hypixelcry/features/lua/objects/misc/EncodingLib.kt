@@ -87,7 +87,7 @@ class EncodingLib : LuaValue() {
                 val tableLength = bytesTable.length()
                 val actualLength = if (length == -1) tableLength - startIndex + 1 else length
                 
-                if (startIndex < 1 || startIndex > tableLength) {
+                if (startIndex !in 1..tableLength) {
                     return LuaValue.varargsOf(arrayOf(LuaValue.NIL, LuaValue.valueOf("Start index out of range")))
                 }
                 
@@ -98,7 +98,7 @@ class EncodingLib : LuaValue() {
                 val bytes = ByteArray(actualLength)
                 for (i in 0 until actualLength) {
                     val byteValue = bytesTable.get(startIndex + i).checkint()
-                    if (byteValue < 0 || byteValue > 255) {
+                    if (byteValue !in 0..255) {
                         return LuaValue.varargsOf(arrayOf(LuaValue.NIL, LuaValue.valueOf("Invalid byte value: $byteValue")))
                     }
                     bytes[i] = byteValue.toByte()

@@ -154,6 +154,7 @@ class ImGuiLib : LuaValue() {
             "textColored" -> textColored()
             "textDisabled" -> textDisabled()
             "bulletText" -> bulletText()
+            "calcTextSize" -> calcTextSize()
 
             // Images
             "createImageObject" -> createImageObject()
@@ -400,6 +401,22 @@ class ImGuiLib : LuaValue() {
                 return TRUE
             }
             return FALSE
+        }
+    }
+
+    inner class calcTextSize : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val text = args.checkjstring(1)
+            // Дополнительные параметры (опционально)
+            val hideTextAfterDoubleHash = if (args.narg() > 1) args.checkboolean(2) else false
+            val wrapWidth = if (args.narg() > 2) args.checkdouble(3).toFloat() else -1.0f
+
+            val size = ImGui.calcTextSize(text, hideTextAfterDoubleHash, wrapWidth)
+
+            return LuaValue.varargsOf(
+                LuaValue.valueOf(size.x.toDouble()),
+                LuaValue.valueOf(size.y.toDouble())
+            )
         }
     }
 
