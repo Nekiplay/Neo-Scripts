@@ -88,7 +88,7 @@ object LuaCommand {
     }
 
     private fun openScriptsFolder(source: FabricClientCommandSource) {
-        val scriptsDir = File(Minecraft.getInstance().gameDirectory, "/config/hypixelcry/scripts")
+        val scriptsDir = Minecraft.getInstance().gameDirectory.resolve("config/hypixelcry/scripts")
 
         if (!scriptsDir.exists()) {
             scriptsDir.mkdirs()
