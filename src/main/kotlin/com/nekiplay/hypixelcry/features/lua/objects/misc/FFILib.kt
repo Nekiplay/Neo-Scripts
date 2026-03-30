@@ -23,6 +23,7 @@ import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.VarArgFunction
 import java.io.File
+import java.lang.ref.Cleaner
 import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -64,7 +65,7 @@ class FFILib : LuaTable() {
     private val typeOfRegistry = ConcurrentHashMap<String, CType>()
     private val functionRegistry = ConcurrentHashMap<String, CFunctionSignature>()
     private var debugMode = AtomicBoolean(false)
-
+    private val cleaner = Cleaner.create()
 
     init {
         registerBasicTypes()
@@ -515,11 +516,39 @@ class FFILib : LuaTable() {
     }
 
     inner class GcFunction : TwoArgFunction() {
-        override fun call(ptr: LuaValue, finalizer: LuaValue): LuaValue {
-            if (ptr !is CData) return error("FFI.gc: expected cdata")
-            val addr = ptr.peer.hashCode().toLong()
-            gcEntries[addr] = Pair(ptr.peer, finalizer)
-            return ptr
+        override fun call(cdata: LuaValue, finalizer: LuaValue): LuaValue {
+            if (cdata !is CData) return error("ffi.gc: expected cdata as first argument")
+
+            if (finalizer.isnil()) {
+                return cdata
+            }
+
+            if (!finalizer.isfunction()) return error("ffi.gc: expected function as second argument")
+
+            // Данные, необходимые для финализатора
+            val pointerCopy = cdata.peer
+            val typeCopy = cdata.cType
+            val ffiRef = this@FFILib
+
+            cleaner.register(cdata, GcAction(finalizer, pointerCopy, typeCopy, ffiRef))
+
+            return cdata
+        }
+    }
+
+    private class GcAction(
+        private val finalizer: LuaValue,
+        private val peer: Pointer,
+        private val type: CType,
+        private val ffi: FFILib
+    ) : Runnable {
+        override fun run() {
+            try {
+                val tempCData = CData(peer, type, ffi)
+                finalizer.call(tempCData)
+            } catch (e: Exception) {
+                println("[FFI] Error in ffi.gc finalizer: ${e.message}")
+            }
         }
     }
 
