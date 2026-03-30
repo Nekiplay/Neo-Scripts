@@ -1,5 +1,6 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
+import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaLong
 import com.sun.jna.Callback
 import com.sun.jna.Memory
@@ -7,6 +8,9 @@ import com.sun.jna.Native
 import com.sun.jna.NativeLibrary
 import com.sun.jna.Pointer
 import com.sun.jna.CallbackReference
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
+import net.minecraft.client.Minecraft
+import net.minecraft.network.chat.Component
 import org.luaj.vm2.LuaNumber
 import org.luaj.vm2.LuaString
 import com.sun.jna.Function as JnaFunction
@@ -18,6 +22,7 @@ import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.VarArgFunction
+import java.io.File
 import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -64,6 +69,15 @@ class FFILib : LuaTable() {
         set("string", StringFunction())
         set("callback", CallbackFunction())
         set("gc", GcFunction())
+        val osName = System.getProperty("os.name").lowercase()
+        val osType = when {
+            osName.contains("win") -> "Windows"
+            osName.contains("mac") -> "OSX"
+            osName.contains("nix") || osName.contains("nux") || osName.contains("aix") -> "Linux"
+            else -> "Other"
+        }
+        set("os", valueOf(osType))
+
         set("copy", CopyFunction())
         set("fill", FillFunction())
         set("typeof", TypeOfFunction())
