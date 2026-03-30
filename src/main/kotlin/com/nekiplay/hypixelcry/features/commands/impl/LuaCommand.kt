@@ -88,29 +88,35 @@ object LuaCommand {
     }
 
     private fun openScriptsFolder(source: FabricClientCommandSource) {
-        val scriptsDir = Minecraft.getInstance().gameDirectory.resolve("config/hypixelcry/scripts")
+        val gameDir = Minecraft.getInstance().gameDirectory
+        val scriptsDir = File(gameDir, "config/hypixelcry/scripts")
 
         if (!scriptsDir.exists()) {
             scriptsDir.mkdirs()
         }
 
         val os = System.getProperty("os.name").lowercase()
+        val absolutePath = scriptsDir.absolutePath
 
         try {
-            when {
-                os.contains("win") -> {
-                    Runtime.getRuntime().exec("explorer.exe \"${scriptsDir.absolutePath}\"")
-                }
-                os.contains("mac") -> {
-                    Runtime.getRuntime().exec("open \"${scriptsDir.absolutePath}\"")
-                }
-                else -> { // Linux и другие
-                    Runtime.getRuntime().exec("xdg-open \"${scriptsDir.absolutePath}\"")
-                }
+            val command = when {
+                os.contains("win") -> arrayOf("explorer.exe", absolutePath)
+                os.contains("mac") -> arrayOf("open", absolutePath)
+                else -> arrayOf("xdg-open", absolutePath) // Для большинства дистрибутивов Linux
             }
+
+            // Используем ProcessBuilder вместо Runtime.exec
+            // Это гарантирует, что путь с пробелами будет передан как ОДИН аргумент
+            ProcessBuilder(*command).start()
+
             source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§aOpening scripts folder..."))
         } catch (e: Exception) {
-            source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§cCould not open folder: ${e.message}"))
+            // Если xdg-open не найден (например, в минималистичных сборках Linux)
+            if (os.contains("nix") || os.contains("nux")) {
+                source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§cCould not open folder. Path: §7$absolutePath"))
+            } else {
+                source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§cError: ${e.message}"))
+            }
             e.printStackTrace()
         }
     }
