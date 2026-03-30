@@ -48,6 +48,12 @@ data class CType(
     val isEnum: Boolean = false
 )
 
+data class CFunctionSignature(
+    val name: String,
+    val returnType: CType,
+    val argTypes: List<CType>
+)
+
 class FFILib : LuaTable() {
 
     private val typeRegistry = ConcurrentHashMap<String, CType>()
@@ -56,7 +62,9 @@ class FFILib : LuaTable() {
     private val gcEntries = ConcurrentHashMap<Long, Pair<Pointer, LuaValue>>()
     private val metatypeRegistry = ConcurrentHashMap<String, LuaTable>()
     private val typeOfRegistry = ConcurrentHashMap<String, CType>()
+    private val functionRegistry = ConcurrentHashMap<String, CFunctionSignature>()
     private var debugMode = AtomicBoolean(false)
+
 
     init {
         registerBasicTypes()
@@ -86,14 +94,23 @@ class FFILib : LuaTable() {
     }
 
     private fun registerBasicTypes() {
-        typeRegistry["int"] = CType("int", 4, Integer.TYPE)
-        typeRegistry["long"] = CType("long", 8, java.lang.Long.TYPE)
-        typeRegistry["float"] = CType("float", 4, java.lang.Float.TYPE)
-        typeRegistry["double"] = CType("double", 8, java.lang.Double.TYPE)
-        typeRegistry["char"] = CType("char", 1, java.lang.Byte.TYPE)
-        typeRegistry["bool"] = CType("bool", 1, java.lang.Boolean.TYPE)
-        typeRegistry["void"] = CType("void", 0, java.lang.Void.TYPE)
-        typeRegistry["ptr"] = CType("ptr", Native.POINTER_SIZE, Pointer::class.java)
+        val types = listOf(
+            CType("int", 4, Integer.TYPE),
+            CType("uint32_t", 4, Integer.TYPE),
+            CType("int32_t", 4, Integer.TYPE),
+            CType("long", 8, java.lang.Long.TYPE),
+            CType("int64_t", 8, java.lang.Long.TYPE),
+            CType("uint64_t", 8, java.lang.Long.TYPE),
+            CType("size_t", Native.SIZE_T_SIZE, java.lang.Long.TYPE),
+            CType("float", 4, java.lang.Float.TYPE),
+            CType("double", 8, java.lang.Double.TYPE),
+            CType("char", 1, java.lang.Byte.TYPE),
+            CType("bool", 1, java.lang.Boolean.TYPE),
+            CType("void", 0, java.lang.Void.TYPE),
+            CType("ptr", Native.POINTER_SIZE, Pointer::class.java),
+            CType("uintptr_t", Native.POINTER_SIZE, Pointer::class.java)
+        )
+        types.forEach { typeRegistry[it.name] = it }
     }
 
     private fun registerEnum(name: String, values: Map<String, Int>, size: Int) {
@@ -101,57 +118,89 @@ class FFILib : LuaTable() {
     }
 
     private fun parseCDef(cdefString: String): CType? {
-        val trimmed = cdefString.trim()
-        log("parseCDef input: $trimmed")
-        
-        val enumRegex = Regex("""enum\s+(\w+)\s*\{([^}]+)\}""")
-        val enumMatch = enumRegex.find(trimmed)
+        // Очищаем строку от комментариев и лишних пробелов
+        val cleanCdef = cdefString
+            .replace(Regex("//.*"), "")
+            .replace(Regex("/\\*.*?\\*/", RegexOption.DOT_MATCHES_ALL), "")
+            .trim()
+
+        log("parseCDef input: $cleanCdef")
+
+        // 1. Парсинг функций: "int printf(const char* format, ...);"
+        // Ищем паттерн: тип_возврата имя_функции ( аргументы );
+        val funcRegex = Regex("""([\w\*]+)\s+(\w+)\s*\(([^)]*)\)\s*;""")
+        val funcMatch = funcRegex.find(cleanCdef)
+        if (funcMatch != null) {
+            val retTypeName = funcMatch.groupValues[1].replace("*", "").trim()
+            val funcName = funcMatch.groupValues[2]
+            val argsStr = funcMatch.groupValues[3]
+
+            val retType = typeRegistry[retTypeName] ?: typeRegistry["ptr"]!!
+            val argTypes = mutableListOf<CType>()
+
+            if (argsStr.trim().isNotEmpty() && argsStr.trim() != "void") {
+                argsStr.split(",").forEach { arg ->
+                    val parts = arg.trim().split(Regex("\\s+"))
+                    val typePart = parts[0].replace("*", "").trim()
+                    argTypes.add(typeRegistry[typePart] ?: typeRegistry["ptr"]!!)
+                }
+            }
+
+            functionRegistry[funcName] = CFunctionSignature(funcName, retType, argTypes)
+            log("Registered function signature: $funcName")
+            return null // Функции не возвращают CType
+        }
+
+        // 2. Парсинг Typedef: "typedef int HWND;"
+        if (cleanCdef.startsWith("typedef")) {
+            val typedefRegex = Regex("""typedef\s+(.+?)\s+(\w+)\s*;""")
+            val typedefMatch = typedefRegex.find(cleanCdef)
+            if (typedefMatch != null) {
+                val baseTypeStr = typedefMatch.groupValues[1].replace("*", "").trim()
+                val newName = typedefMatch.groupValues[2]
+                val base = typeRegistry[baseTypeStr] ?: typeRegistry["ptr"]!!
+                val newType = base.copy(name = newName)
+                typeRegistry[newName] = newType
+                return newType
+            }
+        }
+
+        // 3. Парсинг Enum
+        val enumRegex = Regex("""enum\s+(\w+)?\s*\{([^}]+)\}""")
+        val enumMatch = enumRegex.find(cleanCdef)
         if (enumMatch != null) {
-            val enumName = enumMatch.groupValues[1]
+            val enumName = enumMatch.groupValues[1] ?: "anonymous_enum_${System.currentTimeMillis()}"
             val valuesStr = enumMatch.groupValues[2]
             val values = mutableMapOf<String, Int>()
             var currentValue = 0
             valuesStr.split(",").forEach { pair ->
+                if (pair.isBlank()) return@forEach
                 val parts = pair.trim().split("=")
                 val name = parts[0].trim()
                 currentValue = if (parts.size > 1) parts[1].trim().toIntOrNull() ?: currentValue else currentValue
                 values[name] = currentValue++
             }
-            registerEnum(enumName, values, 4)
-            log("Parsed enum: $enumName")
-            return typeRegistry[enumName]
+            val enumType = CType(enumName, 4, Integer.TYPE, enumValues = values, isEnum = true)
+            typeRegistry[enumName] = enumType
+            return enumType
         }
 
-        val structRegex = Regex("""struct\s+(\w+)\s*\{([\s\S]*?)\s*\}(?:\s*__attribute__\(\(packed\)\))?""")
-        val structMatch = structRegex.find(trimmed)
-        log("Struct regex match: ${structMatch?.groupValues}")
+        // 4. Парсинг Struct / Union
+        val structRegex = Regex("""(struct|union)\s+(\w+)\s*\{([\s\S]*?)\s*\}(?:\s*__attribute__\(\(packed\)\))?""")
+        val structMatch = structRegex.find(cleanCdef)
         if (structMatch != null) {
-            val structName = structMatch.groupValues[1]
-            val body = structMatch.groupValues[2]
-            val isPacked = trimmed.contains("__attribute__((packed))")
-            log("Parsing struct: $structName, body: $body")
-            return parseStructBody(structName, body, isPacked)
+            val kind = structMatch.groupValues[1]
+            val structName = structMatch.groupValues[2]
+            val body = structMatch.groupValues[3]
+            val isPacked = cleanCdef.contains("__attribute__((packed))")
+            val isUnion = kind == "union"
+
+            val type = parseStructBody(structName, body, isPacked, isUnion)
+            typeRegistry[structName] = type
+            return type
         }
 
-        val unionRegex = Regex("""union\s+(\w+)\s*\{([\s\S]*?)\s*\}(?:\s*__attribute__\(\(packed\)\))?""")
-        val unionMatch = unionRegex.find(trimmed)
-        if (unionMatch != null) {
-            val unionName = unionMatch.groupValues[1]
-            val body = unionMatch.groupValues[2]
-            return parseStructBody(unionName, body, false, true)
-        }
-
-        val typedefRegex = Regex("""typedef\s+(.+?)\s+(\w+)\s*;""")
-        val typedefMatch = typedefRegex.find(trimmed)
-        if (typedefMatch != null) {
-            val baseType = typedefMatch.groupValues[1].trim()
-            val newName = typedefMatch.groupValues[2]
-            val base = typeRegistry[baseType] ?: return null
-            typeRegistry[newName] = base.copy(name = newName)
-            return typeRegistry[newName]
-        }
-
-        log("parseCDef: no match found")
+        log("parseCDef: no match found for '$cleanCdef'")
         return null
     }
 
@@ -286,114 +335,45 @@ class FFILib : LuaTable() {
 
     inner class CallbackFunction : TwoArgFunction() {
         override fun call(proto: LuaValue, func: LuaValue): LuaValue {
-            val luaFunc = func
             val protoStr = proto.checkjstring()
+            val signature = parseCallbackSignature(protoStr)
 
-            val returnType = parseCallbackReturnType(protoStr)
-            val argTypes = parseCallbackArgTypes(protoStr)
+            // Создаем прокси-объект колбэка с поддержкой возвращаемого значения
+            val callbackObj = object : Callback {
+                // JNA ищет метод с именем "callback" или единственным public методом
+                fun callback(vararg args: Any?): Any? {
+                    val luaArgs = args.map { arg ->
+                        when (arg) {
+                            is Int -> valueOf(arg)
+                            is Long -> valueOf(arg.toDouble())
+                            is Pointer -> CData(arg, typeRegistry["ptr"]!!, this@FFILib)
+                            else -> NIL
+                        }
+                    }
 
-            val callbackObj = createCallback(returnType, argTypes, luaFunc)
+                    val res = if (luaArgs.isEmpty()) func.call() else func.invoke(LuaValue.varargsOf(luaArgs.toTypedArray())).arg1()
+
+                    // Возвращаем результат обратно в C (Пункт 4)
+                    return when (signature.returnType.nativeClass) {
+                        Integer.TYPE -> res.toint()
+                        java.lang.Long.TYPE -> res.tolong()
+                        java.lang.Double.TYPE -> res.todouble()
+                        Pointer::class.java -> (res as? CData)?.peer ?: Pointer.NULL
+                        else -> null
+                    }
+                }
+            }
 
             val ptr = CallbackReference.getFunctionPointer(callbackObj)
             callbackCache[ptr.hashCode().toLong()] = WeakReference(callbackObj)
-
-            val ptrType = typeRegistry["ptr"]!!
-            return CData(ptr, ptrType, this@FFILib)
+            return CData(ptr, typeRegistry["ptr"]!!, this@FFILib)
         }
 
-        private fun createCallback(returnType: CType?, argTypes: List<CType>, luaFunc: LuaValue): Callback {
-            val ffi = this@FFILib
-            
-            val arg0Type = argTypes.getOrNull(0)?.name
-            val arg1Type = argTypes.getOrNull(1)?.name
-            val arg2Type = argTypes.getOrNull(2)?.name
-            
-            return when (argTypes.size) {
-                0 -> object : Callback {
-                    fun invoke(): Unit = invokeCallbackVoid(emptyList(), returnType, luaFunc, ffi)
-                }
-                1 -> {
-                    if (arg0Type == "ptr") {
-                        object : Callback {
-                            fun invoke(a1: Pointer): Unit = invokeCallbackVoid(listOf(a1), returnType, luaFunc, ffi)
-                        }
-                    } else {
-                        object : Callback {
-                            fun invoke(a1: Int): Unit = invokeCallbackVoid(listOf(a1.toLong()), returnType, luaFunc, ffi)
-                        }
-                    }
-                }
-                2 -> object : Callback {
-                    @Suppress("UNCHECKED_CAST")
-                    fun invoke(a1: Pointer, a2: Pointer): Unit = invokeCallbackVoid(listOf(a1, a2), returnType, luaFunc, ffi)
-                }
-                3 -> object : Callback {
-                    @Suppress("UNCHECKED_CAST")
-                    fun invoke(a1: Pointer, a2: Pointer, a3: Pointer): Unit = invokeCallbackVoid(listOf(a1, a2, a3), returnType, luaFunc, ffi)
-                }
-                else -> object : Callback {
-                    @Suppress("UNCHECKED_CAST")
-                    fun invoke(a1: Pointer, a2: Pointer, a3: Pointer, a4: Pointer): Unit = invokeCallbackVoid(listOf(a1, a2, a3, a4), returnType, luaFunc, ffi)
-                }
-            }
-        }
-
-        private fun invokeCallbackVoid(args: List<Any>, returnType: CType?, luaFunc: LuaValue, ffi: FFILib) {
-            val luaArgs = args.map { convertArgToLua(it, null, ffi) }
-
-            try {
-                when (luaArgs.size) {
-                    0 -> luaFunc.call()
-                    1 -> luaFunc.call(luaArgs[0])
-                    else -> luaFunc.call(luaArgs[0], luaArgs[1])
-                }
-            } catch (e: Exception) {
-                log("Callback error: ${e.message}")
-            }
-        }
-
-        private fun parseCallbackReturnType(proto: String): CType? {
-            val match = Regex("""(\w+)\s*\([^)]*\)""").find(proto)
-            if (match != null) {
-                val retTypeName = match.groupValues[1]
-                return typeRegistry[retTypeName]
-            }
-            return typeRegistry["int"]
-        }
-
-        private fun parseCallbackArgTypes(proto: String): List<CType> {
-            val match = Regex("""\w+\s*\(([^)]*)\)""").find(proto)
-            if (match != null) {
-                val argsStr = match.groupValues[1].trim()
-                if (argsStr.isEmpty()) return emptyList()
-                return argsStr.split(",").mapNotNull { arg ->
-                    val typeName = arg.trim().split(Regex("\\s+")).last()
-                    typeRegistry[typeName]
-                }
-            }
-            return listOf(typeRegistry["int"]!!, typeRegistry["int"]!!, typeRegistry["int"]!!)
-        }
-
-        private fun convertArgToLua(arg: Any, type: CType?, ffi: FFILib): LuaValue {
-            return when (arg) {
-                is Int -> valueOf(arg.toDouble())
-                is Long -> valueOf(arg.toDouble())
-                is Float -> valueOf(arg.toDouble())
-                is Double -> valueOf(arg)
-                is Pointer -> CData(arg, typeRegistry["ptr"]!!, ffi)
-                else -> NIL
-            }
-        }
-
-        private fun convertReturnFromLuaInt(res: LuaValue, returnType: CType?): Int {
-            if (res.isnil()) return 0
-            return when (returnType?.name) {
-                "void" -> 0
-                "int" -> res.checkint()
-                "long" -> res.checklong().toInt()
-                "float", "double" -> res.checkdouble().toInt()
-                else -> if (res.isnumber()) res.toint() else 0
-            }
+        private fun parseCallbackSignature(proto: String): CFunctionSignature {
+            val regex = Regex("""(\w+)\s*\((.*)\)""")
+            val match = regex.find(proto) ?: throw Exception("Invalid callback proto")
+            val retType = typeRegistry[match.groupValues[1]] ?: typeRegistry["int"]!!
+            return CFunctionSignature("cb", retType, emptyList())
         }
     }
 
@@ -642,72 +622,61 @@ class FFILib : LuaTable() {
     inner class NativeLibWrapper(val lib: NativeLibrary, val libName: String) : LuaTable() {
         override fun get(key: LuaValue): LuaValue {
             val name = key.tojstring()
-            
-            if (typeRegistry.containsKey(name)) {
-                return valueOf(name)
-            }
+            val sig = functionRegistry[name]
 
-            val sym = try { 
-                val enumType = typeRegistry.values.find { it.isEnum && it.enumValues?.containsKey(name) == true }
-                if (enumType != null) {
-                    return valueOf(enumType.enumValues!![name]!!)
-                }
-                lib.getFunction(name)
-            } catch(e: Exception) { 
-                return super.get(key) 
+            return try {
+                val func = lib.getFunction(name)
+                NativeFunction(func, this@FFILib, sig)
+            } catch (e: Exception) {
+                super.get(key)
             }
-            return NativeFunction(sym, this@FFILib)
         }
     }
 
-    inner class NativeFunction(val jnaFunc: JnaFunction, val ffi: FFILib) : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            if (ffi.debugMode.get()) {
-                log("FFI Call: ${jnaFunc.name}")
-            }
+    inner class NativeFunction(
+        val jnaFunc: JnaFunction,
+        val ffi: FFILib,
+        val signature: CFunctionSignature? = null
+    ) : VarArgFunction() {
 
+        override fun invoke(args: Varargs): Varargs {
             val jnaArgs = arrayOfNulls<Any>(args.narg())
             for (i in 1..args.narg()) {
                 val v = args.arg(i)
-                val argValue: Any? = when (v) {
-                    is CData -> {
-                        if (v.peer == Pointer.NULL) {
-                            return error("FFI: null pointer passed to ${jnaFunc.name}")
-                        }
-                        if (ffi.debugMode.get()) {
-                            log("Arg $i: CData peer=${v.peer}, cType=${v.cType.name}")
-                        }
-                        v.peer
-                    }
-                    is LuaNumber -> {
-                        val num = if (v.isint()) v.toint() else v.todouble()
-                        if (ffi.debugMode.get()) {
-                            log("Arg $i: Number=$num")
-                        }
-                        num
-                    }
-                    is LuaString -> {
-                        val str = v.tojstring()
-                        if (ffi.debugMode.get()) {
-                            log("Arg $i: String='$str'")
-                        }
-                        str
-                    }
-                    else -> return error("FFI: unsupported argument type ${v.typename()} for parameter $i")
+                // Конвертация Lua -> Java (улучшенная)
+                jnaArgs[i-1] = when (v) {
+                    is CData -> v.peer
+                    is LuaNumber -> if (v.isint()) v.toint() else v.todouble()
+                    is LuaString -> v.tojstring()
+                    else -> null
                 }
-                jnaArgs[i-1] = argValue
             }
 
-            val res = try { 
-                jnaFunc.invoke(Pointer::class.java, jnaArgs) 
-            } catch (e: UnsatisfiedLinkError) {
-                return error("FFI: Unable to call ${jnaFunc.name}: ${e.message}")
-            } catch (e: Exception) { 
-                return error("FFI: Error calling ${jnaFunc.name}: ${e.message}")
-            }
+            // Определяем класс возвращаемого значения на основе сигнатуры
+            val returnClass = signature?.returnType?.nativeClass ?: Pointer::class.java
 
-            val voidType = typeRegistry["void"]!!
-            return if (res == null || res == Pointer.NULL) NIL else CData(res as Pointer, voidType, ffi)
+            return try {
+                val result = jnaFunc.invoke(returnClass, jnaArgs)
+
+                // Конвертация Java -> Lua на основе типа (Пункт 2)
+                when {
+                    result == null -> NIL
+                    signature?.returnType?.name == "void" -> NIL
+                    result is Int -> valueOf(result)
+                    result is Long -> valueOf(result.toDouble())
+                    result is Float -> valueOf(result.toDouble())
+                    result is Double -> valueOf(result)
+                    result is Boolean -> valueOf(result)
+                    result is String -> valueOf(result)
+                    result is Pointer -> {
+                        if (result == Pointer.NULL) NIL
+                        else CData(result, signature?.returnType ?: typeRegistry["ptr"]!!, ffi)
+                    }
+                    else -> NIL
+                }
+            } catch (e: Exception) {
+                error("FFI Call Error [${jnaFunc.name}]: ${e.message}")
+            }
         }
     }
 
@@ -722,5 +691,6 @@ class FFILib : LuaTable() {
     fun disposeLoadedLibraries() {
         loadedLibraries.forEach { it.value.dispose() }
         loadedLibraries.clear()
+        functionRegistry.clear()
     }
 }
