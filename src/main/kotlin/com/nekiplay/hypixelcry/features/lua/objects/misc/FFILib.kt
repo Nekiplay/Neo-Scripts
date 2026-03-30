@@ -73,8 +73,8 @@ class FFILib : LuaTable() {
         val osType = when {
             osName.contains("win") -> "Windows"
             osName.contains("mac") -> "OSX"
-            osName.contains("nix") || osName.contains("nux") || osName.contains("aix") -> "Linux"
-            else -> "Other"
+            osName.contains("bsd") -> "BSD"
+            else -> "Linux"
         }
         set("os", valueOf(osType))
 
