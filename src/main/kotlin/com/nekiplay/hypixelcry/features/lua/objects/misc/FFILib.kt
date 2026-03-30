@@ -318,7 +318,7 @@ class FFILib : LuaTable() {
             return error("FFI: Failed to parse cdef")
         }
     }
-    
+
     private fun parseSingleCDef(stmt: String): CType? {
         val trimmed = stmt.trim()
         log("Parsing statement: $trimmed")
@@ -409,46 +409,108 @@ class FFILib : LuaTable() {
     }
 
     inner class CallbackFunction : TwoArgFunction() {
+        // Хранилище для защиты колбэков от Garbage Collector (GC)
+        private val hardCallbackReferences = ConcurrentHashMap<Long, Callback>()
+
         override fun call(proto: LuaValue, func: LuaValue): LuaValue {
             val protoStr = proto.checkjstring()
-            val signature = parseCallbackSignature(protoStr)
+            val sig = parseCallbackSignature(protoStr)
 
-            // Создаем прокси-объект колбэка с поддержкой возвращаемого значения
-            val callbackObj = object : Callback {
-                // JNA ищет метод с именем "callback" или единственным public методом
-                fun callback(vararg args: Any?): Any? {
-                    val luaArgs = args.map { arg ->
-                        when (arg) {
-                            is Int -> valueOf(arg)
-                            is Long -> valueOf(arg.toDouble())
-                            is Pointer -> CData(arg, typeRegistry["ptr"]!!, this@FFILib)
-                            else -> NIL
-                        }
-                    }
-
-                    val res = if (luaArgs.isEmpty()) func.call() else func.invoke(LuaValue.varargsOf(luaArgs.toTypedArray())).arg1()
-
-                    // Возвращаем результат обратно в C (Пункт 4)
-                    return when (signature.returnType.nativeClass) {
-                        Integer.TYPE -> res.toint()
-                        java.lang.Long.TYPE -> res.tolong()
-                        java.lang.Double.TYPE -> res.todouble()
-                        Pointer::class.java -> (res as? CData)?.peer ?: Pointer.NULL
-                        else -> null
-                    }
+            // JNA требует четкое количество аргументов. Varargs использовать нельзя.
+            val callbackObj: Callback = when (sig.argTypes.size) {
+                0 -> object : Callback {
+                    fun invoke(): Any? = runLua(func, emptyList(), sig)
                 }
+                1 -> object : Callback {
+                    fun invoke(a1: Any?): Any? = runLua(func, listOf(a1), sig)
+                }
+                2 -> object : Callback {
+                    fun invoke(a1: Any?, a2: Any?): Any? = runLua(func, listOf(a1, a2), sig)
+                }
+                3 -> object : Callback {
+                    fun invoke(a1: Any?, a2: Any?, a3: Any?): Any? = runLua(func, listOf(a1, a2, a3), sig)
+                }
+                4 -> object : Callback {
+                    fun invoke(a1: Any?, a2: Any?, a3: Any?, a4: Any?): Any? = runLua(func, listOf(a1, a2, a3, a4), sig)
+                }
+                5 -> object : Callback {
+                    fun invoke(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?): Any? = runLua(func, listOf(a1, a2, a3, a4, a5), sig)
+                }
+                6 -> object : Callback {
+                    fun invoke(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?, a6: Any?): Any? = runLua(func, listOf(a1, a2, a3, a4, a5, a6), sig)
+                }
+                7 -> object : Callback {
+                    fun invoke(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?, a6: Any?, a7: Any?): Any? = runLua(func, listOf(a1, a2, a3, a4, a5, a6, a7), sig)
+                }
+                8 -> object : Callback {
+                    fun invoke(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?, a6: Any?, a7: Any?, a8: Any?): Any? = runLua(func, listOf(a1, a2, a3, a4, a5, a6, a7, a8), sig)
+                }
+                9 -> object : Callback {
+                    fun invoke(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?, a6: Any?, a7: Any?, a8: Any?, a9: Any?): Any? = runLua(func, listOf(a1, a2, a3, a4, a5, a6, a7, a8, a9), sig)
+                }
+                else -> return error("FFI: Unsupported number of callback arguments (${sig.argTypes.size})")
             }
 
             val ptr = CallbackReference.getFunctionPointer(callbackObj)
-            callbackCache[ptr.hashCode().toLong()] = WeakReference(callbackObj)
+            val address = Pointer.nativeValue(ptr)
+
+            // Обязательно сохраняем сильную ссылку, чтобы GC не удалил колбэк пока он нужен C
+            hardCallbackReferences[address] = callbackObj
+
             return CData(ptr, typeRegistry["ptr"]!!, this@FFILib)
         }
 
+        private fun runLua(luaFunc: LuaValue, args: List<Any?>, sig: CFunctionSignature): Any? {
+            // Конвертируем аргументы из C в Lua
+            val luaArgs = args.mapIndexed { i, arg ->
+                val expectedType = sig.argTypes.getOrNull(i) ?: typeRegistry["ptr"]!!
+                when (arg) {
+                    is Pointer -> CData(arg, expectedType, this@FFILib)
+                    is Int -> valueOf(arg)
+                    is Long -> valueOf(arg.toDouble())
+                    is Float -> valueOf(arg.toDouble())
+                    is Double -> valueOf(arg)
+                    else -> NIL
+                }
+            }
+
+            // Вызываем Lua
+            val result = try {
+                luaFunc.invoke(LuaValue.varargsOf(luaArgs.toTypedArray())).arg1()
+            } catch (e: Exception) {
+                log("Error in Lua callback: ${e.message}")
+                NIL
+            }
+
+            // Конвертируем результат обратно в C
+            return when (sig.returnType.nativeClass) {
+                Integer.TYPE -> result.toint()
+                java.lang.Long.TYPE -> result.tolong()
+                java.lang.Float.TYPE -> result.tofloat()
+                java.lang.Double.TYPE -> result.todouble()
+                Pointer::class.java -> if (result is CData) result.peer else Pointer.NULL
+                else -> null
+            }
+        }
+
         private fun parseCallbackSignature(proto: String): CFunctionSignature {
-            val regex = Regex("""(\w+)\s*\((.*)\)""")
-            val match = regex.find(proto) ?: throw Exception("Invalid callback proto")
-            val retType = typeRegistry[match.groupValues[1]] ?: typeRegistry["int"]!!
-            return CFunctionSignature("cb", retType, emptyList())
+            val regex = Regex("""([\w\*]+)\s*\((.*)\)""")
+            val match = regex.find(proto) ?: throw Exception("Invalid callback prototype: $proto")
+
+            val retTypeName = match.groupValues[1].replace("*", "").trim()
+            val retType = typeRegistry[retTypeName] ?: typeRegistry["ptr"]!!
+
+            val argsStr = match.groupValues[2].trim()
+            val argTypes = mutableListOf<CType>()
+
+            if (argsStr.isNotEmpty() && argsStr != "void") {
+                argsStr.split(",").forEach { arg ->
+                    val typeName = arg.trim().split(" ").first().replace("*", "").trim()
+                    argTypes.add(typeRegistry[typeName] ?: typeRegistry["ptr"]!!)
+                }
+            }
+
+            return CFunctionSignature("callback", retType, argTypes)
         }
     }
 
