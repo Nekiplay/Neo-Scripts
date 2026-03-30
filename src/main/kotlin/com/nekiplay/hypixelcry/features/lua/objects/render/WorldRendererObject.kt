@@ -194,37 +194,54 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
     }
 
     private inner class SubmitQuadFunction : VarArgFunction() {
+        private fun parsePoint(arg: LuaValue): Vec3? {
+            return when {
+                arg.isuserdata() && arg.touserdata() is LuaVector3d -> {
+                    (arg.touserdata() as LuaVector3d).location
+                }
+                arg.isuserdata() && arg.touserdata() is Vec3 -> {
+                    arg.touserdata() as Vec3
+                }
+                arg.istable() -> {
+                    val x = arg.get("x").optdouble(0.0)
+                    val y = arg.get("y").optdouble(0.0)
+                    val z = arg.get("z").optdouble(0.0)
+                    Vec3(x, y, z)
+                }
+                else -> null
+            }
+        }
+
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
 
-            val table = args.arg1()
-            if (!table.istable()) return NIL
+            val pointsTable = args.arg1()
+            if (!pointsTable.istable()) return NIL
 
-            val pointsArray = table.get("points")
-            val points = if (pointsArray.istable() && pointsArray.length() == 4) {
-                Array(4) { index ->
-                    val point = pointsArray.get(index + 1)
-                    Vec3(
-                        point.get("x").optdouble(0.0),
-                        point.get("y").optdouble(0.0),
-                        point.get("z").optdouble(0.0)
-                    )
-                }
-            } else {
-                Array(4) { index ->
-                    val pointTable = table.get("point${index + 1}")
-                    Vec3(
-                        pointTable.get("x").optdouble(0.0),
-                        pointTable.get("y").optdouble(0.0),
-                        pointTable.get("z").optdouble(0.0)
-                    )
+            val pointsList = mutableListOf<Vec3>()
+            var i = 1
+            while (true) {
+                val point = pointsTable.get(i)
+                if (point.istable() || point.isuserdata()) {
+                    val vec = parsePoint(point)
+                    if (vec != null) {
+                        pointsList.add(vec)
+                    }
+                    i++
+                } else {
+                    break
                 }
             }
 
-            val red = table.get("red").optint(0)
-            val green = table.get("green").optint(0)
-            val blue = table.get("blue").optint(0)
-            val alpha = table.get("alpha").optint(0)
+            if (pointsList.size < 3) return NIL
+
+            val points = pointsList.take(4).toTypedArray()
+
+            val red = args.optint(2, 0)
+            val green = args.optint(3, 0)
+            val blue = args.optint(4, 0)
+            val alpha = args.optint(5, 0)
+            val throughWalls = args.optboolean(6, false)
 
             val colorComponents = floatArrayOf(
                 red.toFloat() / 255.0f,
@@ -232,8 +249,6 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 blue.toFloat() / 255.0f
             )
             val alphaComponent = alpha / 255.0f
-
-            val throughWalls = table.get("throughWalls").optboolean(false)
 
             context.submitQuad(points, colorComponents, alphaComponent, throughWalls)
             return TRUE
@@ -372,17 +387,18 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
 
             val text = args.optjstring(offset, "Empty")
             val scale = args.optdouble(offset + 1, 1.0).toFloat()
-            val throughWalls = args.optboolean(offset + 2, true)
 
-            val red = args.optint(offset + 3, -1)
-            val green = args.optint(offset + 4, -1)
-            val blue = args.optint(offset + 5, -1)
+            val red = args.optint(offset + 2, -1)
+            val green = args.optint(offset + 3, -1)
+            val blue = args.optint(offset + 4, -1)
 
             val color: Int = if (red in 0..255 && green in 0..255 && blue in 0..255) {
                 (255 shl 24) or (red shl 16) or (green shl 8) or blue
             } else {
                 CommonColors.WHITE
             }
+
+            val throughWalls = args.optboolean(offset + 5, true)
 
             val qx = args.optdouble(offset + 6, 0.0)
             val qy = args.optdouble(offset + 7, 0.0)
@@ -418,42 +434,53 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
     }
 
     private inner class RenderLinesFromPointsFunction : VarArgFunction() {
+        private fun parsePoint(arg: LuaValue): Vec3? {
+            return when {
+                arg.isuserdata() && arg.touserdata() is LuaVector3d -> {
+                    (arg.touserdata() as LuaVector3d).location
+                }
+                arg.isuserdata() && arg.touserdata() is Vec3 -> {
+                    arg.touserdata() as Vec3
+                }
+                arg.istable() -> {
+                    val x = arg.get("x").optdouble(0.0)
+                    val y = arg.get("y").optdouble(0.0)
+                    val z = arg.get("z").optdouble(0.0)
+                    Vec3(x, y, z)
+                }
+                else -> null
+            }
+        }
+
         override fun invoke(args: Varargs): Varargs {
             if (context == null) return NIL
 
-            val table = args.arg1()
-            if (!table.istable()) return NIL
-
-            val pointsTable = table.get("points")
+            val pointsTable = args.arg1()
             if (!pointsTable.istable()) return NIL
 
             val pointsList = mutableListOf<Vec3>()
-            var i = 0
+            var i = 1
             while (true) {
-                val pointTable = pointsTable.get(i)
-                if (pointTable.istable()) {
-                    val x = pointTable.get("x").optdouble(0.0)
-                    val y = pointTable.get("y").optdouble(0.0)
-                    val z = pointTable.get("z").optdouble(0.0)
-                    pointsList.add(Vec3(x, y, z))
+                val point = pointsTable.get(i)
+                if (point.istable() || point.isuserdata()) {
+                    val vec = parsePoint(point)
+                    if (vec != null) {
+                        pointsList.add(vec)
+                    }
                     i++
                 } else {
-                    if (i == 0) {
-                        i = 1
-                        continue
-                    }
                     break
                 }
             }
 
             if (pointsList.size < 2) return NIL
 
-            val red = table.get("red").optint(0)
-            val green = table.get("green").optint(0)
-            val blue = table.get("blue").optint(0)
-            val alpha = table.get("alpha").optint(0)
-            val lineWidth = table.get("line_width").optdouble(1.0).toFloat()
-            val throughWalls = table.get("through_walls").optboolean(true)
+            val red = args.optint(2, 0)
+            val green = args.optint(3, 0)
+            val blue = args.optint(4, 0)
+            val alpha = args.optint(5, 0)
+            val lineWidth = args.optdouble(6, 1.0).toFloat()
+            val throughWalls = args.optboolean(7, true)
 
             val colorComponents = floatArrayOf(
                 red.toFloat() / 255.0f,

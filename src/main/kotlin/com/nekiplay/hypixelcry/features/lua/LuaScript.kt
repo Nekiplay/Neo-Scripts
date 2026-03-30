@@ -8,6 +8,7 @@ import com.mojang.brigadier.tree.CommandNode
 import com.mojang.brigadier.tree.RootCommandNode
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.text.LuaComponentBuilder
 import com.nekiplay.hypixelcry.features.lua.objects.misc.CatboostLib
@@ -815,14 +816,13 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             attackBlockCallbacks.toTypedArray()
         }
 
+        val t = LuaValue.tableOf()
+        t.set("blockpos", LuaBlockPos(pos))
+        t.set("direction", LuaDirection(direction))
+        t.set("hand", LuaValue.valueOf(hand.name))
+
         for (callback in callbacks) {
             try {
-                val t = LuaValue.tableOf()
-                t.set("x", LuaValue.valueOf(pos.x))
-                t.set("y", LuaValue.valueOf(pos.y))
-                t.set("z", LuaValue.valueOf(pos.z))
-                t.set("direction", LuaDirection(direction))
-                t.set("hand", LuaValue.valueOf(hand.name))
                 val res = callback.call(t)
                 if (res.isboolean() && !res.toboolean()) {
                     allow = false
@@ -840,13 +840,11 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             useBlockCallbacks.toTypedArray()
         }
 
+        val t = LuaValue.tableOf()
+        t.set("blockpos", LuaBlockPos(pos))
+        t.set("hand", LuaValue.valueOf(hand.name))
         for (callback in callbacks) {
             try {
-                val t = LuaValue.tableOf()
-                t.set("x", LuaValue.valueOf(pos.x))
-                t.set("y", LuaValue.valueOf(pos.y))
-                t.set("z", LuaValue.valueOf(pos.z))
-                t.set("hand", LuaValue.valueOf(hand.name))
                 val res = callback.call(t)
                 if (res.isboolean() && !res.toboolean()) {
                     allow = false

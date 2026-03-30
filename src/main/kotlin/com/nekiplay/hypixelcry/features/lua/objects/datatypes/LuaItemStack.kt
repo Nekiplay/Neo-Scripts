@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.MapItem
 import net.minecraft.world.item.component.ItemLore
+import net.minecraft.world.level.block.Block
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 
@@ -41,6 +42,15 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                     }
                 }
                 NIL
+            }
+            "blockstate" -> {
+                val block = Block.byItem(stack.item)
+                return if (block != null) {
+                    LuaBlockState(block.defaultBlockState())
+                }
+                else {
+                    NIL
+                }
             }
 
             "lore", "lores" -> {
