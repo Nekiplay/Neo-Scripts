@@ -295,14 +295,89 @@ class FFILib : LuaTable() {
             }
 
             val cdefString = arg.checkjstring()
-            val parsed = parseCDef(cdefString)
-            if (parsed != null) {
-                typeRegistry[parsed.name] = parsed
-                log("Registered type: ${parsed.name}")
-                return valueOf(parsed.name)
+
+            // Очищаем от комментариев
+            val cleanCdef = cdefString
+                .replace(Regex("//.*"), "")
+                .replace(Regex("/\\*.*?\\*/", RegexOption.DOT_MATCHES_ALL), "")
+
+            // Разделяем по точке с запятой, чтобы обработать каждую строку
+            val statements = cleanCdef.split(";")
+            var parsedAny = false
+
+            for (statement in statements) {
+                val stmt = statement.trim()
+                if (stmt.isEmpty()) continue
+
+                // Пытаемся распарсить как тип или как функцию
+                val res = parseSingleCDef(stmt)
+                parsedAny = true
             }
+
+            if (parsedAny) return NIL // LuaJIT cdef возвращает nil
             return error("FFI: Failed to parse cdef")
         }
+    }
+    
+    private fun parseSingleCDef(stmt: String): CType? {
+        val trimmed = stmt.trim()
+        log("Parsing statement: $trimmed")
+
+        // 1. Парсинг функций: "void* malloc(size_t size)"
+        // Группы: 1 - тип возврата, 2 - имя, 3 - аргументы
+        val funcRegex = Regex("""([\w\s\*]+)\s+(\w+)\s*\(([^)]*)\)""")
+        val funcMatch = funcRegex.find(trimmed)
+        if (funcMatch != null) {
+            val retTypeRaw = funcMatch.groupValues[1].trim()
+            val funcName = funcMatch.groupValues[2].trim()
+            val argsStr = funcMatch.groupValues[3].trim()
+
+            // Определяем тип возврата (учитываем звездочку для указателей)
+            val retTypeName = retTypeRaw.replace("*", "").trim()
+            val isPointer = retTypeRaw.contains("*")
+            val retType = if (isPointer) typeRegistry["ptr"]!! else (typeRegistry[retTypeName] ?: typeRegistry["ptr"]!!)
+
+            val argTypes = mutableListOf<CType>()
+            if (argsStr.isNotEmpty() && argsStr != "void") {
+                argsStr.split(",").forEach { arg ->
+                    val parts = arg.trim().split(Regex("\\s+"))
+                    val typePart = parts[0].replace("*", "").trim()
+                    argTypes.add(typeRegistry[typePart] ?: typeRegistry["ptr"]!!)
+                }
+            }
+
+            functionRegistry[funcName] = CFunctionSignature(funcName, retType, argTypes)
+            log("Registered function: $funcName (returns ${retType.name})")
+            return null
+        }
+
+        // 2. Парсинг структур (упрощенный для блока)
+        if (trimmed.startsWith("struct") || trimmed.startsWith("union")) {
+            val structRegex = Regex("""(struct|union)\s+(\w+)\s*\{([\s\S]*)\}""")
+            val match = structRegex.find(trimmed)
+            if (match != null) {
+                val kind = match.groupValues[1]
+                val name = match.groupValues[2]
+                val body = match.groupValues[3]
+                val type = parseStructBody(name, body, trimmed.contains("packed"), kind == "union")
+                typeRegistry[name] = type
+                return type
+            }
+        }
+
+        // 3. Typedef
+        if (trimmed.startsWith("typedef")) {
+            val parts = trimmed.split(Regex("\\s+"))
+            if (parts.size >= 3) {
+                val baseName = parts[1].replace("*", "").trim()
+                val newName = parts[2].trim()
+                val baseType = typeRegistry[baseName] ?: typeRegistry["ptr"]!!
+                typeRegistry[newName] = baseType.copy(name = newName)
+                return typeRegistry[newName]
+            }
+        }
+
+        return null
     }
 
     inner class NewFunction : TwoArgFunction() {
