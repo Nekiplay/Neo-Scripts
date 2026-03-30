@@ -296,27 +296,34 @@ class FFILib : LuaTable() {
             }
 
             val cdefString = arg.checkjstring()
-
-            // Очищаем от комментариев
             val cleanCdef = cdefString
                 .replace(Regex("//.*"), "")
                 .replace(Regex("/\\*.*?\\*/", RegexOption.DOT_MATCHES_ALL), "")
 
-            // Разделяем по точке с запятой, чтобы обработать каждую строку
-            val statements = cleanCdef.split(";")
-            var parsedAny = false
+            val statements = mutableListOf<String>()
+            val sb = StringBuilder()
+            var depth = 0
 
-            for (statement in statements) {
-                val stmt = statement.trim()
-                if (stmt.isEmpty()) continue
-
-                // Пытаемся распарсить как тип или как функцию
-                val res = parseSingleCDef(stmt)
-                parsedAny = true
+            // Умное разделение: игнорируем точки с запятой внутри структур
+            for (char in cleanCdef) {
+                when (char) {
+                    '{' -> depth++
+                    '}' -> depth--
+                    ';' -> if (depth == 0) {
+                        statements.add(sb.toString().trim())
+                        sb.setLength(0)
+                        continue
+                    }
+                }
+                sb.append(char)
             }
+            if (sb.isNotBlank()) statements.add(sb.toString().trim())
 
-            if (parsedAny) return NIL // LuaJIT cdef возвращает nil
-            return error("FFI: Failed to parse cdef")
+            for (stmt in statements) {
+                if (stmt.isEmpty()) continue
+                parseSingleCDef(stmt)
+            }
+            return NIL
         }
     }
 
@@ -423,33 +430,15 @@ class FFILib : LuaTable() {
                     fun invoke(): Any? = runLua(func, emptyList(), sig)
                 }
                 1 -> object : Callback {
-                    fun invoke(a1: Any?): Any? = runLua(func, listOf(a1), sig)
+                    fun invoke(a1: Pointer): Any? = runLua(func, listOf(a1), sig)
                 }
                 2 -> object : Callback {
-                    fun invoke(a1: Any?, a2: Any?): Any? = runLua(func, listOf(a1, a2), sig)
+                    fun invoke(a1: Pointer, a2: Pointer): Any? = runLua(func, listOf(a1, a2), sig)
                 }
                 3 -> object : Callback {
-                    fun invoke(a1: Any?, a2: Any?, a3: Any?): Any? = runLua(func, listOf(a1, a2, a3), sig)
+                    fun invoke(a1: Pointer, a2: Pointer, a3: Pointer): Any? = runLua(func, listOf(a1, a2, a3), sig)
                 }
-                4 -> object : Callback {
-                    fun invoke(a1: Any?, a2: Any?, a3: Any?, a4: Any?): Any? = runLua(func, listOf(a1, a2, a3, a4), sig)
-                }
-                5 -> object : Callback {
-                    fun invoke(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?): Any? = runLua(func, listOf(a1, a2, a3, a4, a5), sig)
-                }
-                6 -> object : Callback {
-                    fun invoke(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?, a6: Any?): Any? = runLua(func, listOf(a1, a2, a3, a4, a5, a6), sig)
-                }
-                7 -> object : Callback {
-                    fun invoke(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?, a6: Any?, a7: Any?): Any? = runLua(func, listOf(a1, a2, a3, a4, a5, a6, a7), sig)
-                }
-                8 -> object : Callback {
-                    fun invoke(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?, a6: Any?, a7: Any?, a8: Any?): Any? = runLua(func, listOf(a1, a2, a3, a4, a5, a6, a7, a8), sig)
-                }
-                9 -> object : Callback {
-                    fun invoke(a1: Any?, a2: Any?, a3: Any?, a4: Any?, a5: Any?, a6: Any?, a7: Any?, a8: Any?, a9: Any?): Any? = runLua(func, listOf(a1, a2, a3, a4, a5, a6, a7, a8, a9), sig)
-                }
-                else -> return error("FFI: Unsupported number of callback arguments (${sig.argTypes.size})")
+                else -> return error("FFI: Too many arguments for callback")
             }
 
             val ptr = CallbackReference.getFunctionPointer(callbackObj)
@@ -462,35 +451,31 @@ class FFILib : LuaTable() {
         }
 
         private fun runLua(luaFunc: LuaValue, args: List<Any?>, sig: CFunctionSignature): Any? {
-            // Конвертируем аргументы из C в Lua
             val luaArgs = args.mapIndexed { i, arg ->
                 val expectedType = sig.argTypes.getOrNull(i) ?: typeRegistry["ptr"]!!
                 when (arg) {
-                    is Pointer -> CData(arg, expectedType, this@FFILib)
-                    is Int -> valueOf(arg)
-                    is Long -> valueOf(arg.toDouble())
-                    is Float -> valueOf(arg.toDouble())
-                    is Double -> valueOf(arg)
+                    is Pointer -> {
+                        if (arg == Pointer.NULL) NIL
+                        else CData(arg, expectedType, this@FFILib)
+                    }
+                    is Number -> valueOf(arg.toDouble())
                     else -> NIL
                 }
             }
 
-            // Вызываем Lua
-            val result = try {
+            val res = try {
                 luaFunc.invoke(LuaValue.varargsOf(luaArgs.toTypedArray())).arg1()
             } catch (e: Exception) {
-                log("Error in Lua callback: ${e.message}")
+                e.printStackTrace()
                 NIL
             }
 
-            // Конвертируем результат обратно в C
+            // Возврат значения из Lua в C
             return when (sig.returnType.nativeClass) {
-                Integer.TYPE -> result.toint()
-                java.lang.Long.TYPE -> result.tolong()
-                java.lang.Float.TYPE -> result.tofloat()
-                java.lang.Double.TYPE -> result.todouble()
-                Pointer::class.java -> if (result is CData) result.peer else Pointer.NULL
-                else -> null
+                Integer.TYPE -> res.toint()
+                java.lang.Float.TYPE -> res.tofloat()
+                Pointer::class.java -> (res as? CData)?.peer ?: Pointer.NULL
+                else -> null // void
             }
         }
 
