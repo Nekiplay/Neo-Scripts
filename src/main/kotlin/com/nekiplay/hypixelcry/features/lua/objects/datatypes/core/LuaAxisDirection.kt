@@ -8,7 +8,7 @@ class LuaAxisDirection(val axis: Direction.AxisDirection): LuaUserdata(axis) {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "opposite" -> LuaAxisDirection(axis.opposite())
-            "name" -> valueOf(axis.name)
+            "name" -> valueOf(axis.name.lowercase())
             "step" -> valueOf(axis.step)
             else -> NIL
         }

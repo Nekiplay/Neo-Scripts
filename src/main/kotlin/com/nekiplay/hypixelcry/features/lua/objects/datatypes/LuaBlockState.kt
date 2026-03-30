@@ -113,16 +113,6 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
                     NIL
                 }
             }
-            "is_walled" -> {
-                val is_walled = blockState.getOptionalValue(FaceAttachedHorizontalDirectionalBlock.FACE)
-                if (is_walled.isPresent && is_walled.get() == AttachFace.WALL) {
-                    TRUE
-                }
-                else if (blockState.block is RedstoneWallTorchBlock || blockState.block is WallTorchBlock) {
-                    TRUE
-                }
-                FALSE
-            }
             "extended" -> {
                 val extended = blockState.getOptionalValue(PistonBaseBlock.EXTENDED)
                 if (extended.isPresent) {

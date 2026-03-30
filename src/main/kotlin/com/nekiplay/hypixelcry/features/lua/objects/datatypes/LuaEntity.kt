@@ -1,6 +1,8 @@
 package com.nekiplay.hypixelcry.features.lua.objects.datatypes
 
 import com.nekiplay.hypixelcry.HypixelCry.mc
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaBlockPos
+import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.hypixelcry.sugar.getFormattedString
@@ -36,6 +38,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 valueOf(pos.z)
             }
             "pos", "position" -> LuaVector3d(entity.getPosition(1f))
+            "blockpos" -> LuaBlockPos(entity.blockPosition())
 
             "box" -> LuaBox(entity.boundingBox)
 
@@ -44,6 +47,23 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "velocity_z" -> valueOf(entity.forward.z)
             "velocity" -> LuaVector3d(entity.forward)
 
+            "gravity" -> valueOf(entity.gravity)
+            "horizontal_collision" -> valueOf(entity.horizontalCollision)
+            "vertical_collision" -> valueOf(entity.verticalCollision)
+            "hurt_marked" -> valueOf(entity.hurtMarked)
+            "controlled_venicle" -> {
+                val venicle = entity.controlledVehicle
+                if (venicle != null) {
+                    LuaEntity(venicle)
+                }
+                else {
+                    NIL
+                }
+            }
+            "nearest_view_direction" -> LuaDirection(entity.nearestViewDirection)
+            "direction" -> LuaDirection(entity.direction)
+            "touching_unloaded_chunk" -> valueOf(entity.touchingUnloadedChunk())
+
             // Размеры и вращение
             "width" -> valueOf(entity.bbWidth.toDouble())
             "height" -> valueOf(entity.bbHeight.toDouble())
@@ -51,11 +71,14 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "pitch" -> valueOf(entity.yRot.toDouble())
 
             // Состояния
+            "is_swimming" -> valueOf(entity.isSwimming)
             "is_on_ground" -> valueOf(entity.onGround())
             "is_touching_water" -> valueOf(entity.isInWater)
             "is_in_lava" -> valueOf(entity.isInLava)
             "is_sneaking" -> valueOf(entity.isShiftKeyDown)
             "is_sprinting" -> valueOf(entity.isSprinting)
+            "is_in_powder_snow" -> valueOf(entity.isInPowderSnow)
+            "is_crouching" -> valueOf(entity.isCrouching)
 
             // Дополнительные свойства
             "passengers" -> {

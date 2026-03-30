@@ -10,7 +10,7 @@ class LuaDirection(val direction: Direction): LuaUserdata(direction) {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "opposite" -> LuaDirection(direction.opposite)
-            "name" -> valueOf(direction.name)
+            "name" -> valueOf(direction.name.lowercase())
             "axisDirection" -> LuaAxisDirection(direction.axisDirection)
             "axis" -> LuaAxis(direction.axis)
             "clockWise" -> LuaDirection(direction.clockWise)
@@ -26,10 +26,10 @@ class LuaDirection(val direction: Direction): LuaUserdata(direction) {
     }
 
     override fun tojstring(): String {
-        return direction.name.lowercase(getDefault());
+        return direction.name.lowercase();
     }
 
     override fun tostring(): LuaValue? {
-        return valueOf(direction.name.lowercase(getDefault()))
+        return valueOf(direction.name.lowercase())
     }
 }
