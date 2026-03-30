@@ -417,86 +417,85 @@ class FFILib : LuaTable() {
     }
 
     inner class CallbackFunction : TwoArgFunction() {
-        // Хранилище для защиты колбэков от Garbage Collector (GC)
-        private val hardCallbackReferences = ConcurrentHashMap<Long, Callback>()
+        // Важно: JNA удалит колбэк из памяти, если на него нет сильной ссылки в Java.
+        // Сохраняем их здесь, чтобы избежать краша.
+        private val hardReferences = ConcurrentHashMap<Long, Callback>()
 
         override fun call(proto: LuaValue, func: LuaValue): LuaValue {
             val protoStr = proto.checkjstring()
-            val sig = parseCallbackSignature(protoStr)
+            val signature = parseCallbackSignature(protoStr)
 
-            // JNA требует четкое количество аргументов. Varargs использовать нельзя.
-            val callbackObj: Callback = when (sig.argTypes.size) {
+            // Создаем колбэк с явными сигнатурами, которые понимает JNA
+            val callbackObj: Callback = when (signature.argTypes.size) {
                 0 -> object : Callback {
-                    fun invoke(): Any? = runLua(func, emptyList(), sig)
+                    fun invoke(): Any? = executeLua(func, emptyList(), signature)
                 }
                 1 -> object : Callback {
-                    fun invoke(a1: Pointer): Any? = runLua(func, listOf(a1), sig)
+                    // Если первый аргумент ptr — используем Pointer, иначе Int
+                    fun invoke(a1: Pointer?): Any? = executeLua(func, listOf(a1), signature)
                 }
                 2 -> object : Callback {
-                    fun invoke(a1: Pointer, a2: Pointer): Any? = runLua(func, listOf(a1, a2), sig)
+                    fun invoke(a1: Pointer?, a2: Pointer?): Any? = executeLua(func, listOf(a1, a2), signature)
                 }
                 3 -> object : Callback {
-                    fun invoke(a1: Pointer, a2: Pointer, a3: Pointer): Any? = runLua(func, listOf(a1, a2, a3), sig)
+                    fun invoke(a1: Pointer?, a2: Pointer?, a3: Pointer?): Any? = executeLua(func, listOf(a1, a2, a3), signature)
                 }
-                else -> return error("FFI: Too many arguments for callback")
+                else -> return error("FFI: Unsupported callback arg count: ${signature.argTypes.size}")
             }
 
             val ptr = CallbackReference.getFunctionPointer(callbackObj)
-            val address = Pointer.nativeValue(ptr)
-
-            // Обязательно сохраняем сильную ссылку, чтобы GC не удалил колбэк пока он нужен C
-            hardCallbackReferences[address] = callbackObj
+            hardReferences[Pointer.nativeValue(ptr)] = callbackObj // Защита от GC
 
             return CData(ptr, typeRegistry["ptr"]!!, this@FFILib)
         }
 
-        private fun runLua(luaFunc: LuaValue, args: List<Any?>, sig: CFunctionSignature): Any? {
+        private fun executeLua(luaFunc: LuaValue, args: List<Any?>, sig: CFunctionSignature): Any? {
+            // Конвертируем входящие Pointer в CData с правильными типами из сигнатуры
             val luaArgs = args.mapIndexed { i, arg ->
-                val expectedType = sig.argTypes.getOrNull(i) ?: typeRegistry["ptr"]!!
-                when (arg) {
-                    is Pointer -> {
-                        if (arg == Pointer.NULL) NIL
-                        else CData(arg, expectedType, this@FFILib)
-                    }
-                    is Number -> valueOf(arg.toDouble())
-                    else -> NIL
-                }
+                val type = sig.argTypes.getOrNull(i) ?: typeRegistry["ptr"]!!
+                if (arg is Pointer) {
+                    if (arg == Pointer.NULL) NIL else CData(arg, type, this@FFILib)
+                } else if (arg is Number) {
+                    valueOf(arg.toDouble())
+                } else NIL
             }
 
-            val res = try {
-                luaFunc.invoke(LuaValue.varargsOf(luaArgs.toTypedArray())).arg1()
+            // Вызываем Lua
+            val result = try {
+                if (luaArgs.isEmpty()) luaFunc.call()
+                else luaFunc.invoke(LuaValue.varargsOf(luaArgs.toTypedArray())).arg1()
             } catch (e: Exception) {
                 e.printStackTrace()
                 NIL
             }
 
-            // Возврат значения из Lua в C
+            // Возвращаем результат в C (согласно типу возврата из cdef)
             return when (sig.returnType.nativeClass) {
-                Integer.TYPE -> res.toint()
-                java.lang.Float.TYPE -> res.tofloat()
-                Pointer::class.java -> (res as? CData)?.peer ?: Pointer.NULL
-                else -> null // void
+                Integer.TYPE -> result.toint()
+                java.lang.Long.TYPE -> result.tolong()
+                java.lang.Float.TYPE -> result.tofloat()
+                java.lang.Double.TYPE -> result.todouble()
+                Pointer::class.java -> (result as? CData)?.peer ?: Pointer.NULL
+                else -> null // для void
             }
         }
 
         private fun parseCallbackSignature(proto: String): CFunctionSignature {
             val regex = Regex("""([\w\*]+)\s*\((.*)\)""")
-            val match = regex.find(proto) ?: throw Exception("Invalid callback prototype: $proto")
+            val match = regex.find(proto) ?: throw Exception("Invalid callback proto")
 
             val retTypeName = match.groupValues[1].replace("*", "").trim()
             val retType = typeRegistry[retTypeName] ?: typeRegistry["ptr"]!!
 
             val argsStr = match.groupValues[2].trim()
             val argTypes = mutableListOf<CType>()
-
             if (argsStr.isNotEmpty() && argsStr != "void") {
                 argsStr.split(",").forEach { arg ->
                     val typeName = arg.trim().split(" ").first().replace("*", "").trim()
                     argTypes.add(typeRegistry[typeName] ?: typeRegistry["ptr"]!!)
                 }
             }
-
-            return CFunctionSignature("callback", retType, argTypes)
+            return CFunctionSignature("cb", retType, argTypes)
         }
     }
 
