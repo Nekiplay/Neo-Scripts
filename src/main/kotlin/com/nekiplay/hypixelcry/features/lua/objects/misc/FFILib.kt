@@ -417,85 +417,115 @@ class FFILib : LuaTable() {
     }
 
     inner class CallbackFunction : TwoArgFunction() {
-        // Важно: JNA удалит колбэк из памяти, если на него нет сильной ссылки в Java.
-        // Сохраняем их здесь, чтобы избежать краша.
-        private val hardReferences = ConcurrentHashMap<Long, Callback>()
-
         override fun call(proto: LuaValue, func: LuaValue): LuaValue {
+            val luaFunc = func
             val protoStr = proto.checkjstring()
-            val signature = parseCallbackSignature(protoStr)
 
-            // Создаем колбэк с явными сигнатурами, которые понимает JNA
-            val callbackObj: Callback = when (signature.argTypes.size) {
-                0 -> object : Callback {
-                    fun invoke(): Any? = executeLua(func, emptyList(), signature)
-                }
-                1 -> object : Callback {
-                    // Если первый аргумент ptr — используем Pointer, иначе Int
-                    fun invoke(a1: Pointer?): Any? = executeLua(func, listOf(a1), signature)
-                }
-                2 -> object : Callback {
-                    fun invoke(a1: Pointer?, a2: Pointer?): Any? = executeLua(func, listOf(a1, a2), signature)
-                }
-                3 -> object : Callback {
-                    fun invoke(a1: Pointer?, a2: Pointer?, a3: Pointer?): Any? = executeLua(func, listOf(a1, a2, a3), signature)
-                }
-                else -> return error("FFI: Unsupported callback arg count: ${signature.argTypes.size}")
-            }
+            val returnType = parseCallbackReturnType(protoStr)
+            val argTypes = parseCallbackArgTypes(protoStr)
+
+            val callbackObj = createCallback(returnType, argTypes, luaFunc)
 
             val ptr = CallbackReference.getFunctionPointer(callbackObj)
-            hardReferences[Pointer.nativeValue(ptr)] = callbackObj // Защита от GC
+            callbackCache[ptr.hashCode().toLong()] = WeakReference(callbackObj)
 
-            return CData(ptr, typeRegistry["ptr"]!!, this@FFILib)
+            val ptrType = typeRegistry["ptr"]!!
+            return CData(ptr, ptrType, this@FFILib)
         }
 
-        private fun executeLua(luaFunc: LuaValue, args: List<Any?>, sig: CFunctionSignature): Any? {
-            // Конвертируем входящие Pointer в CData с правильными типами из сигнатуры
-            val luaArgs = args.mapIndexed { i, arg ->
-                val type = sig.argTypes.getOrNull(i) ?: typeRegistry["ptr"]!!
-                if (arg is Pointer) {
-                    if (arg == Pointer.NULL) NIL else CData(arg, type, this@FFILib)
-                } else if (arg is Number) {
-                    valueOf(arg.toDouble())
-                } else NIL
-            }
+        private fun createCallback(returnType: CType?, argTypes: List<CType>, luaFunc: LuaValue): Callback {
+            val ffi = this@FFILib
 
-            // Вызываем Lua
-            val result = try {
-                if (luaArgs.isEmpty()) luaFunc.call()
-                else luaFunc.invoke(LuaValue.varargsOf(luaArgs.toTypedArray())).arg1()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                NIL
-            }
+            val arg0Type = argTypes.getOrNull(0)?.name
+            val arg1Type = argTypes.getOrNull(1)?.name
+            val arg2Type = argTypes.getOrNull(2)?.name
 
-            // Возвращаем результат в C (согласно типу возврата из cdef)
-            return when (sig.returnType.nativeClass) {
-                Integer.TYPE -> result.toint()
-                java.lang.Long.TYPE -> result.tolong()
-                java.lang.Float.TYPE -> result.tofloat()
-                java.lang.Double.TYPE -> result.todouble()
-                Pointer::class.java -> (result as? CData)?.peer ?: Pointer.NULL
-                else -> null // для void
-            }
-        }
-
-        private fun parseCallbackSignature(proto: String): CFunctionSignature {
-            val regex = Regex("""([\w\*]+)\s*\((.*)\)""")
-            val match = regex.find(proto) ?: throw Exception("Invalid callback proto")
-
-            val retTypeName = match.groupValues[1].replace("*", "").trim()
-            val retType = typeRegistry[retTypeName] ?: typeRegistry["ptr"]!!
-
-            val argsStr = match.groupValues[2].trim()
-            val argTypes = mutableListOf<CType>()
-            if (argsStr.isNotEmpty() && argsStr != "void") {
-                argsStr.split(",").forEach { arg ->
-                    val typeName = arg.trim().split(" ").first().replace("*", "").trim()
-                    argTypes.add(typeRegistry[typeName] ?: typeRegistry["ptr"]!!)
+            return when (argTypes.size) {
+                0 -> object : Callback {
+                    fun invoke(): Unit = invokeCallbackVoid(emptyList(), returnType, luaFunc, ffi)
+                }
+                1 -> {
+                    if (arg0Type == "ptr") {
+                        object : Callback {
+                            fun invoke(a1: Pointer): Unit = invokeCallbackVoid(listOf(a1), returnType, luaFunc, ffi)
+                        }
+                    } else {
+                        object : Callback {
+                            fun invoke(a1: Int): Unit = invokeCallbackVoid(listOf(a1.toLong()), returnType, luaFunc, ffi)
+                        }
+                    }
+                }
+                2 -> object : Callback {
+                    @Suppress("UNCHECKED_CAST")
+                    fun invoke(a1: Pointer, a2: Pointer): Unit = invokeCallbackVoid(listOf(a1, a2), returnType, luaFunc, ffi)
+                }
+                3 -> object : Callback {
+                    @Suppress("UNCHECKED_CAST")
+                    fun invoke(a1: Pointer, a2: Pointer, a3: Pointer): Unit = invokeCallbackVoid(listOf(a1, a2, a3), returnType, luaFunc, ffi)
+                }
+                else -> object : Callback {
+                    @Suppress("UNCHECKED_CAST")
+                    fun invoke(a1: Pointer, a2: Pointer, a3: Pointer, a4: Pointer): Unit = invokeCallbackVoid(listOf(a1, a2, a3, a4), returnType, luaFunc, ffi)
                 }
             }
-            return CFunctionSignature("cb", retType, argTypes)
+        }
+
+        private fun invokeCallbackVoid(args: List<Any>, returnType: CType?, luaFunc: LuaValue, ffi: FFILib) {
+            val luaArgs = args.map { convertArgToLua(it, null, ffi) }
+
+            try {
+                when (luaArgs.size) {
+                    0 -> luaFunc.call()
+                    1 -> luaFunc.call(luaArgs[0])
+                    else -> luaFunc.call(luaArgs[0], luaArgs[1])
+                }
+            } catch (e: Exception) {
+                log("Callback error: ${e.message}")
+            }
+        }
+
+        private fun parseCallbackReturnType(proto: String): CType? {
+            val match = Regex("""(\w+)\s*\([^)]*\)""").find(proto)
+            if (match != null) {
+                val retTypeName = match.groupValues[1]
+                return typeRegistry[retTypeName]
+            }
+            return typeRegistry["int"]
+        }
+
+        private fun parseCallbackArgTypes(proto: String): List<CType> {
+            val match = Regex("""\w+\s*\(([^)]*)\)""").find(proto)
+            if (match != null) {
+                val argsStr = match.groupValues[1].trim()
+                if (argsStr.isEmpty()) return emptyList()
+                return argsStr.split(",").mapNotNull { arg ->
+                    val typeName = arg.trim().split(Regex("\\s+")).last()
+                    typeRegistry[typeName]
+                }
+            }
+            return listOf(typeRegistry["int"]!!, typeRegistry["int"]!!, typeRegistry["int"]!!)
+        }
+
+        private fun convertArgToLua(arg: Any, type: CType?, ffi: FFILib): LuaValue {
+            return when (arg) {
+                is Int -> valueOf(arg.toDouble())
+                is Long -> valueOf(arg.toDouble())
+                is Float -> valueOf(arg.toDouble())
+                is Double -> valueOf(arg)
+                is Pointer -> CData(arg, typeRegistry["ptr"]!!, ffi)
+                else -> NIL
+            }
+        }
+
+        private fun convertReturnFromLuaInt(res: LuaValue, returnType: CType?): Int {
+            if (res.isnil()) return 0
+            return when (returnType?.name) {
+                "void" -> 0
+                "int" -> res.checkint()
+                "long" -> res.checklong().toInt()
+                "float", "double" -> res.checkdouble().toInt()
+                else -> if (res.isnumber()) res.toint() else 0
+            }
         }
     }
 
