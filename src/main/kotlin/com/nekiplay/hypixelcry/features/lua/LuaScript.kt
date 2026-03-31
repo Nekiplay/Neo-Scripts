@@ -1110,8 +1110,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     // Packet events
-    fun onSpawnParticleEvent(id: Int, x: Double, y: Double, z: Double, xDist: Float, yDist: Float, zDist: Float, maxSpeed: Float, count: Int): Boolean {
-        var allow = true
+    fun onSpawnParticleEvent(id: Int, x: Double, y: Double, z: Double, xDist: Float, yDist: Float, zDist: Float, maxSpeed: Float, count: Int) {
         val callbacks = synchronized(callbacksLock) {
             particleCallbacks.toTypedArray()
         }
@@ -1134,7 +1133,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in particle callback in ${scriptName}: ${e.message}")
             }
         }
-        return allow
     }
 
     fun onServerSideRotationEvent(yaw: Float, pitch: Float): Boolean {
