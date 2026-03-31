@@ -44,6 +44,7 @@ import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
 import net.minecraft.network.protocol.game.ClientboundRespawnPacket
 import net.minecraft.network.protocol.game.ClientboundSetTimePacket
+import net.minecraft.network.protocol.game.ClientboundSoundPacket
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
@@ -283,6 +284,14 @@ object LuaEvents : ClientModule() {
 
                     LUA_MANAGER.scripts.values.forEach { script ->
                         script.onServerSideSetTimeEvent(packet.dayTime, packet.gameTime, packet.tickDayTime)
+                    }
+                }
+
+                is ClientboundSoundPacket -> {
+                    val packet = event.packet as ClientboundSoundPacket
+
+                    LUA_MANAGER.scripts.values.forEach { script ->
+                        script.onSoundPlay(packet.sound, packet.x, packet.y, packet.z, packet.pitch.toDouble(), packet.volume.toDouble())
                     }
                 }
 

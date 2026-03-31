@@ -11,14 +11,23 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.client.Minecraft
 import net.minecraft.commands.CommandBuildContext
 import net.minecraft.network.chat.Component
+import org.luaj.vm2.compiler.DumpState
+import org.luaj.vm2.compiler.LuaC
 import java.awt.Desktop
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.util.concurrent.CompletableFuture
 
 
 object LuaCommand {
     private val SCRIPT_SUGGESTION_PROVIDER = SuggestionProvider<FabricClientCommandSource> { _, builder ->
         suggestScriptFiles(builder)
+    }
+
+    private val SOURCE_SCRIPT_SUGGESTION_PROVIDER = SuggestionProvider<FabricClientCommandSource> { _, builder ->
+        suggestSourceFiles(builder)
     }
 
     private val LOADED_SCRIPT_SUGGESTION_PROVIDER = SuggestionProvider<FabricClientCommandSource> { _, builder ->
@@ -82,6 +91,16 @@ object LuaCommand {
                     openScriptsFolder(context.source)
                     1
                 }
+            )
+            .then(ClientCommandManager.literal("compile")
+                .then(ClientCommandManager.argument("name", StringArgumentType.string())
+                    .suggests(SOURCE_SCRIPT_SUGGESTION_PROVIDER)
+                    .executes { context ->
+                        val name = StringArgumentType.getString(context, "name")
+                        compileLuaScript(context.source, name)
+                        1
+                    }
+                )
             )
 
         dispatcher.register(luaCommand)
@@ -169,6 +188,28 @@ object LuaCommand {
         val input = builder.remainingLowerCase
         val scriptFiles = scriptsDir.listFiles { file ->
             file.isFile && (file.name.endsWith(".lua") || file.name.endsWith(".luac"))
+        } ?: emptyArray()
+
+        scriptFiles.forEach { file ->
+            val name = file.nameWithoutExtension
+            if (name.lowercase().startsWith(input)) {
+                builder.suggest(name)
+            }
+        }
+
+        return builder.buildFuture()
+    }
+
+    private fun suggestSourceFiles(builder: SuggestionsBuilder): CompletableFuture<Suggestions> {
+        val scriptsDir = File("config/hypixelcry/scripts")
+
+        if (!scriptsDir.exists()) {
+            return builder.buildFuture()
+        }
+
+        val input = builder.remainingLowerCase
+        val scriptFiles = scriptsDir.listFiles { file ->
+            file.isFile && file.name.endsWith(".lua")
         } ?: emptyArray()
 
         scriptFiles.forEach { file ->
@@ -347,6 +388,40 @@ object LuaCommand {
     /**
      * Рекурсивная отрисовка (остается без изменений из предыдущего ответа)
      */
+    private fun compileLuaScript(source: FabricClientCommandSource, name: String) {
+        val scriptsDir = File("config/hypixelcry/scripts")
+
+        if (!scriptsDir.exists()) {
+            source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§cScripts directory does not exist."))
+            return
+        }
+
+        val sourceFile = if (name.endsWith(".lua")) File(scriptsDir, name)
+        else File(scriptsDir, "$name.lua")
+
+        if (!sourceFile.exists()) {
+            source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§cSource file §e${sourceFile.name} §cnot found."))
+            return
+        }
+
+        val outputFile = File(scriptsDir, "${sourceFile.nameWithoutExtension}.luac")
+
+        try {
+            val inputStream = FileInputStream(sourceFile)
+            val proto = LuaC.instance.compile(inputStream, sourceFile.name)
+            inputStream.close()
+
+            val outputStream = FileOutputStream(outputFile)
+            DumpState.dump(proto, outputStream, false)
+            outputStream.close()
+
+            source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§aCompiled §e${sourceFile.name} §a→ §e${outputFile.name} §7(${outputFile.length()} bytes)"))
+        } catch (e: Exception) {
+            source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§cCompilation error: ${e.message}"))
+            e.printStackTrace()
+        }
+    }
+
     private fun renderBeautifulTree(
         source: FabricClientCommandSource,
         name: String,

@@ -55,9 +55,10 @@ dependencies {
     minecraft("com.mojang:minecraft:${property("minecraft_version")}")
     mappings(loom.officialMojangMappings())
 
-    implementation("org.luaj:luaj-jse:3.0.1")
-    include("org.luaj:luaj-jse:3.0.1")
-    shadowModImpl("org.luaj:luaj-jse:3.0.1")
+    val luaj = "local:luaj-jse:3.0.2" 
+    implementation(luaj)
+    include(luaj)
+    shadowModImpl(luaj)
 
     modImplementation("net.fabricmc:fabric-loader:${property("loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_version")}")

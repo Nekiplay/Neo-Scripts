@@ -8,7 +8,6 @@ import com.mojang.brigadier.tree.CommandNode
 import com.mojang.brigadier.tree.RootCommandNode
 import com.nekiplay.hypixelcry.HypixelCry
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaItemStack
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaLong
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.hypixelcry.features.lua.objects.datatypes.core.LuaVector3d
@@ -42,9 +41,11 @@ import net.minecraft.commands.SharedSuggestionProvider
 import net.minecraft.commands.synchronization.ArgumentTypeInfos
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.core.Holder
 import net.minecraft.network.chat.Component
 import net.minecraft.network.protocol.game.ClientboundCommandsPacket
 import net.minecraft.resources.Identifier
+import net.minecraft.sounds.SoundEvent
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.phys.Vec3
@@ -83,6 +84,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val imguiRenderCallbacks = ArrayList<LuaValue>()
     private val inventoryItemChangeCallbacks = ArrayList<LuaValue>()
     private val particleCallbacks = ArrayList<LuaValue>()
+    private val soundCallbacks = ArrayList<LuaValue>()
 
     // Packet events
     private val serverSideRotationCallbacks = ArrayList<LuaValue>()
@@ -138,18 +140,21 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     private fun registerEventRegistrationFunctions() {
-        scriptGlobals.set("registerUnloadCallback", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                return LuaValue.valueOf(addScriptUnloadCallback(callback))
-            }
-        })
-
         scriptGlobals.set("registerUnloadCallback", object : OneArgFunction() {
             override fun call(callback: LuaValue): LuaValue {
                 if (!callback.isfunction()) return FALSE
                 synchronized(callbacksLock) {
                     return valueOf(scriptUnloadCallbacks.add(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("registerSoundPlay", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(soundCallbacks.add(callback))
                 }
             }
         })
@@ -347,6 +352,16 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     private fun registerEventUnregistrationFunctions() {
+        scriptGlobals.set("unregisterSoundPlay", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(soundCallbacks.remove(callback))
+                }
+            }
+        })
+
         scriptGlobals.set("unregisterSpawnParticle", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
@@ -834,6 +849,33 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         return allow
     }
 
+    fun onSoundPlay(sound: Holder<SoundEvent>, x: Double, y: Double, z: Double, pitch: Double, volume: Double): Boolean {
+        var allow = true
+        val callbacks = synchronized(callbacksLock) {
+            soundCallbacks.toTypedArray()
+        }
+
+        val t = LuaValue.tableOf()
+        t.set("name", LuaValue.valueOf(sound.registeredName))
+        t.set("position", LuaVector3d(Vec3(x, y, z)))
+        t.set("pitch", LuaValue.valueOf(pitch))
+        t.set("volume", LuaValue.valueOf(volume))
+
+
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(sound.registeredName, )
+                if (res.isboolean() && !res.toboolean()) {
+                    allow = false
+                }
+            } catch (e: Exception) {
+                HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in sound play callback in ${scriptName}", e)
+            }
+        }
+        return allow
+    }
+
+
     fun onAttackBlock(pos: BlockPos, direction: Direction, hand: InteractionHand): Boolean {
         var allow = true
         val callbacks = synchronized(callbacksLock) {
@@ -1068,8 +1110,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     // Packet events
-    fun onSpawnParticleEvent(id: Int, x: Double, y: Double, z: Double, xDist: Float, yDist: Float, zDist: Float, maxSpeed: Float, count: Int): Boolean {
-        var allow = true
+    fun onSpawnParticleEvent(id: Int, x: Double, y: Double, z: Double, xDist: Float, yDist: Float, zDist: Float, maxSpeed: Float, count: Int) {
         val callbacks = synchronized(callbacksLock) {
             particleCallbacks.toTypedArray()
         }
@@ -1092,7 +1133,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in particle callback in ${scriptName}: ${e.message}")
             }
         }
-        return allow
     }
 
     fun onServerSideRotationEvent(yaw: Float, pitch: Float): Boolean {
@@ -1123,7 +1163,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
         for (callback in callbacks) {
             try {
-                callback.call(LuaLong(dayTime), LuaLong(gameTime), LuaValue.valueOf(tickDayTime))
+                callback.call(LuaValue.valueOf(dayTime), LuaValue.valueOf(gameTime), LuaValue.valueOf(tickDayTime))
             } catch (e: Exception) {
                 HypixelCry.LOGGER.error("${HypixelCry.LOG_PREFIX}Error in server side time callback in ${scriptName}: ${e.message}")
             }
