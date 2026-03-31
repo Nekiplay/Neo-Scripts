@@ -864,7 +864,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
         for (callback in callbacks) {
             try {
-                val res = callback.call(sound.registeredName, )
+                val res = callback.call(t)
                 if (res.isboolean() && !res.toboolean()) {
                     allow = false
                 }
