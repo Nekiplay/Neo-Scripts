@@ -12,7 +12,9 @@ import net.minecraft.client.Minecraft
 import net.minecraft.commands.CommandBuildContext
 import net.minecraft.network.chat.Component
 import org.luaj.vm2.compiler.LuaC
+import org.luaj.vm2.util.DumpState
 import java.awt.Desktop
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -410,7 +412,7 @@ object LuaCommand {
             inputStream.close()
 
             val outputStream = FileOutputStream(outputFile)
-            org.luaj.vm2.Prototype.dump(proto, java.io.DataOutputStream(outputStream))
+            DumpState.dump(proto, outputStream, false)
             outputStream.close()
 
             source.sendFeedback(Component.literal("${HypixelCry.PREFIX}§aCompiled §e${sourceFile.name} §a→ §e${outputFile.name} §7(${outputFile.length()} bytes)"))
