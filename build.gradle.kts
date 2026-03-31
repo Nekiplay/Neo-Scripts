@@ -58,7 +58,7 @@ dependencies {
     val luaj = files("libs/luaj-jse-3.0.2.jar")
     implementation(luaj)
     include(luaj)
-    shadowModImpl(files(luaj)
+    shadowModImpl(luaj)
 
     modImplementation("net.fabricmc:fabric-loader:${property("loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_version")}")
