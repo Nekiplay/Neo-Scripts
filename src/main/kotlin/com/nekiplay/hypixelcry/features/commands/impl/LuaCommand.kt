@@ -11,8 +11,8 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.client.Minecraft
 import net.minecraft.commands.CommandBuildContext
 import net.minecraft.network.chat.Component
+import org.luaj.vm2.compiler.DumpState
 import org.luaj.vm2.compiler.LuaC
-import org.luaj.vm2.util.DumpState
 import java.awt.Desktop
 import java.io.ByteArrayOutputStream
 import java.io.File
