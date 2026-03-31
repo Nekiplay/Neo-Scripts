@@ -55,7 +55,7 @@ dependencies {
     minecraft("com.mojang:minecraft:${property("minecraft_version")}")
     mappings(loom.officialMojangMappings())
 
-    val luaj = files("libs/luaj-jse-3.0.2.jar")
+    val luaj = "local:luaj-jse:3.0.2" 
     implementation(luaj)
     include(luaj)
     shadowModImpl(luaj)
