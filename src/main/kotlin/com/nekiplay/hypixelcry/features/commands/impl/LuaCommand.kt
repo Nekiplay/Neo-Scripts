@@ -404,7 +404,7 @@ object LuaCommand {
             return
         }
 
-        val outputFile = File(scriptsDir, "${sourceFile.nameWithoutExtension}.luac")
+        val outputFile = File(scriptsDir, "${sourceFile.nameWithoutExtension}_compiled.luac")
 
         try {
             val inputStream = FileInputStream(sourceFile)
