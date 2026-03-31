@@ -1,16 +1,11 @@
 package com.nekiplay.hypixelcry.features.lua.objects.misc
 
-import com.nekiplay.hypixelcry.HypixelCry
-import com.nekiplay.hypixelcry.features.lua.objects.datatypes.LuaLong
 import com.sun.jna.Callback
 import com.sun.jna.Memory
 import com.sun.jna.Native
 import com.sun.jna.NativeLibrary
 import com.sun.jna.Pointer
 import com.sun.jna.CallbackReference
-import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
-import net.minecraft.client.Minecraft
-import net.minecraft.network.chat.Component
 import org.luaj.vm2.LuaNumber
 import org.luaj.vm2.LuaString
 import com.sun.jna.Function as JnaFunction
@@ -22,7 +17,6 @@ import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.VarArgFunction
-import java.io.File
 import java.lang.ref.Cleaner
 import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
@@ -509,22 +503,11 @@ class FFILib : LuaTable() {
         private fun convertArgToLua(arg: Any, type: CType?, ffi: FFILib): LuaValue {
             return when (arg) {
                 is Int -> valueOf(arg.toDouble())
-                is Long -> valueOf(arg.toDouble())
+                is Long -> valueOf(arg)
                 is Float -> valueOf(arg.toDouble())
                 is Double -> valueOf(arg)
                 is Pointer -> CData(arg, typeRegistry["ptr"]!!, ffi)
                 else -> NIL
-            }
-        }
-
-        private fun convertReturnFromLuaInt(res: LuaValue, returnType: CType?): Int {
-            if (res.isnil()) return 0
-            return when (returnType?.name) {
-                "void" -> 0
-                "int" -> res.checkint()
-                "long" -> res.checklong().toInt()
-                "float", "double" -> res.checkdouble().toInt()
-                else -> if (res.isnumber()) res.toint() else 0
             }
         }
     }
