@@ -35,11 +35,11 @@ public class InventoryUtils {
     }
 
     public static void shiftLeftClickSlot(int slot) {
-        clickSlot(slot, 0, ClickType.PICKUP_ALL);
+        clickSlot(slot, 0, ClickType.QUICK_MOVE);
     }
 
     public static void shiftRightClickSlot(int slot) {
-        clickSlot(slot, 1, ClickType.PICKUP_ALL);
+        clickSlot(slot, 1, ClickType.QUICK_MOVE);
     }
 
     public static void middleClickSlot(int slot) {
