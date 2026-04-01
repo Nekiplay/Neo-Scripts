@@ -30,12 +30,20 @@ public class InventoryUtils {
         clickSlot(slot, 0, ClickType.PICKUP);
     }
 
-    public static void middleClickSlot(int slot) {
-        clickSlot(slot, 2, ClickType.CLONE);
-    }
-
     public static void rightClickSlot(int slot) {
         clickSlot(slot, 1, ClickType.PICKUP);
+    }
+
+    public static void shiftLeftClickSlot(int slot) {
+        clickSlot(slot, 0, ClickType.PICKUP_ALL);
+    }
+
+    public static void shiftRightClickSlot(int slot) {
+        clickSlot(slot, 1, ClickType.PICKUP_ALL);
+    }
+
+    public static void middleClickSlot(int slot) {
+        clickSlot(slot, 2, ClickType.CLONE);
     }
 
     public static void dropSlot(int slot) {

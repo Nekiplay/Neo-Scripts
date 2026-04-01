@@ -36,9 +36,13 @@ class InventoryObject: LuaValue() {
             "doneSign" -> DoneSignFunction()
 
             "leftClick" -> LeftClickFunction()
+            "rightClick" -> RightClickFunction()
+
+            "shiftLeftClick" -> ShiftLeftClickFunction()
+            "shiftRightClick" -> ShiftRightClickFunction()
+
             "middleClick" -> MiddleClickFunction()
             "dropAll" -> DropFunction()
-            "rightClick" -> RightClickFunction()
 
             "closeScreen" -> CloseScreenFunction()
             "openInventory" -> OpenInventoryFunction()
@@ -162,6 +166,28 @@ class InventoryObject: LuaValue() {
         }
     }
 
+    private inner class ShiftLeftClickFunction : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue {
+            return if (arg?.isnumber() == true) {
+                InventoryUtils.shiftLeftClickSlot(arg.toint())
+                TRUE
+            } else {
+                NIL
+            }
+        }
+    }
+
+    private inner class ShiftRightClickFunction : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue {
+            return if (arg?.isnumber() == true) {
+                InventoryUtils.shiftRightClickSlot(arg.toint())
+                TRUE
+            } else {
+                NIL
+            }
+        }
+    }
+
     private inner class LeftClickFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
@@ -173,10 +199,10 @@ class InventoryObject: LuaValue() {
         }
     }
 
-    private inner class DropFunction : OneArgFunction() {
+    private inner class RightClickFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
-                InventoryUtils.dropAllFromSlot(arg.toint())
+                InventoryUtils.rightClickSlot(arg.toint())
                 TRUE
             } else {
                 NIL
@@ -184,10 +210,10 @@ class InventoryObject: LuaValue() {
         }
     }
 
-    private inner class RightClickFunction : OneArgFunction() {
+    private inner class DropFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
-                InventoryUtils.rightClickSlot(arg.toint())
+                InventoryUtils.dropAllFromSlot(arg.toint())
                 TRUE
             } else {
                 NIL
