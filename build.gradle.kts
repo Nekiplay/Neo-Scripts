@@ -6,7 +6,7 @@ plugins {
     id("fabric-loom") version "1.15-SNAPSHOT"
     id("org.jetbrains.kotlin.jvm") version "2.2.21"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.21"
-    id("com.nekiplay.hypixelcry.annotation-processor")
+    id("com.nekiplay.neoscripts.annotation-processor")
     id("com.gradleup.shadow") version "9.3.0"
 }
 
