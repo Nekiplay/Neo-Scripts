@@ -48,7 +48,7 @@ public class InitProcessor {
     }
 
     public void injectInitCalls(List<MethodReference> methodSignatures) {
-        Path mainClassFile = Objects.requireNonNull(Processor.findClass("HypixelCry.class"), "HypixelCry class wasn't found :(").toPath();
+        Path mainClassFile = Objects.requireNonNull(Processor.findClass("Main.class"), "Main class wasn't found :(").toPath();
 
         try (InputStream inputStream = Files.newInputStream(mainClassFile)) {
             ClassReader classReader = new ClassReader(inputStream);

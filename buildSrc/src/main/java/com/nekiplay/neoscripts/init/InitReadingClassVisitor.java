@@ -22,7 +22,7 @@ public class InitReadingClassVisitor extends ClassVisitor {
             public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
                 //This method visitor checks all methods and only acts upon those with the Init annotation.
                 //This lets us warn the user about invalid init methods and misuse of the annotation
-                if (!desc.equals("Lcom/nekiplay/hypixelcry/annotations/Init;")) return super.visitAnnotation(desc, visible);
+                if (!desc.equals("Lcom/nekiplay/neoscripts/annotations/Init;")) return super.visitAnnotation(desc, visible);
 
                 //Delegates adding the method call to the map to the InitAnnotationVisitor since we don't have a value to put in the map here
                 return new InitAnnotationVisitor(methodSignatures, getMethodCall());
