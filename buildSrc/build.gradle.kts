@@ -23,8 +23,8 @@ dependencies {
 gradlePlugin {
     plugins {
         create("annotationProcessor") {
-            id = "com.nekiplay.hypixelcry.annotation-processor"
-            implementationClass = "com.nekiplay.hypixelcry.Processor"
+            id = "com.nekiplay.neoscripts.annotation-processor"
+            implementationClass = "com.nekiplay.neoscripts.Processor"
         }
     }
 }
