@@ -1,0 +1,32 @@
+{
+  "required": true,
+  "compatibilityLevel": "JAVA_21",
+  "package": "com.nekiplay.neoscripts.mixins",
+  "mixins": [
+    "ClientChunkManagerMixin",
+    "ClientPlayerInteractionManagerAccessor",
+    "KeyboardMixin",
+    "MinecraftClientAccessor",
+    "MixinClientLoginNetworkHandlerMixin",
+    "MouseMixin",
+    "PlayerListHudAccessor",
+    "TailRenderMixin",
+    "WindowMixin",
+    "entity.ClientPlayerEntityMixin",
+    "entity.PlayerEntityRendererMixin",
+    "minecraft.ClientConnectionMixin",
+    "renderer.GameRendererAccessor"
+  ],
+  "client": [
+    "BeaconBlockEntityRendererInvoker",
+    "FrustumInvoker",
+    "WorldChunkMixin",
+    "firmament.ModAnnouncerMixin",
+    "gui.AbstractContainerMenuMixin",
+    "gui.AbstractContainerScreenMixin",
+    "gui.AbstractSignEditScreenAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

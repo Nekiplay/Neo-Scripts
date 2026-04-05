@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "hypixelcry",
+  "id": "neoscripts",
   "version": "1.2.1.5.2",
   "name": "Neo Scripts",
   "description": "",
@@ -8,20 +8,20 @@
     "Neki_play"
   ],
   "contact": {
-    "homepage": "https://github.com/Nekiplay/Hypixel-Cry",
-    "issues": "https://github.com/Nekiplay/Hypixel-Cry/issues",
-    "sources": "https://github.com/Nekiplay/Hypixel-Cry"
+    "homepage": "https://github.com/Nekiplay/Neo-Scripts",
+    "issues": "https://github.com/Nekiplay/Neo-Scripts/issues",
+    "sources": "https://github.com/Nekiplay/Neo-Scripts"
   },
   "license": "GPL-3.0",
-  "icon": "assets/hypixelcry/logo.png",
+  "icon": "assets/neoscripts/logo.png",
   "environment": "client",
   "entrypoints": {
     "client": [
-      "com.nekiplay.hypixelcry.HypixelCry"
+      "com.nekiplay.neoscripts.Main"
     ]
   },
   "mixins": [
-    "mixins.hypixelcry.json"
+    "mixins.neoscripts.json"
   ],
   "depends": {
     "fabricloader": ">=0.16.10",
