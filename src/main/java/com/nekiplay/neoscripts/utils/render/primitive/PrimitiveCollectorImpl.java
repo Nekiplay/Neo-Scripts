@@ -26,7 +26,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import com.nekiplay.neoscripts.utils.render.FrustumUtils;
 import com.nekiplay.neoscripts.utils.render.RenderHelper;
-import com.nekiplay.hypixelcry.utils.render.state.*;
 import org.joml.Quaternionf;
 
 public final class PrimitiveCollectorImpl implements PrimitiveCollector {

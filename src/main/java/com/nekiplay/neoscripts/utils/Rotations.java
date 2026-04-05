@@ -1,6 +1,5 @@
 package com.nekiplay.neoscripts.utils;
 
-import com.nekiplay.hypixelcry.utils.helper.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;

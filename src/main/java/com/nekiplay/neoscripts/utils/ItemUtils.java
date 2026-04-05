@@ -6,7 +6,6 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.properties.PropertyMap;
 import com.mojang.serialization.JsonOps;
-import com.nekiplay.hypixelcry.utils.itemlist.*;
 import com.nekiplay.neoscripts.utils.itemlist.Attribute;
 import com.nekiplay.neoscripts.utils.itemlist.Attributes;
 import com.nekiplay.neoscripts.utils.itemlist.ItemRepository;
