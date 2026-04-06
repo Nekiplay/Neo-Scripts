@@ -160,7 +160,7 @@ public class ImguiLoader {
      */
     public static void rebuildFontTexture() {
         ImGui.getIO().getFonts().build();
-        imGuiGl3.createFontsTexture();
+        //imGuiGl3.createFontsTexture();
     }
 
     /**
