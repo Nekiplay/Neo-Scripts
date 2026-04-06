@@ -1,6 +1,7 @@
 package com.nekiplay.neoscripts.imgui;
 
 import com.nekiplay.neoscripts.Main;
+import com.nekiplay.neoscripts.features.lua.objects.misc.ImGuiLib;
 import imgui.ImFont;
 import imgui.ImFontConfig;
 import imgui.ImGui;
@@ -16,11 +17,6 @@ import java.io.InputStream;
 import static com.nekiplay.neoscripts.Main.mc;
 
 public class ImguiLoader {
-    private static final ImGuiImplGlfw imGuiGlfw = new ImGuiImplGlfw();
-    private static final ImGuiImplGl3 imGuiGl3 = new ImGuiImplGl3();
-
-    public static long windowHandle = -1;
-
     /** Шрифт для ImGui — инициализируется при загрузке */
     private static ImFont font = null;
 
@@ -28,26 +24,6 @@ public class ImguiLoader {
     private static final String FONT_PATH = "neoscripts:fonts/jetbrainsmono-nerd.ttf";
     private static final float FONT_SIZE = 16.0f;
 
-
-    public static void onGlfwInit() {
-        ImGui.createContext();
-
-        ImGuiIO io = ImGui.getIO();
-        io.setIniFilename(null);
-        io.setConfigFlags(ImGuiConfigFlags.NavEnableKeyboard);
-        io.addConfigFlags(ImGuiConfigFlags.DockingEnable);
-        io.setBackendFlags(ImGuiBackendFlags.HasMouseCursors);
-
-        // Загрузка шрифта из ресурсов Minecraft
-        loadFontFromResources(io, FONT_PATH, FONT_SIZE);
-        Main.LUA_MANAGER.getScripts().values().forEach((script) -> {
-            script.onImGuiInitEvent();
-        });
-
-        imGuiGlfw.init(mc.getWindow().handle(), true);
-        imGuiGl3.init();
-        windowHandle = mc.getWindow().handle();
-    }
 
     private static void loadFontFromResources(ImGuiIO io, String resourcePath, float fontSize) {
         try {
@@ -177,34 +153,7 @@ public class ImguiLoader {
     }
 
 
-    public static void onFrameRender() {
-        if (windowHandle != -1) {
-            imGuiGlfw.newFrame();
-            imGuiGl3.newFrame();
-            ImGui.newFrame();
 
-
-            // Применяем шрифт только если он загружен
-            if (font != null && font.isLoaded()) {
-                ImGui.pushFont(font);
-            }
-
-            Main.LUA_MANAGER.getScripts().values().forEach((script) -> {
-                script.onImGuiRenderEvent();
-                if (script.getImguiLib() != null) {
-                    script.getImguiLib().getQueue().executeAndClear();
-                }
-
-            });
-
-            if (font != null && font.isLoaded()) {
-                ImGui.popFont();
-            }
-
-            ImGui.render();
-            imGuiGl3.renderDrawData(ImGui.getDrawData());
-        }
-    }
 
     /**
      * Пересоздаёт текстуру атласа шрифтов (если шрифты изменились динамически)

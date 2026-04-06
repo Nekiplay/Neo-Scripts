@@ -1193,7 +1193,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             "modules" -> ModulesObject()
 
             "imgui" -> {
-                if (imguiLib == null) imguiLib = ImGuiLib()
+                if (imguiLib == null) imguiLib = ImGuiLib(this)
                 imguiLib!!
             }
             "tcp" -> {

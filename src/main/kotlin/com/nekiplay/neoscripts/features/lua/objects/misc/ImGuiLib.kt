@@ -1,33 +1,26 @@
 package com.nekiplay.neoscripts.features.lua.objects.misc
 
-import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
-import com.nekiplay.neoscripts.features.lua.objects.misc.imgui.DrawCommand
-import com.nekiplay.neoscripts.features.lua.objects.misc.imgui.DrawType
-import com.nekiplay.neoscripts.features.lua.objects.misc.imgui.ImDrawCommandQueue
-import com.nekiplay.neoscripts.features.lua.objects.misc.imgui.ImGuiFont
-import com.nekiplay.neoscripts.features.lua.objects.misc.imgui.ImGuiTexture
+import com.nekiplay.neoscripts.Main
+import com.nekiplay.neoscripts.features.lua.LuaScript
+import com.nekiplay.neoscripts.features.lua.objects.misc.imgui.*
 import com.nekiplay.neoscripts.imgui.ImguiLoader
 import imgui.ImFont
 import imgui.ImFontConfig
 import imgui.ImFontGlyphRangesBuilder
 import imgui.ImGui
-import imgui.flag.ImGuiCol
-import imgui.flag.ImGuiColorEditFlags
-import imgui.flag.ImGuiCond
-import imgui.flag.ImGuiStyleVar
-import imgui.flag.ImGuiTableFlags
-import imgui.flag.ImGuiWindowFlags
-import imgui.type.ImBoolean
-import imgui.type.ImDouble
-import imgui.type.ImFloat
-import imgui.type.ImInt
-import imgui.type.ImString
-import net.minecraft.core.BlockPos
-import org.luaj.vm2.*
-import org.luaj.vm2.lib.*
+import imgui.flag.*
+import imgui.gl3.ImGuiImplGl3
+import imgui.glfw.ImGuiImplGlfw
+import imgui.type.*
+import org.luaj.vm2.LuaTable
+import org.luaj.vm2.LuaValue
+import org.luaj.vm2.Varargs
+import org.luaj.vm2.lib.VarArgFunction
+import org.luaj.vm2.lib.ZeroArgFunction
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.function.Consumer
 
-class ImGuiLib : LuaValue() {
+class ImGuiLib(val script: LuaScript) : LuaValue() {
     public val queue: ImDrawCommandQueue = ImDrawCommandQueue()
 
     override fun typename(): String = "imgui"
@@ -305,6 +298,42 @@ class ImGuiLib : LuaValue() {
         }
     }
 
+    private val imGuiGlfw: ImGuiImplGlfw = ImGuiImplGlfw()
+    private val imGuiGl3: ImGuiImplGl3 = ImGuiImplGl3()
+
+    var windowHandle: Long = -1
+
+    fun onGlfwInit() {
+        if (windowHandle == -1L) {
+            ImGui.createContext()
+            val io = ImGui.getIO()
+            io.setIniFilename(null)
+            io.setConfigFlags(ImGuiConfigFlags.NavEnableKeyboard)
+            io.addConfigFlags(ImGuiConfigFlags.DockingEnable)
+            io.setBackendFlags(ImGuiBackendFlags.HasMouseCursors)
+            script.onImGuiInitEvent()
+            imGuiGlfw.init(Main.mc.getWindow().handle(), true)
+            imGuiGl3.init()
+            windowHandle = Main.mc.getWindow().handle()
+        }
+    }
+
+    fun onFrameRender() {
+        if (windowHandle != -1L) {
+            imGuiGlfw.newFrame()
+            imGuiGl3.newFrame()
+            ImGui.newFrame()
+
+            Main.LUA_MANAGER.scripts.values.forEach(Consumer { script: LuaScript? ->
+                script!!.onImGuiRenderEvent()
+                if (script.imguiLib != null) {
+                    script.imguiLib!!.queue.executeAndClear()
+                }
+            })
+            ImGui.render()
+            imGuiGl3.renderDrawData(ImGui.getDrawData())
+        }
+    }
 
     override fun call(modname: LuaValue, env: LuaValue): LuaValue {
         return this

@@ -82,6 +82,7 @@ class LuaManager() {
             val scriptGlobals = script.scriptGlobals
             val chunk = loadChunk(file, scriptName, scriptGlobals)
             val result = chunk.call()
+            script.imguiLib?.onGlfwInit()
             return result
         } finally {
 
