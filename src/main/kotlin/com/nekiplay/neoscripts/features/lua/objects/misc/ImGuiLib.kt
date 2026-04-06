@@ -331,6 +331,13 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
         }
     }
 
+    fun cleanup() {
+        if (windowHandle != -1L) {
+            ImGui.getIO().fonts.clear()
+        }
+    }
+
+
     override fun call(modname: LuaValue, env: LuaValue): LuaValue {
         return this
     }
