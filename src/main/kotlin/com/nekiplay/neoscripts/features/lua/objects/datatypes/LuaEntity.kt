@@ -6,11 +6,13 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.neoscripts.sugar.getFormattedString
+import net.minecraft.client.player.AbstractClientPlayer
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ItemFrame
 import net.minecraft.world.entity.item.ItemEntity
+import net.minecraft.world.entity.player.Player
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 
@@ -116,6 +118,21 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
 
             // Специфичные для LivingEntity
+            "skin" -> {
+                if (entity is Player) {
+                    val profile = entity.gameProfile
+                    if (profile != null) {
+                        val textures: Collection<Property> = profile.properties().get("textures")
+                        for (entry  in textures) {
+                            if (entry != null && entry.value() != null) {
+                                return valueOf(entry.value())
+                            }
+                        }
+                        
+                    }
+                }
+
+            }
             "health" -> {
                 if (entity is LivingEntity) {
                     valueOf(entity.health.toDouble())

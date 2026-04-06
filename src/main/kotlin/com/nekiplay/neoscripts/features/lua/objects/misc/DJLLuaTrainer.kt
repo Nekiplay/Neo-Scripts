@@ -54,8 +54,8 @@ class DJLLuaTrainer : LuaValue() {
     val inputShapes = ConcurrentHashMap<String, LongArray>()
     val modelModes = ConcurrentHashMap<String, String>()
 
-    override fun typename(): String = "creator"
-    override fun tojstring(): String = "CreatorObject"
+    override fun typename(): String = "djl"
+    override fun tojstring(): String = "DjlObject"
     override fun isnil(): Boolean = false
     override fun type(): Int {
         return TUSERDATA
@@ -67,7 +67,6 @@ class DJLLuaTrainer : LuaValue() {
 
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
-            "set_device" -> SetDeviceFunction()
             "create_model" -> CreateModelFunction()
             "train" -> TrainFunction()
             "save_model" -> SaveModelFunction()
@@ -79,31 +78,30 @@ class DJLLuaTrainer : LuaValue() {
         }
     }
 
-    inner class SetDeviceFunction : TwoArgFunction() {
-        override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
-            val deviceType = arg1.checkstring().tojstring().lowercase() // "cpu" или "gpu"
-            val deviceId = arg2.optint(0) // Индекс GPU (0, 1, 2...)
+    private fun luaTableToNDArray(table: LuaValue, shape: LongArray, manager: NDManager): NDArray {
+        var totalSize = 1
+        for (s in shape) totalSize *= s.toInt()
 
-            currentDevice = if (deviceType == "gpu") {
-                Device.gpu(deviceId)
-            } else {
-                Device.cpu()
-            }
+        val data = FloatArray(totalSize)
+        fillFlatArray(table, data, intArrayOf(0))
 
-            // Пересоздаем базовый менеджер для нового устройства
-            manager.close()
-            manager = NDManager.newBaseManager(currentDevice)
-
-            println("DJL device changed to: $currentDevice")
-            return valueOf(currentDevice.toString())
-        }
+        return manager.create(data, Shape(*shape))
     }
 
-    private fun luaToNDArray(table: LuaValue, shape: LongArray): NDArray {
-        val flatData = mutableListOf<Float>()
-        flattenTable(table, flatData)
-        val data = flatData.toFloatArray()
-        return manager.create(data, Shape(*shape))
+    private fun fillFlatArray(table: LuaValue, data: FloatArray, offset: IntArray) {
+        if (!table.istable()) {
+            data[offset[0]++] = table.tofloat()
+            return
+        }
+        val len = table.length()
+        for (i in 1..len) {
+            val v = table.get(i)
+            if (v.istable()) {
+                fillFlatArray(v, data, offset)
+            } else {
+                data[offset[0]++] = v.tofloat()
+            }
+        }
     }
 
     private fun flattenTable(table: LuaValue, data: MutableList<Float>) {
@@ -117,10 +115,10 @@ class DJLLuaTrainer : LuaValue() {
     }
 
     private fun ndArrayToLua(array: NDArray): LuaValue {
-        val data = array.toFloatArray()
-        val t = LuaTable()
-        data.forEachIndexed { index, value ->
-            t[index + 1] = valueOf(value.toDouble())
+        val data = array.toFloatArray() // Один переход из натива в JVM
+        val t = LuaTable(data.size, 0)
+        for (i in data.indices) {
+            t.set(i + 1, valueOf(data[i].toDouble()))
         }
         return t
     }
@@ -316,55 +314,44 @@ class DJLLuaTrainer : LuaValue() {
     inner class TrainFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val modelId = args.arg1().checkstring().tojstring()
-            val config = args.arg(2).opttable(null) ?: return error("Config required")
-            val trainData = args.arg(3).opttable(null)
+            val config = args.arg(2).checktable()
+            val trainData = args.arg(3).checktable()
             val testData = args.arg(4).opttable(null)
             val callback = args.arg(5).optfunction(null)
 
             val model = models[modelId] ?: return error("Model not found: $modelId")
             val mode = modelModes[modelId] ?: "classification"
 
-            return try {
+            // Используем sub-manager для всего процесса тренировки
+            model.ndManager.newSubManager().use { trainSubManager ->
                 val epochs = config["epochs"].optint(10)
-                val learningRate = config["lr"].optdouble(0.001)
+                val lr = config["lr"].optdouble(0.001).toFloat()
                 val batchSize = config["batch_size"].optint(32)
                 val outputSize = config["output_size"].optint(1)
 
-                var shapeArray = inputShapes[modelId] ?: longArrayOf(10)
-                if (shapeArray.size > 1 && shapeArray[0] == 1L) {
-                    shapeArray = shapeArray.sliceArray(1 until shapeArray.size)
-                }
-                val trainingShape = Shape(*shapeArray)
+                val inputShapeArr = inputShapes[modelId] ?: longArrayOf(1, 10)
+                val trainingShape = Shape(*(if (inputShapeArr[0] == 1L) inputShapeArr.drop(1).toLongArray() else inputShapeArr))
 
-                val dataset = buildDataset(trainData, batchSize, shapeArray, outputSize, mode, model.ndManager)
-                val testDataset = testData?.let { buildDataset(it, batchSize, shapeArray, outputSize, mode, model.ndManager) }
+                val dataset = buildDataset(trainData, batchSize, trainingShape.getShape(), outputSize, mode, trainSubManager)
+                val testDataset = testData?.let { buildDataset(it, batchSize, trainingShape.getShape(), outputSize, mode, trainSubManager) }
 
-                val loss = if (mode == "regression") {
-                    Loss.l2Loss()
-                } else {
-                    if (outputSize == 1) Loss.sigmoidBinaryCrossEntropyLoss() else Loss.softmaxCrossEntropyLoss()
-                }
+                val loss = if (mode == "regression") Loss.l2Loss()
+                else if (outputSize == 1) Loss.sigmoidBinaryCrossEntropyLoss()
+                else Loss.softmaxCrossEntropyLoss()
 
                 val trainingConfig = DefaultTrainingConfig(loss)
-                    .optOptimizer(Adam.builder().optLearningRateTracker(Tracker.fixed(learningRate.toFloat())).build())
+                    .optOptimizer(Adam.builder().optLearningRateTracker(Tracker.fixed(lr)).build())
                     .optDevices(arrayOf(currentDevice))
-
-                // Метрики
-                if (mode == "regression") {
-                    trainingConfig.addEvaluator(loss)
-                } else {
-                    trainingConfig.addEvaluator(Accuracy())
-                }
+                    .addEvaluator(if (mode == "regression") loss else Accuracy())
 
                 if (callback != null) {
-                    var epochIndex = 1
                     trainingConfig.addTrainingListeners(object : TrainingListener {
+                        var epoch = 1
                         override fun onEpoch(trainer: Trainer) {
-                            callback.call(valueOf(epochIndex))
-                            epochIndex++
+                            callback.call(valueOf(epoch++))
                         }
-                        override fun onTrainingBatch(trainer: Trainer?, batchData: TrainingListener.BatchData?) {}
-                        override fun onValidationBatch(trainer: Trainer?, batchData: TrainingListener.BatchData?) {}
+                        override fun onTrainingBatch(trainer: Trainer?, data: TrainingListener.BatchData?) {}
+                        override fun onValidationBatch(trainer: Trainer?, data: TrainingListener.BatchData?) {}
                         override fun onTrainingBegin(trainer: Trainer?) {}
                         override fun onTrainingEnd(trainer: Trainer?) {}
                     })
@@ -374,50 +361,29 @@ class DJLLuaTrainer : LuaValue() {
                     trainer.initialize(trainingShape)
                     EasyTrain.fit(trainer, epochs, dataset, testDataset)
                 }
-                TRUE
-            } catch (e: Exception) {
-                e.printStackTrace()
-                error("Training failed: ${e.message}")
             }
+            return TRUE
         }
 
-        private fun buildDataset(data: LuaValue?, batchSize: Int, inputShape: LongArray, outputSize: Int, mode: String, manager: NDManager): Dataset {
-            require(data != null) { "Dataset is required" }
-            val inputs = data["inputs"]; val labels = data["labels"]
-            val inputList = NDList(); val labelList = NDList()
+        private fun buildDataset(data: LuaValue, batchSize: Int, inShape: LongArray, outSize: Int, mode: String, m: NDManager): Dataset {
+            val inputs = data["inputs"]
+            val labels = data["labels"]
+            val n = inputs.length()
 
-            for (i in 1..inputs.length()) {
-                inputList.add(luaToNDArray(inputs[i], inputShape))
-                val labelValue = labels[i]
+            val allInputs = luaTableToNDArray(inputs, longArrayOf(n.toLong(), *inShape), m)
 
-                if (mode == "regression") {
-                    // Для регрессии всегда передаем Float
-                    val vals = if (labelValue.istable()) {
-                        FloatArray(labelValue.length()) { j -> labelValue[j+1].tofloat() }
-                    } else {
-                        floatArrayOf(labelValue.tofloat())
-                    }
-                    labelList.add(manager.create(vals, Shape(vals.size.toLong())))
-                } else {
-                    if (outputSize > 1) {
-                        labelList.add(manager.create(labelValue.tolong())) // Индекс класса
-                    } else {
-                        labelList.add(manager.create(floatArrayOf(labelValue.tofloat()), Shape(1)))
-                    }
-                }
+            val labelCols = if (labels[1].istable()) labels[1].length().toLong() else 1L
+            var allLabels = luaTableToNDArray(labels, longArrayOf(n.toLong(), labelCols), m)
+
+            if (mode == "classification" && outSize > 1) {
+                allLabels = allLabels.squeeze(-1).toType(DataType.INT64, false)
             }
 
-            val allInputs = NDArrays.stack(inputList, 0)
-            var allLabels = NDArrays.stack(labelList, 0)
-
-            val finalLabels = if (mode == "classification" && outputSize > 1) {
-                if (allLabels.shape.dimension() > 1) allLabels = allLabels.squeeze(-1)
-                allLabels.toType(DataType.INT64, false)
-            } else {
-                allLabels.toType(DataType.FLOAT32, false)
-            }
-
-            return ArrayDataset.Builder().setData(allInputs).optLabels(finalLabels).setSampling(batchSize, true).build()
+            return ArrayDataset.Builder()
+                .setData(allInputs)
+                .optLabels(allLabels)
+                .setSampling(batchSize, true)
+                .build()
         }
     }
 
@@ -491,30 +457,23 @@ class DJLLuaTrainer : LuaValue() {
             val id = arg1.checkstring().tojstring()
             val inputTable = arg2.checktable()
 
-            var predictor = predictors[id]
+            val predictor = predictors[id] ?: models[id]?.let {
+                val p = it.newPredictor(NoopTranslator(), currentDevice)
+                predictors[id] = p
+                p
+            } ?: return error("Model not found: $id")
 
-            // Если предиктора нет, создаем из модели
-            if (predictor == null) {
-                val model = models[id]
-                if (model != null) {
-                    predictor = model.newPredictor(NoopTranslator(), currentDevice)
-                    predictors[id] = predictor
-                } else {
-                    return error("Model/Predictor not found: $id")
-                }
-            }
-
-            return try {
+            // Важно использовать sub-manager для временных тензоров,
+            // чтобы GC мог быстро очистить нативную память
+            manager.newSubManager().use { sub ->
                 val shape = inputShapes[id] ?: longArrayOf(1, 10)
-                val inputArray = luaToNDArray(inputTable, shape)
+                val inputArray = luaTableToNDArray(inputTable, shape, sub)
+
                 val output = predictor.predict(NDList(inputArray))
                 val result = ndArrayToLua(output[0])
 
-                inputArray.close()
-                output.close()
-                result
-            } catch (e: TranslateException) {
-                error("Predict failed: ${e.message}")
+                output.close() // Освобождаем нативный список сразу
+                return result
             }
         }
     }
@@ -522,11 +481,15 @@ class DJLLuaTrainer : LuaValue() {
     inner class CloseFunction : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val id = arg.checkstring().tojstring()
-
             predictors.remove(id)?.close()
             models.remove(id)?.close()
             inputShapes.remove(id)
 
+            // Если моделей больше нет, чистим базовый менеджер
+            if (models.isEmpty()) {
+                manager.close()
+                manager = NDManager.newBaseManager(currentDevice)
+            }
             return TRUE
         }
     }
