@@ -25,12 +25,9 @@ public class ImguiLoader {
     private static ImFont font = null;
 
     /** Путь к шрифту относительно resources/assets/hypixelcry/fonts/ */
-    private static final String FONT_PATH = "hypixelcry:fonts/jetbrainsmono-nerd.ttf";
+    private static final String FONT_PATH = "neoscripts:fonts/jetbrainsmono-nerd.ttf";
     private static final float FONT_SIZE = 16.0f;
 
-    public static void onGlfwReturn() {
-        //loadImage();
-    }
 
     public static void onGlfwInit() {
         ImGui.createContext();
@@ -43,6 +40,9 @@ public class ImguiLoader {
 
         // Загрузка шрифта из ресурсов Minecraft
         loadFontFromResources(io, FONT_PATH, FONT_SIZE);
+        Main.LUA_MANAGER.getScripts().values().forEach((script) -> {
+            script.onImGuiInitEvent();
+        });
 
         imGuiGlfw.init(mc.getWindow().handle(), true);
         imGuiGl3.init();
@@ -108,7 +108,7 @@ public class ImguiLoader {
 
                 // === 2. Fallback (Unifont TTF) ===
                 // Загружаем ТОЛЬКО если есть файл unifont-regular.ttf
-                loadFallbackFont(io, "hypixelcry:fonts/unifont-16.0.04.ttf", fontSize);
+                loadFallbackFont(io, "neoscripts:fonts/unifont-16.0.04.ttf", fontSize);
 
             }
 

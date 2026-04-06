@@ -23,6 +23,7 @@ import com.nekiplay.neoscripts.features.lua.objects.misc.ThreadLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.http.HttpClientLib
 import com.nekiplay.neoscripts.features.lua.objects.modules.ModulesObject
 import com.nekiplay.neoscripts.features.lua.objects.player.PlayerObject
+import com.nekiplay.neoscripts.features.lua.objects.player.WindowObject
 import com.nekiplay.neoscripts.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.neoscripts.features.lua.objects.world.WorldObject
@@ -75,6 +76,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val attackBlockCallbacks = ArrayList<LuaValue>()
     private val locationChangeCallbacks = ArrayList<LuaValue>()
     private val imguiRenderCallbacks = ArrayList<LuaValue>()
+    private val imguiInitCallbacks = ArrayList<LuaValue>()
     private val inventoryItemChangeCallbacks = ArrayList<LuaValue>()
     private val particleCallbacks = ArrayList<LuaValue>()
     private val soundCallbacks = ArrayList<LuaValue>()
@@ -302,6 +304,16 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
         })
 
+        scriptGlobals.set("registerImGuiInitEvent", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(imguiInitCallbacks.add(callback))
+                }
+            }
+        })
+
         scriptGlobals.set("registerImGuiRenderEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
@@ -495,6 +507,15 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 val callback = args.arg(1)
                 synchronized(callbacksLock) {
                     return valueOf(imguiRenderCallbacks.remove(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("unregisterImGuiInitEvent", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                synchronized(callbacksLock) {
+                    return valueOf(imguiInitCallbacks.remove(callback))
                 }
             }
         })
@@ -1208,6 +1229,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             "catboost" -> {
                 CatboostLib()
             }
+            "window" -> {
+                WindowObject()
+            }
             else -> return null
         }
 
@@ -1266,6 +1290,20 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         return allow
     }
 
+    fun onImGuiInitEvent() {
+        val callbacks = synchronized(callbacksLock) {
+            imguiInitCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                callback.call()
+            } catch (e: Exception) {
+                Main.LOGGER.error("${Main.LOG_PREFIX}Error in imgui init callback in ${scriptName}: ${e.message}")
+            }
+        }
+    }
+
     // Cleanup method
     fun cleanup() {
         // Вызываем все callback'и выгрузки скрипта
@@ -1309,6 +1347,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             serverSideTeleportCallbacks.clear()
             commandCallbacks.clear()
             commandSuggestionsCallbacks.clear()
+            soundCallbacks.clear()
+            imguiInitCallbacks.clear()
         }
         imguiLib?.queue?.clear()
         djlLibrary?.models?.clear()
