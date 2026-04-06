@@ -1,5 +1,6 @@
 package com.nekiplay.neoscripts.features.lua.objects.misc
 
+import ai.djl.Device
 import ai.djl.Model
 import ai.djl.inference.Predictor
 import ai.djl.ndarray.NDArrays
@@ -37,7 +38,7 @@ import java.nio.file.Paths
  * Библиотека-обертка для доступа к DJL из LuaJ на Kotlin
  */
 class DJLLuaTrainer : LuaValue() {
-
+    private var currentDevice: Device = Device.cpu()
     init {
         val djlDir = LuaManager.Companion.configDir.resolve("hypixelcry/djl_cache/").toString() + "/";
         System.setProperty("DJL_CACHE_DIR", djlDir)
@@ -47,7 +48,7 @@ class DJLLuaTrainer : LuaValue() {
 
     val models = ConcurrentHashMap<String, Model>()
     val predictors = ConcurrentHashMap<String, Predictor<NDList, NDList>>()
-    private val manager: NDManager = NDManager.newBaseManager()
+    private var manager: NDManager = NDManager.newBaseManager()
     val inputShapes = ConcurrentHashMap<String, LongArray>()
     val modelModes = ConcurrentHashMap<String, String>()
 
@@ -64,6 +65,7 @@ class DJLLuaTrainer : LuaValue() {
 
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
+            "set_device" -> SetDeviceFunction()
             "create_model" -> CreateModelFunction()
             "train" -> TrainFunction()
             "save_model" -> SaveModelFunction()
@@ -72,6 +74,26 @@ class DJLLuaTrainer : LuaValue() {
             "close" -> CloseFunction()
             "get_model_info" -> GetModelInfoFunction()
             else -> super.get(key)
+        }
+    }
+
+    inner class SetDeviceFunction : TwoArgFunction() {
+        override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
+            val deviceType = arg1.checkstring().tojstring().lowercase() // "cpu" или "gpu"
+            val deviceId = arg2.optint(0) // Индекс GPU (0, 1, 2...)
+
+            currentDevice = if (deviceType == "gpu") {
+                Device.gpu(deviceId)
+            } else {
+                Device.cpu()
+            }
+
+            // Пересоздаем базовый менеджер для нового устройства
+            manager.close()
+            manager = NDManager.newBaseManager(currentDevice)
+
+            println("DJL device changed to: $currentDevice")
+            return valueOf(currentDevice.toString())
         }
     }
 
@@ -162,7 +184,7 @@ class DJLLuaTrainer : LuaValue() {
             val config = arg2.checktable()
 
             return try {
-                val model = Model.newInstance(id)
+                val model = Model.newInstance(id, currentDevice)
                 val inputSize = config["input_size"].optint(10)
                 val mode = config["mode"].optjstring("classification")
 
@@ -323,6 +345,7 @@ class DJLLuaTrainer : LuaValue() {
 
                 val trainingConfig = DefaultTrainingConfig(loss)
                     .optOptimizer(Adam.builder().optLearningRateTracker(Tracker.fixed(learningRate.toFloat())).build())
+                    .optDevices(arrayOf(currentDevice))
 
                 // Метрики
                 if (mode == "regression") {
@@ -450,7 +473,7 @@ class DJLLuaTrainer : LuaValue() {
                 models[id] = model
 
                 // Создаем предиктор для инференса
-                val predictor = model.newPredictor(NoopTranslator())
+                val predictor = model.newPredictor(NoopTranslator(), currentDevice)
                 predictors[id] = predictor
 
                 TRUE
@@ -472,7 +495,7 @@ class DJLLuaTrainer : LuaValue() {
             if (predictor == null) {
                 val model = models[id]
                 if (model != null) {
-                    predictor = model.newPredictor(NoopTranslator())
+                    predictor = model.newPredictor(NoopTranslator(), currentDevice)
                     predictors[id] = predictor
                 } else {
                     return error("Model/Predictor not found: $id")
