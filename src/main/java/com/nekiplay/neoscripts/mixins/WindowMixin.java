@@ -19,7 +19,7 @@ public class WindowMixin {
 
     @Inject(at = @At("HEAD"),method = "onGameLoadFinished")
     private void onGlfwInit(Minecraft.GameLoadCookie gameLoadCookie, CallbackInfo ci){
-        ImguiLoader.onGlfwInit();
+        //ImguiLoader.onGlfwInit();
     }
 
     @Inject(at = @At("RETURN"),method = "<init>")
