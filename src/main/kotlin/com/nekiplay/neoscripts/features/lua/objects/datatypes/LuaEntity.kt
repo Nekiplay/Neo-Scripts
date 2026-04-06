@@ -1,5 +1,6 @@
 package com.nekiplay.neoscripts.features.lua.objects.datatypes
 
+import com.mojang.authlib.properties.Property
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
@@ -123,15 +124,15 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     val profile = entity.gameProfile
                     if (profile != null) {
                         val textures: Collection<Property> = profile.properties().get("textures")
-                        for (entry  in textures) {
-                            if (entry != null && entry.value() != null) {
+                        for (entry in textures) {
+                            if (entry.value() != null) {
                                 return valueOf(entry.value())
                             }
                         }
                         
                     }
                 }
-
+                return NIL
             }
             "health" -> {
                 if (entity is LivingEntity) {
