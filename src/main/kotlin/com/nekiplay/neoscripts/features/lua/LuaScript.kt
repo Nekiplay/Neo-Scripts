@@ -1354,12 +1354,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         imguiLib.let {
             try {
                 ImGui.getIO().fonts.clear()
-            } catch (e: Exception) {
-
-            }
-            try {
-                ImGui.destroyContext()
-            } catch (e: Exception) {
+            } catch (ignore: Exception) {
 
             }
         }
