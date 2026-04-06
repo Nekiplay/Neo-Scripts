@@ -6,7 +6,7 @@ on:
       version:
         description: 'Version number (e.g., 1.2.1.3)'
         required: true
-        default: '1.2.1.3'
+        default: '1.2.1.5.4'
       mc_version:
         description: 'Minecraft number (e.g., 1.21.11)'
         required: true
@@ -38,12 +38,12 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.MC }}_${{ env.APP_VERSION }}
-          name: 🌟 Hypixel Cry Fabric ${{ env.MC }} v${{ env.APP_VERSION }} 🌟
+          name: 🌟 Neo Scripts Fabric ${{ env.MC }} v${{ env.APP_VERSION }} 🌟
           body: |
             ![Downloads](https://img.shields.io/github/downloads/Nekiplay/Hypixel-Cry/v${{ env.MC }}_${{ env.APP_VERSION }}/total) ![Version](https://img.shields.io/badge/version-${{ env.APP_VERSION }}-blue) ![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux-orange)
             ## 👏 Contributors Hall of Fame
             Special thanks to our amazing contributors who made this release possible:
             - **@Nekiplay** - Core improvements and feature implementations
-            - **@KreedMan** - Features tester
+            - **@KreedMan**, **@lmoboy** - Tester
           files: |
             ./build/libs/*.jar
