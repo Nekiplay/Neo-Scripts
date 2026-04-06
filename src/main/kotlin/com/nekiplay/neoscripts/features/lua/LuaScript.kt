@@ -1351,17 +1351,17 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             soundCallbacks.clear()
             imguiInitCallbacks.clear()
         }
-        try {
-            ImGui.getIO().fonts.clear()
-        }
-        catch (e: Exception) {
+        imguiLib.let {
+            try {
+                ImGui.getIO().fonts.clear()
+            } catch (e: Exception) {
 
-        }
-        try {
-            ImGui.destroyContext()
-        }
-        catch (e: Exception) {
+            }
+            try {
+                ImGui.destroyContext()
+            } catch (e: Exception) {
 
+            }
         }
         imguiLib?.queue?.clear()
         djlLibrary?.models?.clear()
