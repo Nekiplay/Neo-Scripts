@@ -324,12 +324,8 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             imGuiGl3.newFrame()
             ImGui.newFrame()
 
-            Main.LUA_MANAGER.scripts.values.forEach(Consumer { script: LuaScript? ->
-                script!!.onImGuiRenderEvent()
-                if (script.imguiLib != null) {
-                    script.imguiLib!!.queue.executeAndClear()
-                }
-            })
+            script.onImGuiRenderEvent()
+            queue.executeAndClear()
             ImGui.render()
             imGuiGl3.renderDrawData(ImGui.getDrawData())
         }
