@@ -44,6 +44,8 @@ class DJLLuaTrainer : LuaValue() {
         System.setProperty("DJL_CACHE_DIR", djlDir)
         System.setProperty("ENGINE_CACHE_DIR", djlDir)
         System.setProperty("DJL_OFFLINE", "true")
+        System.setProperty("PYTORCH_FLAVOR", "cpu");
+        System.setProperty("ai.djl.device", "cpu");
     }
 
     val models = ConcurrentHashMap<String, Model>()
