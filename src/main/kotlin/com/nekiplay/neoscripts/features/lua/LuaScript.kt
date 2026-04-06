@@ -29,6 +29,7 @@ import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.neoscripts.features.lua.objects.world.WorldObject
 import com.nekiplay.neoscripts.utils.Location
 import com.nekiplay.neoscripts.utils.misc.input.KeyAction
+import imgui.ImGui
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
@@ -1349,6 +1350,18 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             commandSuggestionsCallbacks.clear()
             soundCallbacks.clear()
             imguiInitCallbacks.clear()
+        }
+        try {
+            ImGui.getIO().fonts.clear()
+        }
+        catch (e: Exception) {
+
+        }
+        try {
+            ImGui.destroyContext()
+        }
+        catch (e: Exception) {
+
         }
         imguiLib?.queue?.clear()
         djlLibrary?.models?.clear()
