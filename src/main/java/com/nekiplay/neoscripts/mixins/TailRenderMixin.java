@@ -15,7 +15,9 @@ public class TailRenderMixin {
     @Inject(at = @At(value = "INVOKE", target = "Lorg/lwjgl/glfw/GLFW;glfwSwapBuffers(J)V"), method="flipFrame")
     private static void runTickTail(CallbackInfo ci) {
         Main.LUA_MANAGER.getScripts().forEach((name, script) -> {
-            Objects.requireNonNull(script.getImguiLib()).onFrameRender();
+            if (script.getImguiLib() != null) {
+                script.getImguiLib().onFrameRender();
+            }
         });
     }
 }
