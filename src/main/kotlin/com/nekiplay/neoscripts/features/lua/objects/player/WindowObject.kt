@@ -1,9 +1,7 @@
 package com.nekiplay.neoscripts.features.lua.objects.player
 
 import com.nekiplay.neoscripts.Main.mc
-import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaEntity
 import org.luaj.vm2.LuaValue
-import org.luaj.vm2.lib.OneArgFunction
 
 class WindowObject: LuaValue() {
     override fun call(): LuaValue {

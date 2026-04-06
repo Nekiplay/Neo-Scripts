@@ -26,6 +26,7 @@ import com.nekiplay.neoscripts.features.lua.objects.player.PlayerObject
 import com.nekiplay.neoscripts.features.lua.objects.player.WindowObject
 import com.nekiplay.neoscripts.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
+import com.nekiplay.neoscripts.features.lua.objects.world.BlockScannerObject
 import com.nekiplay.neoscripts.features.lua.objects.world.WorldObject
 import com.nekiplay.neoscripts.utils.Location
 import com.nekiplay.neoscripts.utils.misc.input.KeyAction
@@ -1232,6 +1233,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
             "window" -> {
                 WindowObject()
+            }
+            "block_iterator", "blockiterator" -> {
+                BlockScannerObject()
             }
             else -> return null
         }
