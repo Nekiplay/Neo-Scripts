@@ -325,7 +325,7 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             ImGui.newFrame()
 
             script.onImGuiRenderEvent()
-            queue.executeAndClear()
+                //queue.executeAndClear()
             ImGui.render()
             imGuiGl3.renderDrawData(ImGui.getDrawData())
         }
@@ -352,11 +352,8 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             val blue = args.optint(6, 255)
             val alpha = args.optint(7, 255)
 
-            queue.queue(DrawCommand(DrawType.TEXT, mapOf(
-                "x1" to x, "y1" to y,
-                "color" to queue.makeImGuiColor(red, green, blue, alpha),
-                "text" to text
-            )))
+            // Вызов напрямую
+            queue.renderText(x, y, text, red, green, blue, alpha)
             return TRUE
         }
     }
@@ -373,13 +370,7 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             val uvMaxX = args.optdouble(8, 1.0).toFloat()
             val uvMaxY = args.optdouble(9, 1.0).toFloat()
 
-            queue.queue(DrawCommand(DrawType.IMAGE, mapOf(
-                "textureID" to textureID,
-                "pMinX" to x, "pMinY" to y,
-                "pMaxX" to width, "pMaxY" to height,
-                "uvMinX" to uvMinX, "uvMinY" to uvMinY,
-                "uvMaxX" to uvMaxX, "uvMaxY" to uvMaxY
-            )))
+            queue.renderImage(textureID, x, y, width, height, uvMinX, uvMinY, uvMaxX, uvMaxY)
             return TRUE
         }
     }
@@ -396,11 +387,7 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             val alpha = args.optint(8, 255)
             val thickness = args.optdouble(9, 1.0).toFloat()
 
-            queue.queue(DrawCommand(DrawType.LINE, mapOf(
-                "x1" to x1, "y1" to y1, "x2" to x2, "y2" to y2,
-                "color" to queue.makeImGuiColor(red, green, blue, alpha),
-                "thickness" to thickness
-            )))
+            queue.renderLine(x1, y1, x2, y2, red, green, blue, alpha, thickness)
             return TRUE
         }
     }
@@ -420,24 +407,15 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             while (true) {
                 val pointTable = pointsTable.get(i)
                 if (pointTable.istable()) {
-                    val x = pointTable.get("x").optdouble(0.0).toFloat()
-                    val y = pointTable.get("y").optdouble(0.0).toFloat()
-                    points.add(x to y)
+                    val px = pointTable.get("x").optdouble(0.0).toFloat()
+                    val py = pointTable.get("y").optdouble(0.0).toFloat()
+                    points.add(px to py)
                     i++
-                } else {
-                    break
-                }
+                } else break
             }
 
             if (points.size >= 3) {
-                queue.queue(
-                    DrawCommand(
-                        DrawType.POLYGON, mapOf(
-                            "points" to points,
-                            "color" to queue.makeImGuiColor(red, green, blue, alpha)
-                        )
-                    )
-                )
+                queue.renderPolygon(points, red, green, blue, alpha)
                 return TRUE
             }
             return FALSE
