@@ -7,13 +7,17 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.neoscripts.sugar.getFormattedString
+import com.nekiplay.neoscripts.utils.Utils
 import net.minecraft.client.player.AbstractClientPlayer
+import net.minecraft.nbt.TagValueOutput
+import net.minecraft.util.ProblemReporter
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ItemFrame
 import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.level.storage.TagValueOutput
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 
@@ -249,6 +253,13 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 } else {
                     NIL
                 }
+            }
+            "nbt" -> {
+                val registryLookup = Utils.getRegistryWrapperLookup()
+                val reporter = ProblemReporter.ScopedCollector(null)
+                val output = TagValueOutput.createWithContext(reporter, registryLookup)
+                entity.saveWithoutId(output)
+                valueOf(output.buildResult().toString())
             }
             else -> super.get(key)
         }

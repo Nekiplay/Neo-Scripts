@@ -11,7 +11,10 @@ import com.nekiplay.neoscripts.sugar.isMuseumDonated
 import com.nekiplay.neoscripts.sugar.isRecombobulated
 import com.nekiplay.neoscripts.sugar.setDisplayName
 import com.nekiplay.neoscripts.utils.ItemUtils
+import com.nekiplay.neoscripts.utils.Utils
+import net.minecraft.core.Holder
 import net.minecraft.core.component.DataComponents
+import net.minecraft.nbt.NbtOps
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.MapItem
@@ -67,7 +70,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                 loreList.forEachIndexed { index, line -> loreTable.set(index + 1, line.string) }
                 loreTable
             }
-            "enchantments", "ench" -> {
+            "hypixel_enchantments", "hypixel_ench" -> {
                 val enchantsTable = tableOf()
                 val enchantmentsList = ItemUtils.getHypixelEnchantments(stack)
                 var index = 1
@@ -79,6 +82,35 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                     index++
                 }
                 enchantsTable
+            }
+            "enchantments", "ench" -> {
+                val enchantsTable = tableOf()
+                val enchantments = stack.get(DataComponents.ENCHANTMENTS)
+                if (enchantments != null) {
+                    var index = 1
+                    enchantments.entrySet().forEach { entry ->
+                        val enchantHolder = entry.key
+                        val level = entry.intValue
+                        val enchantTable = tableOf()
+                        val enchantName = enchantHolder.registeredName
+                        enchantTable.set("name", valueOf(enchantName))
+                        enchantTable.set("level", level)
+                        enchantsTable.set(index, enchantTable)
+                        index++
+                    }
+                }
+                enchantsTable
+            }
+            "nbt" -> {
+                val registryLookup = Utils.getRegistryWrapperLookup()
+                val ops = registryLookup.createSerializationContext(NbtOps.INSTANCE)
+                val nbtResult = ItemStack.CODEC.encodeStart(ops, stack)
+                val result = nbtResult.resultOrPartial { }
+                if (result.isPresent) {
+                    valueOf(result.get().asString().get())
+                } else {
+                    valueOf("")
+                }
             }
             else -> super.get(key)
         }
