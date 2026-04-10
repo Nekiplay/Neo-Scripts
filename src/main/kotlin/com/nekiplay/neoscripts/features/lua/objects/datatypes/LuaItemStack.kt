@@ -14,6 +14,7 @@ import com.nekiplay.neoscripts.utils.ItemUtils
 import com.nekiplay.neoscripts.utils.Utils
 import net.minecraft.core.Holder
 import net.minecraft.core.component.DataComponents
+import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.NbtOps
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
@@ -104,11 +105,24 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
             "nbt" -> {
                 val registryLookup = Utils.getRegistryWrapperLookup()
                 val ops = registryLookup.createSerializationContext(NbtOps.INSTANCE)
-                val nbtResult = ItemStack.CODEC.encodeStart(ops, stack)
-                val result = nbtResult.resultOrPartial { }
-                result.flatMap { it.asString() }
-                    .map { valueOf(it) }
-                    .orElse(valueOf(""))
+                val result = ItemStack.CODEC.encodeStart(ops, stack)
+                
+                // Получаем результат с обработкой ошибок
+                val errors = mutableListOf<String>()
+                val nbtElement = result.resultOrPartial { error -> errors.add(error) }
+                
+                if (nbtElement.isPresent) {
+                    val element = nbtElement.get()
+                    // Element может быть CompoundTag напрямую
+                    if (element is net.minecraft.nbt.Tag) {
+                        valueOf(element.toString())
+                    } else {
+                        valueOf(element.asString().orElse(""))
+                    }
+                } else {
+                    println("NBT encode error: ${errors.joinToString(", ")}")
+                    valueOf("")
+                }
             }
             else -> super.get(key)
         }
