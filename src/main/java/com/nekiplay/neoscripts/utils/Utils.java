@@ -318,11 +318,12 @@ public class Utils {
                     plainName = scoreboardName;
                 }
                 
-                if (!plainName.trim().isEmpty()) {
-                    String formatted = ChatFormatting.stripFormatting(plainName);
-                    if (!formatted.trim().isEmpty()) {
+                String trimmed = plainName.trim();
+                if (!trimmed.isEmpty()) {
+                    String stripped = ChatFormatting.stripFormatting(trimmed);
+                    if (!stripped.trim().isEmpty()) {
                         textLines.add(displayName);
-                        stringLines.add(formatted);
+                        stringLines.add(trimmed); // Сохраняем с цветовыми кодами
                     }
                 }
             }
