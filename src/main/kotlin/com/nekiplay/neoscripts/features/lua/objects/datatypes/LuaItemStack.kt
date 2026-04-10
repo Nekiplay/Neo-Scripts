@@ -106,11 +106,9 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                 val ops = registryLookup.createSerializationContext(NbtOps.INSTANCE)
                 val nbtResult = ItemStack.CODEC.encodeStart(ops, stack)
                 val result = nbtResult.resultOrPartial { }
-                if (result.isPresent) {
-                    valueOf(result.get().asString().get())
-                } else {
-                    valueOf("")
-                }
+                result.flatMap { it.asString() }
+                    .map { valueOf(it) }
+                    .orElse(valueOf(""))
             }
             else -> super.get(key)
         }
