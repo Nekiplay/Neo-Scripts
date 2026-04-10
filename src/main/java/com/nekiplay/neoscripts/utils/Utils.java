@@ -270,38 +270,61 @@ public class Utils {
 
             LocalPlayer player = client.player;
             if (player == null) return;
-            if (player.getTeam() == null) return;
 
-            Scoreboard scoreboard = player.getTeam().getScoreboard();
-            Objective objective = scoreboard.getDisplayObjective(DisplaySlot.BY_ID.apply(1));
+            Scoreboard scoreboard = player.getTeam() != null ? player.getTeam().getScoreboard() : null;
+            if (scoreboard == null) return;
+            
+            Objective objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
+            if (objective == null) return;
+
             ObjectArrayList<Component> textLines = new ObjectArrayList<>();
             ObjectArrayList<String> stringLines = new ObjectArrayList<>();
 
-            for (ScoreHolder scoreHolder : scoreboard.getTrackedPlayers()) {
-                //Limit to just objectives displayed in the scoreboard (specifically sidebar objective)
-                if (scoreboard.listPlayerScores(scoreHolder).containsKey(objective)) {
-                    PlayerTeam team = scoreboard.getPlayersTeam(scoreHolder.getScoreboardName());
-
-                    if (team != null) {
-                        Component textLine = Component.empty().append(team.getPlayerPrefix().copy()).append(team.getPlayerSuffix().copy());
-                        String strLine = team.getPlayerPrefix().getString() + team.getPlayerSuffix().getString();
-
-                        if (!strLine.trim().isEmpty()) {
-                            String formatted = ChatFormatting.stripFormatting(strLine);
-
-                            textLines.add(textLine);
-                            stringLines.add(formatted);
-                        }
-                    }
-                }
+            // Получаем заголовок scoreboard
+            Component title = objective.getDisplayName();
+            if (title != null && !title.getString().trim().isEmpty()) {
+                stringLines.add(title.getString());
+                textLines.add(title.copy());
             }
 
-            if (objective != null) {
-                stringLines.add(objective.getDisplayName().getString());
-                textLines.add(Component.empty().append(objective.getDisplayName().copy()));
-
-                Collections.reverse(stringLines);
-                Collections.reverse(textLines);
+            // Собираем все строки scoreboard
+            java.util.List<net.minecraft.world.scores.ScoreHolder> scoredHolders = new java.util.ArrayList<>();
+            for (ScoreHolder scoreHolder : scoreboard.getTrackedPlayers()) {
+                var scoresMap = scoreboard.listPlayerScores(scoreHolder);
+                if (scoresMap.get(objective) != null) {
+                    scoredHolders.add(scoreHolder);
+                }
+            }
+            
+            // Сортируем по score (убывание - сверху вниз)
+            scoredHolders.sort((a, b) -> {
+                int scoreA = scoreboard.listPlayerScores(a).get(objective);
+                int scoreB = scoreboard.listPlayerScores(b).get(objective);
+                return Integer.compare(scoreB, scoreA); // descending
+            });
+            
+            for (ScoreHolder scoreHolder : scoredHolders) {
+                String scoreboardName = scoreHolder.getScoreboardName();
+                PlayerTeam team = scoreboard.getPlayersTeam(scoreboardName);
+                
+                Component displayName;
+                String plainName;
+                
+                if (team != null) {
+                    displayName = PlayerTeam.formatNameForTeam(team, Component.literal(scoreboardName));
+                    plainName = team.getPlayerPrefix().getString() + scoreboardName + team.getPlayerSuffix().getString();
+                } else {
+                    displayName = Component.literal(scoreboardName);
+                    plainName = scoreboardName;
+                }
+                
+                if (!plainName.trim().isEmpty()) {
+                    String formatted = ChatFormatting.stripFormatting(plainName);
+                    if (!formatted.trim().isEmpty()) {
+                        textLines.add(displayName);
+                        stringLines.add(formatted);
+                    }
+                }
             }
 
             TEXT_SCOREBOARD.addAll(textLines);
@@ -310,7 +333,7 @@ public class Utils {
                 Utils.updatePurse();
                 updateArea();
             }
-        } catch (NullPointerException e) {
+        } catch (Exception e) {
             //Do nothing
         }
     }
