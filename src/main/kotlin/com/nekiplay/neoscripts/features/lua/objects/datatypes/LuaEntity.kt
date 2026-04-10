@@ -1,6 +1,7 @@
 package com.nekiplay.neoscripts.features.lua.objects.datatypes
 
 import com.mojang.authlib.properties.Property
+import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
@@ -8,8 +9,6 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.utils.Utils
-import net.minecraft.client.player.AbstractClientPlayer
-import net.minecraft.nbt.TagValueOutput
 import net.minecraft.util.ProblemReporter
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
@@ -256,7 +255,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
             "nbt" -> {
                 val registryLookup = Utils.getRegistryWrapperLookup()
-                val reporter = ProblemReporter.ScopedCollector(null)
+                val reporter = ProblemReporter.ScopedCollector(Main.LOGGER)
                 val output = TagValueOutput.createWithContext(reporter, registryLookup)
                 entity.saveWithoutId(output)
                 valueOf(output.buildResult().toString())
