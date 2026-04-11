@@ -1,6 +1,8 @@
 package com.nekiplay.neoscripts.features.lua.objects.player
 
 import com.nekiplay.neoscripts.Main.mc
+import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
+import com.nekiplay.neoscripts.mixins.minecraft.GamemodeAccessor
 import com.nekiplay.neoscripts.sugar.attackBlock
 import com.nekiplay.neoscripts.sugar.attackEntity
 import com.nekiplay.neoscripts.sugar.interactBlock
@@ -69,8 +71,29 @@ class InputObject: LuaValue() {
             // Mouse
             "isPressedAttack" -> IsPressedAttackFunction()
             "isPressedUse" -> IsPressedUseFunction()
+
+            "getBreakingProgress" -> GetBreakingProgress()
+            "setBreakingProgress" -> SetBreakingProgress()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetBreakingProgress : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            val accessed = mc.gameMode as GamemodeAccessor
+            val result = tableOf()
+            result.set("progress", valueOf(accessed.`neoscripts$getBreakingProgress`().toDouble()))
+            result.set("blockpos", LuaBlockPos(accessed.`neoscripts$getCurrentBreakingBlockPos`()))
+            return result
+        }
+    }
+
+    private inner class SetBreakingProgress : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            val accessed = mc.gameMode as GamemodeAccessor
+            accessed.`neoscripts$setCurrentBreakingProgress`(arg.tofloat());
+            return TRUE
+        }
     }
 
     private inner class SyncSelectedSlotFunction : ZeroArgFunction() {

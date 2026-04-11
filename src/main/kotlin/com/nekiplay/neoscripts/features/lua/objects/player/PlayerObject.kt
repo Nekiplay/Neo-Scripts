@@ -112,16 +112,6 @@ class PlayerObject : LuaValue() {
         } as LuaValue
     }
 
-    private inner class GetBreakingProgress : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            val accessed = mc.gameMode as GamemodeAccessor
-            val result = tableOf()
-            result.set("progress", valueOf(accessed.`neoscripts$getBreakingProgress`().toDouble()))
-            result.set("blockpos", LuaBlockPos(accessed.`neoscripts$getCurrentBreakingBlockPos`()))
-            return result
-        }
-    }
-
     private inner class IsHasLineOfSight : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue? {
             if (arg is LuaEntity) {

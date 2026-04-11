@@ -29,7 +29,7 @@ fun MultiPlayerGameMode.silentUse(useSlot: Int): Boolean {
 fun MultiPlayerGameMode.attackBlock(): Boolean {
     if (mc.hitResult == null) return false
 
-    if (mc.hitResult?.type == HitResult.Type.BLOCK) {
+    if (mc.hitResult?.type == HitResult.Type.BLOCK && mc.screen == null) {
         val blockHitResult = mc.hitResult as BlockHitResult
         val blockPos = blockHitResult.blockPos
         mc.level?.getBlockState(blockPos)?.isAir?.let {
@@ -46,7 +46,7 @@ fun MultiPlayerGameMode.attackEntity(): Boolean {
     val player = mc.player ?: return false
     if (mc.hitResult == null) return false
 
-    if (mc.hitResult!!.type == HitResult.Type.ENTITY) {
+    if (mc.hitResult!!.type == HitResult.Type.ENTITY && mc.screen == null) {
         this.attack(player, (mc.hitResult as EntityHitResult).entity)
         return true
     }
@@ -57,12 +57,11 @@ fun MultiPlayerGameMode.interactBlock(): Boolean {
     val player = mc.player ?: return false
     if (mc.hitResult == null) return false
 
-    if (mc.hitResult!!.type == HitResult.Type.BLOCK) {
+    if (mc.hitResult!!.type == HitResult.Type.BLOCK && mc.screen == null) {
         for (hand in InteractionHand.entries) {
             val actionResult2: InteractionResult? = this.useItemOn(player, hand, mc.hitResult as BlockHitResult)
             if (actionResult2 is InteractionResult.Success) {
-                val success2 = actionResult2
-                if (success2.swingSource() == InteractionResult.SwingSource.CLIENT) {
+                if (actionResult2.swingSource() == InteractionResult.SwingSource.CLIENT) {
                     player.swing(hand)
                 }
                 return true
@@ -76,13 +75,12 @@ fun MultiPlayerGameMode.interactEntity(): Boolean {
     val player = mc.player ?: return false
     if (mc.hitResult == null) return false
 
-    if (mc.hitResult!!.type == HitResult.Type.ENTITY) {
+    if (mc.hitResult!!.type == HitResult.Type.ENTITY && mc.screen == null) {
         for (hand in InteractionHand.entries) {
             val actionResult2: InteractionResult =
                 this.interact(player, (mc.hitResult as EntityHitResult).entity, hand)
             if (actionResult2 is InteractionResult.Success) {
-                val success2 = actionResult2
-                if (success2.swingSource() == InteractionResult.SwingSource.CLIENT) {
+                if (actionResult2.swingSource() == InteractionResult.SwingSource.CLIENT) {
                     player.swing(hand)
                 }
                 return true
@@ -93,15 +91,17 @@ fun MultiPlayerGameMode.interactEntity(): Boolean {
 }
 
 fun MultiPlayerGameMode.useItem(): Boolean {
-    val player = Minecraft.getInstance().player ?: return false
-    val result = this.useItem(player, InteractionHand.MAIN_HAND)
-    if (result is InteractionResult.Success) {
-        player.swing(InteractionHand.MAIN_HAND)
+    if (mc.screen == null) {
+        val player = Minecraft.getInstance().player ?: return false
+        val result = this.useItem(player, InteractionHand.MAIN_HAND)
+        if (result is InteractionResult.Success) {
+            player.swing(InteractionHand.MAIN_HAND)
+        }
+        if (result is InteractionResult.Success || result is InteractionResult.Pass) {
+            return true
+        }
     }
-    if (result is InteractionResult.Success || result is InteractionResult.Pass) {
-        return true
-    }
-    return false
+   return false
 }
 
 fun MultiPlayerGameMode.syncSelectedSlot(): Boolean {
