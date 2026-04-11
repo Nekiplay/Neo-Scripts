@@ -106,8 +106,6 @@ class PlayerObject : LuaValue() {
             "addToast" -> AddToastFunction()
 
             "raycast" -> RayCastFunction()
-
-            "getBreakingProgress" -> GetBreakingProgress()
             else -> NIL
         } as LuaValue
     }
