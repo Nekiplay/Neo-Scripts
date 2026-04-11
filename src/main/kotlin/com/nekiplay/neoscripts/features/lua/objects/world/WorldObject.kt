@@ -122,8 +122,8 @@ class WorldObject : LuaValue() {
         } as LuaValue
     }
 
-    private inner class GetBreakingBlocksInfo : FourArgFunction() {
-        override fun invoke(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?, arg4: LuaValue?): LuaValue {
+    private inner class GetBreakingBlocksInfo : ZeroArgFunction() {
+        override fun call(): LuaValue {
             val accessed = mc.levelRenderer as LevelRendererAccessor
             var index = 1
             val list = tableOf()
