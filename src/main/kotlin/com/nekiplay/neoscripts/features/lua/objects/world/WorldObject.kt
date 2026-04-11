@@ -8,6 +8,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
+import com.nekiplay.neoscripts.mixins.minecraft.LevelRendererAccessor
 import com.nekiplay.neoscripts.utils.RaycastUtils
 import com.nekiplay.neoscripts.utils.Rotations
 import net.minecraft.client.multiplayer.ClientLevel
@@ -116,8 +117,27 @@ class WorldObject : LuaValue() {
 
             "raycast" -> RaycastFunction()
             "raycastToBlocks" -> RaycastToBlocksFunction()
+            "getBreakingBlocksInfo" -> GetBreakingBlocksInfo()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetBreakingBlocksInfo : FourArgFunction() {
+        override fun invoke(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?, arg4: LuaValue?): LuaValue {
+            val accessed = mc.levelRenderer as LevelRendererAccessor
+            var index = 1
+            val list = tableOf()
+            accessed.`neoscripts$getBlockBreakingInfos`().forEach { i, progress ->
+                val tableInfo = tableOf()
+                tableInfo.set("progress", valueOf(progress.progress))
+                tableInfo.set("blockpos", LuaBlockPos(progress.pos))
+                tableInfo.set("id", valueOf(progress.id))
+                tableInfo.set("updatedRenderTick", valueOf(progress.updatedRenderTick))
+                list.set(index, tableInfo)
+                index++
+            }
+            return list
+        }
     }
 
     private inner class GetOutlineBoxesFunction : FourArgFunction() {
