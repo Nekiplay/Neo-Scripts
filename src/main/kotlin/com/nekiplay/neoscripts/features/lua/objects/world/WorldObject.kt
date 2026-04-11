@@ -127,7 +127,7 @@ class WorldObject : LuaValue() {
             val accessed = mc.levelRenderer as LevelRendererAccessor
             var index = 1
             val list = tableOf()
-            accessed.`neoscripts$getBlockBreakingInfos`().forEach { i, progress ->
+            accessed.`neoscripts$getBlockBreakingInfos`().forEach { (i, progress) ->
                 val tableInfo = tableOf()
                 tableInfo.set("progress", valueOf(progress.progress))
                 tableInfo.set("blockpos", LuaBlockPos(progress.pos))
