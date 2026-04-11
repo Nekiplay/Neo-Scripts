@@ -7,6 +7,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.text.LuaComponent
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.text.LuaComponentBuilder
+import com.nekiplay.neoscripts.mixins.minecraft.GamemodeAccessor
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.sugar.getScorebordLines
 import com.nekiplay.neoscripts.sugar.getTab
@@ -105,8 +106,20 @@ class PlayerObject : LuaValue() {
             "addToast" -> AddToastFunction()
 
             "raycast" -> RayCastFunction()
+
+            "getBreakingProgress" -> GetBreakingProgress()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetBreakingProgress : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            val accessed = mc.gameMode as GamemodeAccessor
+            val result = tableOf()
+            result.set("progress", valueOf(accessed.`neoscripts$getBreakingProgress`().toDouble()))
+            result.set("blockpos", LuaBlockPos(accessed.`neoscripts$getCurrentBreakingBlockPos`()))
+            return result
+        }
     }
 
     private inner class IsHasLineOfSight : OneArgFunction() {

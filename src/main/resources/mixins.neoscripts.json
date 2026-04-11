@@ -15,6 +15,7 @@
     "entity.ClientPlayerEntityMixin",
     "entity.PlayerEntityRendererMixin",
     "minecraft.ClientConnectionMixin",
+    "minecraft.GamemodeAccessor",
     "renderer.GameRendererAccessor"
   ],
   "client": [
@@ -24,7 +25,8 @@
     "firmament.ModAnnouncerMixin",
     "gui.AbstractContainerMenuMixin",
     "gui.AbstractContainerScreenMixin",
-    "gui.AbstractSignEditScreenAccessor"
+    "gui.AbstractSignEditScreenAccessor",
+    "minecraft.LevelRendererAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
