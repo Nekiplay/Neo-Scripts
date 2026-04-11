@@ -138,6 +138,7 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
         dl.set("renderLine", RenderDLLineFunction())
         dl.set("renderPolygon", RenderDLPolygonFunction())
         dl.set("renderImage", RenderDLImageFunction())
+        dl.set("renderImageQuad", RenderDLImageQuadFunction())
         dl.set("renderText", RenderDLTextFunction())
     }
 
@@ -371,6 +372,43 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             val uvMaxY = args.optdouble(9, 1.0).toFloat()
 
             queue.renderImage(textureID, x, y, width, height, uvMinX, uvMinY, uvMaxX, uvMaxY)
+            return TRUE
+        }
+    }
+
+    private inner class RenderDLImageQuadFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val textureID = args.optlong(1, 0)
+            
+            // 4 corner points (table with {x, y})
+            val p1 = args.arg(2)
+            val p2 = args.arg(3)
+            val p3 = args.arg(4)
+            val p4 = args.arg(5)
+            
+            val p1x = p1.get("x").optdouble(0.0).toFloat()
+            val p1y = p1.get("y").optdouble(0.0).toFloat()
+            val p2x = p2.get("x").optdouble(0.0).toFloat()
+            val p2y = p2.get("y").optdouble(0.0).toFloat()
+            val p3x = p3.get("x").optdouble(0.0).toFloat()
+            val p3y = p3.get("y").optdouble(0.0).toFloat()
+            val p4x = p4.get("x").optdouble(0.0).toFloat()
+            val p4y = p4.get("y").optdouble(0.0).toFloat()
+            
+            // UV coordinates (optional, default to full texture)
+            val uvMinX = args.optdouble(6, 0.0).toFloat()
+            val uvMinY = args.optdouble(7, 0.0).toFloat()
+            val uvMaxX = args.optdouble(8, 1.0).toFloat()
+            val uvMaxY = args.optdouble(9, 1.0).toFloat()
+            
+            // Color (optional, default to white)
+            val red = args.optint(10, 255)
+            val green = args.optint(11, 255)
+            val blue = args.optint(12, 255)
+            val alpha = args.optint(13, 255)
+            val color = queue.makeImGuiColor(red, green, blue, alpha)
+
+            queue.renderImageQuad(textureID, p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y, uvMinX, uvMinY, uvMaxX, uvMaxY, color)
             return TRUE
         }
     }

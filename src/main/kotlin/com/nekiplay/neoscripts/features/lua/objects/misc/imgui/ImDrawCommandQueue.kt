@@ -45,6 +45,31 @@ class ImDrawCommandQueue {
         )
     }
 
+    fun renderImageQuad(
+        textureID: Long,
+        p1x: Float, p1y: Float,
+        p2x: Float, p2y: Float,
+        p3x: Float, p3y: Float,
+        p4x: Float, p4y: Float,
+        uvMinX: Float, uvMinY: Float,
+        uvMaxX: Float, uvMaxY: Float,
+        color: Int
+    ) {
+        // Рисуем skewed/transformed image quad с 4 углами и UV координатами
+        ImGui.getBackgroundDrawList().addImageQuad(
+            textureID,
+            p1x, p1y, // top-left
+            p2x, p2y, // top-right
+            p3x, p3y, // bottom-right
+            p4x, p4y, // bottom-left
+            uvMinX, uvMinY, // UV top-left
+            uvMaxX, uvMinY, // UV top-right
+            uvMaxX, uvMaxY, // UV bottom-right
+            uvMinX, uvMaxY, // UV bottom-left
+            color
+        )
+    }
+
     // Эти методы можно оставить пустыми или удалить
     fun executeAndClear() {}
     fun clear() {}
