@@ -31,7 +31,7 @@ class ArchiveLib : LuaValue() {
             "zip", "compress" -> Zip()
             "unzip", "extract" -> Unzip()
             "extractFile" -> ExtractFile()
-            "listZipEntries" -> ListZipEntries()
+            "listEntries", "listZipEntries" -> ListEntries()
             "zipFile", "addFileToZip" -> ZipFile()
             "gzip", "compressGzip" -> Gzip()
             "gunzip", "decompressGzip" -> Gunzip()
@@ -179,25 +179,50 @@ class ArchiveLib : LuaValue() {
         }
     }
 
-    inner class ListZipEntries : OneArgFunction() {
+    inner class ListEntries : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
-            val zipPath = arg.checkjstring()
+            val archivePath = arg.checkjstring()
 
             return try {
                 val entriesTable = LuaTable()
                 var index = 1
 
-                ZipFile(zipPath).use { zip ->
-                    zip.entries().asSequence().forEach { entry ->
-                        val entryTable = LuaTable()
-                        entryTable.set("name", valueOf(entry.name))
-                        entryTable.set("size", valueOf(entry.size.toDouble()))
-                        entryTable.set("compressedSize", valueOf(entry.compressedSize.toDouble()))
-                        entryTable.set("directory", valueOf(entry.isDirectory))
-                        entryTable.set("crc", valueOf(entry.crc.toDouble()))
-                        
-                        entriesTable.set(index, entryTable)
-                        index++
+                when {
+                    archivePath.endsWith(".zip") -> {
+                        ZipFile(archivePath).use { zip ->
+                            zip.entries().asSequence().forEach { entry ->
+                                val entryTable = createEntryTable(entry.name, entry.size, entry.isDirectory)
+                                entriesTable.set(index, entryTable)
+                                index++
+                            }
+                        }
+                    }
+                    archivePath.endsWith(".tar") -> {
+                        @Suppress("DEPRECATION")
+                        TarArchiveInputStream(FileInputStream(archivePath)).use { tis ->
+                            var entry: TarArchiveEntry? = tis.nextTarEntry
+                            while (entry != null) {
+                                val entryTable = createEntryTable(entry.name, entry.size.toDouble(), entry.isDirectory)
+                                entriesTable.set(index, entryTable)
+                                index++
+                                entry = tis.nextTarEntry
+                            }
+                        }
+                    }
+                    archivePath.endsWith(".tar.gz") || archivePath.endsWith(".tgz") -> {
+                        @Suppress("DEPRECATION")
+                        TarArchiveInputStream(GzipCompressorInputStream(FileInputStream(archivePath))).use { tis ->
+                            var entry: TarArchiveEntry? = tis.nextTarEntry
+                            while (entry != null) {
+                                val entryTable = createEntryTable(entry.name, entry.size.toDouble(), entry.isDirectory)
+                                entriesTable.set(index, entryTable)
+                                index++
+                                entry = tis.nextTarEntry
+                            }
+                        }
+                    }
+                    else -> {
+                        return valueOf("Unsupported archive format")
                     }
                 }
 
@@ -205,6 +230,14 @@ class ArchiveLib : LuaValue() {
             } catch (e: Exception) {
                 NIL
             }
+        }
+
+        private fun createEntryTable(name: String, size: Double, isDirectory: Boolean): LuaTable {
+            val entryTable = LuaTable()
+            entryTable.set("name", valueOf(name))
+            entryTable.set("size", valueOf(size))
+            entryTable.set("is_directory", valueOf(isDirectory))
+            return entryTable
         }
     }
 
