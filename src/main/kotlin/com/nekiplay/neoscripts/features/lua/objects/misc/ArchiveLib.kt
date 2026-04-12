@@ -191,7 +191,7 @@ class ArchiveLib : LuaValue() {
                     archivePath.endsWith(".zip") -> {
                         ZipFile(archivePath).use { zip ->
                             zip.entries().asSequence().forEach { entry ->
-                                val entryTable = createEntryTable(entry.name, entry.size, entry.isDirectory)
+                                val entryTable = createEntryTable(entry.name, entry.size.toDouble(), entry.isDirectory)
                                 entriesTable.set(index, entryTable)
                                 index++
                             }
