@@ -11,6 +11,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
+import com.nekiplay.neoscripts.features.lua.objects.misc.ArchiveLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.CatboostLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.Creator
 import com.nekiplay.neoscripts.features.lua.objects.misc.DJLLuaTrainer
@@ -1224,6 +1225,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
             "encoding" -> {
                 EncodingLib()
+            }
+            "archive" -> {
+                ArchiveLib()
             }
             "creator" -> {
                 Creator()

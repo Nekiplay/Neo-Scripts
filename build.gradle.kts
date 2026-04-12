@@ -109,6 +109,10 @@ dependencies {
 
     include(implementation("ai.djl.pytorch:pytorch-engine:0.36.0")!!)
     include(implementation("ai.djl.pytorch:pytorch-native-cpu:2.7.1")!!)
+
+    // Apache Commons Compress for archive handling
+    val commonsCompressVersion = "1.27.1"
+    include(implementation("org.apache.commons:commons-compress:$commonsCompressVersion")!!)
 }
 
 tasks {
