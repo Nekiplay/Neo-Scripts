@@ -192,14 +192,14 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
                 val nativeImage = NativeImage.read(inputStream)
 
                 // Используем правильный конструктор NativeImageBackedTexture
-                val textureName = "hypixelcry:texture_${scriptCacheId}_${textureCounter.getAndIncrement()}"
+                val textureName = "neoscripts:texture_${scriptCacheId}_${textureCounter.getAndIncrement()}"
                 val texture = DynamicTexture(
                     Supplier { textureName },
                     nativeImage
                 )
 
                 // Создаем идентификатор
-                val identifier = Identifier.fromNamespaceAndPath("hypixelcry", "texture_${scriptCacheId}_${textureCounter.get()}")
+                val identifier = Identifier.fromNamespaceAndPath("neoscripts", "texture_${scriptCacheId}_${textureCounter.get()}")
                 mc.textureManager.register(identifier, texture)
 
                 // Сохраняем в кэш текущего скрипта

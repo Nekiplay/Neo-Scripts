@@ -25,7 +25,7 @@ fun LocalPlayer.getTab(): CurrentTabList {
     val tab = mc.gui.tabList ?: return CurrentTabList(Optional.empty(), Optional.empty(), listOf())
     val tabAccessor = tab as PlayerListHudAccessor
 
-    val entries = tabAccessor.collectPlayerEntries_hypixel_cry()
+    val entries = tabAccessor.collectPlayerEntries_neoscripts()
         .map {
             it.tabListDisplayName ?: run {
                 val team = it.team
@@ -34,8 +34,8 @@ fun LocalPlayer.getTab(): CurrentTabList {
             }
         }
     return CurrentTabList(
-        header = Optional.ofNullable(tabAccessor.header_hypixel_cry),
-        footer = Optional.ofNullable(tabAccessor.footer_hypixel_cry),
+        header = Optional.ofNullable(tabAccessor.header_neoscripts),
+        footer = Optional.ofNullable(tabAccessor.footer_neoscripts),
         body = entries,
     )
 }

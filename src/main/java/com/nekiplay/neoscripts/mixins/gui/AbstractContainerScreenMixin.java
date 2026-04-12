@@ -21,7 +21,7 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
     }
 
     @Inject(method = "slotClicked", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;handleInventoryMouseClick(IIILnet/minecraft/world/inventory/ClickType;Lnet/minecraft/world/entity/player/Player;)V"))
-    private void hypixelcry$onSlotClick(Slot slot, int slotId, int button, ClickType clickType, CallbackInfo ci) {
+    private void neoscripts$onSlotClick(Slot slot, int slotId, int button, ClickType clickType, CallbackInfo ci) {
         if (!Utils.isOnSkyblock()) return;
         if (slot == null) return;
         String title = getTitle().getString();

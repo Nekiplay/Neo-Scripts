@@ -248,7 +248,7 @@ public class Utils {
                 }
             }
         } catch (IndexOutOfBoundsException e) {
-            LOGGER.error("[HypixelCry] Failed to get location from sidebar", e);
+            LOGGER.error("[Neo Scripts] Failed to get location from sidebar", e);
         }
         return "Unknown";
     }
@@ -389,7 +389,7 @@ public class Utils {
                 bits = Integer.parseInt(bitsString.replaceAll("[^0-9.]", "").strip());
             }
         } catch (IndexOutOfBoundsException e) {
-            LOGGER.error("[Hypixel Cry] Failed to get bits from sidebar", e);
+            LOGGER.error("[Neo Scripts] Failed to get bits from sidebar", e);
         }
         return bits;
     }

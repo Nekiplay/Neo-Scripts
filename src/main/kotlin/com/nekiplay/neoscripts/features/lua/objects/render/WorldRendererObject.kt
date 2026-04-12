@@ -595,13 +595,13 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             FileInputStream(file).use { inputStream ->
                 val nativeImage = NativeImage.read(inputStream)
 
-                val textureName = "hypixelcry:texture_${scriptCacheId}_${TwoRenderObject.Companion.textureCounter.getAndIncrement()}"
+                val textureName = "neoscripts:texture_${scriptCacheId}_${TwoRenderObject.Companion.textureCounter.getAndIncrement()}"
                 val texture = DynamicTexture(
                     Supplier { textureName },
                     nativeImage
                 )
 
-                val identifier = Identifier.fromNamespaceAndPath("hypixelcry", "texture_${scriptCacheId}_${TwoRenderObject.Companion.textureCounter.get()}")
+                val identifier = Identifier.fromNamespaceAndPath("neoscripts", "texture_${scriptCacheId}_${TwoRenderObject.Companion.textureCounter.get()}")
                 mc.textureManager.register(identifier, texture)
 
                 scriptCache[path] = identifier

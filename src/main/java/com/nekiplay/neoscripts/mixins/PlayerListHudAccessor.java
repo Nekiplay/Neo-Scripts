@@ -14,16 +14,16 @@ import net.minecraft.network.chat.Component;
 @Mixin(PlayerTabOverlay.class)
 public interface PlayerListHudAccessor {
     @Accessor("PLAYER_COMPARATOR")
-    static Comparator<PlayerInfo> getEntryOrdering_hypixel_cry() {
+    static Comparator<PlayerInfo> getEntryOrdering_neoscripts() {
         throw new AssertionError();
     }
 
     @Invoker("getPlayerInfos")
-    List<PlayerInfo> collectPlayerEntries_hypixel_cry();
+    List<PlayerInfo> collectPlayerEntries_neoscripts();
 
     @Accessor("footer")
-    @Nullable Component getFooter_hypixel_cry();
+    @Nullable Component getFooter_neoscripts();
 
     @Accessor("header")
-    @Nullable Component getHeader_hypixel_cry();
+    @Nullable Component getHeader_neoscripts();
 }

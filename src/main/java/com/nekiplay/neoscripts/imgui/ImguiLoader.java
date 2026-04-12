@@ -20,7 +20,7 @@ public class ImguiLoader {
     /** Шрифт для ImGui — инициализируется при загрузке */
     private static ImFont font = null;
 
-    /** Путь к шрифту относительно resources/assets/hypixelcry/fonts/ */
+    /** Путь к шрифту относительно resources/assets/neoscripts/fonts/ */
     private static final String FONT_PATH = "neoscripts:fonts/jetbrainsmono-nerd.ttf";
     private static final float FONT_SIZE = 16.0f;
 

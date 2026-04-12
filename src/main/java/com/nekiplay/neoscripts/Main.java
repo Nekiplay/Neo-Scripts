@@ -23,7 +23,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 
 public class Main implements ClientModInitializer {
-    public static final String MOD_ID = "hypixelcry";
+    public static final String MOD_ID = "neoscripts";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     public static LuaManager LUA_MANAGER;
     public static final Path CONFIG_DIR = FabricLoader.getInstance().getConfigDir().resolve(MOD_ID);

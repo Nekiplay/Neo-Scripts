@@ -36,7 +36,7 @@ public class MessageScheduler extends Scheduler {
     private void sendMessage(String message, boolean hide) {
         Minecraft client = Minecraft.getInstance();
         if (client.player == null) {
-            Scheduler.LOGGER.error("[Hypixel Cry Message Scheduler] Tried to send a message while player is null: {}", message);
+            Scheduler.LOGGER.error("[Neo Scripts Message Scheduler] Tried to send a message while player is null: {}", message);
             return;
         }
         message = StringUtil.trimChatMessage(StringUtils.normalizeSpace(message.trim()));

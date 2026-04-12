@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class Attributes {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final Identifier ATTRIBUTES_FILE = Identifier.fromNamespaceAndPath("hypixelcry", "hunting/attributes.json");
+    private static final Identifier ATTRIBUTES_FILE = Identifier.fromNamespaceAndPath("neoscripts", "hunting/attributes.json");
     private static List<Attribute> attributes = List.of();
 
     @Init

@@ -40,7 +40,7 @@ import java.nio.file.Paths
 class DJLLuaTrainer : LuaValue() {
     private var currentDevice: Device = Device.cpu()
     init {
-        val djlDir = LuaManager.Companion.configDir.resolve("hypixelcry/djl_cache/").toString() + "/";
+        val djlDir = LuaManager.Companion.configDir.resolve("neoscripts/djl_cache/").toString() + "/";
         System.setProperty("DJL_CACHE_DIR", djlDir)
         System.setProperty("ENGINE_CACHE_DIR", djlDir)
         System.setProperty("DJL_OFFLINE", "true")

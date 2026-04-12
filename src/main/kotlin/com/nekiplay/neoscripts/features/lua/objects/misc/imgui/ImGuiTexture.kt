@@ -72,7 +72,7 @@ class ImGuiTexture(val texture: AtomicInteger) : LuaUserdata(AtomicInteger(0)) {
 
                 // Generate unique identifier
                 val textureName = "texture_${file.nameWithoutExtension}_${System.currentTimeMillis()}"
-                _identifier = Identifier.fromNamespaceAndPath("hypixelcry", textureName)
+                _identifier = Identifier.fromNamespaceAndPath("neoscripts", textureName)
                 val indf = _identifier
                 if (indf != null) {
                     // Create texture

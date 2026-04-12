@@ -127,7 +127,7 @@ tasks {
 
 loom {
     clientOnlyMinecraftJar()
-    accessWidenerPath.set(file("src/main/resources/hypixelcry.accesswidener"))
+    accessWidenerPath.set(file("src/main/resources/neoscripts.accesswidener"))
     mixin.useLegacyMixinAp.set(false)
 }
 
