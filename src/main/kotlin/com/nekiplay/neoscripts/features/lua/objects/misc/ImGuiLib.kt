@@ -140,6 +140,8 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
         dl.set("renderImage", RenderDLImageFunction())
         dl.set("renderImageQuad", RenderDLImageQuadFunction())
         dl.set("renderText", RenderDLTextFunction())
+        dl.set("renderFilledRect", RenderDLFilledRectFunction())
+        dl.set("renderRect", RenderDLRectFunction())
     }
 
     override fun get(key: LuaValue): LuaValue {
@@ -426,6 +428,40 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             val thickness = args.optdouble(9, 1.0).toFloat()
 
             queue.renderLine(x1, y1, x2, y2, red, green, blue, alpha, thickness)
+            return TRUE
+        }
+    }
+
+    private inner class RenderDLRectFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val x1 = args.optdouble(1, 0.0).toFloat()
+            val y1 = args.optdouble(2, 0.0).toFloat()
+            val x2 = args.optdouble(3, 0.0).toFloat()
+            val y2 = args.optdouble(4, 0.0).toFloat()
+            val red = args.optint(5, 255)
+            val green = args.optint(6, 255)
+            val blue = args.optint(7, 255)
+            val alpha = args.optint(8, 255)
+            val roudning = args.optdouble(9, 0.0).toFloat()
+
+            queue.renderRect(x1, y1, x2, y2, red, green, blue, alpha, roudning)
+            return TRUE
+        }
+    }
+
+    private inner class RenderDLFilledRectFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val x1 = args.optdouble(1, 0.0).toFloat()
+            val y1 = args.optdouble(2, 0.0).toFloat()
+            val x2 = args.optdouble(3, 0.0).toFloat()
+            val y2 = args.optdouble(4, 0.0).toFloat()
+            val red = args.optint(5, 255)
+            val green = args.optint(6, 255)
+            val blue = args.optint(7, 255)
+            val alpha = args.optint(8, 255)
+            val roudning = args.optdouble(9, 0.0).toFloat()
+
+            queue.renderFilledRect(x1, y1, x2, y2, red, green, blue, alpha, roudning)
             return TRUE
         }
     }

@@ -20,6 +20,16 @@ class ImDrawCommandQueue {
         ImGui.getBackgroundDrawList().addLine(x1, y1, x2, y2, color, thickness)
     }
 
+    fun renderFilledRect(x1: Float, y1: Float, x2: Float, y2: Float, red: Int, green: Int, blue: Int, alpha: Int, rounding: Float) {
+        val color = makeImGuiColor(red, green, blue, alpha)
+        ImGui.getBackgroundDrawList().addRectFilled(x1, y1, x2, y2, color, rounding)
+    }
+
+    fun renderRect(x1: Float, y1: Float, x2: Float, y2: Float, red: Int, green: Int, blue: Int, alpha: Int, rounding: Float) {
+        val color = makeImGuiColor(red, green, blue, alpha)
+        ImGui.getBackgroundDrawList().addRect(x1, y1, x2, y2, color, rounding)
+    }
+
     fun renderText(x: Float, y: Float, text: String, red: Int, green: Int, blue: Int, alpha: Int) {
         val color = makeImGuiColor(red, green, blue, alpha)
         // addText использует текущий шрифт из стека ImGui (pushFont)
