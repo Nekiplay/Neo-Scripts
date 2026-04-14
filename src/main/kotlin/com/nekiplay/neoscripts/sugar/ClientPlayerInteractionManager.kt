@@ -29,7 +29,7 @@ fun MultiPlayerGameMode.silentUse(useSlot: Int): Boolean {
 fun MultiPlayerGameMode.attackBlock(): Boolean {
     if (mc.hitResult == null) return false
 
-    if (mc.hitResult?.type == HitResult.Type.BLOCK && mc.screen == null) {
+    if (mc.hitResult?.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
         val blockHitResult = mc.hitResult as BlockHitResult
         val blockPos = blockHitResult.blockPos
         mc.level?.getBlockState(blockPos)?.isAir?.let {
@@ -46,7 +46,7 @@ fun MultiPlayerGameMode.attackEntity(): Boolean {
     val player = mc.player ?: return false
     if (mc.hitResult == null) return false
 
-    if (mc.hitResult!!.type == HitResult.Type.ENTITY && mc.screen == null) {
+    if (mc.hitResult!!.type == HitResult.Type.ENTITY && mc.screen == null && mc.player?.isBlocking == false) {
         this.attack(player, (mc.hitResult as EntityHitResult).entity)
         return true
     }
@@ -57,7 +57,7 @@ fun MultiPlayerGameMode.interactBlock(): Boolean {
     val player = mc.player ?: return false
     if (mc.hitResult == null) return false
 
-    if (mc.hitResult!!.type == HitResult.Type.BLOCK && mc.screen == null) {
+    if (mc.hitResult!!.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
         for (hand in InteractionHand.entries) {
             val actionResult2: InteractionResult? = this.useItemOn(player, hand, mc.hitResult as BlockHitResult)
             if (actionResult2 is InteractionResult.Success) {
