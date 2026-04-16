@@ -142,6 +142,7 @@ public class Rotations {
                 event.speed,
                 serverYaw
         );
+        return InteractionResult.PASS;
     }
 
     private static void onSendMovementPacketsPre(float v, float v1) {
