@@ -230,8 +230,10 @@ public class Rotations {
         }
 
         public void sendPacket() {
-            mc.getConnection().send(new ServerboundMovePlayerPacket.Rot((float) yaw, (float) pitch, mc.player.onGround(), mc.player.horizontalCollision));
-            runCallback();
+            if (Rotations.rotating) {
+                mc.getConnection().send(new ServerboundMovePlayerPacket.Rot((float) yaw, (float) pitch, mc.player.onGround(), mc.player.horizontalCollision));
+                runCallback();
+            }
         }
 
         public void runCallback() {
