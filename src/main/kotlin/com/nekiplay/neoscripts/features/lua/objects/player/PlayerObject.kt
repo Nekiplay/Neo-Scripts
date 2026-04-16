@@ -283,7 +283,7 @@ class PlayerObject : LuaValue() {
                     val length = arg2.length() // или lua_len(arg2)
                     for (i in 1..length) {
                         val blockName = arg2.get(i).optint(0)
-                        Main.LOGGER.info(blockName)
+                        Main.LOGGER.info(blockName.toString())
                         val state = Block.stateById(blockName)
                         if (state != null) {
                             targetBlocks.add(state.block)
