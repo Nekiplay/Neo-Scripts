@@ -14,6 +14,8 @@
     "WindowMixin",
     "entity.ClientPlayerEntityMixin",
     "entity.MixinEntity",
+    "entity.MixinLivingEntityRenderer",
+    "entity.MixinPlayer",
     "entity.PlayerEntityRendererMixin",
     "minecraft.ClientConnectionMixin",
     "minecraft.GamemodeAccessor",
