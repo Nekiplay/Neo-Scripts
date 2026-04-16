@@ -2,6 +2,7 @@ package com.nekiplay.neoscripts.utils;
 
 import com.nekiplay.neoscripts.annotations.Init;
 import com.nekiplay.neoscripts.events.SendMovementPacketsEvent;
+import com.nekiplay.neoscripts.events.player.PlayerVelocityStrafeEvent;
 import com.nekiplay.neoscripts.events.world.TickEvent;
 import com.nekiplay.neoscripts.utils.misc.Pool;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -10,6 +11,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 
@@ -131,6 +133,15 @@ public class Rotations {
         SendMovementPacketsEvent.POST.register(Rotations::onSendMovementPacketsPost);
         SendMovementPacketsEvent.PRE.register(Rotations::onSendMovementPacketsPre);
         ClientTickEvents.START_CLIENT_TICK.register(Rotations::onTick);
+        PlayerVelocityStrafeEvent.EVENT.register(Rotations::playerVelocity);
+    }
+
+    private static InteractionResult playerVelocity(PlayerVelocityStrafeEvent event) {
+        event.velocity = Entity.getInputVector(
+                event.movementInput,
+                event.speed,
+                serverYaw
+        )
     }
 
     private static void onSendMovementPacketsPre(float v, float v1) {

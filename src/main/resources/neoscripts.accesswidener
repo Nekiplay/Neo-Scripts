@@ -1,5 +1,6 @@
 accessWidener	v1	named
 
+accessible method net/minecraft/world/entity/Entity getInputVector (Lnet/minecraft/world/phys/Vec3;FF)Lnet/minecraft/world/phys/Vec3;
 accessible field net/minecraft/world/level/saveddata/maps/MapItemSavedData trackingPosition Z
 accessible field net/minecraft/world/level/saveddata/maps/MapItemSavedData unlimitedTracking Z
 accessible field net/minecraft/world/level/saveddata/maps/MapItemSavedData trackedDecorationCount I
