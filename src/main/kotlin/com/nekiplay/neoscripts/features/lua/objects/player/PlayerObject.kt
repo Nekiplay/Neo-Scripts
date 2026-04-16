@@ -1,5 +1,6 @@
 package com.nekiplay.neoscripts.features.lua.objects.player
 
+import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
@@ -282,6 +283,7 @@ class PlayerObject : LuaValue() {
                     val length = arg2.length() // или lua_len(arg2)
                     for (i in 1..length) {
                         val blockName = arg2.get(i).optint(0)
+                        Main.LOGGER.info(blockName)
                         val state = Block.stateById(blockName)
                         if (state != null) {
                             targetBlocks.add(state.block)
