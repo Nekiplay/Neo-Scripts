@@ -162,7 +162,7 @@ public class Rotations {
 
             i++;
         } else if (lastRotation != null) {
-            if (lastRotationTimer >= 0) {
+            if (lastRotationTimer >= 1) {
                 resetLastRotation();
                 rotating = false;
 
