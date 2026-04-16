@@ -14,6 +14,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -58,6 +59,20 @@ public abstract class ClientPlayerEntityMixin extends AbstractClientPlayer {
                     ((Player) camera).blockInteractionRange(),
                     ((Player) camera).entityInteractionRange()
             );
+        }
+        else {
+            return original;
+        }
+    }
+
+    @ModifyExpressionValue(method = "pick(Lnet/minecraft/world/entity/Entity;DDF)Lnet/minecraft/world/phys/HitResult;", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;getViewVector(F)Lnet/minecraft/world/phys/Vec3;"))
+    private static Vec3 hookRotationVector(Vec3 original, Entity camera, double blockInteractionRange, double entityInteractionRange, float tickDelta) {
+        if (camera != Minecraft.getInstance().player) {
+            return original;
+        }
+
+        if (Rotations.rotating) {
+            return Vec3.directionFromRotation(Rotations.serverYaw, Rotations.serverPitch);
         }
         else {
             return original;
