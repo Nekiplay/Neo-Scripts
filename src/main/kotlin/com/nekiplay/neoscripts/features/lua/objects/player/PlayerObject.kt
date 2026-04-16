@@ -278,18 +278,24 @@ class PlayerObject : LuaValue() {
             if (arg1?.isnumber() == true) {
                 val targetBlocks = mutableListOf<Block>()
                 if (arg2.istable()) {
-                    var i = 1
-                    while (true) {
+                    // Получаем длину таблицы
+                    val length = arg2.length() // или lua_len(arg2)
+                    for (i in 1..length) {
                         val blockName = arg2.get(i).optint(0)
                         val state = Block.stateById(blockName)
                         if (state != null) {
                             targetBlocks.add(state.block)
                         }
-                        i++
                     }
                 }
 
-                val hitResult = RaycastUtils.rayTrace(mc.cameraEntity, 4.5, Rotations.serverYaw, Rotations.serverPitch, targetBlocks)
+                val hitResult = RaycastUtils.rayTrace(
+                    mc.cameraEntity,
+                    4.5,
+                    Rotations.serverYaw,
+                    Rotations.serverPitch,
+                    targetBlocks
+                )
                 return if (hitResult != null) {
                     LuaRaycast(hitResult)
                 } else {

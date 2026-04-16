@@ -284,14 +284,13 @@ class WorldObject : LuaValue() {
                 val blocksTable = arg.get("blocks")
                 val targetBlocks = mutableListOf<Block>()
                 if (blocksTable.istable()) {
-                    var i = 1
-                    while (true) {
+                    val length = blocksTable.length() // или lua_len(arg2)
+                    for (i in 1..length) {
                         val blockName = blocksTable.get(i).optint(0)
                         val state = Block.stateById(blockName)
                         if (state != null) {
                             targetBlocks.add(state.block)
                         }
-                        i++
                     }
                 }
 
