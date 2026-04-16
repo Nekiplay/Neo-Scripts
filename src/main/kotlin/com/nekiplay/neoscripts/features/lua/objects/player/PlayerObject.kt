@@ -23,6 +23,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.components.toasts.SystemToast
 import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
+import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.HitResult
@@ -108,6 +109,7 @@ class PlayerObject : LuaValue() {
             "addToast" -> AddToastFunction()
 
             "raycast" -> RayCastFunction()
+            "raycastToBlocks" -> RayCastToBlocksFunction()
             else -> NIL
         } as LuaValue
     }
@@ -268,6 +270,35 @@ class PlayerObject : LuaValue() {
         }
     }
 
+    private inner class RayCastToBlocksFunction : TwoArgFunction() {
+        override fun call(
+            arg1: LuaValue?,
+            arg2: LuaValue
+        ): LuaValue? {
+            if (arg1?.isnumber() == true) {
+                val targetBlocks = mutableListOf<Block>()
+                if (arg2.istable()) {
+                    var i = 1
+                    while (true) {
+                        val blockName = arg2.get(i).optint(0)
+                        val state = Block.stateById(blockName)
+                        if (state != null) {
+                            targetBlocks.add(state.block)
+                        }
+                        i++
+                    }
+                }
+
+                val hitResult = RaycastUtils.rayTrace(mc.cameraEntity, 4.5, Rotations.serverYaw, Rotations.serverPitch, targetBlocks)
+                return if (hitResult != null) {
+                    LuaRaycast(hitResult)
+                } else {
+                    NIL
+                }
+            }
+            return NIL
+        }
+    }
 
     private inner class RayCastFunction : OneArgFunction() {
         override fun call(
