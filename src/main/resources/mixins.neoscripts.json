@@ -13,6 +13,7 @@
     "TailRenderMixin",
     "WindowMixin",
     "entity.ClientPlayerEntityMixin",
+    "entity.MixinEntity",
     "entity.PlayerEntityRendererMixin",
     "minecraft.ClientConnectionMixin",
     "minecraft.GamemodeAccessor",
