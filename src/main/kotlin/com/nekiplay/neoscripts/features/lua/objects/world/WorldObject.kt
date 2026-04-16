@@ -1,5 +1,6 @@
 package com.nekiplay.neoscripts.features.lua.objects.world
 
+import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.customArgs.FourArgFunction
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaBlockState
@@ -284,14 +285,21 @@ class WorldObject : LuaValue() {
                 val blocksTable = arg.get("blocks")
                 val targetBlocks = mutableListOf<Block>()
                 if (blocksTable.istable()) {
-                    val length = blocksTable.length() // или lua_len(arg2)
-                    for (i in 1..length) {
-                        val blockName = blocksTable.get(i).optint(0)
-                        val state = Block.stateById(blockName)
-                        if (state != null) {
-                            targetBlocks.add(state.block)
+                    val len = blocksTable.length() // или lua_len(arg2)
+                    for (i in 1..len) {
+                        val value = blocksTable.get(i)
+                        if (value.isint()) {
+                            val id = value.toint()
+                            val state = Block.stateById(id)
+
+                            if (state != null) {
+                                targetBlocks.add(state.block)
+                            } else {
+                                Main.LOGGER.warn("No block found for ID: $id")
+                            }
                         }
                     }
+                } else {
                 }
 
                 val hitResult = RaycastUtils.rayTraceToBlocks(startVec, endVec, targetBlocks)

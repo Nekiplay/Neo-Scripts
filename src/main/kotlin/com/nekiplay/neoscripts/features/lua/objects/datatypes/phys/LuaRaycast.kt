@@ -16,13 +16,16 @@ class LuaRaycast(val hitResult: HitResult): LuaUserdata(hitResult) {
         return when (key.tojstring()) {
             // --- Fields (Getters) ---
             "type" -> {
-                if (hitResult.type == HitResult.Type.ENTITY) {
-                    valueOf("entity")
-                }
-                else if (hitResult.type == HitResult.Type.BLOCK) {
-                    valueOf("block")
-                } else {
-                    valueOf("miss")
+                when (hitResult.type) {
+                    HitResult.Type.ENTITY -> {
+                        valueOf("entity")
+                    }
+                    HitResult.Type.BLOCK -> {
+                        valueOf("block")
+                    }
+                    else -> {
+                        valueOf("miss")
+                    }
                 }
             }
             "data", "entity" -> LuaEntity((hitResult as EntityHitResult).entity)
@@ -35,7 +38,7 @@ class LuaRaycast(val hitResult: HitResult): LuaUserdata(hitResult) {
                     NIL
                 }
             }
-            "blockpos" -> {
+            "blockpos", "blockPos" -> {
                 if (hitResult.type == HitResult.Type.BLOCK) {
                     val result = hitResult as BlockHitResult
                     LuaBlockPos(result.blockPos)

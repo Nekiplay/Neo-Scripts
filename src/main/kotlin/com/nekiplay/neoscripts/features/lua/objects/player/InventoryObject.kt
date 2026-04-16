@@ -270,7 +270,7 @@ class InventoryObject: LuaValue() {
                         val stack = screen.getSlot(arg.toint()).item
                         if (stack == null || stack.isEmpty) return NIL
 
-                        return LuaItemStack(stack)
+                        LuaItemStack(stack)
                     }
                     else {
                         NIL

@@ -151,12 +151,19 @@ public class Rotations {
             if (lastRotationTimer >= 1) {
                 resetLastRotation();
                 rotating = false;
+
+                serverYaw = mc.player.getYRot();
+                serverPitch = mc.player.getXRot();
             } else {
                 setupMovementPacketRotation(lastRotation);
                 sentLastRotation = true;
 
                 lastRotationTimer++;
             }
+        } else {
+            rotating = false;
+            serverYaw = mc.player.getYRot();
+            serverPitch = mc.player.getXRot();
         }
     }
 

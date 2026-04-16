@@ -279,16 +279,22 @@ class PlayerObject : LuaValue() {
             if (arg1?.isnumber() == true) {
                 val targetBlocks = mutableListOf<Block>()
                 if (arg2.istable()) {
-                    // Получаем длину таблицы
-                    val length = arg2.length() // или lua_len(arg2)
-                    for (i in 1..length) {
-                        val blockName = arg2.get(i).optint(0)
-                        Main.LOGGER.info(blockName.toString())
-                        val state = Block.stateById(blockName)
-                        if (state != null) {
-                            targetBlocks.add(state.block)
+                    val table = arg2.checktable()
+                    val len = table.length()
+
+                    for (i in 1..len) {
+                        val value = table.get(i)
+                        if (value.isint()) {
+                            val id = value.toint()
+                            val state = Block.stateById(id)
+
+                            if (state != null) {
+                                targetBlocks.add(state.block)
+                            }
                         }
                     }
+                } else {
+                    return NIL
                 }
 
                 val hitResult = RaycastUtils.rayTrace(
