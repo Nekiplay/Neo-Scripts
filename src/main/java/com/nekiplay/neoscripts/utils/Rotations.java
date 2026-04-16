@@ -137,11 +137,13 @@ public class Rotations {
     }
 
     private static InteractionResult playerVelocity(PlayerVelocityStrafeEvent event) {
-        event.velocity = Entity.getInputVector(
-                event.movementInput,
-                event.speed,
-                serverYaw
-        );
+        if (rotating) {
+            event.velocity = Entity.getInputVector(
+                    event.movementInput,
+                    event.speed,
+                    serverYaw
+            );
+        }
         return InteractionResult.PASS;
     }
 
