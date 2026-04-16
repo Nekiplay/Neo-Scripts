@@ -71,6 +71,8 @@ class PlayerObject : LuaValue() {
             "sendCommand" -> SendCommandFunction()
             "getPos", "getPosition" -> GetPlayerPosFunction()
             "getRotation" -> GetPlayerRotationFunction()
+            "getSilentRotation" -> GetPlayerSilentRotationFunction()
+            "isSilentRotationg" -> GetPlayerSilentIsRotationFunction()
             "setRotation" -> SetPlayerRotationFunction()
             "setSilentRotation" -> SetPlayerSilentRotationFunction()
             "getName" -> GetPlayerNameFunction()
@@ -436,6 +438,27 @@ class PlayerObject : LuaValue() {
             return NIL
         }
     }
+
+    private inner class GetPlayerSilentIsRotationFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return valueOf(Rotations.rotating)
+        }
+    }
+
+    private inner class GetPlayerSilentRotationFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val player = mc.player;
+            return if (player != null) {
+                val table = tableOf()
+                table.set("yaw", valueOf(Rotations.serverYaw.toDouble()))
+                table.set("pitch", valueOf(Rotations.serverPitch.toDouble()))
+                table
+            } else {
+                NIL
+            }
+        }
+    }
+
 
     private inner class GetPlayerRotationFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
