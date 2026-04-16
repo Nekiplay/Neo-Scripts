@@ -5,6 +5,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
+import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaRaycast
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.text.LuaComponent
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.text.LuaComponentBuilder
 import com.nekiplay.neoscripts.mixins.minecraft.GamemodeAccessor
@@ -69,6 +70,7 @@ class PlayerObject : LuaValue() {
             "getPos", "getPosition" -> GetPlayerPosFunction()
             "getRotation" -> GetPlayerRotationFunction()
             "setRotation" -> SetPlayerRotationFunction()
+            "setSilentRotation" -> SetPlayerSilentRotationFunction()
             "getName" -> GetPlayerNameFunction()
             "getArea" -> GetPlayerAreaFunction()
             "getRawLocation" -> GetPlayerRawLocationFunction()
@@ -266,47 +268,20 @@ class PlayerObject : LuaValue() {
         }
     }
 
+
     private inner class RayCastFunction : OneArgFunction() {
         override fun call(
             arg1: LuaValue?
         ): LuaValue? {
             if (arg1?.isnumber() == true) {
-                val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, arg1.todouble(), arg1.todouble(), 1f)
+                val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, mc.player?.eyePosition, Rotations.serverYaw, Rotations.serverPitch, arg1.todouble(), arg1.todouble())
                 return if (hitResult != null) {
-                    processHitResult(hitResult)
+                    LuaRaycast(hitResult)
                 } else {
                     NIL
                 }
             }
             return NIL
-        }
-    }
-
-    private fun processHitResult(hitResult: HitResult): LuaValue {
-        when (hitResult.type)
-        {
-            HitResult.Type.ENTITY -> {
-                val table = tableOf()
-                table.set("type", "entity")
-                table.set("data", LuaEntity((hitResult as EntityHitResult).entity))
-                return table
-            }
-            HitResult.Type.BLOCK -> {
-                val result = hitResult as BlockHitResult
-                val table = tableOf()
-                table.set("type", "block")
-                table.set("location", LuaVector3d(result.location))
-                table.set("side", LuaDirection(result.direction))
-
-                table.set("blockPos", LuaBlockPos(result.blockPos))
-
-                return table
-            }
-            else -> {
-                val table = tableOf()
-                table.set("type", "miss")
-                return table
-            }
         }
     }
 
@@ -365,6 +340,30 @@ class PlayerObject : LuaValue() {
                 return TRUE
             }
             return FALSE
+        }
+    }
+
+    private inner class SetPlayerSilentRotationFunction : TwoArgFunction() {
+        override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
+            if (arg1.isnumber() && arg2.isnumber()) {
+                val player = mc.player
+                if (player != null) {
+                    // Ограничиваем yaw в диапазоне -180° до 180°
+                    var yaw = arg1.todouble()
+                    yaw %= 360f
+                    if (yaw > 180f) yaw -= 360f
+                    if (yaw < -180f) yaw += 360f
+
+                    // Ограничиваем pitch в диапазоне -90° до 90° (стандартные ограничения Minecraft)
+                    var pitch = arg2.todouble()
+                    pitch = pitch.coerceIn(-90.0, 90.0)
+
+                    Rotations.rotate(yaw, pitch)
+                    return TRUE
+                }
+                return FALSE
+            }
+            return NIL
         }
     }
 

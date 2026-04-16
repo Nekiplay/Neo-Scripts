@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.*;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 import static com.nekiplay.neoscripts.Main.mc;
@@ -17,6 +18,145 @@ import static com.nekiplay.neoscripts.Main.mc;
 public class RaycastUtils {
     public static HitResult rayTraceToBlocks(Vec3 startVec, Vec3 endVec, List<Block> blocks) {
         return fastRayTrace(startVec, endVec, blocks);
+    }
+
+    public static HitResult rayTrace(Entity sourceEntity, double range, float yaw, float pitch, List<Block> blocks) {
+        Vec3 startVec = sourceEntity.getEyePosition(1.0F);
+        return fastRayTrace(sourceEntity, startVec, yaw, pitch, range, blocks);
+    }
+
+    public static HitResult fastRayTrace(Entity sourceEntity, Vec3 startVec, float yaw, float pitch, double range, List<Block> targetBlocks) {
+        // 1. ПРЕОБРАЗОВАНИЕ YAW/PITCH В ENDVEC
+        float f = pitch * ((float)Math.PI / 180F);
+        float f1 = -yaw * ((float)Math.PI / 180F);
+        float f2 = Mth.cos(f1);
+        float f3 = Mth.sin(f1);
+        float f4 = Mth.cos(f);
+        float f5 = Mth.sin(f);
+
+        // Вектор направления
+        Vec3 lookVec = new Vec3((double)(f3 * f4), (double)(-f5), (double)(f2 * f4));
+        // Конечная точка луча
+        Vec3 endVec = startVec.add(lookVec.x * range, lookVec.y * range, lookVec.z * range);
+
+        // --- ЭТАП 1: Трассировка блоков (DDA) ---
+
+        HitResult resultBlockHit = BlockHitResult.miss(
+                endVec,
+                Direction.getApproximateNearest(lookVec.x, lookVec.y, lookVec.z),
+                BlockPos.containing(endVec)
+        );
+
+        int startX = Mth.floor(startVec.x);
+        int startY = Mth.floor(startVec.y);
+        int startZ = Mth.floor(startVec.z);
+
+        int endX = Mth.floor(endVec.x);
+        int endY = Mth.floor(endVec.y);
+        int endZ = Mth.floor(endVec.z);
+
+        double currentX = startVec.x;
+        double currentY = startVec.y;
+        double currentZ = startVec.z;
+
+        BlockPos.MutableBlockPos currPos = new BlockPos.MutableBlockPos(startX, startY, startZ);
+        BlockState startState = sourceEntity.level().getBlockState(currPos);
+
+        // Проверка стартового блока
+        if ((targetBlocks.isEmpty() && startState.isRedstoneConductor(sourceEntity.level(), currPos))
+                || targetBlocks.contains(startState.getBlock())) {
+            BlockHitResult startHit = startState.getCollisionShape(sourceEntity.level(), currPos).clip(startVec, endVec, currPos);
+            if (startHit != null) {
+                resultBlockHit = startHit;
+            }
+        }
+
+        if (resultBlockHit.getType() == HitResult.Type.MISS) {
+            int maxSteps = 200;
+
+            int stepX = endX > startX ? 1 : -1;
+            int stepY = endY > startY ? 1 : -1;
+            int stepZ = endZ > startZ ? 1 : -1;
+
+            double dx = endVec.x - startVec.x;
+            double dy = endVec.y - startVec.y;
+            double dz = endVec.z - startVec.z;
+
+            int currBlockX = startX;
+            int currBlockY = startY;
+            int currBlockZ = startZ;
+
+            while (maxSteps-- >= 0) {
+                if (currBlockX == endX && currBlockY == endY && currBlockZ == endZ) break;
+
+                boolean xDiff = currBlockX != endX;
+                boolean yDiff = currBlockY != endY;
+                boolean zDiff = currBlockZ != endZ;
+
+                double xExit = xDiff ? (stepX > 0 ? currBlockX + 1.0 : currBlockX) : Double.MAX_VALUE;
+                double yExit = yDiff ? (stepY > 0 ? currBlockY + 1.0 : currBlockY) : Double.MAX_VALUE;
+                double zExit = zDiff ? (stepZ > 0 ? currBlockZ + 1.0 : currBlockZ) : Double.MAX_VALUE;
+
+                double xDist = xDiff ? (xExit - currentX) / dx : Double.MAX_VALUE;
+                double yDist = yDiff ? (yExit - currentY) / dy : Double.MAX_VALUE;
+                double zDist = zDiff ? (zExit - currentZ) / dz : Double.MAX_VALUE;
+
+                if (xDist < 0) xDist = Double.MAX_VALUE;
+                if (yDist < 0) yDist = Double.MAX_VALUE;
+                if (zDist < 0) zDist = Double.MAX_VALUE;
+
+                if (xDist < yDist && xDist < zDist) {
+                    currentX = xExit;
+                    currentY += dy * xDist;
+                    currentZ += dz * xDist;
+                    currBlockX += stepX;
+                } else if (yDist < zDist) {
+                    currentX += dx * yDist;
+                    currentY = yExit;
+                    currentZ += dz * yDist;
+                    currBlockY += stepY;
+                } else {
+                    currentX += dx * zDist;
+                    currentY += dy * zDist;
+                    currentZ = zExit;
+                    currBlockZ += stepZ;
+                }
+
+                currPos.set(currBlockX, currBlockY, currBlockZ);
+                BlockState newState = sourceEntity.level().getBlockState(currPos);
+
+                boolean shouldCheckBlock = targetBlocks.isEmpty()
+                        ? newState.isRedstoneConductor(sourceEntity.level(), currPos)
+                        : targetBlocks.contains(newState.getBlock());
+
+                if (shouldCheckBlock) {
+                    BlockHitResult hit = newState.getCollisionShape(sourceEntity.level(), currPos).clip(startVec, endVec, currPos);
+                    if (hit != null) {
+                        resultBlockHit = hit;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // --- ЭТАП 2: Raytrace Сущностей ---
+
+        Vec3 effectiveEndVec = resultBlockHit.getLocation();
+        double distToHitSqr = startVec.distanceToSqr(effectiveEndVec);
+
+        AABB area = new AABB(startVec, effectiveEndVec).inflate(1.0);
+
+        EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(
+                sourceEntity,
+                startVec,
+                effectiveEndVec,
+                area,
+                (e) -> !e.isSpectator() && e.isPickable(),
+                distToHitSqr
+        );
+
+        // --- ЭТАП 3: Выбор результата ---
+        return entityHit != null ? entityHit : resultBlockHit;
     }
 
     public static HitResult fastRayTrace(Entity sourceEntity, Vec3 startVec, Vec3 endVec, List<Block> targetBlocks) {
@@ -276,6 +416,61 @@ public class RaycastUtils {
         }
 
         return closestHit;
+    }
+
+    public static HitResult findCrosshairTarget(Entity sourceEntity, Vec3 startPos, float yaw, float pitch, double blockInteractionRange, double entityInteractionRange) {
+        // 1. Превращаем yaw и pitch в вектор направления (lookVec)
+        // В Minecraft:
+        // pitch: положительный - вниз, отрицательный - вверх
+        // yaw: 0 - юг, 90 - запад, 180 - север, 270 - восток
+        float f = pitch * ((float)Math.PI / 180F);
+        float f1 = -yaw * ((float)Math.PI / 180F);
+        float f2 = Mth.cos(f1);
+        float f3 = Mth.sin(f1);
+        float f4 = Mth.cos(f);
+        float f5 = Mth.sin(f);
+
+        // Вычисляем вектор взгляда
+        Vec3 lookVec = new Vec3((double)(f3 * f4), (double)(-f5), (double)(f2 * f4));
+
+        // 2. Вычисляем максимально возможную дистанцию
+        double maxRange = Math.max(blockInteractionRange, entityInteractionRange);
+        Vec3 endVec = startPos.add(lookVec.x * maxRange, lookVec.y * maxRange, lookVec.z * maxRange);
+
+        // 3. Трассировка блоков
+        HitResult blockHit = sourceEntity.level().clip(new net.minecraft.world.level.ClipContext(
+                startPos,
+                endVec,
+                net.minecraft.world.level.ClipContext.Block.OUTLINE,
+                net.minecraft.world.level.ClipContext.Fluid.NONE,
+                sourceEntity
+        ));
+
+        double distToBlockSqr = blockHit.getLocation().distanceToSqr(startPos);
+        double currentMaxDistSqr = (blockHit.getType() != HitResult.Type.MISS) ? distToBlockSqr : maxRange * maxRange;
+
+        // 4. Трассировка сущностей
+        AABB searchBox = new AABB(startPos, endVec).inflate(1.0D);
+
+        EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(
+                sourceEntity,
+                startPos,
+                endVec,
+                searchBox,
+                (e) -> !e.isSpectator() && e.isPickable(),
+                currentMaxDistSqr
+        );
+
+        // 5. Логика выбора результата
+        if (entityHit != null) {
+            double entityDistSqr = entityHit.getLocation().distanceToSqr(startPos);
+            if (entityDistSqr <= entityInteractionRange * entityInteractionRange) {
+                return entityHit;
+            }
+        }
+
+        // Проверка, входит ли блок в радиус (вспомогательный метод)
+        return ensureTargetInRange(blockHit, startPos, blockInteractionRange);
     }
 
     public static HitResult findCrosshairTarget(Entity sourceEntity, Vec3 startPos, Vec3 lookVec, double blockInteractionRange, double entityInteractionRange) {

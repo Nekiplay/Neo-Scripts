@@ -8,6 +8,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
+import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaRaycast
 import com.nekiplay.neoscripts.mixins.minecraft.LevelRendererAccessor
 import com.nekiplay.neoscripts.utils.RaycastUtils
 import com.nekiplay.neoscripts.utils.Rotations
@@ -248,11 +249,11 @@ class WorldObject : LuaValue() {
                     if (include_entity) {
                         val sub = endVec.subtract(startVec)
                         val distance = sub.x * sub.x * sub.y * sub.y * sub.z * sub.z
-                        return processHitResult(RaycastUtils.findCrosshairTarget(mc.player, startVec, endVec, distance, distance))
+                        return LuaRaycast(RaycastUtils.findCrosshairTarget(mc.player, startVec, endVec, distance, distance))
                     }
 
                     return if (hitResult != null) {
-                        processHitResult(hitResult)
+                        LuaRaycast(hitResult)
                     } else {
                         NIL
                     }
@@ -296,40 +297,12 @@ class WorldObject : LuaValue() {
 
                 val hitResult = RaycastUtils.rayTraceToBlocks(startVec, endVec, targetBlocks)
                 return if (hitResult != null) {
-                    processHitResult(hitResult)
+                    LuaRaycast(hitResult)
                 } else {
                     NIL
                 }
             } else {
                 NIL
-            }
-        }
-    }
-
-    private fun processHitResult(hitResult: HitResult): LuaValue {
-        when (hitResult.type)
-        {
-            HitResult.Type.ENTITY -> {
-                val table = tableOf()
-                table.set("type", "entity")
-                table.set("data", LuaEntity((hitResult as EntityHitResult).entity))
-                return table
-            }
-            HitResult.Type.BLOCK -> {
-                val result = hitResult as BlockHitResult
-                val table = tableOf()
-                table.set("type", "block")
-                table.set("location", LuaVector3d(result.location))
-                table.set("side", LuaDirection(result.direction))
-
-                table.set("blockPos", LuaBlockPos(result.blockPos))
-
-                return table
-            }
-            else -> {
-                val table = tableOf()
-                table.set("type", "miss")
-                return table
             }
         }
     }

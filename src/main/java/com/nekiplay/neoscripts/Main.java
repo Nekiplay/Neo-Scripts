@@ -6,6 +6,7 @@ import com.nekiplay.neoscripts.annotations.Init;
 import com.nekiplay.neoscripts.features.commands.impl.LuaCommand;
 import com.nekiplay.neoscripts.features.lua.LuaScript;
 import com.nekiplay.neoscripts.features.modules.ModuleManager;
+import com.nekiplay.neoscripts.utils.Rotations;
 import com.nekiplay.neoscripts.utils.Utils;
 import com.nekiplay.neoscripts.utils.scheduler.Scheduler;
 import com.nekiplay.neoscripts.features.lua.LuaManager;
@@ -82,6 +83,7 @@ public class Main implements ClientModInitializer {
 
         Scheduler.INSTANCE.scheduleCyclic(Utils::update, 20);
         loadStartupScripts(scriptsDir);
+        Rotations.init();
     }
 
 

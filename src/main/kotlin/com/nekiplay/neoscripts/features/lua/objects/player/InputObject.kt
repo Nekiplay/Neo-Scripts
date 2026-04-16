@@ -2,6 +2,7 @@ package com.nekiplay.neoscripts.features.lua.objects.player
 
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
+import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaRaycast
 import com.nekiplay.neoscripts.mixins.minecraft.GamemodeAccessor
 import com.nekiplay.neoscripts.sugar.attackBlock
 import com.nekiplay.neoscripts.sugar.attackEntity
@@ -14,8 +15,11 @@ import com.nekiplay.neoscripts.sugar.syncSelectedSlot
 import com.nekiplay.neoscripts.sugar.useItem
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
 import net.minecraft.client.KeyMapping
+import net.minecraft.core.BlockPos
 import org.luaj.vm2.LuaValue
+import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
+import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 
 
@@ -133,9 +137,28 @@ class InputObject: LuaValue() {
         }
     }
 
-    private inner class InteractBlockFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            return valueOf(mc.gameMode?.interactBlock() == true)
+    private inner class InteractBlockFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            return if (args.narg() == 0) {
+                valueOf(mc.gameMode?.interactBlock() == true)
+            }
+            else if (args.narg() == 1) {
+                val result = when {
+                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is LuaRaycast -> {
+                        (args.arg1().touserdata() as LuaRaycast).hitResult
+                    }
+                    else -> null
+                }
+                if (result != null) {
+                    valueOf(mc.gameMode?.interactBlock(result) == true)
+                }
+                else {
+                    FALSE
+                }
+            }
+            else {
+                FALSE
+            }
         }
     }
 

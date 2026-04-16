@@ -2,6 +2,8 @@ package com.nekiplay.neoscripts.sugar
 
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.mixins.ClientPlayerInteractionManagerAccessor
+import com.nekiplay.neoscripts.utils.RaycastUtils
+import com.nekiplay.neoscripts.utils.Rotations
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.MultiPlayerGameMode
 import net.minecraft.client.multiplayer.prediction.PredictiveAction
@@ -27,10 +29,10 @@ fun MultiPlayerGameMode.silentUse(useSlot: Int): Boolean {
 }
 
 fun MultiPlayerGameMode.attackBlock(): Boolean {
-    if (mc.hitResult == null) return false
+    val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, mc.player?.eyePosition, Rotations.serverYaw, Rotations.serverPitch, 4.5, 4.5)
 
-    if (mc.hitResult?.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
-        val blockHitResult = mc.hitResult as BlockHitResult
+    if (hitResult.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
+        val blockHitResult = hitResult as BlockHitResult
         val blockPos = blockHitResult.blockPos
         mc.level?.getBlockState(blockPos)?.isAir?.let {
             if (!it) {
@@ -44,10 +46,17 @@ fun MultiPlayerGameMode.attackBlock(): Boolean {
 
 fun MultiPlayerGameMode.attackEntity(): Boolean {
     val player = mc.player ?: return false
-    if (mc.hitResult == null) return false
+    val hitResult = RaycastUtils.findCrosshairTarget(
+        mc.cameraEntity,
+        mc.player?.eyePosition,
+        Rotations.serverYaw,
+        Rotations.serverPitch,
+        4.5,
+        4.5
+    ) ?: return false
 
-    if (mc.hitResult!!.type == HitResult.Type.ENTITY && mc.screen == null && mc.player?.isBlocking == false) {
-        this.attack(player, (mc.hitResult as EntityHitResult).entity)
+    if (hitResult.type == HitResult.Type.ENTITY && mc.screen == null && mc.player?.isBlocking == false) {
+        this.attack(player, (hitResult as EntityHitResult).entity)
         return true
     }
     return false
@@ -55,11 +64,29 @@ fun MultiPlayerGameMode.attackEntity(): Boolean {
 
 fun MultiPlayerGameMode.interactBlock(): Boolean {
     val player = mc.player ?: return false
-    if (mc.hitResult == null) return false
+    val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, mc.player?.eyePosition, Rotations.serverYaw, Rotations.serverPitch, 4.5, 4.5)
 
-    if (mc.hitResult!!.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
+    if (hitResult.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
         for (hand in InteractionHand.entries) {
-            val actionResult2: InteractionResult? = this.useItemOn(player, hand, mc.hitResult as BlockHitResult)
+            val actionResult2: InteractionResult? = this.useItemOn(player, hand, hitResult as BlockHitResult)
+            if (actionResult2 is InteractionResult.Success) {
+                if (actionResult2.swingSource() == InteractionResult.SwingSource.CLIENT) {
+                    player.swing(hand)
+                }
+                return true
+            }
+        }
+    }
+    return false
+}
+
+fun MultiPlayerGameMode.interactBlock(hitResult: HitResult?): Boolean {
+    val player = mc.player ?: return false
+    if (hitResult == null) return false
+
+    if (hitResult.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
+        for (hand in InteractionHand.entries) {
+            val actionResult2: InteractionResult? = this.useItemOn(player, hand, hitResult as BlockHitResult)
             if (actionResult2 is InteractionResult.Success) {
                 if (actionResult2.swingSource() == InteractionResult.SwingSource.CLIENT) {
                     player.swing(hand)
@@ -73,12 +100,19 @@ fun MultiPlayerGameMode.interactBlock(): Boolean {
 
 fun MultiPlayerGameMode.interactEntity(): Boolean {
     val player = mc.player ?: return false
-    if (mc.hitResult == null) return false
+    val hitResult = RaycastUtils.findCrosshairTarget(
+        mc.cameraEntity,
+        mc.player?.eyePosition,
+        Rotations.serverYaw,
+        Rotations.serverPitch,
+        4.5,
+        4.5
+    ) ?: return false
 
-    if (mc.hitResult!!.type == HitResult.Type.ENTITY && mc.screen == null) {
+    if (hitResult.type == HitResult.Type.ENTITY && mc.screen == null) {
         for (hand in InteractionHand.entries) {
             val actionResult2: InteractionResult =
-                this.interact(player, (mc.hitResult as EntityHitResult).entity, hand)
+                this.interact(player, (hitResult as EntityHitResult).entity, hand)
             if (actionResult2 is InteractionResult.Success) {
                 if (actionResult2.swingSource() == InteractionResult.SwingSource.CLIENT) {
                     player.swing(hand)
