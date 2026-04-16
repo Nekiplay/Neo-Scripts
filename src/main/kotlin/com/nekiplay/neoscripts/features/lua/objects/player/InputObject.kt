@@ -16,6 +16,7 @@ import com.nekiplay.neoscripts.sugar.useItem
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
 import net.minecraft.client.KeyMapping
 import net.minecraft.core.BlockPos
+import net.minecraft.world.phys.HitResult
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
@@ -146,6 +147,9 @@ class InputObject: LuaValue() {
                 val result = when {
                     args.arg1()?.isuserdata() == true && args.arg1().touserdata() is LuaRaycast -> {
                         (args.arg1().touserdata() as LuaRaycast).hitResult
+                    }
+                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is HitResult -> {
+                        (args.arg1().touserdata() as HitResult)
                     }
                     else -> null
                 }

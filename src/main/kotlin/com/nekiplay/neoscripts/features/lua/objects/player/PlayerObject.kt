@@ -282,18 +282,25 @@ class PlayerObject : LuaValue() {
                     val table = arg2.checktable()
                     val len = table.length()
 
+                    Main.LOGGER.info("Table length: $len")
+
                     for (i in 1..len) {
                         val value = table.get(i)
                         if (value.isint()) {
                             val id = value.toint()
+                            // 3. Получаем State по ID
                             val state = Block.stateById(id)
 
                             if (state != null) {
                                 targetBlocks.add(state.block)
+                                // Main.LOGGER.info("Added block: ${state.block.translationKey} from ID: $id")
+                            } else {
+                                Main.LOGGER.warn("No block found for ID: $id")
                             }
                         }
                     }
                 } else {
+                    Main.LOGGER.error("Argument 2 must be a table of IDs")
                     return NIL
                 }
 
