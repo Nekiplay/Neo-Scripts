@@ -141,7 +141,7 @@ public class Rotations {
                 event.movementInput,
                 event.speed,
                 serverYaw
-        )
+        );
     }
 
     private static void onSendMovementPacketsPre(float v, float v1) {
