@@ -13,6 +13,7 @@ import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.HitResult
 
+
 fun MultiPlayerGameMode.getRotationRaycast(): HitResult {
     var yaw: Float = mc.player?.yRot ?: Rotations.serverYaw
     var pitch: Float = mc.player?.xRot ?: Rotations.serverPitch
@@ -87,13 +88,17 @@ fun MultiPlayerGameMode.interactBlock(): Boolean {
     val hitResult = getRotationRaycast()
     if (hitResult.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
         for (hand in InteractionHand.entries) {
+            val wasSneaking: Boolean = mc.player?.isShiftKeyDown ?: false
+            mc.player?.isShiftKeyDown = false
+
             val actionResult2: InteractionResult? = this.useItemOn(player, hand, hitResult as BlockHitResult)
             if (actionResult2 is InteractionResult.Success) {
                 if (actionResult2.swingSource() == InteractionResult.SwingSource.CLIENT) {
                     player.swing(hand)
                 }
-                return true
             }
+            mc.player?.isShiftKeyDown = wasSneaking
+            return true
         }
     }
     return false
@@ -105,13 +110,16 @@ fun MultiPlayerGameMode.interactBlock(hitResult: HitResult?): Boolean {
 
     if (hitResult.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
         for (hand in InteractionHand.entries) {
+            val wasSneaking: Boolean = mc.player?.isShiftKeyDown ?: false
+            mc.player?.isShiftKeyDown = false
             val actionResult2: InteractionResult? = this.useItemOn(player, hand, hitResult as BlockHitResult)
             if (actionResult2 is InteractionResult.Success) {
                 if (actionResult2.swingSource() == InteractionResult.SwingSource.CLIENT) {
                     player.swing(hand)
                 }
-                return true
             }
+            mc.player?.isShiftKeyDown = wasSneaking
+            return true
         }
     }
     return false

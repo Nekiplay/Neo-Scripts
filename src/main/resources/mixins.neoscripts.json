@@ -14,11 +14,13 @@
     "WindowMixin",
     "entity.ClientPlayerEntityMixin",
     "entity.MixinEntity",
+    "entity.MixinFireworkRocketEntity",
     "entity.MixinLivingEntityRenderer",
     "entity.MixinPlayer",
     "entity.PlayerEntityRendererMixin",
     "minecraft.ClientConnectionMixin",
     "minecraft.GamemodeAccessor",
+    "minecraft.item.MixinItem",
     "renderer.GameRendererAccessor"
   ],
   "client": [
