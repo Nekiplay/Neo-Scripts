@@ -77,4 +77,24 @@ public abstract class MixinLocalPlayer extends AbstractClientPlayer {
             return original;
         }
     }
+
+    @ModifyExpressionValue(method = {"sendPosition",
+            "tick"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getYRot()F"))
+    private float hookSilentRotationYaw(float original) {
+        if (!Rotations.rotating) {
+            return original;
+        }
+
+        return Rotations.serverYaw;
+    }
+
+    @ModifyExpressionValue(method = {"sendPosition",
+            "tick"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getXRot()F"))
+    private float hookSilentRotationPitch(float original) {
+        if (!Rotations.rotating) {
+            return original;
+        }
+
+        return Rotations.serverPitch;
+    }
 }
