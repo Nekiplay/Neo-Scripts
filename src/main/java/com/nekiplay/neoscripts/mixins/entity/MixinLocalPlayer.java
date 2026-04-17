@@ -12,7 +12,6 @@ import net.minecraft.client.player.ClientInput;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
@@ -22,13 +21,13 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(LocalPlayer.class)
-public abstract class ClientPlayerEntityMixin extends AbstractClientPlayer {
+public abstract class MixinLocalPlayer extends AbstractClientPlayer {
 
 
     @Shadow
     public ClientInput input;
 
-    public ClientPlayerEntityMixin(ClientLevel world, GameProfile profile) {
+    public MixinLocalPlayer(ClientLevel world, GameProfile profile) {
         super(world, profile);
     }
 
