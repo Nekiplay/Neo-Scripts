@@ -9,6 +9,7 @@ import com.nekiplay.neoscripts.sugar.attackEntity
 import com.nekiplay.neoscripts.sugar.interactBlock
 import com.nekiplay.neoscripts.sugar.interactEntity
 import com.nekiplay.neoscripts.sugar.leftClick
+import com.nekiplay.neoscripts.sugar.mineBlock
 import com.nekiplay.neoscripts.sugar.rightClick
 import com.nekiplay.neoscripts.sugar.silentUse
 import com.nekiplay.neoscripts.sugar.syncSelectedSlot
@@ -36,6 +37,7 @@ class InputObject: LuaValue() {
             "syncSelectedSlot" -> SyncSelectedSlotFunction()
 
             "attackBlock" -> AttackBlockFunction()
+            "mineBlock" -> MineBlockFunction()
             "attackEntity" -> AttackEntityFunction()
 
             "interactBlock" -> InteractBlockFunction()
@@ -117,6 +119,12 @@ class InputObject: LuaValue() {
         override fun call(): LuaValue {
             mc.rightClick()
             return TRUE
+        }
+    }
+
+    private inner class MineBlockFunction : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            return valueOf(mc.gameMode?.mineBlock() == true)
         }
     }
 

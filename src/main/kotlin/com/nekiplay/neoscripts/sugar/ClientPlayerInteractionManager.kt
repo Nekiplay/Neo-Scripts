@@ -13,6 +13,17 @@ import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.HitResult
 
+fun MultiPlayerGameMode.getRotationRaycast(): HitResult {
+    var yaw: Float = mc.player?.yRot ?: Rotations.serverYaw
+    var pitch: Float = mc.player?.xRot ?: Rotations.serverPitch
+    if (Rotations.rotating) {
+        yaw = Rotations.serverYaw
+        pitch = Rotations.serverPitch
+    }
+    val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, mc.player?.eyePosition, yaw, pitch, mc.player?.blockInteractionRange() ?: 4.5, mc.player?.entityInteractionRange() ?: 3.0)
+    return hitResult
+}
+
 fun MultiPlayerGameMode.silentUse(useSlot: Int): Boolean {
     val player = mc.player ?: return false
     val inventory = player.inventory
@@ -29,13 +40,7 @@ fun MultiPlayerGameMode.silentUse(useSlot: Int): Boolean {
 }
 
 fun MultiPlayerGameMode.attackBlock(): Boolean {
-    var yaw: Float = mc.player?.yRot ?: Rotations.serverYaw
-    var pitch: Float = mc.player?.xRot ?: Rotations.serverPitch
-    if (Rotations.rotating) {
-        yaw = Rotations.serverYaw
-        pitch = Rotations.serverPitch
-    }
-    val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, mc.player?.eyePosition, yaw, pitch, mc.player?.blockInteractionRange() ?: 4.5, mc.player?.entityInteractionRange() ?: 3.0)
+    val hitResult = getRotationRaycast()
 
     if (hitResult.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
         val blockHitResult = hitResult as BlockHitResult
@@ -50,16 +55,26 @@ fun MultiPlayerGameMode.attackBlock(): Boolean {
     return false
 }
 
+fun MultiPlayerGameMode.mineBlock(): Boolean {
+    val hitResult = getRotationRaycast()
+
+    if (hitResult.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
+        val blockHitResult = hitResult as BlockHitResult
+        val blockPos = blockHitResult.blockPos
+        mc.level?.getBlockState(blockPos)?.isAir?.let {
+            if (!it) {
+                if (this.isDestroying) { this.continueDestroyBlock(blockPos, blockHitResult.direction) }
+                else { this.startDestroyBlock(blockPos, blockHitResult.direction) }
+                return true
+            }
+        }
+    }
+    return false
+}
+
 fun MultiPlayerGameMode.attackEntity(): Boolean {
     val player = mc.player ?: return false
-    var yaw: Float = mc.player?.yRot ?: Rotations.serverYaw
-    var pitch: Float = mc.player?.xRot ?: Rotations.serverPitch
-    if (Rotations.rotating) {
-        yaw = Rotations.serverYaw
-        pitch = Rotations.serverPitch
-    }
-    val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, mc.player?.eyePosition, yaw, pitch, mc.player?.blockInteractionRange() ?: 4.5, mc.player?.entityInteractionRange() ?: 3.0)
-
+    val hitResult = getRotationRaycast()
     if (hitResult.type == HitResult.Type.ENTITY && mc.screen == null && mc.player?.isBlocking == false) {
         this.attack(player, (hitResult as EntityHitResult).entity)
         return true
@@ -69,14 +84,7 @@ fun MultiPlayerGameMode.attackEntity(): Boolean {
 
 fun MultiPlayerGameMode.interactBlock(): Boolean {
     val player = mc.player ?: return false
-    var yaw: Float = mc.player?.yRot ?: Rotations.serverYaw
-    var pitch: Float = mc.player?.xRot ?: Rotations.serverPitch
-    if (Rotations.rotating) {
-        yaw = Rotations.serverYaw
-        pitch = Rotations.serverPitch
-    }
-    val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, mc.player?.eyePosition, yaw, pitch, mc.player?.blockInteractionRange() ?: 4.5, mc.player?.entityInteractionRange() ?: 3.0)
-
+    val hitResult = getRotationRaycast()
     if (hitResult.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
         for (hand in InteractionHand.entries) {
             val actionResult2: InteractionResult? = this.useItemOn(player, hand, hitResult as BlockHitResult)
@@ -111,14 +119,7 @@ fun MultiPlayerGameMode.interactBlock(hitResult: HitResult?): Boolean {
 
 fun MultiPlayerGameMode.interactEntity(): Boolean {
     val player = mc.player ?: return false
-    var yaw: Float = mc.player?.yRot ?: Rotations.serverYaw
-    var pitch: Float = mc.player?.xRot ?: Rotations.serverPitch
-    if (Rotations.rotating) {
-        yaw = Rotations.serverYaw
-        pitch = Rotations.serverPitch
-    }
-    val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, mc.player?.eyePosition, yaw, pitch, mc.player?.blockInteractionRange() ?: 4.5, mc.player?.entityInteractionRange() ?: 3.0)
-
+    val hitResult = getRotationRaycast()
     if (hitResult.type == HitResult.Type.ENTITY && mc.screen == null) {
         for (hand in InteractionHand.entries) {
             val actionResult2: InteractionResult =
