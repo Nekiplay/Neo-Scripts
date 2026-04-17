@@ -114,9 +114,12 @@ class JsonLib : LuaValue() {
         private fun convertToJava(luaValue: LuaValue): Any? {
             return when {
                 luaValue.isnil() -> null
-                luaValue.isstring() -> luaValue.tojstring()
-                luaValue.isnumber() -> luaValue.todouble()
+                luaValue.isnumber() -> {
+                    val d = luaValue.todouble()
+                    if (d == d.toLong().toDouble()) d.toLong() else d
+                }
                 luaValue.isboolean() -> luaValue.toboolean()
+                luaValue.isstring() -> luaValue.tojstring()
                 luaValue.istable() -> convertTable(luaValue)
                 else -> luaValue.tojstring()
             }

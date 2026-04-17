@@ -1,15 +1,11 @@
 package com.nekiplay.neoscripts.features.lua.objects.player
 
-import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaEntity
-import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
-import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaRaycast
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.text.LuaComponent
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.text.LuaComponentBuilder
-import com.nekiplay.neoscripts.mixins.minecraft.GamemodeAccessor
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.sugar.getScorebordLines
 import com.nekiplay.neoscripts.sugar.getTab
@@ -25,9 +21,6 @@ import net.minecraft.client.gui.components.toasts.SystemToast
 import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.level.block.Block
-import net.minecraft.world.phys.BlockHitResult
-import net.minecraft.world.phys.EntityHitResult
-import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
