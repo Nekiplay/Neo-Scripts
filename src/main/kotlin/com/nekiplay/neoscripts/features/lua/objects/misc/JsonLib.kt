@@ -114,7 +114,14 @@ class JsonLib : LuaValue() {
         private fun convertToJava(luaValue: LuaValue): Any? {
             return when {
                 luaValue.isnil() -> null
-                luaValue.isnumber() -> {
+                luaValue is LuaDouble -> {
+                    val d = luaValue.todouble()
+                    if (d == d.toLong().toDouble()) d.toLong() else d
+                }
+                luaValue is LuaLong -> {
+                    luaValue.tolong()
+                }
+                luaValue is LuaNumber -> {
                     val d = luaValue.todouble()
                     if (d == d.toLong().toDouble()) d.toLong() else d
                 }
