@@ -446,8 +446,14 @@ class PlayerObject : LuaValue() {
             val player = mc.player;
             return if (player != null) {
                 val table = tableOf()
-                table.set("yaw", valueOf(Rotations.serverYaw.toDouble()))
-                table.set("pitch", valueOf(Rotations.serverPitch.toDouble()))
+                if (Rotations.rotating) {
+                    table.set("yaw", valueOf(Rotations.serverYaw.toDouble()))
+                    table.set("pitch", valueOf(Rotations.serverPitch.toDouble()))
+                }
+                else {
+                    table.set("yaw", valueOf(player.yRot.toDouble()))
+                    table.set("pitch", valueOf(player.xRot.toDouble()))
+                }
                 table
             } else {
                 NIL
