@@ -23,6 +23,9 @@ import com.nekiplay.neoscripts.features.lua.objects.misc.TCPLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.ThreadLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.http.HttpClientLib
 import com.nekiplay.neoscripts.features.lua.objects.modules.ModulesObject
+import com.nekiplay.neoscripts.features.lua.objects.player.InputObject
+import com.nekiplay.neoscripts.features.lua.objects.player.InventoryObject
+import com.nekiplay.neoscripts.features.lua.objects.player.NetworkObject
 import com.nekiplay.neoscripts.features.lua.objects.player.PlayerObject
 import com.nekiplay.neoscripts.features.lua.objects.player.WindowObject
 import com.nekiplay.neoscripts.features.lua.objects.render.TwoRenderObject
@@ -1237,6 +1240,15 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
             "window" -> {
                 WindowObject()
+            }
+            "input" -> {
+                InputObject()
+            }
+            "inventory" -> {
+                InventoryObject()
+            }
+            "network" -> {
+                NetworkObject()
             }
             "block_iterator", "blockiterator" -> {
                 BlockScannerObject()
