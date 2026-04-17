@@ -175,10 +175,6 @@ public class Rotations {
 
                 lastRotationTimer++;
             }
-        } else {
-            rotating = false;
-            serverYaw = mc.player.getYRot();
-            serverPitch = mc.player.getXRot();
         }
     }
 
