@@ -52,10 +52,10 @@ public class Rotations {
         return new Vec3(x, y, z).normalize();
     }
 
-    public static void rotate(double yaw, double pitch, int priority, boolean clientSide, Runnable callback) {
+    public static void rotate(double yaw, double pitch, int priority, boolean clientSide, boolean movementCorrection, Runnable callback) {
         Rotation rotation = rotationPool.get();
         rotation.set(yaw, pitch, priority, clientSide, callback);
-
+        Rotations.movementCorrection = movementCorrection;
         int i = 0;
         for (; i < rotations.size(); i++) {
             if (priority > rotations.get(i).priority) break;
@@ -64,22 +64,23 @@ public class Rotations {
         rotations.add(i, rotation);
     }
 
-    public static void rotate(double yaw, double pitch, int priority, Runnable callback) {
-        rotate(yaw, pitch, priority, false, callback);
+    public static void rotate(double yaw, double pitch, int priority, boolean movementCorrection, Runnable callback) {
+        rotate(yaw, pitch, priority, false, movementCorrection, callback);
     }
 
-    public static void rotate(double yaw, double pitch, Runnable callback) {
-        rotate(yaw, pitch, 0, callback);
+    public static void rotate(double yaw, double pitch, boolean movementCorrection, Runnable callback) {
+        rotate(yaw, pitch, 0, movementCorrection, callback);
     }
 
-    public static void rotate(double yaw, double pitch, int priority) {
-        rotate(yaw, pitch, priority, null);
+    public static void rotate(double yaw, double pitch, int priority, boolean movementCorrection) {
+        rotate(yaw, pitch, priority, movementCorrection, null);
     }
 
-    public static void rotate(double yaw, double pitch) {
-        rotate(yaw, pitch, 0, null);
+    public static void rotate(double yaw, double pitch, boolean movementCorrection) {
+        rotate(yaw, pitch, 0, movementCorrection, null);
     }
 
+    public static boolean movementCorrection = true;
     // From Meteor Client
     private static final Pool<Rotation> rotationPool = new Pool<>(Rotation::new);
     private static final List<Rotation> rotations = new ArrayList<>();
@@ -137,7 +138,7 @@ public class Rotations {
     }
 
     private static InteractionResult playerVelocity(PlayerVelocityStrafeEvent event) {
-        if (rotating) {
+        if (rotating && movementCorrection) {
             event.velocity = Entity.getInputVector(
                     event.movementInput,
                     event.speed,

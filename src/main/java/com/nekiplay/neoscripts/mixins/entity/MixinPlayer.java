@@ -16,7 +16,7 @@ public abstract class MixinPlayer  {
             return original;
         }
 
-        if (!Rotations.rotating) {
+        if (!Rotations.rotating || !Rotations.movementCorrection) {
             return original;
         }
 

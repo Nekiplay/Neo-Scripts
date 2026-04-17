@@ -64,10 +64,10 @@ class PlayerObject : LuaValue() {
             "sendCommand" -> SendCommandFunction()
             "getPos", "getPosition" -> GetPlayerPosFunction()
             "getRotation" -> GetPlayerRotationFunction()
-            "getSilentRotation" -> GetPlayerSilentRotationFunction()
+            "getSilentRotation", "getServerRotation" -> GetPlayerSilentRotationFunction()
             "isSilentRotationg" -> GetPlayerSilentIsRotationFunction()
             "setRotation" -> SetPlayerRotationFunction()
-            "setSilentRotation" -> SetPlayerSilentRotationFunction()
+            "setSilentRotation", "setServerRotation" -> SetPlayerSilentRotationFunction()
             "getName" -> GetPlayerNameFunction()
             "getArea" -> GetPlayerAreaFunction()
             "getRawLocation" -> GetPlayerRawLocationFunction()
@@ -383,8 +383,8 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class SetPlayerSilentRotationFunction : TwoArgFunction() {
-        override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
+    private inner class SetPlayerSilentRotationFunction : ThreeArgFunction() {
+        override fun call(arg1: LuaValue, arg2: LuaValue, arg3: LuaValue?): LuaValue {
             if (arg1.isnumber() && arg2.isnumber()) {
                 val player = mc.player
                 if (player != null) {
@@ -398,7 +398,10 @@ class PlayerObject : LuaValue() {
                     var pitch = arg2.todouble()
                     pitch = pitch.coerceIn(-90.0, 90.0)
 
-                    Rotations.rotate(yaw, pitch)
+
+                    val movementCorrection = arg3?.optboolean(true) ?: true
+
+                    Rotations.rotate(yaw, pitch, movementCorrection)
                     return TRUE
                 }
                 return FALSE
