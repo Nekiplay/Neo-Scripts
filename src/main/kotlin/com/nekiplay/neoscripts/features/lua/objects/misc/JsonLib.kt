@@ -121,6 +121,9 @@ class JsonLib : LuaValue() {
                 luaValue is LuaLong -> {
                     luaValue.tolong()
                 }
+                luaValue is LuaInteger -> {
+                    luaValue.toint()
+                }
                 luaValue is LuaNumber -> {
                     val d = luaValue.todouble()
                     if (d == d.toLong().toDouble()) d.toLong() else d
