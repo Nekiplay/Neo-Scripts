@@ -9,6 +9,7 @@ import imgui.ImFontConfig
 import imgui.ImFontGlyphRangesBuilder
 import imgui.ImGui
 import imgui.flag.*
+import imgui.flag.ImDrawFlags
 import imgui.gl3.ImGuiImplGl3
 import imgui.glfw.ImGuiImplGlfw
 import imgui.type.*
@@ -134,6 +135,151 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
         constants.set("TableFlags_BordersInnerH", ImGuiTableFlags.BordersInnerH.toInt())
         constants.set("TableFlags_BordersInnerV", ImGuiTableFlags.BordersInnerV.toInt())
         constants.set("TableFlags_Resizable", ImGuiTableFlags.Resizable.toInt())
+        constants.set("TableFlags_BordersOuter", ImGuiTableFlags.BordersOuter.toInt())
+        constants.set("TableFlags_BordersOuterH", ImGuiTableFlags.BordersOuterH.toInt())
+        constants.set("TableFlags_BordersOuterV", ImGuiTableFlags.BordersOuterV.toInt())
+        constants.set("TableFlags_Borders", ImGuiTableFlags.Borders.toInt())
+        constants.set("TableFlags_RowBg", ImGuiTableFlags.RowBg.toInt())
+        constants.set("TableFlags_ScrollX", ImGuiTableFlags.ScrollX.toInt())
+        constants.set("TableFlags_ScrollY", ImGuiTableFlags.ScrollY.toInt())
+        constants.set("TableFlags_SizingFixedFit", ImGuiTableFlags.SizingFixedFit.toInt())
+        constants.set("TableFlags_SizingStretchSame", ImGuiTableFlags.SizingStretchSame.toInt())
+        constants.set("TableFlags_NoHostExtendX", ImGuiTableFlags.NoHostExtendX.toInt())
+
+        // Флаги InputText
+        constants.set("InputTextFlags_None", ImGuiInputTextFlags.None.toInt())
+        constants.set("InputTextFlags_CharsDecimal", ImGuiInputTextFlags.CharsDecimal.toInt())
+        constants.set("InputTextFlags_CharsHexadecimal", ImGuiInputTextFlags.CharsHexadecimal.toInt())
+        constants.set("InputTextFlags_CharsUppercase", ImGuiInputTextFlags.CharsUppercase.toInt())
+        constants.set("InputTextFlags_CharsNoBlank", ImGuiInputTextFlags.CharsNoBlank.toInt())
+        constants.set("InputTextFlags_AutoSelectAll", ImGuiInputTextFlags.AutoSelectAll.toInt())
+        constants.set("InputTextFlags_EnterReturnsTrue", ImGuiInputTextFlags.EnterReturnsTrue.toInt())
+        constants.set("InputTextFlags_Password", ImGuiInputTextFlags.Password.toInt())
+        constants.set("InputTextFlags_ReadOnly", ImGuiInputTextFlags.ReadOnly.toInt())
+        constants.set("InputTextFlags_NoHorizontalScroll", ImGuiInputTextFlags.NoHorizontalScroll.toInt())
+
+        // Флаги TreeNode
+        constants.set("TreeNodeFlags_None", ImGuiTreeNodeFlags.None.toInt())
+        constants.set("TreeNodeFlags_Selected", ImGuiTreeNodeFlags.Selected.toInt())
+        constants.set("TreeNodeFlags_Framed", ImGuiTreeNodeFlags.Framed.toInt())
+        constants.set("TreeNodeFlags_AllowItemOverlap", ImGuiTreeNodeFlags.AllowItemOverlap.toInt())
+        constants.set("TreeNodeFlags_NoTreePushOnOpen", ImGuiTreeNodeFlags.NoTreePushOnOpen.toInt())
+        constants.set("TreeNodeFlags_NoAutoOpenOnLog", ImGuiTreeNodeFlags.NoAutoOpenOnLog.toInt())
+        constants.set("TreeNodeFlags_DefaultOpen", ImGuiTreeNodeFlags.DefaultOpen.toInt())
+        constants.set("TreeNodeFlags_OpenOnDoubleClick", ImGuiTreeNodeFlags.OpenOnDoubleClick.toInt())
+        constants.set("TreeNodeFlags_OpenOnArrow", ImGuiTreeNodeFlags.OpenOnArrow.toInt())
+        constants.set("TreeNodeFlags_Leaf", ImGuiTreeNodeFlags.Leaf.toInt())
+        constants.set("TreeNodeFlags_Bullet", ImGuiTreeNodeFlags.Bullet.toInt())
+        constants.set("TreeNodeFlags_CollapsingHeader", ImGuiTreeNodeFlags.CollapsingHeader.toInt())
+
+        // Флаги Selectable
+        constants.set("SelectableFlags_None", ImGuiSelectableFlags.None.toInt())
+        constants.set("SelectableFlags_DontClosePopups", ImGuiSelectableFlags.DontClosePopups.toInt())
+        constants.set("SelectableFlags_SpanAllColumns", ImGuiSelectableFlags.SpanAllColumns.toInt())
+        constants.set("SelectableFlags_AllowDoubleClick", ImGuiSelectableFlags.AllowDoubleClick.toInt())
+        constants.set("SelectableFlags_Disabled", ImGuiSelectableFlags.Disabled.toInt())
+        constants.set("SelectableFlags_AllowItemOverlap", ImGuiSelectableFlags.AllowItemOverlap.toInt())
+
+        // Флаги Slider
+        constants.set("SliderFlags_None", ImGuiSliderFlags.None.toInt())
+        constants.set("SliderFlags_AlwaysClamp", ImGuiSliderFlags.AlwaysClamp.toInt())
+        constants.set("SliderFlags_Logarithmic", ImGuiSliderFlags.Logarithmic.toInt())
+        constants.set("SliderFlags_NoRoundToFormat", ImGuiSliderFlags.NoRoundToFormat.toInt())
+        constants.set("SliderFlags_NoInput", ImGuiSliderFlags.NoInput.toInt())
+
+        // Флаги WindowFlags (дополнительные)
+        constants.set("WindowFlags_NoScrollWithMouse", ImGuiWindowFlags.NoScrollWithMouse.toInt())
+        constants.set("WindowFlags_NoBackground", ImGuiWindowFlags.NoBackground.toInt())
+        constants.set("WindowFlags_NoSavedSettings", ImGuiWindowFlags.NoSavedSettings.toInt())
+        constants.set("WindowFlags_MenuBar", ImGuiWindowFlags.MenuBar.toInt())
+        constants.set("WindowFlags_HorizontalScrollbar", ImGuiWindowFlags.HorizontalScrollbar.toInt())
+        constants.set("WindowFlags_NoFocusOnAppearing", ImGuiWindowFlags.NoFocusOnAppearing.toInt())
+        constants.set("WindowFlags_AlwaysAutoResize", ImGuiWindowFlags.AlwaysAutoResize.toInt())
+        constants.set("WindowFlags_AlwaysVerticalScrollbar", ImGuiWindowFlags.AlwaysVerticalScrollbar.toInt())
+        constants.set("WindowFlags_AlwaysHorizontalScrollbar", ImGuiWindowFlags.AlwaysHorizontalScrollbar.toInt())
+        constants.set("WindowFlags_NoNav", ImGuiWindowFlags.NoNav.toInt())
+        constants.set("WindowFlags_NoDecoration", ImGuiWindowFlags.NoDecoration.toInt())
+        constants.set("WindowFlags_NoInputs", ImGuiWindowFlags.NoInputs.toInt())
+
+        // Флаги ColorEdit / ColorPicker
+        constants.set("ColorEditFlags_AlphaBar", ImGuiColorEditFlags.AlphaBar.toInt())
+        constants.set("ColorEditFlags_AlphaPreview", ImGuiColorEditFlags.AlphaPreview.toInt())
+        constants.set("ColorEditFlags_AlphaPreviewHalf", ImGuiColorEditFlags.AlphaPreviewHalf.toInt())
+        constants.set("ColorEditFlags_HDR", ImGuiColorEditFlags.HDR.toInt())
+        constants.set("ColorEditFlags_DisplayRGB", ImGuiColorEditFlags.DisplayRGB.toInt())
+        constants.set("ColorEditFlags_DisplayHSV", ImGuiColorEditFlags.DisplayHSV.toInt())
+        constants.set("ColorEditFlags_DisplayHex", ImGuiColorEditFlags.DisplayHex.toInt())
+        constants.set("ColorEditFlags_Uint8", ImGuiColorEditFlags.Uint8.toInt())
+        constants.set("ColorEditFlags_Float", ImGuiColorEditFlags.Float.toInt())
+        constants.set("ColorEditFlags_PickerHueBar", ImGuiColorEditFlags.PickerHueBar.toInt())
+        constants.set("ColorEditFlags_PickerHueWheel", ImGuiColorEditFlags.PickerHueWheel.toInt())
+        constants.set("ColorEditFlags_InputRGB", ImGuiColorEditFlags.InputRGB.toInt())
+        constants.set("ColorEditFlags_InputHSV", ImGuiColorEditFlags.InputHSV.toInt())
+        constants.set("ColorEditFlags_NoSidePreview", ImGuiColorEditFlags.NoSidePreview.toInt())
+        constants.set("ColorEditFlags_NoLabel", ImGuiColorEditFlags.NoLabel.toInt())
+        constants.set("ColorEditFlags_NoTooltip", ImGuiColorEditFlags.NoTooltip.toInt())
+        constants.set("ColorEditFlags_NoOptions", ImGuiColorEditFlags.NoOptions.toInt())
+        constants.set("ColorEditFlags_NoInputs", ImGuiColorEditFlags.NoInputs.toInt())
+        constants.set("ColorEditFlags_NoDragDrop", ImGuiColorEditFlags.NoDragDrop.toInt())
+        constants.set("ColorEditFlags_NoBorder", ImGuiColorEditFlags.NoBorder.toInt())
+        constants.set("ColorEditFlags_NoSmallPreview", ImGuiColorEditFlags.NoSmallPreview.toInt())
+
+        // Направления (Dir) — используется в arrowButton и т.п.
+        constants.set("Dir_None", ImGuiDir.None.toInt())
+        constants.set("Dir_Left", ImGuiDir.Left.toInt())
+        constants.set("Dir_Right", ImGuiDir.Right.toInt())
+        constants.set("Dir_Up", ImGuiDir.Up.toInt())
+        constants.set("Dir_Down", ImGuiDir.Down.toInt())
+
+        // Кнопки мыши
+        constants.set("MouseButton_Left", ImGuiMouseButton.Left.toInt())
+        constants.set("MouseButton_Right", ImGuiMouseButton.Right.toInt())
+        constants.set("MouseButton_Middle", ImGuiMouseButton.Middle.toInt())
+
+        // Флаги Hovered / Focused
+        constants.set("HoveredFlags_None", ImGuiHoveredFlags.None.toInt())
+        constants.set("HoveredFlags_ChildWindows", ImGuiHoveredFlags.ChildWindows.toInt())
+        constants.set("HoveredFlags_RootWindow", ImGuiHoveredFlags.RootWindow.toInt())
+        constants.set("HoveredFlags_AnyWindow", ImGuiHoveredFlags.AnyWindow.toInt())
+        constants.set("HoveredFlags_AllowWhenBlockedByPopup", ImGuiHoveredFlags.AllowWhenBlockedByPopup.toInt())
+        constants.set("HoveredFlags_AllowWhenBlockedByActiveItem", ImGuiHoveredFlags.AllowWhenBlockedByActiveItem.toInt())
+        constants.set("HoveredFlags_AllowWhenOverlapped", ImGuiHoveredFlags.AllowWhenOverlapped.toInt())
+        constants.set("HoveredFlags_AllowWhenDisabled", ImGuiHoveredFlags.AllowWhenDisabled.toInt())
+        constants.set("FocusedFlags_None", ImGuiFocusedFlags.None.toInt())
+        constants.set("FocusedFlags_ChildWindows", ImGuiFocusedFlags.ChildWindows.toInt())
+        constants.set("FocusedFlags_RootWindow", ImGuiFocusedFlags.RootWindow.toInt())
+        constants.set("FocusedFlags_AnyWindow", ImGuiFocusedFlags.AnyWindow.toInt())
+
+        // Флаги DrawList (для polyline и т.п.)
+        constants.set("DrawFlags_None", ImDrawFlags.None.toInt())
+        constants.set("DrawFlags_Closed", ImDrawFlags.Closed.toInt())
+        constants.set("DrawFlags_RoundCornersTopLeft", ImDrawFlags.RoundCornersTopLeft.toInt())
+        constants.set("DrawFlags_RoundCornersTopRight", ImDrawFlags.RoundCornersTopRight.toInt())
+        constants.set("DrawFlags_RoundCornersBottomLeft", ImDrawFlags.RoundCornersBottomLeft.toInt())
+        constants.set("DrawFlags_RoundCornersBottomRight", ImDrawFlags.RoundCornersBottomRight.toInt())
+        constants.set("DrawFlags_RoundCornersNone", ImDrawFlags.RoundCornersNone.toInt())
+        constants.set("DrawFlags_RoundCornersTop", ImDrawFlags.RoundCornersTop.toInt())
+        constants.set("DrawFlags_RoundCornersBottom", ImDrawFlags.RoundCornersBottom.toInt())
+        constants.set("DrawFlags_RoundCornersLeft", ImDrawFlags.RoundCornersLeft.toInt())
+        constants.set("DrawFlags_RoundCornersRight", ImDrawFlags.RoundCornersRight.toInt())
+        constants.set("DrawFlags_RoundCornersAll", ImDrawFlags.RoundCornersAll.toInt())
+
+        // Флаги TabBar / TabItem
+        constants.set("TabBarFlags_None", ImGuiTabBarFlags.None.toInt())
+        constants.set("TabBarFlags_Reorderable", ImGuiTabBarFlags.Reorderable.toInt())
+        constants.set("TabBarFlags_AutoSelectNewTabs", ImGuiTabBarFlags.AutoSelectNewTabs.toInt())
+        constants.set("TabBarFlags_TabListPopupButton", ImGuiTabBarFlags.TabListPopupButton.toInt())
+        constants.set("TabBarFlags_NoCloseWithMiddleMouseButton", ImGuiTabBarFlags.NoCloseWithMiddleMouseButton.toInt())
+        constants.set("TabBarFlags_NoTabListScrollingButtons", ImGuiTabBarFlags.NoTabListScrollingButtons.toInt())
+        constants.set("TabBarFlags_NoTooltip", ImGuiTabBarFlags.NoTooltip.toInt())
+        constants.set("TabBarFlags_FittingPolicyResizeDown", ImGuiTabBarFlags.FittingPolicyResizeDown.toInt())
+        constants.set("TabBarFlags_FittingPolicyScroll", ImGuiTabBarFlags.FittingPolicyScroll.toInt())
+        constants.set("TabItemFlags_None", ImGuiTabItemFlags.None.toInt())
+        constants.set("TabItemFlags_UnsavedDocument", ImGuiTabItemFlags.UnsavedDocument.toInt())
+        constants.set("TabItemFlags_SetSelected", ImGuiTabItemFlags.SetSelected.toInt())
+        constants.set("TabItemFlags_NoCloseWithMiddleMouseButton", ImGuiTabItemFlags.NoCloseWithMiddleMouseButton.toInt())
+        constants.set("TabItemFlags_NoPushId", ImGuiTabItemFlags.NoPushId.toInt())
+        constants.set("TabItemFlags_NoTooltip", ImGuiTabItemFlags.NoTooltip.toInt())
 
         dl.set("renderLine", RenderDLLineFunction())
         dl.set("renderPolygon", RenderDLPolygonFunction())
@@ -142,6 +288,26 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
         dl.set("renderText", RenderDLTextFunction())
         dl.set("renderFilledRect", RenderDLFilledRectFunction())
         dl.set("renderRect", RenderDLRectFunction())
+        dl.set("renderFilledRectMultiColor", RenderDLFilledRectMultiColorFunction())
+        dl.set("renderQuad", RenderDLQuadFunction())
+        dl.set("renderFilledQuad", RenderDLFilledQuadFunction())
+        dl.set("renderTriangle", RenderDLTriangleFunction())
+        dl.set("renderFilledTriangle", RenderDLFilledTriangleFunction())
+        dl.set("renderCircle", RenderDLCircleFunction())
+        dl.set("renderFilledCircle", RenderDLFilledCircleFunction())
+        dl.set("renderNgon", RenderDLNgonFunction())
+        dl.set("renderFilledNgon", RenderDLFilledNgonFunction())
+        dl.set("renderEllipse", RenderDLEllipseFunction())
+        dl.set("renderFilledEllipse", RenderDLFilledEllipseFunction())
+        dl.set("renderBezierCubic", RenderDLBezierCubicFunction())
+        dl.set("renderBezierQuadratic", RenderDLBezierQuadraticFunction())
+        dl.set("renderPolyline", RenderDLPolylineFunction())
+        dl.set("renderFilledConvexPolygon", RenderDLFilledConvexPolygonFunction())
+        dl.set("pushClipRect", DLPushClipRectFunction())
+        dl.set("pushClipRectFullScreen", DLPushClipRectFullScreenFunction())
+        dl.set("popClipRect", DLPopClipRectFunction())
+        dl.set("pushTextureID", DLPushTextureIDFunction())
+        dl.set("popTextureID", DLPopTextureIDFunction())
     }
 
     override fun get(key: LuaValue): LuaValue {
@@ -232,7 +398,7 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             "beginTabBar" -> beginTabBar()
             "endTabBar" -> endTabBar()
             "beginTabItem" -> beginTabItem()
-            "endTabItem" -> endMainMenuBar()
+            "endTabItem" -> endTabItem()
 
             // Child windows
             "beginChild" -> beginChild()
@@ -286,8 +452,89 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             // Sliders
             "sliderFloat" -> sliderFloat()
             "sliderInt" -> sliderInt()
+            "sliderAngle" -> sliderAngle()
             "vSliderFloat" -> vSliderFloat()
             "vSliderInt" -> vSliderInt()
+
+            "dragFloat" -> dragFloat()
+            "dragInt" -> dragInt()
+
+            "colorEdit3" -> colorEdit3()
+            "colorEdit4" -> colorEdit4()
+            "colorPicker3" -> colorPicker3()
+            "colorPicker4" -> colorPicker4()
+            "colorButton" -> colorButton()
+
+            "combo" -> combo()
+            "beginCombo" -> beginCombo()
+            "endCombo" -> endCombo()
+
+            "radioButton" -> radioButton()
+            "progressBar" -> progressBar()
+
+            "textWrapped" -> textWrapped()
+            "labelText" -> labelText()
+            "separatorText" -> separatorText()
+
+            "plotLines" -> plotLines()
+            "plotHistogram" -> plotHistogram()
+
+            "setScrollHereY" -> setScrollHereY()
+            "setScrollHereX" -> setScrollHereX()
+            "getScrollY" -> getScrollY()
+            "getScrollX" -> getScrollX()
+            "getScrollMaxY" -> getScrollMaxY()
+            "getScrollMaxX" -> getScrollMaxX()
+            "setScrollY" -> setScrollY()
+            "setScrollX" -> setScrollX()
+
+            "isKeyDown" -> isKeyDown()
+            "isKeyPressed" -> isKeyPressed()
+            "isKeyReleased" -> isKeyReleased()
+            "isMouseDown" -> isMouseDown()
+            "isMouseClicked" -> isMouseClicked()
+            "isMouseReleased" -> isMouseReleased()
+            "isMouseDoubleClicked" -> isMouseDoubleClicked()
+            "isMouseDragging" -> isMouseDragging()
+            "getMousePos" -> getMousePos()
+            "getMouseDragDelta" -> getMouseDragDelta()
+            "isAnyMouseDown" -> isAnyMouseDown()
+
+            "isItemVisible" -> isItemVisible()
+            "isItemEdited" -> isItemEdited()
+            "isItemDeactivated" -> isItemDeactivated()
+            "isItemDeactivatedAfterEdit" -> isItemDeactivatedAfterEdit()
+            "isItemFocused" -> isItemFocused()
+            "getItemRectMin" -> getItemRectMin()
+            "getItemRectMax" -> getItemRectMax()
+            "getItemRectSize" -> getItemRectSize()
+
+            "dummy" -> dummy()
+            "alignTextToFramePadding" -> alignTextToFramePadding()
+            "getContentRegionAvail" -> getContentRegionAvail()
+            "getDisplaySize" -> getDisplaySize()
+            "getFrameCount" -> getFrameCount()
+            "getTime" -> getTime()
+            "getFontSize" -> getFontSize()
+            "getTextLineHeight" -> getTextLineHeight()
+            "getTextLineHeightWithSpacing" -> getTextLineHeightWithSpacing()
+            "getFrameHeight" -> getFrameHeight()
+            "getFrameHeightWithSpacing" -> getFrameHeightWithSpacing()
+
+            "setNextWindowBgAlpha" -> setNextWindowBgAlpha()
+            "setNextWindowContentSize" -> setNextWindowContentSize()
+            "setWindowFocus" -> setWindowFocus()
+            "setWindowSize" -> setWindowSize()
+            "setWindowPos" -> setWindowPos()
+            "setWindowCollapsed" -> setWindowCollapsed()
+            "isPopupOpen" -> isPopupOpen()
+            "openPopupOnItemClick" -> openPopupOnItemClick()
+
+            
+            // ну тут прям ниже только через ffi imgui вызивать
+            "pathClear" -> pathClear()
+            "pathLineTo" -> pathLineTo()
+            "pathStroke" -> pathStroke()
 
             // Constants
             "constants" -> {
@@ -569,19 +816,18 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
     }
 
     inner class beginTable : VarArgFunction() {
-        override fun invoke(args: Varargs): LuaValue {
+        override fun invoke(args: Varargs): Varargs {
             val name = args.checkjstring(1)
             val column = args.checkint(2)
-            val flags = args.checkint(3)
-            ImGui.beginTable(name, column, flags)
-            return NIL
+            val flags = args.optint(3, 0)
+            val opened = ImGui.beginTable(name, column, flags)
+            return valueOf(opened)
         }
     }
 
     inner class endTable : VarArgFunction() {
         override fun invoke(args: Varargs): LuaValue {
             ImGui.endTable()
-
             return NIL
         }
     }
@@ -590,15 +836,15 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
         override fun invoke(args: Varargs): LuaValue {
             val index = args.checkint(1)
             ImGui.tableSetColumnIndex(index)
-
             return NIL
         }
     }
 
     inner class tableNextRow : VarArgFunction() {
         override fun invoke(args: Varargs): LuaValue {
-            ImGui.tableNextRow()
-
+            val flags = args.optint(1, 0)
+            val minRowHeight = args.optdouble(2, 0.0).toFloat()
+            ImGui.tableNextRow(flags, minRowHeight)
             return NIL
         }
     }
@@ -606,7 +852,6 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
     inner class tableHeadersRow : VarArgFunction() {
         override fun invoke(args: Varargs): LuaValue {
             ImGui.tableHeadersRow()
-
             return NIL
         }
     }
@@ -614,8 +859,9 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
     inner class tableSetupColumn : VarArgFunction() {
         override fun invoke(args: Varargs): LuaValue {
             val name = args.checkjstring(1)
-            ImGui.tableSetupColumn(name)
-
+            val flags = args.optint(2, 0)
+            val initWidthOrWeight = args.optdouble(3, 0.0).toFloat()
+            ImGui.tableSetupColumn(name, flags, initWidthOrWeight)
             return NIL
         }
     }
@@ -717,7 +963,7 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
                         ImGui.image(image, args.arg(2).tofloat(), args.arg(3).tofloat(), args.arg(4).tofloat(), args.arg(5).tofloat())
                     }
                     else {
-                        ImGui.image(image, args.arg(2).tofloat(), args.arg(53).tofloat())
+                        ImGui.image(image, args.arg(2).tofloat(), args.arg(3).tofloat())
                     }
                     return TRUE
                 }
@@ -728,7 +974,7 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
 
     inner class pathClear : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            ImGui.getBackgroundDrawList().pathClear()
+            queue.pathClear()
             return TRUE
         }
     }
@@ -737,7 +983,7 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
         override fun invoke(args: Varargs): Varargs {
             val x = args.checkdouble(1).toFloat()
             val y = args.checkdouble(2).toFloat()
-            ImGui.getBackgroundDrawList().pathLineTo(x, y)
+            queue.pathLineTo(x, y)
             return TRUE
         }
     }
@@ -747,7 +993,7 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             val color = args.checkint(1)
             val flags = if (args.narg() > 1) args.checkint(2) else 0
             val thickness = if (args.narg() > 2) args.checkdouble(3).toFloat() else 1.0f
-            ImGui.getBackgroundDrawList().pathStroke(color, flags, thickness)
+            queue.pathStroke(color, flags, thickness)
             return TRUE
         }
     }
@@ -1416,5 +1662,709 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             val height = ImGui.getWindowHeight()
             return valueOf(height.toDouble())
         }
+    }
+
+    inner class sliderAngle : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val vRad = floatArrayOf(args.checkdouble(2).toFloat())
+            val degreesMin = if (args.narg() > 2) args.checkdouble(3).toFloat() else -360f
+            val degreesMax = if (args.narg() > 3) args.checkdouble(4).toFloat() else 360f
+            val changed = ImGui.sliderAngle(label, vRad, degreesMin, degreesMax)
+            return varargsOf(valueOf(changed), valueOf(vRad[0].toDouble()))
+        }
+    }
+
+    inner class dragFloat : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val v = floatArrayOf(args.checkdouble(2).toFloat())
+            val speed = if (args.narg() > 2) args.checkdouble(3).toFloat() else 1f
+            val min = if (args.narg() > 3) args.checkdouble(4).toFloat() else 0f
+            val max = if (args.narg() > 4) args.checkdouble(5).toFloat() else 0f
+            val format = if (args.narg() > 5) args.checkjstring(6) else "%.3f"
+            val changed = ImGui.dragFloat(label, v, speed, min, max, format)
+            return varargsOf(valueOf(changed), valueOf(v[0].toDouble()))
+        }
+    }
+
+    inner class dragInt : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val v = intArrayOf(args.checkint(2))
+            val speed = if (args.narg() > 2) args.checkdouble(3).toFloat() else 1f
+            val min = if (args.narg() > 3) args.checkint(4) else 0
+            val max = if (args.narg() > 4) args.checkint(5) else 0
+            val changed = ImGui.dragInt(label, v, speed, min, max)
+            return varargsOf(valueOf(changed), valueOf(v[0]))
+        }
+    }
+
+    /** Редактор RGB-цвета. Возвращает (changed, r, g, b) в диапазоне 0.0–1.0 */
+    inner class colorEdit3 : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val col = floatArrayOf(args.checkdouble(2).toFloat(), args.checkdouble(3).toFloat(), args.checkdouble(4).toFloat())
+            val flags = if (args.narg() > 4) args.checkint(5) else 0
+            val changed = ImGui.colorEdit3(label, col, flags)
+            return varargsOf(arrayOf(valueOf(changed), valueOf(col[0].toDouble()), valueOf(col[1].toDouble()), valueOf(col[2].toDouble())))
+        }
+    }
+
+    /** Редактор RGBA-цвета. Возвращает (changed, r, g, b, a) в диапазоне 0.0–1.0 */
+    inner class colorEdit4 : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val col = floatArrayOf(args.checkdouble(2).toFloat(), args.checkdouble(3).toFloat(), args.checkdouble(4).toFloat(), args.checkdouble(5).toFloat())
+            val flags = if (args.narg() > 5) args.checkint(6) else 0
+            val changed = ImGui.colorEdit4(label, col, flags)
+            return varargsOf(arrayOf(valueOf(changed), valueOf(col[0].toDouble()), valueOf(col[1].toDouble()), valueOf(col[2].toDouble()), valueOf(col[3].toDouble())))
+        }
+    }
+
+    /** Полноразмерный пикер RGB. Возвращает (changed, r, g, b) в диапазоне 0.0–1.0 */
+    inner class colorPicker3 : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val col = floatArrayOf(args.checkdouble(2).toFloat(), args.checkdouble(3).toFloat(), args.checkdouble(4).toFloat())
+            val flags = if (args.narg() > 4) args.checkint(5) else 0
+            val changed = ImGui.colorPicker3(label, col, flags)
+            return varargsOf(arrayOf(valueOf(changed), valueOf(col[0].toDouble()), valueOf(col[1].toDouble()), valueOf(col[2].toDouble())))
+        }
+    }
+
+    /** Полноразмерный пикер RGBA. Возвращает (changed, r, g, b, a) в диапазоне 0.0–1.0 */
+    inner class colorPicker4 : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val col = floatArrayOf(args.checkdouble(2).toFloat(), args.checkdouble(3).toFloat(), args.checkdouble(4).toFloat(), args.checkdouble(5).toFloat())
+            val flags = if (args.narg() > 5) args.checkint(6) else 0
+            val changed = ImGui.colorPicker4(label, col, flags)
+            return varargsOf(arrayOf(valueOf(changed), valueOf(col[0].toDouble()), valueOf(col[1].toDouble()), valueOf(col[2].toDouble()), valueOf(col[3].toDouble())))
+        }
+    }
+
+    /** Кнопка-квадрат с цветом. Открывает пикер при клике. Возвращает true при нажатии */
+    inner class colorButton : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val descId = args.checkjstring(1)
+            val r = args.checkdouble(2).toFloat(); val g = args.checkdouble(3).toFloat()
+            val b = args.checkdouble(4).toFloat()
+            val a = if (args.narg() > 4) args.checkdouble(5).toFloat() else 1f
+            val flags = if (args.narg() > 5) args.checkint(6) else 0
+            return valueOf(ImGui.colorButton(descId, r, g, b, a, flags))
+        }
+    }
+
+    /**
+     * Простой Combo-виджет с массивом строк.
+     * Возвращает (changed, currentIndex).
+     */
+    inner class combo : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val currentItem = ImInt(args.checkint(2))
+            val items = args.checktable(3)
+            val count = items.length()
+            val itemsArray = Array(count) { i -> items.get(i + 1).checkjstring() }
+            val heightInItems = if (args.narg() > 3) args.checkint(4) else -1
+            val changed = ImGui.combo(label, currentItem, itemsArray, heightInItems)
+            return varargsOf(valueOf(changed), valueOf(currentItem.get()))
+        }
+    }
+
+    /**
+     * Начало расширяемого Combo-блока (ручной контент внутри).
+     * Возвращает true, если блок раскрыт — нужно вызвать endCombo().
+     */
+    inner class beginCombo : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val previewValue = args.checkjstring(2)
+            val flags = if (args.narg() > 2) args.checkint(3) else 0
+            return valueOf(ImGui.beginCombo(label, previewValue, flags))
+        }
+    }
+
+    inner class endCombo : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs { ImGui.endCombo(); return NIL }
+    }
+
+    /**
+     * Радиокнопка. Возвращает true при нажатии.
+     * Использование: radioButton("label", activeValue == thisValue)
+     */
+    inner class radioButton : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val active = args.checkboolean(2)
+            return valueOf(ImGui.radioButton(label, active))
+        }
+    }
+
+    /**
+     * Полоса прогресса.
+     * fraction — заполнение от 0.0 до 1.0.
+     * sizeX, sizeY — размер (-1 = авто).
+     * overlay — необязательная строка поверх полосы.
+     */
+    inner class progressBar : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val fraction = args.checkdouble(1).toFloat()
+            val sizeX = if (args.narg() > 1) args.checkdouble(2).toFloat() else -1f
+            val sizeY = if (args.narg() > 2) args.checkdouble(3).toFloat() else 0f
+            val overlay = if (args.narg() > 3) args.checkjstring(4) else ""
+            ImGui.progressBar(fraction, sizeX, sizeY, overlay)
+            return NIL
+        }
+    }
+
+    /** Текст с автоматическим переносом по ширине окна */
+    inner class textWrapped : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs { ImGui.textWrapped(args.checkjstring(1)); return NIL }
+    }
+
+    /** Метка слева + значение справа в одну строку */
+    inner class labelText : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            ImGui.labelText(args.checkjstring(1), args.checkjstring(2)); return NIL
+        }
+    }
+
+    /** Горизонтальный разделитель с текстовой подписью */
+    inner class separatorText : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs { ImGui.separatorText(args.checkjstring(1)); return NIL }
+    }
+
+    /**
+     * Линейный график из Lua-таблицы чисел.
+     * overlayText — необязательная подпись поверх графика.
+     */
+    inner class plotLines : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val table = args.checktable(2)
+            val count = table.length()
+            val values = FloatArray(count) { i -> table.get(i + 1).tofloat() }
+            val overlayText = args.optjstring(3, "")
+            val scaleMin = if (args.narg() > 3) args.checkdouble(4).toFloat() else Float.MAX_VALUE
+            val scaleMax = if (args.narg() > 4) args.checkdouble(5).toFloat() else Float.MAX_VALUE
+            val graphW = if (args.narg() > 5) args.checkdouble(6).toFloat() else 0f
+            val graphH = if (args.narg() > 6) args.checkdouble(7).toFloat() else 0f
+            ImGui.plotLines(label, values, count, 0, overlayText, scaleMin, scaleMax, graphW, graphH)
+            return NIL
+        }
+    }
+
+    /**
+     * Гистограмма из Lua-таблицы чисел.
+     */
+    inner class plotHistogram : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val label = args.checkjstring(1)
+            val table = args.checktable(2)
+            val count = table.length()
+            val values = FloatArray(count) { i -> table.get(i + 1).tofloat() }
+            val overlayText = args.optjstring(3, "")
+            val scaleMin = if (args.narg() > 3) args.checkdouble(4).toFloat() else Float.MAX_VALUE
+            val scaleMax = if (args.narg() > 4) args.checkdouble(5).toFloat() else Float.MAX_VALUE
+            val graphW = if (args.narg() > 5) args.checkdouble(6).toFloat() else 0f
+            val graphH = if (args.narg() > 6) args.checkdouble(7).toFloat() else 0f
+            ImGui.plotHistogram(label, values, count, 0, overlayText, scaleMin, scaleMax, graphW, graphH)
+            return NIL
+        }
+    }
+
+    /** Прокрутить до конца по Y. centerYRatio: 0 = вверх, 0.5 = середина, 1 = низ */
+    inner class setScrollHereY : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            ImGui.setScrollHereY(if (args.narg() > 0) args.checkdouble(1).toFloat() else 0.5f); return NIL
+        }
+    }
+
+    inner class setScrollHereX : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            ImGui.setScrollHereX(if (args.narg() > 0) args.checkdouble(1).toFloat() else 0.5f); return NIL
+        }
+    }
+
+    inner class getScrollY : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.getScrollY().toDouble())
+    }
+    inner class getScrollX : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.getScrollX().toDouble())
+    }
+    inner class getScrollMaxY : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.getScrollMaxY().toDouble())
+    }
+    inner class getScrollMaxX : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.getScrollMaxX().toDouble())
+    }
+    inner class setScrollY : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs { ImGui.setScrollY(args.checkdouble(1).toFloat()); return NIL }
+    }
+    inner class setScrollX : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs { ImGui.setScrollX(args.checkdouble(1).toFloat()); return NIL }
+    }
+
+
+    /** Клавиша удерживается прямо сейчас */
+    inner class isKeyDown : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.isKeyDown(args.checkint(1)))
+    }
+
+    /** Клавиша только что нажата (один кадр). repeat — автоповтор при удержании */
+    inner class isKeyPressed : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val key = args.checkint(1)
+            val repeat = if (args.narg() > 1) args.checkboolean(2) else true
+            return valueOf(ImGui.isKeyPressed(key, repeat))
+        }
+    }
+
+    inner class isKeyReleased : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.isKeyReleased(args.checkint(1)))
+    }
+
+    /** Кнопка мыши удерживается. button: 0=левая, 1=правая, 2=средняя */
+    inner class isMouseDown : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.isMouseDown(if (args.narg() > 0) args.checkint(1) else 0))
+    }
+
+    inner class isMouseClicked : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val button = if (args.narg() > 0) args.checkint(1) else 0
+            val repeat = if (args.narg() > 1) args.checkboolean(2) else false
+            return valueOf(ImGui.isMouseClicked(button, repeat))
+        }
+    }
+
+    inner class isMouseReleased : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.isMouseReleased(if (args.narg() > 0) args.checkint(1) else 0))
+    }
+
+    inner class isMouseDoubleClicked : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.isMouseDoubleClicked(if (args.narg() > 0) args.checkint(1) else 0))
+    }
+
+    /** Мышь перетаскивается (зажата и сдвинута дальше lockThreshold) */
+    inner class isMouseDragging : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val button = if (args.narg() > 0) args.checkint(1) else 0
+            val lockThreshold = if (args.narg() > 1) args.checkdouble(2).toFloat() else -1f
+            return valueOf(ImGui.isMouseDragging(button, lockThreshold))
+        }
+    }
+
+    inner class isAnyMouseDown : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.isAnyMouseDown())
+    }
+
+    /** Позиция курсора мыши в экранных координатах */
+    inner class getMousePos : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val pos = ImGui.getMousePos()
+            return varargsOf(valueOf(pos.x.toDouble()), valueOf(pos.y.toDouble()))
+        }
+    }
+
+
+    /** Суммарное смещение с момента начала перетаскивания */
+    inner class getMouseDragDelta : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val button = if (args.narg() > 0) args.checkint(1) else 0
+            val lockThreshold = if (args.narg() > 1) args.checkdouble(2).toFloat() else -1f
+            val delta = ImGui.getMouseDragDelta(button, lockThreshold)
+            return varargsOf(valueOf(delta.x.toDouble()), valueOf(delta.y.toDouble()))
+        }
+    }
+
+    inner class isItemVisible : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.isItemVisible())
+    }
+    inner class isItemEdited : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.isItemEdited())
+    }
+    inner class isItemDeactivated : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.isItemDeactivated())
+    }
+    inner class isItemDeactivatedAfterEdit : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.isItemDeactivatedAfterEdit())
+    }
+    inner class isItemFocused : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.isItemFocused())
+    }
+
+    /** Верхний-левый угол последнего элемента в экранных координатах */
+    inner class getItemRectMin : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val v = ImGui.getItemRectMin(); return varargsOf(valueOf(v.x.toDouble()), valueOf(v.y.toDouble()))
+        }
+    }
+
+    /** Нижний-правый угол последнего элемента в экранных координатах */
+    inner class getItemRectMax : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val v = ImGui.getItemRectMax(); return varargsOf(valueOf(v.x.toDouble()), valueOf(v.y.toDouble()))
+        }
+    }
+
+    inner class getItemRectSize : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val v = ImGui.getItemRectSize(); return varargsOf(valueOf(v.x.toDouble()), valueOf(v.y.toDouble()))
+        }
+    }
+
+    /** Пустой элемент заданного размера (занимает место в лэйауте) */
+    inner class dummy : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            ImGui.dummy(args.checkdouble(1).toFloat(), args.checkdouble(2).toFloat()); return NIL
+        }
+    }
+
+    /** Выровнять курсор так, чтобы следующий текст был на высоте рамки виджета */
+    inner class alignTextToFramePadding : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs { ImGui.alignTextToFramePadding(); return NIL }
+    }
+
+    /** Доступная область содержимого текущего окна (w, h) */
+    inner class getContentRegionAvail : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val v = ImGui.getContentRegionAvail(); return varargsOf(valueOf(v.x.toDouble()), valueOf(v.y.toDouble()))
+        }
+    }
+
+    /** Размер дисплея (w, h) */
+    inner class getDisplaySize : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val io = ImGui.getIO()
+            return varargsOf(valueOf(io.displaySizeX.toDouble()), valueOf(io.displaySizeY.toDouble()))
+        }
+    }
+
+    /** Номер текущего кадра с момента старта */
+    inner class getFrameCount : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.getFrameCount())
+    }
+
+    /** Время в секундах с момента старта */
+    inner class getTime : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.getTime())
+    }
+
+    inner class getFontSize : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.getFontSize().toDouble())
+    }
+    inner class getTextLineHeight : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.getTextLineHeight().toDouble())
+    }
+    inner class getTextLineHeightWithSpacing : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.getTextLineHeightWithSpacing().toDouble())
+    }
+    inner class getFrameHeight : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.getFrameHeight().toDouble())
+    }
+    inner class getFrameHeightWithSpacing : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = valueOf(ImGui.getFrameHeightWithSpacing().toDouble())
+    }
+
+    /** Установить прозрачность фона следующего окна (0 = полностью прозрачный, 1 = непрозрачный) */
+    inner class setNextWindowBgAlpha : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs { ImGui.setNextWindowBgAlpha(args.checkdouble(1).toFloat()); return NIL }
+    }
+
+    /** Задать размер прокручиваемой области содержимого следующего окна */
+    inner class setNextWindowContentSize : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            ImGui.setNextWindowContentSize(args.checkdouble(1).toFloat(), args.checkdouble(2).toFloat()); return NIL
+        }
+    }
+
+    /** Переключить фокус на окно (без аргументов — текущее, со строкой — по имени) */
+    inner class setWindowFocus : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (args.narg() > 0) ImGui.setWindowFocus(args.checkjstring(1)) else ImGui.setWindowFocus(); return NIL
+        }
+    }
+
+    /** Задать размер текущего окна (вызывать внутри Begin/End) */
+    inner class setWindowSize : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val cond = if (args.narg() > 2) args.checkint(3) else 0
+            ImGui.setWindowSize(args.checkdouble(1).toFloat(), args.checkdouble(2).toFloat(), cond); return NIL
+        }
+    }
+
+    inner class setWindowPos : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val cond = if (args.narg() > 2) args.checkint(3) else 0
+            ImGui.setWindowPos(args.checkdouble(1).toFloat(), args.checkdouble(2).toFloat(), cond); return NIL
+        }
+    }
+
+    inner class setWindowCollapsed : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val cond = if (args.narg() > 1) args.checkint(2) else 0
+            ImGui.setWindowCollapsed(args.checkboolean(1), cond); return NIL
+        }
+    }
+
+    /** Проверить, открыт ли указанный попап */
+    inner class isPopupOpen : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val flags = if (args.narg() > 1) args.checkint(2) else 0
+            return valueOf(ImGui.isPopupOpen(args.checkjstring(1), flags))
+        }
+    }
+
+    /** Открыть попап при клике на последний элемент (по умолчанию ПКМ) */
+    inner class openPopupOnItemClick : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val strId = if (args.narg() > 0) args.checkjstring(1) else ""
+            val mouseButton = if (args.narg() > 1) args.checkint(2) else 1
+            ImGui.openPopupOnItemClick(strId, mouseButton); return NIL
+        }
+    }
+
+    /** Закрашенный прямоугольник с разным цветом в каждом углу (градиент) */
+    private inner class RenderDLFilledRectMultiColorFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val x1 = args.optdouble(1, 0.0).toFloat(); val y1 = args.optdouble(2, 0.0).toFloat()
+            val x2 = args.optdouble(3, 0.0).toFloat(); val y2 = args.optdouble(4, 0.0).toFloat()
+            val rUL = args.optint(5,  255); val gUL = args.optint(6,  255); val bUL = args.optint(7,  255); val aUL = args.optint(8,  255)
+            val rUR = args.optint(9,  255); val gUR = args.optint(10, 255); val bUR = args.optint(11, 255); val aUR = args.optint(12, 255)
+            val rBR = args.optint(13, 255); val gBR = args.optint(14, 255); val bBR = args.optint(15, 255); val aBR = args.optint(16, 255)
+            val rBL = args.optint(17, 255); val gBL = args.optint(18, 255); val bBL = args.optint(19, 255); val aBL = args.optint(20, 255)
+            queue.renderFilledRectMultiColor(x1, y1, x2, y2, rUL, gUL, bUL, aUL, rUR, gUR, bUR, aUR, rBR, gBR, bBR, aBR, rBL, gBL, bBL, aBL)
+            return TRUE
+        }
+    }
+
+    /** Четырёхугольник (контур) по 4 произвольным точкам */
+    private inner class RenderDLQuadFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val p1x = args.optdouble(1, 0.0).toFloat(); val p1y = args.optdouble(2, 0.0).toFloat()
+            val p2x = args.optdouble(3, 0.0).toFloat(); val p2y = args.optdouble(4, 0.0).toFloat()
+            val p3x = args.optdouble(5, 0.0).toFloat(); val p3y = args.optdouble(6, 0.0).toFloat()
+            val p4x = args.optdouble(7, 0.0).toFloat(); val p4y = args.optdouble(8, 0.0).toFloat()
+            val red = args.optint(9, 255); val green = args.optint(10, 255); val blue = args.optint(11, 255); val alpha = args.optint(12, 255)
+            val thickness = args.optdouble(13, 1.0).toFloat()
+            queue.renderQuad(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y, red, green, blue, alpha, thickness)
+            return TRUE
+        }
+    }
+
+    /** Закрашенный четырёхугольник по 4 произвольным точкам */
+    private inner class RenderDLFilledQuadFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val p1x = args.optdouble(1, 0.0).toFloat(); val p1y = args.optdouble(2, 0.0).toFloat()
+            val p2x = args.optdouble(3, 0.0).toFloat(); val p2y = args.optdouble(4, 0.0).toFloat()
+            val p3x = args.optdouble(5, 0.0).toFloat(); val p3y = args.optdouble(6, 0.0).toFloat()
+            val p4x = args.optdouble(7, 0.0).toFloat(); val p4y = args.optdouble(8, 0.0).toFloat()
+            val red = args.optint(9, 255); val green = args.optint(10, 255); val blue = args.optint(11, 255); val alpha = args.optint(12, 255)
+            queue.renderFilledQuad(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y, red, green, blue, alpha)
+            return TRUE
+        }
+    }
+
+    /** Треугольник (контур) */
+    private inner class RenderDLTriangleFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val p1x = args.optdouble(1, 0.0).toFloat(); val p1y = args.optdouble(2, 0.0).toFloat()
+            val p2x = args.optdouble(3, 0.0).toFloat(); val p2y = args.optdouble(4, 0.0).toFloat()
+            val p3x = args.optdouble(5, 0.0).toFloat(); val p3y = args.optdouble(6, 0.0).toFloat()
+            val red = args.optint(7, 255); val green = args.optint(8, 255); val blue = args.optint(9, 255); val alpha = args.optint(10, 255)
+            val thickness = args.optdouble(11, 1.0).toFloat()
+            queue.renderTriangle(p1x, p1y, p2x, p2y, p3x, p3y, red, green, blue, alpha, thickness)
+            return TRUE
+        }
+    }
+
+    /** Закрашенный треугольник */
+    private inner class RenderDLFilledTriangleFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val p1x = args.optdouble(1, 0.0).toFloat(); val p1y = args.optdouble(2, 0.0).toFloat()
+            val p2x = args.optdouble(3, 0.0).toFloat(); val p2y = args.optdouble(4, 0.0).toFloat()
+            val p3x = args.optdouble(5, 0.0).toFloat(); val p3y = args.optdouble(6, 0.0).toFloat()
+            val red = args.optint(7, 255); val green = args.optint(8, 255); val blue = args.optint(9, 255); val alpha = args.optint(10, 255)
+            queue.renderFilledTriangle(p1x, p1y, p2x, p2y, p3x, p3y, red, green, blue, alpha)
+            return TRUE
+        }
+    }
+
+    /**
+     * Окружность (контур).
+     * numSegments = 0 — автоматическая тесселяция (рекомендуется).
+     */
+    private inner class RenderDLCircleFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val cx = args.optdouble(1, 0.0).toFloat(); val cy = args.optdouble(2, 0.0).toFloat()
+            val radius = args.optdouble(3, 1.0).toFloat()
+            val red = args.optint(4, 255); val green = args.optint(5, 255); val blue = args.optint(6, 255); val alpha = args.optint(7, 255)
+            val numSegments = args.optint(8, 0); val thickness = args.optdouble(9, 1.0).toFloat()
+            queue.renderCircle(cx, cy, radius, red, green, blue, alpha, numSegments, thickness)
+            return TRUE
+        }
+    }
+
+    /** Закрашенная окружность */
+    private inner class RenderDLFilledCircleFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val cx = args.optdouble(1, 0.0).toFloat(); val cy = args.optdouble(2, 0.0).toFloat()
+            val radius = args.optdouble(3, 1.0).toFloat()
+            val red = args.optint(4, 255); val green = args.optint(5, 255); val blue = args.optint(6, 255); val alpha = args.optint(7, 255)
+            val numSegments = args.optint(8, 0)
+            queue.renderFilledCircle(cx, cy, radius, red, green, blue, alpha, numSegments)
+            return TRUE
+        }
+    }
+
+    /** Правильный n-угольник (контур) с гарантированным числом сторон */
+    private inner class RenderDLNgonFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val cx = args.optdouble(1, 0.0).toFloat(); val cy = args.optdouble(2, 0.0).toFloat()
+            val radius = args.optdouble(3, 1.0).toFloat(); val numSegments = args.checkint(4)
+            val red = args.optint(5, 255); val green = args.optint(6, 255); val blue = args.optint(7, 255); val alpha = args.optint(8, 255)
+            val thickness = args.optdouble(9, 1.0).toFloat()
+            queue.renderNgon(cx, cy, radius, numSegments, red, green, blue, alpha, thickness)
+            return TRUE
+        }
+    }
+
+    /** Закрашенный правильный n-угольник */
+    private inner class RenderDLFilledNgonFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val cx = args.optdouble(1, 0.0).toFloat(); val cy = args.optdouble(2, 0.0).toFloat()
+            val radius = args.optdouble(3, 1.0).toFloat(); val numSegments = args.checkint(4)
+            val red = args.optint(5, 255); val green = args.optint(6, 255); val blue = args.optint(7, 255); val alpha = args.optint(8, 255)
+            queue.renderFilledNgon(cx, cy, radius, numSegments, red, green, blue, alpha)
+            return TRUE
+        }
+    }
+
+    /** Эллипс (контур). rot — поворот в радианах */
+    private inner class RenderDLEllipseFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val cx = args.optdouble(1, 0.0).toFloat(); val cy = args.optdouble(2, 0.0).toFloat()
+            val rx = args.optdouble(3, 1.0).toFloat(); val ry = args.optdouble(4, 1.0).toFloat()
+            val red = args.optint(5, 255); val green = args.optint(6, 255); val blue = args.optint(7, 255); val alpha = args.optint(8, 255)
+            val rot = args.optdouble(9, 0.0).toFloat(); val numSegments = args.optint(10, 0); val thickness = args.optdouble(11, 1.0).toFloat()
+            queue.renderEllipse(cx, cy, rx, ry, red, green, blue, alpha, rot, numSegments, thickness)
+            return TRUE
+        }
+    }
+
+    /** Закрашенный эллипс */
+    private inner class RenderDLFilledEllipseFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val cx = args.optdouble(1, 0.0).toFloat(); val cy = args.optdouble(2, 0.0).toFloat()
+            val rx = args.optdouble(3, 1.0).toFloat(); val ry = args.optdouble(4, 1.0).toFloat()
+            val red = args.optint(5, 255); val green = args.optint(6, 255); val blue = args.optint(7, 255); val alpha = args.optint(8, 255)
+            val rot = args.optdouble(9, 0.0).toFloat(); val numSegments = args.optint(10, 0)
+            queue.renderFilledEllipse(cx, cy, rx, ry, red, green, blue, alpha, rot, numSegments)
+            return TRUE
+        }
+    }
+
+    /**
+     * Кубическая кривая Безье (4 точки управления).
+     * numSegments = 0 — автоматически.
+     */
+    private inner class RenderDLBezierCubicFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val p1x = args.optdouble(1, 0.0).toFloat(); val p1y = args.optdouble(2, 0.0).toFloat()
+            val p2x = args.optdouble(3, 0.0).toFloat(); val p2y = args.optdouble(4, 0.0).toFloat()
+            val p3x = args.optdouble(5, 0.0).toFloat(); val p3y = args.optdouble(6, 0.0).toFloat()
+            val p4x = args.optdouble(7, 0.0).toFloat(); val p4y = args.optdouble(8, 0.0).toFloat()
+            val red = args.optint(9, 255); val green = args.optint(10, 255); val blue = args.optint(11, 255); val alpha = args.optint(12, 255)
+            val thickness = args.optdouble(13, 1.0).toFloat(); val numSegments = args.optint(14, 0)
+            queue.renderBezierCubic(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y, red, green, blue, alpha, thickness, numSegments)
+            return TRUE
+        }
+    }
+
+    /**
+     * Квадратичная кривая Безье (3 точки управления).
+     * numSegments = 0 — автоматически.
+     */
+    private inner class RenderDLBezierQuadraticFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val p1x = args.optdouble(1, 0.0).toFloat(); val p1y = args.optdouble(2, 0.0).toFloat()
+            val p2x = args.optdouble(3, 0.0).toFloat(); val p2y = args.optdouble(4, 0.0).toFloat()
+            val p3x = args.optdouble(5, 0.0).toFloat(); val p3y = args.optdouble(6, 0.0).toFloat()
+            val red = args.optint(7, 255); val green = args.optint(8, 255); val blue = args.optint(9, 255); val alpha = args.optint(10, 255)
+            val thickness = args.optdouble(11, 1.0).toFloat(); val numSegments = args.optint(12, 0)
+            queue.renderBezierQuadratic(p1x, p1y, p2x, p2y, p3x, p3y, red, green, blue, alpha, thickness, numSegments)
+            return TRUE
+        }
+    }
+
+    /**
+     * Ломаная линия через массив точек.
+     * flags — DrawFlags (например DrawFlags_Closed для замкнутого контура).
+     */
+    private inner class RenderDLPolylineFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val pointsTable = args.arg(1)
+            if (!pointsTable.istable()) return NIL
+            val red = args.optint(2, 255); val green = args.optint(3, 255); val blue = args.optint(4, 255); val alpha = args.optint(5, 255)
+            val flags = args.optint(6, 0); val thickness = args.optdouble(7, 1.0).toFloat()
+            val points = mutableListOf<Pair<Float, Float>>()
+            var i = 1
+            while (true) {
+                val pt = pointsTable.get(i)
+                if (pt.istable()) { points.add(pt.get("x").optdouble(0.0).toFloat() to pt.get("y").optdouble(0.0).toFloat()); i++ }
+                else break
+            }
+            if (points.size >= 2) { queue.renderPolyline(points, red, green, blue, alpha, flags, thickness); return TRUE }
+            return FALSE
+        }
+    }
+
+    /** Закрашенный выпуклый многоугольник (точки по часовой стрелке) */
+    private inner class RenderDLFilledConvexPolygonFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val pointsTable = args.arg(1)
+            if (!pointsTable.istable()) return NIL
+            val red = args.optint(2, 255); val green = args.optint(3, 255); val blue = args.optint(4, 255); val alpha = args.optint(5, 255)
+            val points = mutableListOf<Pair<Float, Float>>()
+            var i = 1
+            while (true) {
+                val pt = pointsTable.get(i)
+                if (pt.istable()) { points.add(pt.get("x").optdouble(0.0).toFloat() to pt.get("y").optdouble(0.0).toFloat()); i++ }
+                else break
+            }
+            if (points.size >= 3) { queue.renderFilledConvexPolygon(points, red, green, blue, alpha); return TRUE }
+            return FALSE
+        }
+    }
+
+    /** Установить прямоугольник отсечения (scissor). intersect = true — пересечение с текущим */
+    private inner class DLPushClipRectFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            queue.pushClipRect(
+                args.optdouble(1, 0.0).toFloat(), args.optdouble(2, 0.0).toFloat(),
+                args.optdouble(3, 0.0).toFloat(), args.optdouble(4, 0.0).toFloat(),
+                args.optboolean(5, false)
+            ); return NIL
+        }
+    }
+
+    /** Установить прямоугольник отсечения на весь экран */
+    private inner class DLPushClipRectFullScreenFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs { queue.pushClipRectFullScreen(); return NIL }
+    }
+
+    private inner class DLPopClipRectFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs { queue.popClipRect(); return NIL }
+    }
+
+    /** Принудительно использовать указанную текстуру для следующих примитивов DrawList */
+    private inner class DLPushTextureIDFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs { queue.pushTextureID(args.checklong(1)); return NIL }
+    }
+
+    private inner class DLPopTextureIDFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs { queue.popTextureID(); return NIL }
     }
 }
