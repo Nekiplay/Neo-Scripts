@@ -82,31 +82,7 @@ public class Main implements ClientModInitializer {
         ModuleManager.INSTANCE.registerInbuilt();
 
         Scheduler.INSTANCE.scheduleCyclic(Utils::update, 20);
-        loadStartupScripts(scriptsDir);
         Rotations.init();
-    }
-
-
-    private final ArrayList<String> startUpScriptNames = new ArrayList<String>() {{
-        add("autoload.lua");
-        add("startup.lua");
-        add("init.lua");
-    }};
-
-    private void loadStartupScripts(File dir) {
-        // Автозагрузка скриптов при старте
-        for (String name : startUpScriptNames) {
-            File autoLoadScript = new File(dir, name);
-            if (autoLoadScript.exists()) {
-                try {
-                    LUA_MANAGER.executeScript(autoLoadScript);
-                    System.out.println("Autoload script \"" + name + "\" executed successfully");
-                } catch (Exception e) {
-                    System.out.println("Error executing autoload script \"" + name + "\": " + e.getMessage());
-                    e.printStackTrace();
-                }
-            }
-        }
     }
 
     /**
