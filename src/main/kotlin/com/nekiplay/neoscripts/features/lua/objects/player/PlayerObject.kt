@@ -407,7 +407,9 @@ class PlayerObject : LuaValue() {
     private inner class SendChatMessageFunction : OneArgFunction() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
-                mc.connection?.sendChat(message.tojstring())
+                mc.execute {
+                    mc.connection?.sendChat(message.tojstring())
+                }
                 return TRUE
             }
             return FALSE
