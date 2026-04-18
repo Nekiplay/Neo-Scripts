@@ -272,6 +272,7 @@ class PlayerObject : LuaValue() {
             arg2: LuaValue
         ): LuaValue? {
             if (arg1?.isnumber() == true) {
+                val player = mc.player ?: return NIL
                 val targetBlocks = mutableListOf<Block>()
                 if (arg2.istable()) {
                     val table = arg2.checktable()
@@ -292,13 +293,24 @@ class PlayerObject : LuaValue() {
                     return NIL
                 }
 
-                val hitResult = RaycastUtils.rayTrace(
-                    mc.cameraEntity,
-                    4.5,
-                    Rotations.serverYaw,
-                    Rotations.serverPitch,
-                    targetBlocks
-                )
+                val hitResult = if (Rotations.rotating) {
+                    RaycastUtils.rayTrace(
+                        mc.cameraEntity,
+                        4.5,
+                        Rotations.serverYaw,
+                        Rotations.serverPitch,
+                        targetBlocks
+                    )
+                }
+                else {
+                    RaycastUtils.rayTrace(
+                        mc.cameraEntity,
+                        4.5,
+                        player.yRot,
+                        player.xRot,
+                        targetBlocks
+                    )
+                }
                 return if (hitResult != null) {
                     LuaRaycast(hitResult)
                 } else {
@@ -314,7 +326,26 @@ class PlayerObject : LuaValue() {
             arg1: LuaValue?
         ): LuaValue? {
             if (arg1?.isnumber() == true) {
-                val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, mc.player?.eyePosition, Rotations.serverYaw, Rotations.serverPitch, arg1.todouble(), arg1.todouble())
+                val player = mc.player ?: return NIL
+                val hitResult = if (Rotations.rotating) {
+                    RaycastUtils.findCrosshairTarget(
+                        mc.cameraEntity,
+                        player.eyePosition,
+                        Rotations.serverYaw,
+                        Rotations.serverPitch,
+                        arg1.todouble(),
+                        arg1.todouble()
+                    )
+                } else {
+                    RaycastUtils.findCrosshairTarget(
+                        mc.cameraEntity,
+                        mc.player?.eyePosition,
+                        player.yRot,
+                        player.xRotO,
+                        arg1.todouble(),
+                        arg1.todouble()
+                    )
+                }
                 return if (hitResult != null) {
                     LuaRaycast(hitResult)
                 } else {

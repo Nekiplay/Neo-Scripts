@@ -48,10 +48,10 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
 
             "box" -> LuaBox(entity.boundingBox)
 
-            "velocity_x" -> valueOf(entity.forward.x)
-            "velocity_y" -> valueOf(entity.forward.y)
-            "velocity_z" -> valueOf(entity.forward.z)
-            "velocity" -> LuaVector3d(entity.forward)
+            "velocity_x" -> valueOf(entity.deltaMovement.x)
+            "velocity_y" -> valueOf(entity.deltaMovement.y)
+            "velocity_z" -> valueOf(entity.deltaMovement.z)
+            "velocity" -> LuaVector3d(entity.deltaMovement)
 
             "gravity" -> valueOf(entity.gravity)
             "horizontal_collision" -> valueOf(entity.horizontalCollision)
