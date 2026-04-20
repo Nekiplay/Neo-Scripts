@@ -1,6 +1,7 @@
 package com.nekiplay.neoscripts.features.lua.objects.player
 
 import com.nekiplay.neoscripts.Main.mc
+import com.nekiplay.neoscripts.features.lua.customArgs.FourArgFunction
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaRaycast
@@ -416,9 +417,14 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class SetPlayerSilentRotationFunction : ThreeArgFunction() {
-        override fun call(arg1: LuaValue, arg2: LuaValue, arg3: LuaValue?): LuaValue {
-            if (arg1.isnumber() && arg2.isnumber()) {
+    private inner class SetPlayerSilentRotationFunction : FourArgFunction() {
+        override fun invoke(
+            arg1: LuaValue?,
+            arg2: LuaValue?,
+            arg3: LuaValue?,
+            arg4: LuaValue?
+        ): LuaValue? {
+            if (arg1?.isnumber() == true && arg2?.isnumber() == true) {
                 val player = mc.player
                 if (player != null) {
                     // Ограничиваем yaw в диапазоне -180° до 180°
@@ -433,8 +439,12 @@ class PlayerObject : LuaValue() {
 
 
                     val movementCorrection = arg3?.optboolean(true) ?: true
+                    var silentMovementCorrection = false
+                    if (movementCorrection) {
+                        silentMovementCorrection = arg4?.optboolean(false) ?: false
+                    }
 
-                    Rotations.rotate(yaw, pitch, movementCorrection)
+                    Rotations.rotate(yaw, pitch, movementCorrection, silentMovementCorrection)
                     return TRUE
                 }
                 return FALSE

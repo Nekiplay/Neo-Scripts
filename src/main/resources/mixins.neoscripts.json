@@ -19,6 +19,7 @@
     "entity.MixinPlayer",
     "minecraft.ClientConnectionMixin",
     "minecraft.GamemodeAccessor",
+    "minecraft.MixinKeyboardInput",
     "minecraft.MixinServerboundUseItemPacket",
     "minecraft.item.MixinItem",
     "renderer.GameRendererAccessor"

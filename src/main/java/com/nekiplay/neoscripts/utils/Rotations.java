@@ -76,11 +76,13 @@ public class Rotations {
         rotate(yaw, pitch, priority, movementCorrection, null);
     }
 
-    public static void rotate(double yaw, double pitch, boolean movementCorrection) {
+    public static void rotate(double yaw, double pitch, boolean movementCorrection, boolean silentMovementCorrection) {
+        Rotations.silentMovementCorrection = silentMovementCorrection;
         rotate(yaw, pitch, 0, movementCorrection, null);
     }
 
     public static boolean movementCorrection = true;
+    public static boolean silentMovementCorrection = true;
     // From Meteor Client
     private static final Pool<Rotation> rotationPool = new Pool<>(Rotation::new);
     private static final List<Rotation> rotations = new ArrayList<>();
