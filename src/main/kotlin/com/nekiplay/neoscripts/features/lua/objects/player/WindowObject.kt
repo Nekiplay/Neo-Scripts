@@ -1,7 +1,9 @@
 package com.nekiplay.neoscripts.features.lua.objects.player
 
 import com.nekiplay.neoscripts.Main.mc
+import com.nekiplay.neoscripts.sugar.silentUse
 import org.luaj.vm2.LuaValue
+import org.luaj.vm2.lib.OneArgFunction
 
 class WindowObject: LuaValue() {
     override fun call(): LuaValue {
@@ -22,7 +24,19 @@ class WindowObject: LuaValue() {
             "height" -> valueOf(mc.window.height)
             "screenWidth" -> valueOf(mc.window.screenWidth)
             "screenHeight" -> valueOf(mc.window.screenHeight)
+            "setTitle" -> SetTitleFunction()
             else -> super.get(key)
+        }
+    }
+
+    private inner class SetTitleFunction : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue? {
+            return if (arg != null && arg.isstring()) {
+                mc.window.setTitle(arg.tojstring())
+                TRUE
+            } else {
+                NIL
+            }
         }
     }
 
