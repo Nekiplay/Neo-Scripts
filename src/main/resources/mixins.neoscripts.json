@@ -14,7 +14,6 @@
     "WindowMixin",
     "entity.MixinEntity",
     "entity.MixinFireworkRocketEntity",
-    "entity.MixinLivingEntity",
     "entity.MixinLivingEntityRenderer",
     "entity.MixinLocalPlayer",
     "entity.MixinPlayer",
