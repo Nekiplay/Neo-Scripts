@@ -13,6 +13,7 @@ import com.nekiplay.neoscripts.sugar.setDisplayName
 import com.nekiplay.neoscripts.utils.ItemUtils
 import com.nekiplay.neoscripts.utils.Utils
 import net.minecraft.core.Holder
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.component.DataComponents
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.NbtOps
@@ -33,7 +34,8 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
             "count" -> valueOf(stack.count.toDouble())
             "max_count" -> valueOf(stack.maxStackSize.toDouble())
             "name" -> valueOf(stack.item.name.string)
-            "display_name" -> valueOf(stack.getDisplayName().getFormattedString())
+            "id" -> valueOf(BuiltInRegistries.ITEM.getId(stack.item))
+            "display_name" -> valueOf(stack.displayName.getFormattedString())
             "is_empty" -> valueOf(stack.isEmpty)
             "head_texture" -> valueOf(stack.getHeadTexture())
             "skyblock_id" -> valueOf(stack.getItemId())

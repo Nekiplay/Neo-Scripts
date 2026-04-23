@@ -18,8 +18,11 @@ import com.nekiplay.neoscripts.utils.Utils
 import com.nekiplay.neoscripts.utils.trackers.ColdTracker
 import com.nekiplay.neoscripts.utils.trackers.PetCache
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.components.BossHealthOverlay
+import net.minecraft.client.gui.components.LerpingBossEvent
 import net.minecraft.client.gui.components.toasts.SystemToast
 import net.minecraft.network.chat.Component
+import java.lang.reflect.Field
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.Vec3
@@ -105,6 +108,8 @@ class PlayerObject : LuaValue() {
 
             "addToast" -> AddToastFunction()
 
+            "getBossBar" -> GetBossBarFunction()
+
             "raycast" -> RayCastFunction()
             "raycastToBlocks" -> RayCastToBlocksFunction()
             else -> NIL
@@ -124,6 +129,32 @@ class PlayerObject : LuaValue() {
                 }
             }
             return FALSE
+        }
+    }
+
+    private inner class GetBossBarFunction : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            val bossOverlay = mc.gui.bossOverlay ?: return NIL
+            val eventsMap = bossOverlay.events
+            val table = tableOf()
+            if (eventsMap == null || eventsMap.isEmpty()) {
+                return table
+            }
+            eventsMap.forEach { (uuid, bossEvent) ->
+                if (bossEvent is LerpingBossEvent) {
+                    val bossBarTable = tableOf()
+                    bossBarTable.set("uuid", valueOf(uuid.toString()))
+                    bossBarTable.set("name", valueOf(bossEvent.name.getFormattedString()))
+                    bossBarTable.set("percent", valueOf(bossEvent.getProgress().toDouble()))
+                    bossBarTable.set("color", valueOf(bossEvent.color.name))
+                    bossBarTable.set("overlay", valueOf(bossEvent.overlay.name))
+                    bossBarTable.set("shouldCreateFog", valueOf(bossEvent.shouldCreateWorldFog()))
+                    bossBarTable.set("shouldDarkenScreen", valueOf(bossEvent.shouldDarkenScreen()))
+                    bossBarTable.set("shouldPlayBossMusic", valueOf(bossEvent.shouldPlayBossMusic()))
+                    table.set(table.length() + 1, bossBarTable)
+                }
+            }
+            return table
         }
     }
 

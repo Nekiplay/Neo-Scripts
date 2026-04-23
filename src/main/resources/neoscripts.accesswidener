@@ -8,3 +8,5 @@ accessible field net/minecraft/world/level/saveddata/maps/MapItemSavedData frame
 accessible method net/minecraft/client/player/KeyboardInput calculateImpulse (ZZ)F
 
 accessible class net/minecraft/client/Minecraft$GameLoadCookie
+
+accessible field net/minecraft/client/gui/components/BossHealthOverlay events Ljava/util/Map;

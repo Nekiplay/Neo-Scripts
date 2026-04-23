@@ -13,8 +13,14 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaRaycast
 import com.nekiplay.neoscripts.mixins.minecraft.LevelRendererAccessor
 import com.nekiplay.neoscripts.utils.RaycastUtils
 import com.nekiplay.neoscripts.utils.Rotations
+import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.core.BlockPos
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.resources.Identifier
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.sounds.SoundEvent
+import net.minecraft.sounds.SoundSource
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
@@ -27,8 +33,11 @@ import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaValue
+import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
+import org.luaj.vm2.lib.TwoArgFunction
+import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 import java.util.ArrayList
 import kotlin.collections.forEachIndexed
@@ -59,6 +68,41 @@ class WorldObject : LuaValue() {
         }
     }
 
+    private fun parseVec3(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): Pair<Vec3?, Int> {
+        return when {
+            // Вариант 1: Один аргумент - userdata (LuaVector3d)
+            arg1?.isuserdata() == true && arg1.touserdata() is LuaVector3d -> {
+                val vec = (arg1.touserdata() as LuaVector3d).location
+                Pair(vec, 1) // Потреблен 1 аргумент
+            }
+            // Вариант 2: Один аргумент - userdata (Vec3)
+            arg1?.isuserdata() == true && arg1.touserdata() is Vec3 -> {
+                val vec = arg1.touserdata() as Vec3
+                Pair(vec, 1) // Потреблен 1 аргумент
+            }
+            // Вариант 3: Три числа (x, y, z)
+            arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
+                val vec = Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble())
+                Pair(vec, 3) // Потреблено 3 аргумента
+            }
+            // Вариант 4: Таблица с полями x, y, z
+            arg1?.istable() == true -> {
+                // Проверка на наличие полей, чтобы избежать ошибок, если таблица пустая
+                val xVal = arg1.get("x")
+                val yVal = arg1.get("y")
+                val zVal = arg1.get("z")
+
+                if (xVal.isnumber() && yVal.isnumber() && zVal.isnumber()) {
+                    val vec = Vec3(xVal.todouble(), yVal.todouble(), zVal.todouble())
+                    Pair(vec, 1) // Потреблен 1 аргумент (таблица)
+                } else {
+                    Pair(null, 0) // Неверный формат таблицы
+                }
+            }
+            else -> Pair(null, 0) // Ничего не подошло
+        }
+    }
+
     private fun parseBlockPosWithBlockState(
         arg1: LuaValue?,
         arg2: LuaValue?,
@@ -69,12 +113,12 @@ class WorldObject : LuaValue() {
             arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
                 val pos = (arg1.touserdata() as LuaBlockPos).pos
                 val state = parseBlockState(arg2)
-                if (pos != null && state != null) pos to state else null
+                if (state != null) pos to state else null
             }
             arg1?.isuserdata() == true && arg1.touserdata() is BlockPos -> {
                 val pos = arg1.touserdata() as BlockPos
                 val state = parseBlockState(arg2)
-                if (pos != null && state != null) pos to state else null
+                if (state != null) pos to state else null
             }
             arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
                 val pos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
@@ -120,6 +164,7 @@ class WorldObject : LuaValue() {
             "raycast" -> RaycastFunction()
             "raycastToBlocks" -> RaycastToBlocksFunction()
             "getBreakingBlocksInfo" -> GetBreakingBlocksInfo()
+            "playSound" -> PlaySoundFunction()
             else -> NIL
         } as LuaValue
     }
@@ -524,5 +569,54 @@ class WorldObject : LuaValue() {
     override fun isnil(): Boolean = false
     override fun type(): Int {
         return TUSERDATA
+    }
+
+    private inner class PlaySoundFunction : VarArgFunction() {
+        override fun invoke(args: Varargs?): Varargs? {
+            val level = mc.level ?: return NIL
+
+            // Получаем первые 3 аргумента для попытки парсинга вектора
+            val a1 = args?.arg(1)
+            val a2 = args?.arg(2)
+            val a3 = args?.arg(3)
+
+            val (position, offset) = parseVec3(a1, a2, a3)
+
+            if (position == null) {
+                return NIL
+            }
+
+            val nextArgIndex = 1 + offset
+
+            val soundId = args?.arg(nextArgIndex)?.tojstring() ?: return NIL
+
+            // Аргументы после soundId идут подряд
+            val volume = args.arg(nextArgIndex + 1)?.optdouble(1.0) ?: 1.0
+            val pitch = args.arg(nextArgIndex + 2)?.optdouble(1.0) ?: 1.0
+
+            val soundEvent = try {
+                val resourceLocation = Identifier.parse(soundId)
+                SoundEvent.createVariableRangeEvent(resourceLocation)
+            } catch (e: Exception) {
+                return NIL
+            }
+
+            val player = mc.player ?: return NIL
+
+            // Используем position вместо хардкодных player.x/y/z, если цель была в проигрывании звука в точке
+            level.playSeededSound(
+                player,
+                position.x, // Используем координаты из распарсенного вектора
+                position.y,
+                position.z,
+                soundEvent,
+                SoundSource.MASTER,
+                volume.toFloat(),
+                pitch.toFloat(),
+                1
+            )
+
+            return TRUE
+        }
     }
 }
