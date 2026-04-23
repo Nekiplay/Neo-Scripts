@@ -35,7 +35,7 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
             }
         }
         for (LuaScript script : LUA_MANAGER.getScripts().values()) {
-            script.onSlotClick(slot.getContainerSlot(), button, clickType.id());
+            script.onSlotClick(slotId, button, clickType.id());
         }
     }
 }
