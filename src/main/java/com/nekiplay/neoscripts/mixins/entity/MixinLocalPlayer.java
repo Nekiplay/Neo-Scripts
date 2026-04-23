@@ -18,6 +18,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(LocalPlayer.class)
@@ -41,6 +42,11 @@ public abstract class MixinLocalPlayer extends AbstractClientPlayer {
     @Inject(method = "sendPosition", at = @At("TAIL"))
     private void onSendMovementPacketsTail(CallbackInfo info) {
         SendMovementPacketsEvent.POST.invoker().onSendMovementPacketsPost();
+    }
+
+    @ModifyVariable(method = "sendPosition", at = @At("STORE"), ordinal = 1)
+    private boolean  hookFreeCamPreventRotations(boolean bl4) {
+        return (Rotations.rotating) && bl4;
     }
 
     @ModifyExpressionValue(method = "pick(Lnet/minecraft/world/entity/Entity;DDF)Lnet/minecraft/world/phys/HitResult;", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;pick(DFZ)Lnet/minecraft/world/phys/HitResult;"))
