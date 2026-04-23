@@ -916,7 +916,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         }
 
         val t = LuaValue.tableOf()
-        t.set("name", LuaValue.valueOf(sound.registeredName))
+        t.set("name", LuaValue.valueOf(sound.value().location.toString()))
         t.set("position", LuaVector3d(Vec3(x, y, z)))
         t.set("pitch", LuaValue.valueOf(pitch))
         t.set("volume", LuaValue.valueOf(volume))
