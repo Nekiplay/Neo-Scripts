@@ -34,6 +34,10 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
                 }
             }
         }
+    }
+
+    @Inject(method = "slotClicked", at = @At(value = "HEAD"))
+    private void neoscripts$onSlotClickHead(Slot slot, int slotId, int button, ClickType clickType, CallbackInfo ci) {
         for (LuaScript script : LUA_MANAGER.getScripts().values()) {
             script.onSlotClick(slotId, button, clickType.id());
         }
