@@ -86,6 +86,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val inventoryItemChangeCallbacks = ArrayList<LuaValue>()
     private val particleCallbacks = ArrayList<LuaValue>()
     private val soundCallbacks = ArrayList<LuaValue>()
+    private val slotClicksCallbacks = ArrayList<LuaValue>()
 
     // Packet events
     private val serverSideRotationCallbacks = ArrayList<LuaValue>()
@@ -360,9 +361,29 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 }
             }
         })
+
+        scriptGlobals.set("registerSlotClick", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(slotClicksCallbacks.add(callback))
+                }
+            }
+        })
     }
 
     private fun registerEventUnregistrationFunctions() {
+        scriptGlobals.set("unregisterSlotClick", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(slotClicksCallbacks.remove(callback))
+                }
+            }
+        })
+
         scriptGlobals.set("unregisterSoundPlay", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
@@ -850,6 +871,27 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     // Event handlers
+    fun onSlotClick(containerId: Int, slot: Int, button: Int, clickType: Int, stateId: Int) {
+        val callbacks = synchronized(callbacksLock) {
+            slotClicksCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                val t = LuaValue.tableOf()
+                t.set("containerId", LuaValue.valueOf(containerId))
+                t.set("slot", LuaValue.valueOf(containerId))
+                t.set("button", LuaValue.valueOf(button))
+                t.set("clickType", LuaValue.valueOf(clickType))
+                t.set("stateId", LuaValue.valueOf(stateId))
+
+                callback.call(t)
+            } catch (e: Exception) {
+                Main.LOGGER.error("${Main.LOG_PREFIX}Error in slot click callback in ${scriptName}", e)
+            }
+        }
+    }
+
     fun onInventoryItemAChange(slot: Int, stack: ItemStack): Boolean {
         var allow = true
         val callbacks = synchronized(callbacksLock) {
@@ -1241,15 +1283,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             "window" -> {
                 WindowObject()
             }
-            "input" -> {
-                InputObject()
-            }
-            "inventory" -> {
-                InventoryObject()
-            }
-            "network" -> {
-                NetworkObject()
-            }
             "block_iterator", "blockiterator" -> {
                 BlockScannerObject()
             }
@@ -1370,6 +1403,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             commandSuggestionsCallbacks.clear()
             soundCallbacks.clear()
             imguiInitCallbacks.clear()
+            slotClicksCallbacks.clear()
         }
         imguiLib?.cleanup()
         imguiLib?.queue?.clear()

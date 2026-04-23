@@ -33,6 +33,7 @@ import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
 import net.minecraft.network.protocol.game.ClientboundSetTimePacket
 import net.minecraft.network.protocol.game.ClientboundSoundPacket
+import net.minecraft.network.protocol.game.ServerboundContainerClickPacket
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
@@ -243,27 +244,40 @@ object LuaEvents : ClientModule() {
                 }
             }
         }
+        PacketEvent.SEND.register {event ->
+            when (event.packet) {
+                is ServerboundContainerClickPacket -> {
+                    val packet = event.packet as ServerboundContainerClickPacket
+                    LUA_MANAGER.scripts.values.forEach { script ->
+                        script.onSlotClick(
+                            packet.containerId,
+                            packet.slotNum.toInt(),
+                            packet.buttonNum.toInt(),
+                            packet.clickType.id(),
+                            packet.stateId
+                        )
+                    }
+                }
+            }
+            InteractionResult.PASS
+        }
         PacketEvent.RECEIVE.register { event ->
             when (event.packet) {
                 is ClientboundLevelParticlesPacket -> {
                     val packet = event.packet as ClientboundLevelParticlesPacket
 
                     LUA_MANAGER.scripts.values.forEach { script ->
-                        try {
-                            script.onSpawnParticleEvent(
-                                BuiltInRegistries.PARTICLE_TYPE.getId(packet.particle.type),
-                                packet.x,
-                                packet.y,
-                                packet.z,
-                                packet.xDist,
-                                packet.yDist,
-                                packet.zDist,
-                                packet.maxSpeed,
-                                packet.count
-                            )
-                        } catch (e: Exception) {
-                            // Обработка ошибок
-                        }
+                        script.onSpawnParticleEvent(
+                            BuiltInRegistries.PARTICLE_TYPE.getId(packet.particle.type),
+                            packet.x,
+                            packet.y,
+                            packet.z,
+                            packet.xDist,
+                            packet.yDist,
+                            packet.zDist,
+                            packet.maxSpeed,
+                            packet.count
+                        )
                     }
                 }
 
@@ -298,11 +312,7 @@ object LuaEvents : ClientModule() {
                     }
 
                     LUA_MANAGER.scripts.values.forEach { script ->
-                        try {
-                            script.onBlockUpdateEvent(table)
-                        } catch (e: Exception) {
-                            // Обработка ошибок
-                        }
+                        script.onBlockUpdateEvent(table)
                     }
                 }
             }
@@ -310,12 +320,8 @@ object LuaEvents : ClientModule() {
                 is ClientboundPlayerRotationPacket -> {
                     var rotationAllowed = true
                     LUA_MANAGER.scripts.values.forEach { script ->
-                        try {
-                            if (!script.onServerSideRotationEvent(packet.xRot, packet.yRot)) {
-                                rotationAllowed = false
-                            }
-                        } catch (e: Exception) {
-                            // Обработка ошибок
+                        if (!script.onServerSideRotationEvent(packet.xRot, packet.yRot)) {
+                            rotationAllowed = false
                         }
                     }
                     rotationAllowed
@@ -326,20 +332,16 @@ object LuaEvents : ClientModule() {
                     var teleportAllowed = true
 
                     LUA_MANAGER.scripts.values.forEach { script ->
-                        try {
-                            if (!script.onServerSideRotationEvent(packet.change.xRot(), packet.change.yRot())) {
-                                rotationAllowed = false
-                            }
-                            if (!script.onServerSideTeleportEvent(
-                                    packet.change.position.x,
-                                    packet.change.position.y,
-                                    packet.change.position.z
-                                )
-                            ) {
-                                teleportAllowed = false
-                            }
-                        } catch (e: Exception) {
-                            // Обработка ошибок
+                        if (!script.onServerSideRotationEvent(packet.change.xRot(), packet.change.yRot())) {
+                            rotationAllowed = false
+                        }
+                        if (!script.onServerSideTeleportEvent(
+                                packet.change.position.x,
+                                packet.change.position.y,
+                                packet.change.position.z
+                            )
+                        ) {
+                            teleportAllowed = false
                         }
                     }
 
