@@ -244,23 +244,6 @@ object LuaEvents : ClientModule() {
                 }
             }
         }
-        PacketEvent.SEND.register {event ->
-            when (event.packet) {
-                is ServerboundContainerClickPacket -> {
-                    val packet = event.packet as ServerboundContainerClickPacket
-                    LUA_MANAGER.scripts.values.forEach { script ->
-                        script.onSlotClick(
-                            packet.containerId,
-                            packet.slotNum.toInt(),
-                            packet.buttonNum.toInt(),
-                            packet.clickType.id(),
-                            packet.stateId
-                        )
-                    }
-                }
-            }
-            InteractionResult.PASS
-        }
         PacketEvent.RECEIVE.register { event ->
             when (event.packet) {
                 is ClientboundLevelParticlesPacket -> {

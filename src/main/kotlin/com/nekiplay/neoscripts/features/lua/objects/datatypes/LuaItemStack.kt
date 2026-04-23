@@ -70,7 +70,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
             "lore", "lores" -> {
                 val loreTable = tableOf()
                 val loreList = ItemUtils.getLore(stack)
-                loreList.forEachIndexed { index, line -> loreTable.set(index + 1, line.string) }
+                loreList.forEachIndexed { index, line -> loreTable.set(index + 1, line.getFormattedString()) }
                 loreTable
             }
             "hypixel_enchantments", "hypixel_ench" -> {

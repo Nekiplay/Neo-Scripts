@@ -871,7 +871,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     // Event handlers
-    fun onSlotClick(containerId: Int, slot: Int, button: Int, clickType: Int, stateId: Int) {
+    fun onSlotClick(slot: Int, button: Int, clickType: Int) {
         val callbacks = synchronized(callbacksLock) {
             slotClicksCallbacks.toTypedArray()
         }
@@ -879,11 +879,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         for (callback in callbacks) {
             try {
                 val t = LuaValue.tableOf()
-                t.set("containerId", LuaValue.valueOf(containerId))
-                t.set("slot", LuaValue.valueOf(containerId))
+                t.set("slot", LuaValue.valueOf(slot))
                 t.set("button", LuaValue.valueOf(button))
                 t.set("clickType", LuaValue.valueOf(clickType))
-                t.set("stateId", LuaValue.valueOf(stateId))
 
                 callback.call(t)
             } catch (e: Exception) {

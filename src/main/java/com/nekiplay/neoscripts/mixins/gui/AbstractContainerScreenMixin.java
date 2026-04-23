@@ -1,5 +1,6 @@
 package com.nekiplay.neoscripts.mixins.gui;
 
+import com.nekiplay.neoscripts.features.lua.LuaScript;
 import com.nekiplay.neoscripts.utils.Utils;
 import com.nekiplay.neoscripts.utils.trackers.PetCache;
 import net.minecraft.client.gui.screens.Screen;
@@ -13,6 +14,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import static com.nekiplay.neoscripts.Main.LUA_MANAGER;
 
 @Mixin(value = AbstractContainerScreen.class, priority = 1002)
 public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMenu> extends Screen {
@@ -28,6 +31,9 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         //Pet Caching
         if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && title.startsWith("Pets")) {
             PetCache.handlePetEquip(slot, slotId);
+        }
+        for (LuaScript script : LUA_MANAGER.getScripts().values()) {
+            script.onSlotClick(slotId, button, clickType.id());
         }
     }
 }
