@@ -590,7 +590,6 @@ class WorldObject : LuaValue() {
 
             val soundId = args?.arg(nextArgIndex)?.tojstring() ?: return NIL
 
-            // Аргументы после soundId идут подряд
             val volume = args.arg(nextArgIndex + 1)?.optdouble(1.0) ?: 1.0
             val pitch = args.arg(nextArgIndex + 2)?.optdouble(1.0) ?: 1.0
 
@@ -603,10 +602,9 @@ class WorldObject : LuaValue() {
 
             val player = mc.player ?: return NIL
 
-            // Используем position вместо хардкодных player.x/y/z, если цель была в проигрывании звука в точке
             level.playSeededSound(
                 player,
-                position.x, // Используем координаты из распарсенного вектора
+                position.x,
                 position.y,
                 position.z,
                 soundEvent,
