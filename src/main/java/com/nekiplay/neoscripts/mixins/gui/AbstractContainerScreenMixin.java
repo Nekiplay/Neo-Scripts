@@ -25,15 +25,15 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
 
     @Inject(method = "slotClicked", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;handleInventoryMouseClick(IIILnet/minecraft/world/inventory/ClickType;Lnet/minecraft/world/entity/player/Player;)V"))
     private void neoscripts$onSlotClick(Slot slot, int slotId, int button, ClickType clickType, CallbackInfo ci) {
+        for (LuaScript script : LUA_MANAGER.getScripts().values()) {
+            script.onSlotClick(slotId, button, clickType.id());
+        }
         if (!Utils.isOnSkyblock()) return;
         if (slot == null) return;
         String title = getTitle().getString();
         //Pet Caching
         if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && title.startsWith("Pets")) {
             PetCache.handlePetEquip(slot, slotId);
-        }
-        for (LuaScript script : LUA_MANAGER.getScripts().values()) {
-            script.onSlotClick(slotId, button, clickType.id());
         }
     }
 }
