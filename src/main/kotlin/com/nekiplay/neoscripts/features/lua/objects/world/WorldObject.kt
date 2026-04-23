@@ -13,6 +13,7 @@ import com.nekiplay.neoscripts.mixins.minecraft.LevelRendererAccessor
 import com.nekiplay.neoscripts.utils.RaycastUtils
 import com.nekiplay.neoscripts.utils.Rotations
 import net.minecraft.client.multiplayer.ClientLevel
+import net.minecraft.client.resources.sounds.SoundInstance
 import net.minecraft.core.BlockPos
 import net.minecraft.resources.Identifier
 import net.minecraft.sounds.SoundEvent
@@ -184,7 +185,7 @@ class WorldObject : LuaValue() {
         override fun invoke(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?, arg4: LuaValue?): LuaValue {
             val level: ClientLevel = mc.level ?: return error("No world loaded")
 
-            val (blockPos, blockState) = parseBlockPosWithBlockState(arg1, arg2, arg3, arg4) 
+            val (blockPos, blockState) = parseBlockPosWithBlockState(arg1, arg2, arg3, arg4)
                 ?: return error("Invalid arguments: expected BlockPos + BlockState or x, y, z + BlockState")
 
             val shape = try {
@@ -212,7 +213,7 @@ class WorldObject : LuaValue() {
         override fun invoke(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?, arg4: LuaValue?): LuaValue {
             val level: ClientLevel = mc.level ?: return error("No world loaded")
 
-            val (blockPos, blockState) = parseBlockPosWithBlockState(arg1, arg2, arg3, arg4) 
+            val (blockPos, blockState) = parseBlockPosWithBlockState(arg1, arg2, arg3, arg4)
                 ?: return error("Invalid arguments: expected BlockPos + BlockState or x, y, z + BlockState")
 
             val collisionShape = try {
@@ -586,6 +587,8 @@ class WorldObject : LuaValue() {
             val volume = args.arg(nextArgIndex + 1)?.optdouble(1.0) ?: 1.0
             val pitch = args.arg(nextArgIndex + 2)?.optdouble(1.0) ?: 1.0
 
+            val finalVolume = (volume / 100.0).toFloat().coerceIn(0f, 1f)
+
             val soundEvent = try {
                 val resourceLocation = Identifier.parse(soundId)
                 SoundEvent.createVariableRangeEvent(resourceLocation)
@@ -595,6 +598,20 @@ class WorldObject : LuaValue() {
 
             val player = mc.player ?: return NIL
 
+            val field = try {
+                mc.javaClass.getDeclaredField("field_44867")
+            } catch (e: Exception) {
+                null
+            }
+            field?.isAccessible = true
+            val gameVolume = try {
+                (field?.get(mc) as? Double)?.toFloat() ?: 1.0f
+            } catch (e: Exception) {
+                1.0f
+            }
+
+            val compensatedVolume = if (gameVolume > 0) finalVolume / gameVolume else finalVolume
+
             level.playSeededSound(
                 player,
                 position.x,
@@ -602,7 +619,7 @@ class WorldObject : LuaValue() {
                 position.z,
                 soundEvent,
                 SoundSource.MASTER,
-                volume.toFloat(),
+                compensatedVolume,
                 pitch.toFloat(),
                 1
             )
