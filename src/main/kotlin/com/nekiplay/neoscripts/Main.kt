@@ -27,7 +27,7 @@ object Main : ClientModInitializer {
     @JvmField
     var LUA_MANAGER: LuaManager? = null
     @JvmField
-    val CONFIG_DIR: Path = FabricLoader.getInstance().getConfigDir().resolve(MOD_ID)
+    val CONFIG_DIR: Path = FabricLoader.getInstance().configDir.resolve(MOD_ID)
 
     val PREFIX: String =
         ChatFormatting.GRAY.toString() + "[" + ChatFormatting.GOLD + "Neo Scripts" + ChatFormatting.GRAY + "] " + ChatFormatting.RESET
@@ -58,25 +58,6 @@ object Main : ClientModInitializer {
             LUA_MANAGER!!.unloadScript(script.scriptName)
         }
     }
-    /**
-     * Ticks the scheduler. Called once at the end of every client tick through
-     * [ClientTickEvents.END_CLIENT_TICK].
-     *
-     * @param client the Minecraft client.
-     */
-    fun tick(client: Minecraft?) {
-        Scheduler.INSTANCE.tick()
-    }
-
-    /**
-     * This method is responsible for initializing all classes.
-     * To have your class initialized you must annotate its initializer method with the `@Init` annotation.
-     * At compile time, ASM completely overwrites the content of this method, so adding a call here will do nothing.
-     *
-     * @see Init
-     */
-    private fun init() {
-    }
 
     override fun onInitializeClient() {
         neuDir = FabricLoader.getInstance().getConfigDir().resolve("neoscripts").toFile()
@@ -97,8 +78,6 @@ object Main : ClientModInitializer {
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, registryAccess ->
             LuaCommand.register(dispatcher, registryAccess)
         }
-
-        init()
 
         registerInbuilt()
 
