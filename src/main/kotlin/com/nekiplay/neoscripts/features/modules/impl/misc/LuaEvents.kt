@@ -13,6 +13,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.neoscripts.features.modules.ClientModule
+import com.nekiplay.neoscripts.mixins.packets.ServerboundMovePlayerPacketAccessor
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.sugar.getJsonString
 import com.nekiplay.neoscripts.utils.render.WorldRenderExtractionCallback
@@ -34,6 +35,7 @@ import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
 import net.minecraft.network.protocol.game.ClientboundSetTimePacket
 import net.minecraft.network.protocol.game.ClientboundSoundPacket
 import net.minecraft.network.protocol.game.ServerboundContainerClickPacket
+import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
@@ -244,6 +246,74 @@ object LuaEvents : ClientModule() {
                 }
             }
         }
+        PacketEvent.SEND.register { event ->
+            when (event.packet) {
+                is ServerboundMovePlayerPacket -> {
+                    val packet = event.packet as ServerboundMovePlayerPacket
+
+                    LUA_MANAGER.scripts.values.forEach { script ->
+                        val result = script.onPlayerSendMovement(
+                                packet.hasPosition(),
+                                packet.getX(0.0),
+                                packet.getY(0.0),
+                                packet.getZ(0.0),
+                                packet.hasPosition(),
+                                packet.getYRot(0f),
+                                packet.getXRot(0f),
+                                packet.isOnGround
+                        )
+                        if (result.istable()) {
+                            val accessed = packet as ServerboundMovePlayerPacketAccessor
+                            if (packet.hasRotation()) {
+                                accessed.`neoscripts$setYaw`(result.get("yaw").tofloat())
+                                accessed.`neoscripts$setPitch`(result.get("pitch").tofloat())
+                            }
+                            if (packet.hasPosition()) {
+                                accessed.`neoscripts$setX`(result.get("x").todouble())
+                                accessed.`neoscripts$setY`(result.get("y").todouble())
+                                accessed.`neoscripts$setZ`(result.get("z").todouble())
+                                accessed.`neoscripts$setOnGround`(result.get("on_ground").toboolean())
+                            }
+                        }
+                    }
+                }
+            }
+            InteractionResult.PASS
+        }
+        PacketEvent.SENT.register { event ->
+            when (event.packet) {
+                is ServerboundMovePlayerPacket -> {
+                    val packet = event.packet as ServerboundMovePlayerPacket
+
+                    LUA_MANAGER.scripts.values.forEach { script ->
+                        val result = script.onPlayerSendMovement(
+                            packet.hasPosition(),
+                            packet.getX(0.0),
+                            packet.getY(0.0),
+                            packet.getZ(0.0),
+                            packet.hasPosition(),
+                            packet.getYRot(0f),
+                            packet.getXRot(0f),
+                            packet.isOnGround
+                        )
+                        if (result.istable()) {
+                            val accessed = packet as ServerboundMovePlayerPacketAccessor
+                            if (packet.hasRotation()) {
+                                accessed.`neoscripts$setYaw`(result.get("yaw").tofloat())
+                                accessed.`neoscripts$setPitch`(result.get("pitch").tofloat())
+                            }
+                            if (packet.hasPosition()) {
+                                accessed.`neoscripts$setX`(result.get("x").todouble())
+                                accessed.`neoscripts$setY`(result.get("y").todouble())
+                                accessed.`neoscripts$setZ`(result.get("z").todouble())
+                                accessed.`neoscripts$setOnGround`(result.get("on_ground").toboolean())
+                            }
+                        }
+                    }
+                }
+            }
+            InteractionResult.PASS
+        }
         PacketEvent.RECEIVE.register { event ->
             when (event.packet) {
                 is ClientboundLevelParticlesPacket -> {
@@ -279,8 +349,20 @@ object LuaEvents : ClientModule() {
                         script.onSoundPlay(packet.sound, packet.x, packet.y, packet.z, packet.pitch.toDouble(), packet.volume.toDouble())
                     }
                 }
+            }
+            val allow = when (val packet = event.packet) {
+                is ClientboundPlayerRotationPacket -> {
+                    var rotationAllowed = true
+                    LUA_MANAGER.scripts.values.forEach { script ->
+                        if (!script.onServerSideRotationEvent(packet.xRot, packet.yRot)) {
+                            rotationAllowed = false
+                        }
+                    }
+                    rotationAllowed
+                }
 
                 is ClientboundBlockUpdatePacket -> {
+                    var allowedBlockUpdate = true
                     val packet = event.packet as ClientboundBlockUpdatePacket
 
                     val table = LuaValue.tableOf()
@@ -295,19 +377,12 @@ object LuaEvents : ClientModule() {
                     }
 
                     LUA_MANAGER.scripts.values.forEach { script ->
-                        script.onBlockUpdateEvent(table)
-                    }
-                }
-            }
-            val allow = when (val packet = event.packet) {
-                is ClientboundPlayerRotationPacket -> {
-                    var rotationAllowed = true
-                    LUA_MANAGER.scripts.values.forEach { script ->
-                        if (!script.onServerSideRotationEvent(packet.xRot, packet.yRot)) {
-                            rotationAllowed = false
+                        if (!script.onBlockUpdateEvent(table)) {
+                            allowedBlockUpdate = false
                         }
                     }
-                    rotationAllowed
+
+                    allowedBlockUpdate
                 }
 
                 is ClientboundPlayerPositionPacket -> {

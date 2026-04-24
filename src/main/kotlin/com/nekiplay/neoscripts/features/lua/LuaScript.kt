@@ -49,6 +49,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaError
+import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
@@ -92,6 +93,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val serverSideRotationCallbacks = ArrayList<LuaValue>()
     private val serverSideTeleportCallbacks = ArrayList<LuaValue>()
     private val serverSideSetTimeCallbacks = ArrayList<LuaValue>()
+
+    private val clientSidePlayerSetPositionCallbacks = ArrayList<LuaValue>()
 
     // Command events
     val commandCallbacks = ConcurrentHashMap<String, LuaValue>()
@@ -331,6 +334,16 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
         })
 
+        scriptGlobals.set("registerSlotClick", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(slotClicksCallbacks.add(callback))
+                }
+            }
+        })
+
         // Packet events
         scriptGlobals.set("registerServerSideRotationEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
@@ -361,19 +374,28 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 }
             }
         })
-
-        scriptGlobals.set("registerSlotClick", object : VarArgFunction() {
+        scriptGlobals.set("registerPlayerSendMovementEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 if (!callback.isfunction()) return FALSE
                 synchronized(callbacksLock) {
-                    return valueOf(slotClicksCallbacks.add(callback))
+                    return valueOf(clientSidePlayerSetPositionCallbacks.add(callback))
                 }
             }
         })
     }
 
     private fun registerEventUnregistrationFunctions() {
+        scriptGlobals.set("unregisterPlayerSendMovementEvent", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(clientSidePlayerSetPositionCallbacks.remove(callback))
+                }
+            }
+        })
+
         scriptGlobals.set("unregisterSlotClick", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
@@ -909,6 +931,34 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         return allow
     }
 
+    fun onPlayerSendMovement(hasPosition: Boolean, x: Double, y: Double, z: Double, hasRotation: Boolean, yaw: Float, pitch: Float, isOnGround: Boolean): LuaValue {
+        val callbacks = synchronized(callbacksLock) {
+            clientSidePlayerSetPositionCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                val t = LuaValue.tableOf()
+                t.set("has_position", LuaValue.valueOf(hasPosition))
+                t.set("x", LuaValue.valueOf(x))
+                t.set("y", LuaValue.valueOf(y))
+                t.set("z", LuaValue.valueOf(z))
+                t.set("has_rotation", LuaValue.valueOf(hasRotation))
+                t.set("yaw", LuaValue.valueOf(yaw.toDouble()))
+                t.set("pitch", LuaValue.valueOf(pitch.toDouble()))
+                t.set("on_ground", LuaValue.valueOf(isOnGround))
+
+                val res = callback.call(t)
+                if (res.istable()) {
+                    return res
+                }
+            } catch (e: Exception) {
+                Main.LOGGER.error("${Main.LOG_PREFIX}Error in on send player movement callback in ${scriptName}", e)
+            }
+        }
+        return LuaValue.NIL
+    }
+
     fun onSoundPlay(sound: Holder<SoundEvent>, x: Double, y: Double, z: Double, pitch: Double, volume: Double): Boolean {
         var allow = true
         val callbacks = synchronized(callbacksLock) {
@@ -1402,6 +1452,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             soundCallbacks.clear()
             imguiInitCallbacks.clear()
             slotClicksCallbacks.clear()
+            clientSidePlayerSetPositionCallbacks.clear()
         }
         imguiLib?.cleanup()
         imguiLib?.queue?.clear()
