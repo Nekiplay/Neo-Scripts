@@ -956,7 +956,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 Main.LOGGER.error("${Main.LOG_PREFIX}Error in on send player movement callback in ${scriptName}", e)
             }
         }
-        rreturn allow
+        return allow
     }
 
     fun onSoundPlay(sound: Holder<SoundEvent>, x: Double, y: Double, z: Double, pitch: Double, volume: Double): Boolean {
