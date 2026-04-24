@@ -399,6 +399,22 @@ class WorldObject : LuaValue() {
                 mc.level?.updateNeighborsAt(blockPos, blockState.block)
                 return TRUE
             }
+            else if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isuserdata() == true && arg4.touserdata() is LuaBlockState) {
+                val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
+                val blockState = arg4.touserdata() as LuaBlockState
+
+                mc.level?.setBlockAndUpdate(blockPos, blockState.blockState)
+                mc.level?.updateNeighborsAt(blockPos, blockState.blockState.block)
+                return TRUE
+            }
+            else if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isuserdata() == true && arg4.touserdata() is BlockState) {
+                val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
+                val blockState = arg4.touserdata() as BlockState
+
+                mc.level?.setBlockAndUpdate(blockPos, blockState)
+                mc.level?.updateNeighborsAt(blockPos, blockState.block)
+                return TRUE
+            }
             else if (arg1?.istable() ?: false) {
                 val x: Int = if (arg1.get("x").isnumber()) arg1.get("x").toint() else 0
                 val y: Int = if (arg1.get("y").isnumber()) arg1.get("y").toint() else 0
@@ -418,6 +434,25 @@ class WorldObject : LuaValue() {
                 val blockState = Block.stateById(blockId)
                 mc.level?.setBlockAndUpdate(pos.pos, blockState)
                 mc.level?.updateNeighborsAt(pos.pos, blockState.block)
+            }
+            else if (arg1?.isuserdata() == true && arg1.touserdata() is BlockPos) {
+                val pos = arg1.touserdata() as BlockPos
+                val blockId = arg2?.optint(1) ?: 1
+                val blockState = Block.stateById(blockId)
+                mc.level?.setBlockAndUpdate(pos, blockState)
+                mc.level?.updateNeighborsAt(pos, blockState.block)
+            }
+            else if (arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos && arg2?.isuserdata() == true && arg2.touserdata() is LuaBlockState) {
+                val pos = arg1.touserdata() as LuaBlockPos
+                val state = arg2.touserdata() as LuaBlockState
+                mc.level?.setBlockAndUpdate(pos.pos, state.blockState)
+                mc.level?.updateNeighborsAt(pos.pos, state.blockState.block)
+            }
+            else if (arg1?.isuserdata() == true && arg1.touserdata() is BlockPos && arg2?.isuserdata() == true && arg2.touserdata() is BlockState) {
+                val pos = arg1.touserdata() as BlockPos
+                val state = arg2.touserdata() as BlockState
+                mc.level?.setBlockAndUpdate(pos, state)
+                mc.level?.updateNeighborsAt(pos, state.block)
             }
             return NIL
         }
