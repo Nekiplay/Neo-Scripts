@@ -9,6 +9,8 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.utils.itemlist.ItemRepository
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.resources.Identifier
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
@@ -31,8 +33,44 @@ class Creator : LuaValue() {
             "createBlockPos" -> CreateBlockPos()
             "createBlockState" -> CreateBlockState()
             "createVector3", "createVector3d" -> CreateVector3()
-            "createItemStackFromId" -> CreateStackFromID()
+            "createItemStackFromHypixelSkyblockId", "createItemFromHypixelSkyblockId" -> CreateStackFromHypixelSkyblockID()
+            "createItemStackFromIdentifier" -> CreateStackFromIdentifier()
+            "createItemStackFromId" -> CreateStackFromId()
             else -> super.get(key)
+        }
+    }
+
+    inner class CreateStackFromId : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (!args.arg(1).isnumber()) {
+                error("create item expects a number as 1st argument")
+            }
+            val id = args.arg(1).checkint()
+
+            val stack = BuiltInRegistries.ITEM.get(id)
+            return if (stack.isPresent) {
+                LuaItemStack(stack.get().value().defaultInstance)
+            } else {
+                NIL
+            }
+        }
+    }
+
+    inner class CreateStackFromIdentifier : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (!args.arg(1).isstring()) {
+                error("create item expects a string as 1st argument (minecraft:tone)")
+            }
+            val idString = args.arg(1).checkjstring()
+
+            val identifier = Identifier.parse(idString)
+
+            val stack = BuiltInRegistries.ITEM.get(identifier)
+            return if (stack.isPresent) {
+                LuaItemStack(stack.get().value().defaultInstance)
+            } else {
+                NIL
+            }
         }
     }
 
@@ -81,7 +119,7 @@ class Creator : LuaValue() {
         }
     }
 
-    inner class CreateStackFromID : VarArgFunction() {
+    inner class CreateStackFromHypixelSkyblockID : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (!args.arg(1).isstring()) {
                 error("create item expects a string as 1st argument (item neu id)")
