@@ -3,7 +3,6 @@ package com.nekiplay.neoscripts.features.lua.objects.misc
 import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.features.lua.LuaScript
 import com.nekiplay.neoscripts.features.lua.objects.misc.imgui.*
-import com.nekiplay.neoscripts.imgui.ImguiLoader
 import imgui.ImFont
 import imgui.ImFontConfig
 import imgui.ImFontGlyphRangesBuilder
@@ -19,7 +18,6 @@ import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.function.Consumer
 
 class ImGuiLib(val script: LuaScript) : LuaValue() {
     public val queue: ImDrawCommandQueue = ImDrawCommandQueue()

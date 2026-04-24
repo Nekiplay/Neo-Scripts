@@ -2,8 +2,6 @@ package com.nekiplay.neoscripts.mixins;
 
 import com.mojang.blaze3d.platform.Window;
 import com.nekiplay.neoscripts.Main;
-import com.nekiplay.neoscripts.imgui.ImguiLoader;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.main.GameConfig;
 import org.spongepowered.asm.mixin.Final;
