@@ -23,7 +23,9 @@ import java.nio.file.Path
 object Main : ModInitializer {
     const val MOD_ID: String = "neoscripts"
     val LOGGER: Logger? = LoggerFactory.getLogger(MOD_ID)
+    @JvmField
     var LUA_MANAGER: LuaManager? = null
+    @JvmField
     val CONFIG_DIR: Path = FabricLoader.getInstance().getConfigDir().resolve(MOD_ID)
 
     val PREFIX: String =
@@ -33,6 +35,7 @@ object Main : ModInitializer {
     @JvmField
     var mc: Minecraft = Minecraft.getInstance()
     var INSTANCE: Main? = null
+    @JvmField
     val GSON: Gson = GsonBuilder().setPrettyPrinting().create()
     val GSON_COMPACT: Gson = GsonBuilder().create()
 

@@ -1,5 +1,6 @@
 package com.nekiplay.neoscripts.utils.trackers;
 
+import com.nekiplay.neoscripts.Main;
 import com.nekiplay.neoscripts.annotations.Init;
 import com.nekiplay.neoscripts.utils.ItemUtils;
 import com.nekiplay.neoscripts.utils.RegexUtils;

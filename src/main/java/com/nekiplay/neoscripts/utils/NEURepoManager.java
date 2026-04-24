@@ -3,6 +3,7 @@ package com.nekiplay.neoscripts.utils;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
+import com.nekiplay.neoscripts.Main;
 import com.nekiplay.neoscripts.annotations.Init;
 import com.nekiplay.neoscripts.utils.scheduler.Scheduler;
 import io.github.moulberry.repo.NEUConstants;

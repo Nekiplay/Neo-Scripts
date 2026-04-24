@@ -42,12 +42,11 @@ import java.awt.datatransfer.StringSelection;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Collections;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.nekiplay.neoscripts.Main.LOGGER;
+import static com.nekiplay.neoscripts.utils.itemlist.recipes.SkyblockRecipe.LOGGER;
 
 public class Utils {
     public static final ObjectArrayList<String> STRING_SCOREBOARD = new ObjectArrayList<>();
