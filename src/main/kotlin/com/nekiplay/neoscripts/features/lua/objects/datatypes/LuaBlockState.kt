@@ -2,6 +2,7 @@ package com.nekiplay.neoscripts.features.lua.objects.datatypes
 
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
+import net.minecraft.core.Direction
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.ComparatorBlock
@@ -15,6 +16,7 @@ import net.minecraft.world.level.block.RepeaterBlock
 import net.minecraft.world.level.block.SnowLayerBlock
 import net.minecraft.world.level.block.piston.PistonBaseBlock
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.state.properties.AttachFace
 import net.minecraft.world.level.block.state.properties.IntegerProperty
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
@@ -169,6 +171,28 @@ class LuaBlockState(var blockState: BlockState) : LuaUserdata(blockState) {
             "age" -> {
                 if (value.isnumber() && blockState.hasProperty(CropBlock.AGE)) {
                     blockState = blockState.setValue(CropBlock.AGE, value.toint())
+                }
+            }
+            "facing" -> {
+                if (blockState.hasProperty(DoorBlock.FACING)) {
+                    if (value.touserdata() is Direction) {
+                        val dir = value.touserdata() as Direction
+                        blockState = blockState.setValue(DoorBlock.FACING, dir)
+                    }
+                    else if (value.touserdata() is LuaDirection) {
+                        val dir = value.touserdata() as LuaDirection
+                        blockState = blockState.setValue(DoorBlock.FACING, dir.direction)
+                    }
+                    else if (value.isstring()) {
+                        blockState = blockState.setValue(DoorBlock.FACING, Direction.valueOf(value.tojstring().uppercase()))
+                    }
+                }
+            }
+            "face" -> {
+                if (blockState.hasProperty(FaceAttachedHorizontalDirectionalBlock.FACE)) {
+                    if (value.isstring()) {
+                        blockState = blockState.setValue(FaceAttachedHorizontalDirectionalBlock.FACE, AttachFace.valueOf(value.tojstring().uppercase()))
+                    }
                 }
             }
             else -> super.set(key, value)
