@@ -80,7 +80,7 @@ fun MultiPlayerGameMode.mineBlock(): Boolean {
                 player.distanceToSqr(Vec3.atCenterOf(targetPos)) <= 36.0
 
         if (!isSameBlock) {
-            this.abortDestroyBlock()
+            this.stopDestroyBlock()
             resetMining()
             return false
         }
