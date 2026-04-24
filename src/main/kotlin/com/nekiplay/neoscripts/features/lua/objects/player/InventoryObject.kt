@@ -277,13 +277,16 @@ class InventoryObject: LuaValue() {
                 else -> null
             }
 
-            val slot = arg.toint()
+            if (itemStack != null) {
+                val slot = arg.toint()
 
-            val player = mc.player ?: return NIL
-            val inv = player.inventory ?: return NIL
+                val player = mc.player ?: return NIL
+                val inv = player.inventory ?: return NIL
 
-            player.inventory.setItem(slot, itemStack)
-            return TRUE
+                player.inventory.setItem(slot, itemStack)
+                return TRUE
+            }
+            return FALSE
         }
     }
 
@@ -297,13 +300,10 @@ class InventoryObject: LuaValue() {
                 else -> null
             }
 
-            if (mc.player != null && mc.player?.containerMenu != null) {
+            if (mc.player != null && mc.player?.containerMenu != null && itemStack != null) {
                 val screen = mc.player!!.containerMenu
                 if (screen is AbstractContainerMenu) {
                     val slot = arg.toint()
-
-                    val player = mc.player ?: return NIL
-                    val inv = player.inventory ?: return NIL
 
                     screen.setItem(slot, screen.stateId, itemStack)
                     return TRUE
