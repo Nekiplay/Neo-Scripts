@@ -9,6 +9,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.neoscripts.sugar.getFormattedString
+import com.nekiplay.neoscripts.sugar.getRotation
 import com.nekiplay.neoscripts.utils.Utils
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
 import net.minecraft.util.ProblemReporter
@@ -293,7 +294,8 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isboolean() == true) {
                 val vector = Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble())
                 entity.setPos(vector.x, vector.y, vector.z)
-                mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector, arg4.toboolean(), entity.horizontalCollision))
+                val rot = entity.getRotation()
+                mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, arg4.toboolean(), entity.horizontalCollision))
                 return TRUE
             }
             else if (arg1?.istable() ?: false) {
@@ -304,18 +306,21 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
 
                 val vector = Vec3(x, y, z)
                 entity.setPos(vector.x, vector.y, vector.z)
-                mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector, on_ground, entity.horizontalCollision))
+                val rot = entity.getRotation()
+                mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, on_ground, entity.horizontalCollision))
                 return TRUE
             }
             else if (arg1?.isuserdata() == true && arg1.touserdata() is LuaVector3d) {
                 val vector = arg1.touserdata() as LuaVector3d
                 entity.setPos(vector.location.x, vector.location.y, vector.location.z)
-                mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector.location, arg2?.toboolean() ?: true, entity.horizontalCollision))
+                val rot = entity.getRotation()
+                mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector.location, rot.first, rot.second, arg2?.toboolean() ?: true, entity.horizontalCollision))
             }
             else if (arg1?.isuserdata() == true && arg1.touserdata() is Vec3) {
                 val vector = arg1.touserdata() as Vec3
                 entity.setPos(vector.x, vector.y, vector.z)
-                mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector, arg2?.toboolean() ?: true, entity.horizontalCollision))
+                val rot = entity.getRotation()
+                mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, arg2?.toboolean() ?: true, entity.horizontalCollision))
             }
             return FALSE
         }
@@ -354,33 +359,38 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 if (value.isnumber()) {
                     val vector = Vec3(value.todouble(), entity.getPosition(1f).y, entity.getPosition(1f).z)
                     entity.setPos(vector.x, vector.y, vector.z)
-                    mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector, entity.onGround(), entity.horizontalCollision))
+                    val rot = entity.getRotation()
+                    mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
                 }
             }
             "y" -> {
                 if (value.isnumber()) {
                     val vector = Vec3(entity.getPosition(1f).x, value.todouble(), entity.getPosition(1f).z)
                     entity.setPos(vector.x, vector.y, vector.z)
-                    mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector, entity.onGround(), entity.horizontalCollision))
+                    val rot = entity.getRotation()
+                    mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
                 }
             }
             "z" -> {
                 if (value.isnumber()) {
                     val vector = Vec3(entity.getPosition(1f).x, entity.getPosition(1f).y, value.todouble())
                     entity.setPos(vector.x, vector.y, vector.z)
-                    mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector, entity.onGround(), entity.horizontalCollision))
+                    val rot = entity.getRotation()
+                    mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
                 }
             }
             "pos", "position" -> {
                 if (value.isuserdata() && value.touserdata() is LuaVector3d) {
                     val vector = value.touserdata() as LuaVector3d
                     entity.setPos(vector.location.x, vector.location.y, vector.location.z)
-                    mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector.location, entity.onGround(), entity.horizontalCollision))
+                    val rot = entity.getRotation()
+                    mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector.location, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
                 }
                 else if (value.isuserdata() && value.touserdata() is Vec3) {
                     val vector = value.touserdata() as Vec3
                     entity.setPos(vector.x, vector.y, vector.z)
-                    mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector, entity.onGround(), entity.horizontalCollision))
+                    val rot = entity.getRotation()
+                    mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
                 }
             }
         }
