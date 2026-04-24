@@ -18,10 +18,15 @@ import net.minecraft.core.component.DataComponents
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.NbtOps
 import net.minecraft.network.chat.Component
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.MapItem
 import net.minecraft.world.item.component.ItemLore
 import net.minecraft.world.level.block.Block
+import org.luaj.vm2.LuaDouble
+import org.luaj.vm2.LuaInteger
+import org.luaj.vm2.LuaLong
+import org.luaj.vm2.LuaNumber
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 
@@ -127,6 +132,32 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                 }
             }
             else -> super.get(key)
+        }
+    }
+
+    override fun eq(other: LuaValue?): LuaValue {
+        return when (other) {
+            is LuaItemStack if stack == other.stack -> {
+                LuaValue.TRUE
+            }
+            is ItemStack if stack == other -> {
+                LuaValue.TRUE
+            }
+            is LuaInteger if BuiltInRegistries.ITEM.getId(stack.item) == other.toint() -> {
+                LuaValue.TRUE
+            }
+            is LuaNumber if BuiltInRegistries.ITEM.getId(stack.item) == other.toint() -> {
+                LuaValue.TRUE
+            }
+            is LuaLong if BuiltInRegistries.ITEM.getId(stack.item) == other.toint() -> {
+                LuaValue.TRUE
+            }
+            is LuaDouble if BuiltInRegistries.ITEM.getId(stack.item) == other.toint() -> {
+                LuaValue.TRUE
+            }
+            else -> {
+                LuaValue.FALSE
+            }
         }
     }
 
