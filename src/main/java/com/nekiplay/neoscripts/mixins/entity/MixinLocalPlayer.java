@@ -18,6 +18,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(LocalPlayer.class)
@@ -96,5 +97,11 @@ public abstract class MixinLocalPlayer extends AbstractClientPlayer {
         }
 
         return Rotations.serverPitch;
+    }
+
+    @ModifyVariable(method = "sendPosition", at = @At("STORE"), ordinal = 1)
+    private boolean hookFreeCamPreventRotations(boolean bl4) {
+        // Prevent rotation changes when free cam is active, unless a rotation is being set via the rotation manager
+        return (Rotations.rotating) && bl4;
     }
 }
