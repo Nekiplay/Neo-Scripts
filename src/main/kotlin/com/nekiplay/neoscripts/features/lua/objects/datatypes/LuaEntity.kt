@@ -3,6 +3,7 @@ package com.nekiplay.neoscripts.features.lua.objects.datatypes
 import com.mojang.authlib.properties.Property
 import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.Main.mc
+import com.nekiplay.neoscripts.features.lua.customArgs.FourArgFunction
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
@@ -17,7 +18,6 @@ import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ItemFrame
 import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.entity.player.Player
-import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.storage.TagValueOutput
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaUserdata
@@ -270,7 +270,46 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 entity.saveWithoutId(output)
                 valueOf(output.buildResult().toString())
             }
+            "teleport" -> TeleportFunction()
             else -> super.get(key)
+        }
+    }
+
+    private inner class TeleportFunction : FourArgFunction() {
+        override fun invoke(
+            arg1: LuaValue?,
+            arg2: LuaValue?,
+            arg3: LuaValue?,
+            arg4: LuaValue?
+        ): LuaValue? {
+            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isboolean() == true) {
+                val vector = Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble())
+                entity.setPos(vector.x, vector.y, vector.z)
+                mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector, arg4.toboolean(), entity.horizontalCollision))
+                return TRUE
+            }
+            else if (arg1?.istable() ?: false) {
+                val x: Double = if (arg1.get("x").isnumber()) arg1.get("x").todouble() else 0.0
+                val y: Double = if (arg1.get("y").isnumber()) arg1.get("y").todouble() else 0.0
+                val z: Double = if (arg1.get("z").isnumber()) arg1.get("z").todouble() else 0.0
+                val on_ground: Boolean = if (arg1.get("on_ground").isnumber()) arg1.get("on_ground").toboolean() else true
+
+                val vector = Vec3(x, y, z)
+                entity.setPos(vector.x, vector.y, vector.z)
+                mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector, on_ground, entity.horizontalCollision))
+                return TRUE
+            }
+            else if (arg1?.isuserdata() == true && arg1.touserdata() is LuaVector3d) {
+                val vector = arg1.touserdata() as LuaVector3d
+                entity.setPos(vector.location.x, vector.location.y, vector.location.z)
+                mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector.location, arg2?.toboolean() ?: true, entity.horizontalCollision))
+            }
+            else if (arg1?.isuserdata() == true && arg1.touserdata() is Vec3) {
+                val vector = arg1.touserdata() as Vec3
+                entity.setPos(vector.x, vector.y, vector.z)
+                mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector, arg2?.toboolean() ?: true, entity.horizontalCollision))
+            }
+            return NIL
         }
     }
 
