@@ -632,7 +632,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     message.append(args.arg(i).tojstring())
                 }
                 val messageStr = message.toString()
-                Main.LOGGER.info(Main.LOG_PREFIX + messageStr)
+                Main.LOGGER?.info(Main.LOG_PREFIX + messageStr)
                 return NIL
             }
         })
@@ -704,11 +704,11 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
                     commandDispatchers[commandName] = fabricDispatcher
                     actualRegister(fabricDispatcher, commandName)
-                    Main.LOGGER.info("${Main.LOG_PREFIX}Registered Minecraft command: /$commandName")
+                    Main.LOGGER?.info("${Main.LOG_PREFIX}Registered Minecraft command: /$commandName")
                 }
             }
         } catch (e: Exception) {
-            Main.LOGGER.error("${Main.LOG_PREFIX}Failed to register Minecraft command: /$commandName", e)
+            Main.LOGGER?.error("${Main.LOG_PREFIX}Failed to register Minecraft command: /$commandName", e)
         }
     }
 
@@ -768,9 +768,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         dispatcher.register(commandBuilder)
 
         if (dispatcher.root.getChild(commandName) == null) {
-            Main.LOGGER.error("Failed to inject node into dispatcher root!")
+            Main.LOGGER?.error("Failed to inject node into dispatcher root!")
         } else {
-            Main.LOGGER.info("Successfully injected command: $commandName with suggestions: ${suggestionsCallback != null}")
+            Main.LOGGER?.info("Successfully injected command: $commandName with suggestions: ${suggestionsCallback != null}")
         }
     }
 
@@ -825,7 +825,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     builder.suggest(result.tojstring())
                 }
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error getting suggestions for command /$commandName", e)
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error getting suggestions for command /$commandName", e)
             }
             builder.build()
         }
@@ -853,7 +853,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     map.remove(commandName)
                 } catch (e: NoSuchFieldException) {
                     // Если вдруг библиотека Brigadier в вашей среде имеет другие названия полей
-                    Main.LOGGER.warn("Field $fieldName not found in CommandNode")
+                    Main.LOGGER?.warn("Field $fieldName not found in CommandNode")
                 }
             }
 
@@ -861,9 +861,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             commandDispatchers.remove(commandName)
             commandCallbacks.remove(commandName)
 
-            Main.LOGGER.info("${Main.LOG_PREFIX}Successfully unregistered Lua command: /$commandName")
+            Main.LOGGER?.info("${Main.LOG_PREFIX}Successfully unregistered Lua command: /$commandName")
         } catch (e: Exception) {
-            Main.LOGGER.error("${Main.LOG_PREFIX}Failed to unregister command /$commandName", e)
+            Main.LOGGER?.error("${Main.LOG_PREFIX}Failed to unregister command /$commandName", e)
         }
     }
 
@@ -875,7 +875,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 val argsTable = LuaValue.listOf(args.map { LuaValue.valueOf(it) }.toTypedArray())
                 callback.call(LuaValue.valueOf(commandName), argsTable, LuaValue.valueOf(source?.player?.name?.string ?: ""))
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error executing Lua command: /$commandName", e)
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error executing Lua command: /$commandName", e)
                 source?.sendError(Component.literal("Error executing command: ${e.message}"))
             }
         }
@@ -907,7 +907,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
                 callback.call(t)
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in slot click callback in ${scriptName}", e)
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in slot click callback in ${scriptName}", e)
             }
         }
     }
@@ -925,7 +925,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     allow = false
                 }
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in inventory add item callback in ${scriptName}", e)
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in inventory add item callback in ${scriptName}", e)
             }
         }
         return allow
@@ -953,7 +953,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     allow = false
                 }
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in on send player movement callback in ${scriptName}", e)
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in on send player movement callback in ${scriptName}", e)
             }
         }
         return allow
@@ -979,7 +979,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     allow = false
                 }
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in sound play callback in ${scriptName}", e)
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in sound play callback in ${scriptName}", e)
             }
         }
         return allow
@@ -1004,7 +1004,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     allow = false
                 }
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in attack block callback in ${scriptName}", e)
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in attack block callback in ${scriptName}", e)
             }
         }
         return allow
@@ -1026,7 +1026,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     allow = false
                 }
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in use block callback in ${scriptName}", e)
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in use block callback in ${scriptName}", e)
             }
         }
         return allow
@@ -1041,7 +1041,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call()
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in client tick callback in ${scriptName}", e)
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in client tick callback in ${scriptName}", e)
             }
         }
     }
@@ -1055,7 +1055,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call()
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in client pre tick callback in ${scriptName}", e)
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in client pre tick callback in ${scriptName}", e)
             }
         }
     }
@@ -1069,7 +1069,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call(context)
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in world render callback in ${scriptName}: ${e.message}")
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in world render callback in ${scriptName}: ${e.message}")
             }
         }
     }
@@ -1084,7 +1084,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call(renderContext)
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in 2D render callback in ${scriptName}: ${e.message}")
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in 2D render callback in ${scriptName}: ${e.message}")
             }
         }
     }
@@ -1103,7 +1103,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     }
                 }
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in key callback in ${scriptName}: ${e.message}")
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in key callback in ${scriptName}: ${e.message}")
             }
         }
         return allow
@@ -1123,7 +1123,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     }
                 }
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in message callback in ${scriptName}: ${e.message}")
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in message callback in ${scriptName}: ${e.message}")
             }
         }
         return allow
@@ -1143,7 +1143,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     }
                 }
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in send message callback in ${scriptName}: ${e.message}")
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in send message callback in ${scriptName}: ${e.message}")
             }
         }
         return allow
@@ -1163,7 +1163,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     }
                 }
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in send command callback in ${scriptName}: ${e.message}")
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in send command callback in ${scriptName}: ${e.message}")
             }
         }
         return allow
@@ -1183,7 +1183,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     }
                 }
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in block update callback in ${scriptName}: ${e.message}")
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in block update callback in ${scriptName}: ${e.message}")
             }
         }
         return allow
@@ -1198,7 +1198,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call(LuaValue.valueOf(location.toString()))
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in location change callback in ${scriptName}: ${e.message}")
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in location change callback in ${scriptName}: ${e.message}")
             }
         }
         return true
@@ -1213,7 +1213,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call()
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in imgui callback in ${scriptName}: ${e.message}")
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in imgui callback in ${scriptName}: ${e.message}")
             }
         }
         return true
@@ -1240,7 +1240,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call(t)
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in particle callback in ${scriptName}: ${e.message}")
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in particle callback in ${scriptName}: ${e.message}")
             }
         }
     }
@@ -1260,7 +1260,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     }
                 }
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in server side rotation callback in ${scriptName}: ${e.message}")
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in server side rotation callback in ${scriptName}: ${e.message}")
             }
         }
         return allow
@@ -1275,7 +1275,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call(LuaValue.valueOf(dayTime), LuaValue.valueOf(gameTime), LuaValue.valueOf(tickDayTime))
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in server side time callback in ${scriptName}: ${e.message}")
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in server side time callback in ${scriptName}: ${e.message}")
             }
         }
     }
@@ -1386,7 +1386,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                     }
                 }
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in server side rotation callback in ${scriptName}: ${e.message}")
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in server side rotation callback in ${scriptName}: ${e.message}")
             }
         }
         return allow
@@ -1401,7 +1401,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call()
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in imgui init callback in ${scriptName}: ${e.message}")
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in imgui init callback in ${scriptName}: ${e.message}")
             }
         }
     }
@@ -1413,7 +1413,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             try {
                 callback.call()
             } catch (e: Exception) {
-                Main.LOGGER.error("${Main.LOG_PREFIX}Error in script unload callback in ${scriptName}", e)
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in script unload callback in ${scriptName}", e)
             }
         }
 

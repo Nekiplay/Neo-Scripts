@@ -48,7 +48,7 @@ import org.luaj.vm2.LuaValue
 object LuaEvents : ClientModule() {
     override fun init() {
         ClientTickEvents.END_CLIENT_TICK.register { _ ->
-            LUA_MANAGER.scripts.values.forEach { script ->
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
                 try {
                     script.onClientTick()
                 } catch (e: Exception) {
@@ -58,7 +58,7 @@ object LuaEvents : ClientModule() {
         }
 
         ClientTickEvents.START_CLIENT_TICK.register { _ ->
-            LUA_MANAGER.scripts.values.forEach { script ->
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
                 try {
                     script.onClientTickPre()
                 } catch (e: Exception) {
@@ -69,7 +69,7 @@ object LuaEvents : ClientModule() {
 
         WorldRenderExtractionCallback.EVENT.register({ context: PrimitiveCollector? ->
             val renderContext = WorldRendererObject(context)
-            LUA_MANAGER.scripts.values.forEach { script ->
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
                 try {
                     script.onRenderTick(renderContext)
                 } catch (e: Exception) {
@@ -80,7 +80,7 @@ object LuaEvents : ClientModule() {
 
         KeyEvent.EVENT.register(KeyEvent.KeyCallback { keyEvent ->
             var allow = true
-            LUA_MANAGER.scripts.values.forEach { script ->
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
                 try {
                     if (!script.onKeyEvent(keyEvent.key, keyEvent.action)) {
                         allow = false
@@ -98,7 +98,7 @@ object LuaEvents : ClientModule() {
 
         MouseButtonEvent.EVENT.register(MouseButtonEvent.KeyCallback { mouseButtonEvent ->
             var allow = true
-            LUA_MANAGER.scripts.values.forEach { script ->
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
                 try {
                     if (!script.onKeyEvent(mouseButtonEvent.button, mouseButtonEvent.action)) {
                         allow = false
@@ -117,7 +117,7 @@ object LuaEvents : ClientModule() {
         UseBlockCallback.EVENT.register(UseBlockCallback { player: Player, world: Level, hand: InteractionHand, hitResult: BlockHitResult ->
             var allow = true
             if (hitResult.type == HitResult.Type.BLOCK || hitResult.type == HitResult.Type.MISS) {
-                LUA_MANAGER.scripts.values.forEach { script ->
+                LUA_MANAGER?.scripts?.values?.forEach { script ->
                     try {
                         if (!script.onUseBlock(hitResult.blockPos, hand)) {
                             allow = false
@@ -137,7 +137,7 @@ object LuaEvents : ClientModule() {
         AttackBlockCallback.EVENT.register(AttackBlockCallback { player: Player, world: Level, hand: InteractionHand, pos: BlockPos, direction: Direction ->
             var allow = true
 
-            LUA_MANAGER.scripts.values.forEach { script ->
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
                 try {
                     if (!script.onAttackBlock(pos, direction, hand)) {
                         allow = false
@@ -156,7 +156,7 @@ object LuaEvents : ClientModule() {
 
         ClientReceiveMessageEvents.ALLOW_GAME.register(ClientReceiveMessageEvents.AllowGame { text, overlay ->
             var allow = true
-            LUA_MANAGER.scripts.values.forEach { script ->
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
                 try {
                     if (!script.onChatMessageEvent(text.getFormattedString(), overlay, text.getJsonString())) {
                         allow = false
@@ -170,7 +170,7 @@ object LuaEvents : ClientModule() {
 
         ClientSendMessageEvents.ALLOW_CHAT.register(ClientSendMessageEvents.AllowChat { text ->
             var allow = true
-            LUA_MANAGER.scripts.values.forEach { script ->
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
                 try {
                     if (!script.onSendChatMessageEvent(text)) {
                         allow = false
@@ -185,7 +185,7 @@ object LuaEvents : ClientModule() {
         ClientSendMessageEvents.ALLOW_COMMAND.register { command ->
             var allow = true
             val cmdName = command.split(" ")[0]
-            LUA_MANAGER.scripts.values.forEach { script ->
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
                 try {
                     if (!script.onSendChatCommandEvent(command)) {
                         allow = false
@@ -197,7 +197,7 @@ object LuaEvents : ClientModule() {
 
             if (allow) {
                 var founded = false
-                LUA_MANAGER.scripts.values.forEach { script ->
+                LUA_MANAGER?.scripts?.values?.forEach { script ->
                     if (script.commandCallbacks.containsKey(cmdName) && script.commandDispatchers.containsKey(cmdName)) {
                         founded = true
                         player?.let {
@@ -209,7 +209,7 @@ object LuaEvents : ClientModule() {
                                 @Suppress("UNCHECKED_CAST")
                                 val result = (dispatcher as CommandDispatcher<SharedSuggestionProvider>).execute(command, source)
                                 if (result >= 1) {
-                                    Main.LOGGER.info("${Main.LOG_PREFIX}Executing command: $command")
+                                    Main.LOGGER?.info("${Main.LOG_PREFIX}Executing command: $command")
                                     return@register false
                                 }
 
@@ -228,7 +228,7 @@ object LuaEvents : ClientModule() {
         }
 
         HudRenderCallback.EVENT.register(HudRenderCallback { context, _ ->
-            LUA_MANAGER.scripts.values.forEach { script ->
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
                 try {
                     script.on2DRenderTick(context)
                 } catch (e: Exception) {
@@ -238,7 +238,7 @@ object LuaEvents : ClientModule() {
         })
 
         SkyblockEvents.LOCATION_CHANGE.register { location ->
-            LUA_MANAGER.scripts.values.forEach { script ->
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
                 try {
                     script.onLocationChangeEvent(location)
                 } catch (e: Exception) {
@@ -251,7 +251,7 @@ object LuaEvents : ClientModule() {
                 is ServerboundMovePlayerPacket -> {
                     val packet = event.packet as ServerboundMovePlayerPacket
                     var allowed = true
-                    LUA_MANAGER.scripts.values.forEach { script ->
+                    LUA_MANAGER?.scripts?.values?.forEach { script ->
                         if (!script.onPlayerSendMovement(
                                 packet.hasPosition(),
                                 packet.getX(0.0),
@@ -276,7 +276,7 @@ object LuaEvents : ClientModule() {
                 is ServerboundMovePlayerPacket -> {
                     val packet = event.packet as ServerboundMovePlayerPacket
                     var allowed = true
-                    LUA_MANAGER.scripts.values.forEach { script ->
+                    LUA_MANAGER?.scripts?.values?.forEach { script ->
                         if (!script.onPlayerSendMovement(
                                 packet.hasPosition(),
                                 packet.getX(0.0),
@@ -301,7 +301,7 @@ object LuaEvents : ClientModule() {
                 is ClientboundLevelParticlesPacket -> {
                     val packet = event.packet as ClientboundLevelParticlesPacket
 
-                    LUA_MANAGER.scripts.values.forEach { script ->
+                    LUA_MANAGER?.scripts?.values?.forEach { script ->
                         script.onSpawnParticleEvent(
                             BuiltInRegistries.PARTICLE_TYPE.getId(packet.particle.type),
                             packet.x,
@@ -319,7 +319,7 @@ object LuaEvents : ClientModule() {
                 is ClientboundSetTimePacket -> {
                     val packet = event.packet as ClientboundSetTimePacket
 
-                    LUA_MANAGER.scripts.values.forEach { script ->
+                    LUA_MANAGER?.scripts?.values?.forEach { script ->
                         script.onServerSideSetTimeEvent(packet.dayTime, packet.gameTime, packet.tickDayTime)
                     }
                 }
@@ -327,7 +327,7 @@ object LuaEvents : ClientModule() {
                 is ClientboundSoundPacket -> {
                     val packet = event.packet as ClientboundSoundPacket
 
-                    LUA_MANAGER.scripts.values.forEach { script ->
+                    LUA_MANAGER?.scripts?.values?.forEach { script ->
                         script.onSoundPlay(packet.sound, packet.x, packet.y, packet.z, packet.pitch.toDouble(), packet.volume.toDouble())
                     }
                 }
@@ -335,7 +335,7 @@ object LuaEvents : ClientModule() {
             val allow = when (val packet = event.packet) {
                 is ClientboundPlayerRotationPacket -> {
                     var rotationAllowed = true
-                    LUA_MANAGER.scripts.values.forEach { script ->
+                    LUA_MANAGER?.scripts?.values?.forEach { script ->
                         if (!script.onServerSideRotationEvent(packet.xRot, packet.yRot)) {
                             rotationAllowed = false
                         }
@@ -358,7 +358,7 @@ object LuaEvents : ClientModule() {
                         table.set("new", LuaBlockState(packet.blockState))
                     }
 
-                    LUA_MANAGER.scripts.values.forEach { script ->
+                    LUA_MANAGER?.scripts?.values?.forEach { script ->
                         if (!script.onBlockUpdateEvent(table)) {
                             allowedBlockUpdate = false
                         }
@@ -371,7 +371,7 @@ object LuaEvents : ClientModule() {
                     var rotationAllowed = true
                     var teleportAllowed = true
 
-                    LUA_MANAGER.scripts.values.forEach { script ->
+                    LUA_MANAGER?.scripts?.values?.forEach { script ->
                         if (!script.onServerSideRotationEvent(packet.change.xRot(), packet.change.yRot())) {
                             rotationAllowed = false
                         }
@@ -395,7 +395,7 @@ object LuaEvents : ClientModule() {
         }
         AddItemInventoryEvent.EVENT.register { event ->
             var allow = true
-            LUA_MANAGER.scripts.values.forEach { script ->
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
                 try {
                     if (!script.onInventoryItemAChange(event.slot, event.item)) {
                         allow = false

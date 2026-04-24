@@ -9,6 +9,8 @@ import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
 import net.minecraft.network.protocol.game.ClientboundSetHeldSlotPacket
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 
 object ServerUtil {
 
@@ -71,13 +73,13 @@ object ServerUtil {
     }
 
     fun sendPacket(packet : Packet<*>) {
-        player.connection.connection.send(packet)
+        mc.player?.connection?.connection?.send(packet)
     }
 
     @Deprecated(message = "Ignores absolutely all callbacks. Use EventBus.setIgnore(value : Boolean, type : Class<Event>, instance : Any?)")
     fun sendPacketSilently(packet : Packet<*>) {
         silentPackets.add(packet)
-        player.connection.connection.send(packet)
+        mc.player?.connection?.connection?.send(packet)
     }
 
     fun sendPacket(packet : Packet<*>, delay : Int) {
@@ -85,10 +87,8 @@ object ServerUtil {
         else delayedPackets.add(DelayedPacket(packet, delay))
     }
 
-    fun mainHandItem() : ItemStack = inventory.getItem(slot)
-
     fun getPing() : Int {
-        return player.connection.getPlayerInfo(player.uuid)?.latency ?: 0
+        return mc.player?.connection?.getPlayerInfo(mc.player?.uuid)?.latency ?: 0
     }
 
     private data class DelayedPacket(val packet : Packet<*>, var ticks : Int)
