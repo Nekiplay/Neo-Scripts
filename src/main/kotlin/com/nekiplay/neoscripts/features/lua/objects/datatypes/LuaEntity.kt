@@ -303,6 +303,27 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     entity.setDeltaMovement(vector.x, vector.y, vector.z)
                 }
             }
+            "x" -> {
+                if (value.isnumber()) {
+                    val vector = Vec3(value.todouble(), entity.getPosition(1f).y, entity.getPosition(1f).z)
+                    entity.setPos(vector.x, vector.y, vector.z)
+                    mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector, entity.onGround(), entity.horizontalCollision))
+                }
+            }
+            "y" -> {
+                if (value.isnumber()) {
+                    val vector = Vec3(entity.getPosition(1f).x, value.todouble(), entity.getPosition(1f).z)
+                    entity.setPos(vector.x, vector.y, vector.z)
+                    mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector, entity.onGround(), entity.horizontalCollision))
+                }
+            }
+            "z" -> {
+                if (value.isnumber()) {
+                    val vector = Vec3(entity.getPosition(1f).x, entity.getPosition(1f).y, value.todouble())
+                    entity.setPos(vector.x, vector.y, vector.z)
+                    mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector, entity.onGround(), entity.horizontalCollision))
+                }
+            }
             "pos", "position" -> {
                 if (value.isuserdata() && value.touserdata() is LuaVector3d) {
                     val vector = value.touserdata() as LuaVector3d
