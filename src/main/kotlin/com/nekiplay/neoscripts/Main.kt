@@ -31,6 +31,7 @@ object Main : ModInitializer {
     val PREFIX: String =
         ChatFormatting.GRAY.toString() + "[" + ChatFormatting.GOLD + "Neo Scripts" + ChatFormatting.GRAY + "] " + ChatFormatting.RESET
     const val LOG_PREFIX: String = "[Neo Scripts] "
+    @JvmField
     var neuDir: File? = null
     @JvmField
     var mc: Minecraft = Minecraft.getInstance()
