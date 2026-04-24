@@ -19,7 +19,10 @@
   "environment": "client",
   "entrypoints": {
     "client": [
-      "com.nekiplay.neoscripts.Main"
+      {
+        "value": "com.nekiplay.neoscripts.Main",
+        "adapter": "kotlin"
+      }
     ]
   },
   "mixins": [

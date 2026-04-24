@@ -2,53 +2,30 @@ package com.nekiplay.neoscripts.mixins.entity;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.nekiplay.neoscripts.utils.Rotations;
+import com.nekiplay.neoscripts.utils.aiming.RotationManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+
+import static com.nekiplay.neoscripts.Main.mc;
 
 @Mixin(LivingEntity.class)
 public abstract class MixinLivingEntity extends MixinEntity {
-    @ModifyExpressionValue(method = "jumpFromGround", at = @At(value = "NEW", target = "(DDD)Lnet/minecraft/world/phys/Vec3;"))
-    private Vec3 hookFixRotation(Vec3 original) {
-        if ((Object) this != Minecraft.getInstance().player) {
-            return original;
+    @Unique
+    private final LivingEntity me = (LivingEntity) ((Object) this);
+
+    @ModifyExpressionValue(method = "jumpFromGround", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getYRot()F"))
+    private float getYRot(float original) {
+        if (me == mc.player) {
+            if (!Float.isNaN(RotationManager.INSTANCE.getYaw())) {
+                return RotationManager.INSTANCE.getYaw();
+            }
         }
-
-        if (!Rotations.rotating || !Rotations.movementCorrection) {
-            return original;
-        }
-
-        float yaw = Rotations.serverYaw * Mth.DEG_TO_RAD;
-
-        return new Vec3(-Mth.sin(yaw) * 0.2F, 0.0, Mth.cos(yaw) * 0.2F);
+        return original;
     }
 
-    @ModifyExpressionValue(method = "updateFallFlyingMovement", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getXRot()F"))
-    private float hookModifyFallFlyingPitch(float original) {
-        if ((Object) this != Minecraft.getInstance().player) {
-            return original;
-        }
-
-        if (!Rotations.rotating || !Rotations.movementCorrection) {
-            return original;
-        }
-
-        return Rotations.serverPitch;
-    }
-
-    @ModifyExpressionValue(method = "updateFallFlyingMovement", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getLookAngle()Lnet/minecraft/world/phys/Vec3;"))
-    private Vec3 hookModifyFallFlyingRotationVector(Vec3 original) {
-        if ((Object) this != Minecraft.getInstance().player) {
-            return original;
-        }
-
-        if (!Rotations.rotating || !Rotations.movementCorrection) {
-            return original;
-        }
-
-        return Vec3.directionFromRotation(Rotations.serverYaw, Rotations.serverPitch);
-    }
 }

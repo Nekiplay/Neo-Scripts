@@ -1,7 +1,6 @@
 package com.nekiplay.neoscripts.mixins;
 
 import com.mojang.blaze3d.platform.Window;
-import com.nekiplay.neoscripts.Main;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.main.GameConfig;
 import org.spongepowered.asm.mixin.Final;

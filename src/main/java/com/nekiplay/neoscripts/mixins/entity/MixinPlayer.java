@@ -1,26 +1,31 @@
 package com.nekiplay.neoscripts.mixins.entity;
 
-import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
-import com.nekiplay.neoscripts.utils.Rotations;
-import net.minecraft.client.Minecraft;
+import com.nekiplay.neoscripts.events.TravelEvent;
+import com.nekiplay.neoscripts.events.main.EventBus;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import static com.nekiplay.neoscripts.Main.mc;
 
 @Mixin(Player.class)
 public abstract class MixinPlayer  {
-    @ModifyExpressionValue(method = {"causeExtraKnockback",
-            "doSweepAttack"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;getYRot()F"))
-    private float hookFixRotation(float original) {
-        if ((Object) this != Minecraft.getInstance().player) {
-            return original;
-        }
+    @Unique
+    private final Player me = (Player) ((Object) this);
 
-        if (!Rotations.rotating || !Rotations.movementCorrection) {
-            return original;
-        }
 
-        return Rotations.serverYaw;
+    @Inject(method = "travel", at = @At("HEAD"))
+    private void travelHook(Vec3 vec3, CallbackInfo ci) {
+        if (me == mc.player) EventBus.INSTANCE.send(new TravelEvent(true));
+    }
+
+    @Inject(method = "travel", at = @At("RETURN"))
+    private void travelPostHook(Vec3 vec3, CallbackInfo ci) {
+        if (me == mc.player) EventBus.INSTANCE.send(new TravelEvent(false));
     }
 
 }

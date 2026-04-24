@@ -82,6 +82,8 @@ dependencies {
     // Legacy Item DFU (https://maven.azureaaron.net/releases/net/azureaaron/legacy-item-dfu)
     include(implementation("net.azureaaron:legacy-item-dfu:${property("legacy_item_dfu_version")}")!!)
 
+    include(implementation("io.github.classgraph:classgraph:4.8.184")!!)
+
     // ImGUI
     val imguiVersion = property("imgui_version") as String
     implementation("io.github.spair:imgui-java-binding:$imguiVersion")

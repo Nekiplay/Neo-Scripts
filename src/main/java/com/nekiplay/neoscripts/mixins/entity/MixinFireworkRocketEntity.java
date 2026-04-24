@@ -2,6 +2,7 @@ package com.nekiplay.neoscripts.mixins.entity;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.nekiplay.neoscripts.utils.Rotations;
+import com.nekiplay.neoscripts.utils.aiming.RotationManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.FireworkRocketEntity;
@@ -9,22 +10,21 @@ import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(FireworkRocketEntity.class)
 public abstract class MixinFireworkRocketEntity {
-    @Shadow
-    private LivingEntity attachedToEntity;
+    @Redirect(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getLookAngle()Lnet/minecraft/world/phys/Vec3;"))
+    private Vec3 getLookAngleHook(LivingEntity instance) {
+        if (!Rotations.movementCorrection) {
 
-    @ModifyExpressionValue(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getLookAngle()Lnet/minecraft/world/phys/Vec3;"))
-    private Vec3 getRotationVector(Vec3 original) {
-        if (attachedToEntity != Minecraft.getInstance().player) {
-            return original;
+            return instance.calculateViewVector(
+                    RotationManager.INSTANCE.getCurrentPitch(),
+                    RotationManager.INSTANCE.getCurrentYaw()
+            );
+
         }
 
-        if (!Rotations.rotating || !Rotations.movementCorrection) {
-            return original;
-        }
-
-        return Vec3.directionFromRotation(Rotations.serverPitch, Rotations.serverYaw);
+        return instance.getLookAngle();
     }
 }

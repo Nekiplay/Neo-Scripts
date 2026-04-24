@@ -15,6 +15,7 @@ import com.nekiplay.neoscripts.utils.RaycastUtils
 import com.nekiplay.neoscripts.utils.Rotations
 import com.nekiplay.neoscripts.utils.StatusBarTracker
 import com.nekiplay.neoscripts.utils.Utils
+import com.nekiplay.neoscripts.utils.aiming.RotationManager
 import com.nekiplay.neoscripts.utils.trackers.ColdTracker
 import com.nekiplay.neoscripts.utils.trackers.PetCache
 import net.minecraft.client.Minecraft
@@ -69,7 +70,6 @@ class PlayerObject : LuaValue() {
             "getPos", "getPosition" -> GetPlayerPosFunction()
             "getRotation" -> GetPlayerRotationFunction()
             "getSilentRotation", "getServerRotation" -> GetPlayerSilentRotationFunction()
-            "isSilentRotationg" -> GetPlayerSilentIsRotationFunction()
             "setRotation" -> SetPlayerRotationFunction()
             "setSilentRotation", "setServerRotation" -> SetPlayerSilentRotationFunction()
             "getName" -> GetPlayerNameFunction()
@@ -475,7 +475,7 @@ class PlayerObject : LuaValue() {
                         silentMovementCorrection = arg4?.optboolean(false) ?: false
                     }
 
-                    Rotations.rotate(yaw, pitch, movementCorrection, silentMovementCorrection)
+                    RotationManager.rotateTo(yaw.toFloat(), pitch.toFloat(), 1,  1, movementCorrection, silentMovementCorrection)
                     return TRUE
                 }
                 return FALSE
@@ -509,20 +509,14 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class GetPlayerSilentIsRotationFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(Rotations.rotating)
-        }
-    }
-
     private inner class GetPlayerSilentRotationFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val player = mc.player;
             return if (player != null) {
                 val table = tableOf()
                 if (Rotations.rotating) {
-                    table.set("yaw", valueOf(Rotations.serverYaw.toDouble()))
-                    table.set("pitch", valueOf(Rotations.serverPitch.toDouble()))
+                    table.set("yaw", valueOf(RotationManager.getCurrentYaw().toDouble()))
+                    table.set("pitch", valueOf(RotationManager.getCurrentPitch().toDouble()))
                 }
                 else {
                     table.set("yaw", valueOf(player.yRot.toDouble()))

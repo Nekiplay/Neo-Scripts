@@ -1,7 +1,6 @@
 package com.nekiplay.neoscripts.mixins;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.nekiplay.neoscripts.Main;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
