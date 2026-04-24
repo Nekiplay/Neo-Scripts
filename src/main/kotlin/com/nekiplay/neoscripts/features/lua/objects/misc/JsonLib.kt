@@ -29,8 +29,7 @@ class JsonLib : LuaValue() {
     inner class SimpleParseFunction : OneArgFunction() {
         override fun call(jsonString: LuaValue): LuaValue {
             return try {
-                val result: Any? = Main.GSON_COMPACT.fromJson(jsonString.tojstring(), Any::class.java)
-                when (result) {
+                when (val result: Any? = Main.GSON_COMPACT.fromJson(jsonString.tojstring(), Any::class.java)) {
                     null -> NIL
                     is Map<*, *> -> convertMap(result)
                     is List<*> -> convertList(result)
@@ -96,7 +95,7 @@ class JsonLib : LuaValue() {
                 val javaObj = convertToJava(luaValue)
                 val jsonString = if (indent.isnil()) {
                     // По умолчанию - форматированный JSON
-                    Main.GSON.toJson(javaObj)
+                    Main.GSON_COMPACT.toJson(javaObj)
                 } else {
                     // Если указан indent = 0 или false - неформатированный
                     if (indent.isnumber() && indent.todouble() == 0.0 || indent.isboolean() && !indent.toboolean()) {
