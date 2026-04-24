@@ -4,6 +4,7 @@ import com.mojang.authlib.properties.Property
 import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.customArgs.FourArgFunction
+import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaAxisDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
@@ -11,6 +12,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.sugar.getRotation
 import com.nekiplay.neoscripts.utils.Utils
+import net.minecraft.core.Direction
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
 import net.minecraft.util.ProblemReporter
 import net.minecraft.world.entity.Entity
@@ -21,6 +23,10 @@ import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.storage.TagValueOutput
 import net.minecraft.world.phys.Vec3
+import org.luaj.vm2.LuaDouble
+import org.luaj.vm2.LuaInteger
+import org.luaj.vm2.LuaLong
+import org.luaj.vm2.LuaNumber
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 
@@ -280,6 +286,32 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
             "teleport" -> TeleportFunction()
             else -> super.get(key)
+        }
+    }
+
+    override fun eq(other: LuaValue?): LuaValue {
+        return when (other) {
+            is LuaEntity if entity == other.entity -> {
+                LuaValue.TRUE
+            }
+            is Entity if entity == other -> {
+                LuaValue.TRUE
+            }
+            is LuaInteger if entity.id == other.toint() -> {
+                LuaValue.TRUE
+            }
+            is LuaNumber if entity.id == other.toint() -> {
+                LuaValue.TRUE
+            }
+            is LuaLong if entity.id == other.toint() -> {
+                LuaValue.TRUE
+            }
+            is LuaDouble if entity.id == other.toint() -> {
+                LuaValue.TRUE
+            }
+            else -> {
+                LuaValue.FALSE
+            }
         }
     }
 

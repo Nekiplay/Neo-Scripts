@@ -3,6 +3,7 @@ package com.nekiplay.neoscripts.features.lua.objects.datatypes
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import net.minecraft.core.Direction
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.ComparatorBlock
@@ -18,6 +19,10 @@ import net.minecraft.world.level.block.piston.PistonBaseBlock
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.properties.AttachFace
 import net.minecraft.world.level.block.state.properties.IntegerProperty
+import org.luaj.vm2.LuaDouble
+import org.luaj.vm2.LuaInteger
+import org.luaj.vm2.LuaLong
+import org.luaj.vm2.LuaNumber
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 
@@ -131,6 +136,32 @@ class LuaBlockState(var blockState: BlockState) : LuaUserdata(blockState) {
             }
 
             else -> super.get(key)
+        }
+    }
+
+    override fun eq(other: LuaValue?): LuaValue {
+        return when (other) {
+            is LuaBlockState if blockState == other.blockState -> {
+                LuaValue.TRUE
+            }
+            is BlockState if blockState == other -> {
+                LuaValue.TRUE
+            }
+            is LuaInteger if Block.getId(blockState) == other.toint() -> {
+                LuaValue.TRUE
+            }
+            is LuaNumber if Block.getId(blockState) == other.toint() -> {
+                LuaValue.TRUE
+            }
+            is LuaLong if Block.getId(blockState) == other.toint() -> {
+                LuaValue.TRUE
+            }
+            is LuaDouble if Block.getId(blockState) == other.toint() -> {
+                LuaValue.TRUE
+            }
+            else -> {
+                LuaValue.FALSE
+            }
         }
     }
 
