@@ -9,7 +9,7 @@ import com.nekiplay.neoscripts.features.modules.ModuleManager.registerInbuilt
 import com.nekiplay.neoscripts.utils.Utils
 import com.nekiplay.neoscripts.utils.scheduler.Scheduler
 import io.github.classgraph.ClassGraph
-import net.fabricmc.api.ModInitializer
+import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.loader.api.FabricLoader
@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.nio.file.Path
 
-object Main : ModInitializer {
+object Main : ClientModInitializer {
     const val MOD_ID: String = "neoscripts"
     @JvmField
     val LOGGER: Logger? = LoggerFactory.getLogger(MOD_ID)
@@ -58,8 +58,27 @@ object Main : ModInitializer {
             LUA_MANAGER!!.unloadScript(script.scriptName)
         }
     }
+    /**
+     * Ticks the scheduler. Called once at the end of every client tick through
+     * [ClientTickEvents.END_CLIENT_TICK].
+     *
+     * @param client the Minecraft client.
+     */
+    fun tick(client: Minecraft?) {
+        Scheduler.INSTANCE.tick()
+    }
 
-    override fun onInitialize() {
+    /**
+     * This method is responsible for initializing all classes.
+     * To have your class initialized you must annotate its initializer method with the `@Init` annotation.
+     * At compile time, ASM completely overwrites the content of this method, so adding a call here will do nothing.
+     *
+     * @see Init
+     */
+    private fun init() {
+    }
+
+    override fun onInitializeClient() {
         neuDir = FabricLoader.getInstance().getConfigDir().resolve("neoscripts").toFile()
         neuDir!!.mkdirs()
         LUA_MANAGER = LuaManager()
@@ -107,25 +126,5 @@ object Main : ModInitializer {
             }
 
         EventBus.init(classes)
-    }
-
-    /**
-     * Ticks the scheduler. Called once at the end of every client tick through
-     * [ClientTickEvents.END_CLIENT_TICK].
-     *
-     * @param client the Minecraft client.
-     */
-    fun tick(client: Minecraft?) {
-        Scheduler.INSTANCE.tick()
-    }
-
-    /**
-     * This method is responsible for initializing all classes.
-     * To have your class initialized you must annotate its initializer method with the `@Init` annotation.
-     * At compile time, ASM completely overwrites the content of this method, so adding a call here will do nothing.
-     *
-     * @see Init
-     */
-    private fun init() {
     }
 }
