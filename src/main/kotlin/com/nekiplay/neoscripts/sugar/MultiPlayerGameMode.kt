@@ -81,11 +81,11 @@ fun MultiPlayerGameMode.mineBlock(): Boolean {
                 player.distanceToSqr(Vec3.atCenterOf(targetPos)) <= 36.0
 
         if (!isSameBlock) {
-            this.stopDestroyBlock()
-            resetMining()
             val acessed = this as GamemodeAccessor
             acessed.`neoscripts$setCurrentBreakingProgress`(0f)
             acessed.`neoscripts$setCurrentBreakingBlockPos`(null)
+            this.stopDestroyBlock()
+            resetMining()
             return false
         }
 
