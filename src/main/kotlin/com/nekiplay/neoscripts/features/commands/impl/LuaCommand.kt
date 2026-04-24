@@ -140,7 +140,7 @@ object LuaCommand {
 
     private fun toggleScript(source: FabricClientCommandSource, name: String) {
         val luaManager = Main.LUA_MANAGER
-        val loadedScripts = luaManager.getLoadedScripts()
+        val loadedScripts = luaManager?.getLoadedScripts() ?: emptyList()
 
         // 1. Пытаемся найти уже загруженный скрипт по имени
         val loadedInstance = loadedScripts.find { it.scriptName.equals(name, ignoreCase = true) }
@@ -148,7 +148,7 @@ object LuaCommand {
         if (loadedInstance != null) {
             // Если скрипт загружен — ВЫГРУЖАЕМ
             try {
-                luaManager.unloadScript(loadedInstance.scriptName)
+                luaManager?.unloadScript(loadedInstance.scriptName)
                 source.sendFeedback(Component.literal("${Main.PREFIX}§7Script §a${loadedInstance.scriptName} §7has been §cunloaded§7."))
             } catch (e: Exception) {
                 source.sendFeedback(Component.literal("${Main.PREFIX}§cError unloading script: ${e.message}"))
@@ -165,7 +165,7 @@ object LuaCommand {
             if (scriptFile.exists()) {
                 try {
                     // Предполагается, что в LuaManager есть метод loadScript(File)
-                    luaManager.executeScript(scriptFile)
+                    luaManager?.executeScript(scriptFile)
                     source.sendFeedback(Component.literal("${Main.PREFIX}§7Script §a$name §7is now §aloaded§7."))
                 } catch (e: Exception) {
                     source.sendFeedback(Component.literal("${Main.PREFIX}§cFailed to load script §e$name§c: ${e.message}"))
@@ -222,7 +222,7 @@ object LuaCommand {
 
     private fun suggestLoadedScripts(builder: SuggestionsBuilder): CompletableFuture<Suggestions> {
         val luaManager = Main.LUA_MANAGER
-        val loadedScripts = luaManager.getLoadedScripts()
+        val loadedScripts = luaManager?.getLoadedScripts() ?: emptyList()
         val input = builder.remainingLowerCase
 
         loadedScripts.forEach { scriptName ->
@@ -253,12 +253,12 @@ object LuaCommand {
 
         try {
             // Сначала выгружаем существующий скрипт, если он загружен
-            val wasLoaded = luaManager.unloadScript(scriptFile.nameWithoutExtension)
+            val wasLoaded = luaManager?.unloadScript(scriptFile.nameWithoutExtension)
             
             // Затем загружаем скрипт
-            val result = luaManager.executeScript(scriptFile)
+            val result = luaManager?.executeScript(scriptFile)
 
-            if (wasLoaded) {
+            if (wasLoaded == true) {
                 source.sendFeedback(Component.literal(Main.PREFIX + "§aScript '${scriptFile.nameWithoutExtension}' restarted successfully, result: '${result}'"))
             } else {
                 source.sendFeedback(Component.literal(Main.PREFIX + "§aScript '${scriptFile.nameWithoutExtension}' executed successfully, result: '${result}'"))
@@ -289,7 +289,7 @@ object LuaCommand {
 
         }
 
-        if (luaManager.unloadScript(scriptName)) {
+        if (luaManager?.unloadScript(scriptName) == true) {
             source.sendFeedback(Component.literal(Main.PREFIX + "§aScript '$scriptName' unloaded successfully"))
 
 
@@ -324,7 +324,7 @@ object LuaCommand {
 
     private fun listLoadedScripts(source: FabricClientCommandSource, targetName: String?) {
         val luaManager = Main.LUA_MANAGER
-        val loadedScripts = luaManager.getLoadedScripts()
+        val loadedScripts = luaManager?.getLoadedScripts() ?: emptyList()
 
         if (loadedScripts.isEmpty()) {
             source.sendFeedback(Component.literal("${Main.PREFIX}§7No scripts currently loaded"))
