@@ -334,7 +334,7 @@ class WorldObject : LuaValue() {
                             if (state != null) {
                                 targetBlocks.add(state.block)
                             } else {
-                                Main.LOGGER.warn("No block found for ID: $id")
+                                Main.LOGGER?.warn("No block found for ID: $id")
                             }
                         }
                     }

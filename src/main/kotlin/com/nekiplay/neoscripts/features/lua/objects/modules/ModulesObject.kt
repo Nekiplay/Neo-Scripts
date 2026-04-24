@@ -41,7 +41,7 @@ class ModulesObject: LuaValue() {
             var index = 1
 
             // 1. Находим объект скрипта в менеджере
-            val scriptObject = LUA_MANAGER.getLoadedScripts().find { it.scriptName == scriptName }
+            val scriptObject = LUA_MANAGER?.getLoadedScripts()?.find { it.scriptName == scriptName }
 
             // 2. Если нашли, берем его граф зависимостей
             // Предполагаем, что localDependencyGraph: Map<String, Set<String>>
@@ -61,7 +61,7 @@ class ModulesObject: LuaValue() {
         override fun call(): LuaValue {
             val table = tableOf()
             var index = 1
-            for (script in LUA_MANAGER.getLoadedScripts()) {
+            for (script in LUA_MANAGER?.getLoadedScripts() ?: emptyList()) {
                 table.set(index, script.scriptName)
                 index++
             }

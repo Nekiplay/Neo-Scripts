@@ -87,10 +87,6 @@ object ServerUtil {
         else delayedPackets.add(DelayedPacket(packet, delay))
     }
 
-    fun getPing() : Int {
-        return mc.player?.connection?.getPlayerInfo(mc.player?.uuid)?.latency ?: 0
-    }
-
     private data class DelayedPacket(val packet : Packet<*>, var ticks : Int)
 
 }
