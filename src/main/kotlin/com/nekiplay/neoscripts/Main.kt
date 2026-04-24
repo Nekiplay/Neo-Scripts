@@ -74,7 +74,6 @@ object Main : ClientModInitializer {
 
         Runtime.getRuntime().addShutdownHook(Thread(Runnable { saveConfig() }))
 
-        ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { client: Minecraft? -> this.tick(client) })
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, registryAccess ->
             LuaCommand.register(dispatcher, registryAccess)
         }
