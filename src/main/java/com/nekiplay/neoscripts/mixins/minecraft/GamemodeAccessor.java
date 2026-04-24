@@ -15,7 +15,4 @@ public interface GamemodeAccessor {
 
     @Accessor("destroyBlockPos")
     BlockPos neoscripts$getCurrentBreakingBlockPos();
-
-    @Accessor("destroyBlockPos")
-    void neoscripts$setCurrentBreakingBlockPos(BlockPos pos);
 }

@@ -2,7 +2,6 @@ package com.nekiplay.neoscripts.sugar
 
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.mixins.ClientPlayerInteractionManagerAccessor
-import com.nekiplay.neoscripts.mixins.minecraft.GamemodeAccessor
 import com.nekiplay.neoscripts.utils.RaycastUtils
 import com.nekiplay.neoscripts.utils.Rotations
 import net.minecraft.client.Minecraft
@@ -81,9 +80,6 @@ fun MultiPlayerGameMode.mineBlock(): Boolean {
                 player.distanceToSqr(Vec3.atCenterOf(targetPos)) <= 36.0
 
         if (!isSameBlock) {
-            val acessed = this as GamemodeAccessor
-            acessed.`neoscripts$setCurrentBreakingProgress`(0f)
-            acessed.`neoscripts$setCurrentBreakingBlockPos`(null)
             this.stopDestroyBlock()
             resetMining()
             return false
