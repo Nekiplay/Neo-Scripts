@@ -7,11 +7,14 @@ import com.nekiplay.neoscripts.utils.Rotations
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.MultiPlayerGameMode
 import net.minecraft.client.multiplayer.prediction.PredictiveAction
+import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.HitResult
+import net.minecraft.world.phys.Vec3
 
 
 fun MultiPlayerGameMode.getRotationRaycast(): HitResult {
@@ -56,20 +59,50 @@ fun MultiPlayerGameMode.attackBlock(): Boolean {
     return false
 }
 
+object MiningState {
+    var target: Pair<BlockPos, Direction>? = null
+}
+
+
 fun MultiPlayerGameMode.mineBlock(): Boolean {
+    val mc = Minecraft.getInstance()
+    val player = mc.player ?: return false
+    val level = mc.level ?: return false
+
+    if (!this.isDestroying) MiningState.target = null
+    
+    if (this.isDestroying && MiningState.target != null) {
+        val (pos, dir) = MiningState.target!!
+        val state = level.getBlockState(pos)
+
+        if (state.isAir) {
+            MiningState.target = null
+            return false
+        }
+
+        this.continueDestroyBlock(pos, dir)
+        return true
+    }
+
+    MiningState.target = null
     val hitResult = getRotationRaycast()
 
-    if (hitResult.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
-        val blockHitResult = hitResult as BlockHitResult
-        val blockPos = blockHitResult.blockPos
-        mc.level?.getBlockState(blockPos)?.isAir?.let {
-            if (!it) {
-                if (this.isDestroying) { this.continueDestroyBlock(blockPos, blockHitResult.direction) }
-                else { this.startDestroyBlock(blockPos, blockHitResult.direction) }
-                return true
-            }
-        }
+    if (hitResult.type != HitResult.Type.BLOCK || mc.screen != null || player.isBlocking) {
+        return false
     }
+
+    val blockHit = hitResult as BlockHitResult
+    val pos = blockHit.blockPos
+    val dir = blockHit.direction
+    val state = level.getBlockState(pos)
+
+    if (state.isAir || player.distanceToSqr(Vec3.atCenterOf(pos)) > 36.0) return false
+
+    if (this.startDestroyBlock(pos, dir)) {
+        MiningState.target = pos to dir
+        return true
+    }
+
     return false
 }
 
