@@ -22,6 +22,7 @@ import java.nio.file.Path
 
 object Main : ModInitializer {
     const val MOD_ID: String = "neoscripts"
+    @JvmField
     val LOGGER: Logger? = LoggerFactory.getLogger(MOD_ID)
     @JvmField
     var LUA_MANAGER: LuaManager? = null
