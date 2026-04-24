@@ -30,7 +30,7 @@ class Creator : LuaValue() {
             "createDirection" -> CreateDirection()
             "createBlockPos" -> CreateBlockPos()
             "createBlockState" -> CreateBlockState()
-            "createVector3" -> CreateVector3()
+            "createVector3", "createVector3d" -> CreateVector3()
             "createItemStackFromId" -> CreateStackFromID()
             else -> super.get(key)
         }

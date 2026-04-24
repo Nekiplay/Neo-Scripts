@@ -247,12 +247,12 @@ object LuaEvents : ClientModule() {
             }
         }
         PacketEvent.SEND.register { event ->
-            when (event.packet) {
+            val allow = when (event.packet) {
                 is ServerboundMovePlayerPacket -> {
                     val packet = event.packet as ServerboundMovePlayerPacket
-
+                    var allowed = true
                     LUA_MANAGER.scripts.values.forEach { script ->
-                        val result = script.onPlayerSendMovement(
+                        if (!script.onPlayerSendMovement(
                                 packet.hasPosition(),
                                 packet.getX(0.0),
                                 packet.getY(0.0),
@@ -261,58 +261,40 @@ object LuaEvents : ClientModule() {
                                 packet.getYRot(0f),
                                 packet.getXRot(0f),
                                 packet.isOnGround
-                        )
-                        if (result.istable()) {
-                            val accessed = packet as ServerboundMovePlayerPacketAccessor
-                            if (packet.hasRotation()) {
-                                accessed.`neoscripts$setYaw`(result.get("yaw").tofloat())
-                                accessed.`neoscripts$setPitch`(result.get("pitch").tofloat())
-                            }
-                            if (packet.hasPosition()) {
-                                accessed.`neoscripts$setX`(result.get("x").todouble())
-                                accessed.`neoscripts$setY`(result.get("y").todouble())
-                                accessed.`neoscripts$setZ`(result.get("z").todouble())
-                                accessed.`neoscripts$setOnGround`(result.get("on_ground").toboolean())
-                            }
+                            )) {
+                            allowed = false
                         }
                     }
+                    allowed
                 }
+                else -> true
             }
-            InteractionResult.PASS
+            if (allow) InteractionResult.PASS else InteractionResult.FAIL
         }
         PacketEvent.SENT.register { event ->
-            when (event.packet) {
+            val allow = when (event.packet) {
                 is ServerboundMovePlayerPacket -> {
                     val packet = event.packet as ServerboundMovePlayerPacket
-
+                    var allowed = true
                     LUA_MANAGER.scripts.values.forEach { script ->
-                        val result = script.onPlayerSendMovement(
-                            packet.hasPosition(),
-                            packet.getX(0.0),
-                            packet.getY(0.0),
-                            packet.getZ(0.0),
-                            packet.hasPosition(),
-                            packet.getYRot(0f),
-                            packet.getXRot(0f),
-                            packet.isOnGround
-                        )
-                        if (result.istable()) {
-                            val accessed = packet as ServerboundMovePlayerPacketAccessor
-                            if (packet.hasRotation()) {
-                                accessed.`neoscripts$setYaw`(result.get("yaw").tofloat())
-                                accessed.`neoscripts$setPitch`(result.get("pitch").tofloat())
-                            }
-                            if (packet.hasPosition()) {
-                                accessed.`neoscripts$setX`(result.get("x").todouble())
-                                accessed.`neoscripts$setY`(result.get("y").todouble())
-                                accessed.`neoscripts$setZ`(result.get("z").todouble())
-                                accessed.`neoscripts$setOnGround`(result.get("on_ground").toboolean())
-                            }
+                        if (!script.onPlayerSendMovement(
+                                packet.hasPosition(),
+                                packet.getX(0.0),
+                                packet.getY(0.0),
+                                packet.getZ(0.0),
+                                packet.hasPosition(),
+                                packet.getYRot(0f),
+                                packet.getXRot(0f),
+                                packet.isOnGround
+                            )) {
+                            allowed = false
                         }
                     }
+                    allowed
                 }
+                else -> true
             }
-            InteractionResult.PASS
+            if (allow) InteractionResult.PASS else InteractionResult.FAIL
         }
         PacketEvent.RECEIVE.register { event ->
             when (event.packet) {

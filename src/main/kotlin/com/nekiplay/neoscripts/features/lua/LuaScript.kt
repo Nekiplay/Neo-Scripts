@@ -931,11 +931,11 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         return allow
     }
 
-    fun onPlayerSendMovement(hasPosition: Boolean, x: Double, y: Double, z: Double, hasRotation: Boolean, yaw: Float, pitch: Float, isOnGround: Boolean): LuaValue {
+    fun onPlayerSendMovement(hasPosition: Boolean, x: Double, y: Double, z: Double, hasRotation: Boolean, yaw: Float, pitch: Float, isOnGround: Boolean): Boolean {
         val callbacks = synchronized(callbacksLock) {
             clientSidePlayerSetPositionCallbacks.toTypedArray()
         }
-
+        var allow = true
         for (callback in callbacks) {
             try {
                 val t = LuaValue.tableOf()
@@ -949,14 +949,14 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 t.set("on_ground", LuaValue.valueOf(isOnGround))
 
                 val res = callback.call(t)
-                if (res.istable()) {
-                    return res
+                if (res.isboolean() && !res.toboolean()) {
+                    allow = false
                 }
             } catch (e: Exception) {
                 Main.LOGGER.error("${Main.LOG_PREFIX}Error in on send player movement callback in ${scriptName}", e)
             }
         }
-        return LuaValue.NIL
+        rreturn allow
     }
 
     fun onSoundPlay(sound: Holder<SoundEvent>, x: Double, y: Double, z: Double, pitch: Double, volume: Double): Boolean {
