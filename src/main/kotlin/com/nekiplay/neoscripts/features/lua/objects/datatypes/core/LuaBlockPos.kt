@@ -30,10 +30,26 @@ class LuaBlockPos(val pos: BlockPos): LuaUserdata(pos) {
         }
     }
 
+    override fun eq(other: LuaValue?): LuaValue {
+        return when (other) {
+            is LuaBlockPos if pos == other.pos -> {
+                LuaValue.TRUE
+            }
+
+            is BlockPos if pos == other -> {
+                LuaValue.TRUE
+            }
+
+            else -> {
+                LuaValue.FALSE
+            }
+        }
+    }
+
     private inner class distSqr : VarArgFunction() {
         override fun invoke(args: Varargs?): Varargs? {
-            if (args?.arg(1)?.isint() == true && args?.arg(2)?.isint() == true && args?.arg(3)?.isint() == true) {
-                valueOf(pos.distSqr(Vec3i(args.arg(1).toint(), args.arg(2).toint(), args.arg(2).toint())))
+            if (args?.arg(1)?.isint() == true && args.arg(2)?.isint() == true && args.arg(3)?.isint() == true) {
+                valueOf(pos.distSqr(Vec3i(args.arg(1).toint(), args.arg(2).toint(), args.arg(3).toint())))
             }
             return NIL
         }
@@ -42,7 +58,7 @@ class LuaBlockPos(val pos: BlockPos): LuaUserdata(pos) {
     private inner class distToCenterSqr : VarArgFunction() {
         override fun invoke(args: Varargs?): Varargs? {
             if (args?.arg(1)?.isnumber() == true && args.arg(2)?.isnumber() == true && args.arg(3)?.isnumber() == true) {
-                valueOf(pos.distToCenterSqr(args.arg(1).todouble(), args.arg(2).todouble(), args.arg(2).todouble()))
+                valueOf(pos.distToCenterSqr(args.arg(1).todouble(), args.arg(2).todouble(), args.arg(3).todouble()))
             }
             return NIL
         }

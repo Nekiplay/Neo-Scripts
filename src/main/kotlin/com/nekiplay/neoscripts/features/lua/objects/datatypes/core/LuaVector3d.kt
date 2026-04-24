@@ -1,5 +1,6 @@
 package com.nekiplay.neoscripts.features.lua.objects.datatypes.core
 
+import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
@@ -35,6 +36,28 @@ class LuaVector3d(val location: Vec3): LuaUserdata(location) {
 
             else -> NIL
         }
+    }
+
+
+
+    override fun eq(other: LuaValue?): LuaValue {
+        return when (other) {
+            is LuaVector3d if location == other.location -> {
+                LuaValue.TRUE
+            }
+            is Vec3 if location == other -> {
+                LuaValue.TRUE
+            }
+            else -> {
+                LuaValue.FALSE
+            }
+        }
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is LuaVector3d) return false
+        return location == other.location
     }
 
     override fun typename(): String = "vector3d"

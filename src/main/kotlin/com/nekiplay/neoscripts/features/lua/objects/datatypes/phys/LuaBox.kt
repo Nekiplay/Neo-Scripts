@@ -1,5 +1,7 @@
 package com.nekiplay.neoscripts.features.lua.objects.datatypes.phys
 
+import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
+import net.minecraft.core.Direction
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaTable
@@ -202,6 +204,20 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
                 }
             }
             else -> super.get(key)
+        }
+    }
+
+    override fun eq(other: LuaValue?): LuaValue {
+        return when (other) {
+            is LuaBox if box == other.box -> {
+                LuaValue.TRUE
+            }
+            is AABB if box == other -> {
+                LuaValue.TRUE
+            }
+            else -> {
+                LuaValue.FALSE
+            }
         }
     }
 

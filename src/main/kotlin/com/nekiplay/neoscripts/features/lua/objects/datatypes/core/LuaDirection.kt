@@ -1,10 +1,26 @@
 package com.nekiplay.neoscripts.features.lua.objects.datatypes.core
 
 import net.minecraft.core.Direction
+import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 
 class LuaDirection(val direction: Direction): LuaUserdata(direction) {
+    override fun eq(other: LuaValue?): LuaValue {
+        return when (other) {
+            is LuaDirection if direction.name == other.direction.name -> {
+                LuaValue.TRUE
+            }
+            is Direction if direction.name == other.name -> {
+                LuaValue.TRUE
+            }
+            else -> {
+                LuaValue.FALSE
+            }
+        }
+    }
+
+
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "opposite" -> LuaDirection(direction.opposite)

@@ -14,5 +14,20 @@ class LuaAxis(val axis: Direction.Axis): LuaUserdata(axis) {
             else -> NIL
         }
     }
+
+    override fun eq(other: LuaValue?): LuaValue {
+        return when (other) {
+            is LuaAxis if axis.name == other.axis.name -> {
+                LuaValue.TRUE
+            }
+            is Direction.Axis if axis.name == other.name -> {
+                LuaValue.TRUE
+            }
+            else -> {
+                LuaValue.FALSE
+            }
+        }
+    }
+
     override fun typename(): String = "axis"
 }
