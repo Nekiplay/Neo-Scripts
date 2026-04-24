@@ -140,6 +140,13 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 }
                 return NIL
             }
+            "is_blocking" -> {
+                if (entity is LivingEntity) {
+                    valueOf(entity.isBlocking)
+                } else {
+                    NIL
+                }
+            }
             "health" -> {
                 if (entity is LivingEntity) {
                     valueOf(entity.health.toDouble())
