@@ -60,23 +60,23 @@ fun MultiPlayerGameMode.attackBlock(): Boolean {
 }
 
 object MiningState {
-    var target: Pair<BlockPos, Direction>? = null
+    var isMining: Boolean = false
+    var targetPos: BlockPos? = null
+    var targetDir: Direction? = null
 }
-
 
 fun MultiPlayerGameMode.mineBlock(): Boolean {
     val mc = Minecraft.getInstance()
     val player = mc.player ?: return false
     val level = mc.level ?: return false
 
-    if (!this.isDestroying) MiningState.target = null
-    
-    if (this.isDestroying && MiningState.target != null) {
-        val (pos, dir) = MiningState.target!!
-        val state = level.getBlockState(pos)
+    if (MiningState.isMining) {
+        val pos = MiningState.targetPos ?: run { resetMining(); return false }
+        val dir = MiningState.targetDir ?: run { resetMining(); return false }
 
+        val state = level.getBlockState(pos)
         if (state.isAir) {
-            MiningState.target = null
+            resetMining()
             return false
         }
 
@@ -84,26 +84,34 @@ fun MultiPlayerGameMode.mineBlock(): Boolean {
         return true
     }
 
-    MiningState.target = null
-    val hitResult = getRotationRaycast()
+    resetMining()
+    if (mc.screen != null || player.isBlocking) return false
 
-    if (hitResult.type != HitResult.Type.BLOCK || mc.screen != null || player.isBlocking) {
-        return false
-    }
+    val hitResult = getRotationRaycast()
+    if (hitResult.type != HitResult.Type.BLOCK) return false
 
     val blockHit = hitResult as BlockHitResult
     val pos = blockHit.blockPos
     val dir = blockHit.direction
     val state = level.getBlockState(pos)
 
-    if (state.isAir || player.distanceToSqr(Vec3.atCenterOf(pos)) > 36.0) return false
+    if (state.isAir) return false
+    if (player.distanceToSqr(Vec3.atCenterOf(pos)) > 36.0) return false
 
     if (this.startDestroyBlock(pos, dir)) {
-        MiningState.target = pos to dir
+        MiningState.isMining = true
+        MiningState.targetPos = pos
+        MiningState.targetDir = dir
         return true
     }
 
     return false
+}
+
+private fun resetMining() {
+    MiningState.isMining = false
+    MiningState.targetPos = null
+    MiningState.targetDir = null
 }
 
 fun MultiPlayerGameMode.attackEntity(): Boolean {
