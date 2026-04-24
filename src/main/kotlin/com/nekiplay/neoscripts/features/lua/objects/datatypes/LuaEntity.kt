@@ -140,6 +140,13 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 }
                 return NIL
             }
+            "gamemode" -> {
+                if (entity is Player) {
+                    valueOf(entity.gameMode()?.name)
+                } else {
+                    NIL
+                }
+            }
             "is_blocking" -> {
                 if (entity is LivingEntity) {
                     valueOf(entity.isBlocking)

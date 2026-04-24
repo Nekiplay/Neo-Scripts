@@ -163,7 +163,7 @@ class DJLLuaTrainer : LuaValue() {
                         }
                         else -> NDArrays.concat(NDList(arrays))
                     }
-                    NDList(result) // Исправлено
+                    NDList(result)
                 }
 
                 if (layers.istable()) {
