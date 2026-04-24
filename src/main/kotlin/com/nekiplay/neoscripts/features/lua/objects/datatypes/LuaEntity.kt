@@ -9,6 +9,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.utils.Utils
+import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
 import net.minecraft.util.ProblemReporter
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
@@ -16,7 +17,9 @@ import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ItemFrame
 import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.storage.TagValueOutput
+import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 
@@ -261,6 +264,50 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 valueOf(output.buildResult().toString())
             }
             else -> super.get(key)
+        }
+    }
+
+    override fun set(key: LuaValue, value: LuaValue) {
+        if (entity != mc.player) return
+
+        when (val field = key.tojstring()) {
+            "velocity_x" -> {
+                if (value.isnumber()) {
+                    entity.setDeltaMovement(value.todouble(), entity.deltaMovement.y, entity.deltaMovement.z)
+                }
+            }
+            "velocity_y" -> {
+                if (value.isnumber()) {
+                    entity.setDeltaMovement(entity.deltaMovement.z, value.todouble(), entity.deltaMovement.z)
+                }
+            }
+            "velocity_z" -> {
+                if (value.isnumber()) {
+                    entity.setDeltaMovement(entity.deltaMovement.z, entity.deltaMovement.y, value.todouble())
+                }
+            }
+            "velocity" -> {
+                if (value.isuserdata() && value.touserdata() is LuaVector3d) {
+                    val vector = value.touserdata() as LuaVector3d
+                    entity.setDeltaMovement(vector.location.x, vector.location.y, vector.location.z)
+                }
+                else if (value.isuserdata() && value.touserdata() is Vec3) {
+                    val vector = value.touserdata() as Vec3
+                    entity.setDeltaMovement(vector.x, vector.y, vector.z)
+                }
+            }
+            "pos", "position" -> {
+                if (value.isuserdata() && value.touserdata() is LuaVector3d) {
+                    val vector = value.touserdata() as LuaVector3d
+                    entity.setPos(vector.location.x, vector.location.y, vector.location.z)
+                    mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector.location, entity.onGround(), entity.horizontalCollision))
+                }
+                else if (value.isuserdata() && value.touserdata() is Vec3) {
+                    val vector = value.touserdata() as Vec3
+                    entity.setPos(vector.x, vector.y, vector.z)
+                    mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector, entity.onGround(), entity.horizontalCollision))
+                }
+            }
         }
     }
 
