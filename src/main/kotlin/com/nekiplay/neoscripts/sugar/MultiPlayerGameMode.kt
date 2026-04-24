@@ -72,7 +72,7 @@ fun MultiPlayerGameMode.mineBlock(): Boolean {
 
     if (MiningState.isMining) {
         val hitResult = getRotationRaycast()
-        val targetPos = MiningState.targetPos
+        val targetPos = MiningState.targetPos ?: run { resetMining(); return false }
         val targetDir = MiningState.targetDir ?: run { resetMining(); return false }
 
         val isSameBlock = hitResult.type == HitResult.Type.BLOCK &&
@@ -80,6 +80,7 @@ fun MultiPlayerGameMode.mineBlock(): Boolean {
                 player.distanceToSqr(Vec3.atCenterOf(targetPos)) <= 36.0
 
         if (!isSameBlock) {
+            this.abortDestroyBlock()
             resetMining()
             return false
         }
