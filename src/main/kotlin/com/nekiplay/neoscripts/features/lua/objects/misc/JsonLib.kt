@@ -94,7 +94,7 @@ class JsonLib : LuaValue() {
 
                 val javaObj = convertToJava(luaValue)
                 val jsonString = if (indent.isnil()) {
-                    // По умолчанию - форматированный JSON
+                    // По умолчанию - не форматированный JSON
                     Main.GSON_COMPACT.toJson(javaObj)
                 } else {
                     // Если указан indent = 0 или false - неформатированный
