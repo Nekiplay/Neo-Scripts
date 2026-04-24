@@ -39,7 +39,7 @@ public abstract class MixinLocalPlayer extends AbstractClientPlayer {
         SendMovementPacketsEvent.PRE.invoker().onSendMovementPacketsPre(getYRot(), getXRot());
     }
 
-    @Inject(method = "sendPosition", at = @At("TAIL"))
+    @Inject(method = "sendPosition", at = @At("RETURN"))
     private void onSendMovementPacketsTail(CallbackInfo info) {
         SendMovementPacketsEvent.POST.invoker().onSendMovementPacketsPost();
     }
