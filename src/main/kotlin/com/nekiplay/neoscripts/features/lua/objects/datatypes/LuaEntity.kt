@@ -282,6 +282,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             arg3: LuaValue?,
             arg4: LuaValue?
         ): LuaValue? {
+            if (entity != mc.player) return FALSE
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isboolean() == true) {
                 val vector = Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble())
                 entity.setPos(vector.x, vector.y, vector.z)
@@ -309,7 +310,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 entity.setPos(vector.x, vector.y, vector.z)
                 mc.connection?.send(ServerboundMovePlayerPacket.Pos(vector, arg2?.toboolean() ?: true, entity.horizontalCollision))
             }
-            return NIL
+            return FALSE
         }
     }
 
