@@ -59,7 +59,7 @@ class Creator : LuaValue() {
     inner class CreateStackFromIdentifier : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (!args.arg(1).isstring()) {
-                error("create item expects a string as 1st argument (minecraft:tone)")
+                error("create item expects a string as 1st argument (minecraft:stone)")
             }
             val idString = args.arg(1).checkjstring()
 
