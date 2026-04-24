@@ -2,6 +2,7 @@ package com.nekiplay.neoscripts.features.lua.objects.player
 
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
+import com.nekiplay.neoscripts.mixins.gui.AbstractContainerMenuMixin
 import com.nekiplay.neoscripts.mixins.gui.AbstractSignEditScreenAccessor
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.utils.InventoryUtils
@@ -10,7 +11,9 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.minecraft.client.gui.screens.inventory.SignEditScreen
 import net.minecraft.client.multiplayer.ClientPacketListener
 import net.minecraft.network.protocol.game.ServerboundSignUpdatePacket
+import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.ChestMenu
+import net.minecraft.world.item.ItemStack
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
@@ -29,8 +32,11 @@ class InventoryObject: LuaValue() {
             "getContainerSlots" -> GetContainerSlotsFunction()
             "getChestTitle" -> GetChestTitleFunction()
 
-            "getStackFromContainer" -> GetStackFromContainerFunction()
-            "getStack" -> GetStackFunction()
+            "setStackInContainer", "setItemInContainer" -> SetStackInContainerFunction()
+            "setStack", "setItem" -> SetStackFunction()
+
+            "getStackFromContainer", "getItemFromContainer" -> GetStackFromContainerFunction()
+            "getStack", "getItem" -> GetStackFunction()
             "getSignText" -> GetSignTextFunction()
             "setSignText" -> SetSignTextFunction()
             "doneSign" -> DoneSignFunction()
@@ -261,12 +267,58 @@ class InventoryObject: LuaValue() {
         }
     }
 
+    private inner class SetStackFunction : TwoArgFunction() {
+        override fun call(arg: LuaValue?, arg2: LuaValue?): LuaValue {
+            if (arg == null || !arg.isnumber()) return NIL
+
+            val itemStack = when {
+                arg2?.isuserdata() == true && arg2.touserdata() is LuaItemStack -> (arg2.touserdata() as LuaItemStack).stack
+                arg2?.isuserdata() == true && arg2.touserdata() is ItemStack -> arg2.touserdata() as ItemStack
+                else -> null
+            }
+
+            val slot = arg.toint()
+
+            val player = mc.player ?: return NIL
+            val inv = player.inventory ?: return NIL
+
+            player.inventory.setItem(slot, itemStack)
+            return TRUE
+        }
+    }
+
+    private inner class SetStackInContainerFunction : TwoArgFunction() {
+        override fun call(arg: LuaValue?, arg2: LuaValue?): LuaValue {
+            if (arg == null || !arg.isnumber()) return NIL
+
+            val itemStack = when {
+                arg2?.isuserdata() == true && arg2.touserdata() is LuaItemStack -> (arg2.touserdata() as LuaItemStack).stack
+                arg2?.isuserdata() == true && arg2.touserdata() is ItemStack -> arg2.touserdata() as ItemStack
+                else -> null
+            }
+
+            if (mc.player != null && mc.player?.containerMenu != null) {
+                val screen = mc.player!!.containerMenu
+                if (screen is AbstractContainerMenu) {
+                    val slot = arg.toint()
+
+                    val player = mc.player ?: return NIL
+                    val inv = player.inventory ?: return NIL
+
+                    screen.setItem(slot, screen.stateId, itemStack)
+                    return TRUE
+                }
+            }
+            return FALSE
+        }
+    }
+
     private inner class GetStackFromContainerFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
                 if (mc.player != null && mc.player?.containerMenu != null) {
                     val screen = mc.player!!.containerMenu
-                    if (screen is ChestMenu) {
+                    if (screen is AbstractContainerMenu) {
                         val stack = screen.getSlot(arg.toint()).item
                         if (stack == null || stack.isEmpty) return NIL
 
