@@ -4,7 +4,6 @@ import com.mojang.authlib.properties.Property
 import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.customArgs.FourArgFunction
-import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaAxisDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
@@ -12,7 +11,6 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.sugar.getRotation
 import com.nekiplay.neoscripts.utils.Utils
-import net.minecraft.core.Direction
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
 import net.minecraft.util.ProblemReporter
 import net.minecraft.world.entity.Entity

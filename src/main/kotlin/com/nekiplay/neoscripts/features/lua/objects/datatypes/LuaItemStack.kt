@@ -12,13 +12,10 @@ import com.nekiplay.neoscripts.sugar.isRecombobulated
 import com.nekiplay.neoscripts.sugar.setDisplayName
 import com.nekiplay.neoscripts.utils.ItemUtils
 import com.nekiplay.neoscripts.utils.Utils
-import net.minecraft.core.Holder
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.component.DataComponents
-import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.NbtOps
 import net.minecraft.network.chat.Component
-import net.minecraft.world.entity.Entity
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.MapItem
 import net.minecraft.world.item.component.ItemLore

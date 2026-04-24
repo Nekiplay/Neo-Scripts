@@ -1,9 +1,7 @@
 package com.nekiplay.neoscripts.features.lua.objects.datatypes
 
-import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import net.minecraft.core.Direction
-import net.minecraft.world.entity.Entity
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.ComparatorBlock

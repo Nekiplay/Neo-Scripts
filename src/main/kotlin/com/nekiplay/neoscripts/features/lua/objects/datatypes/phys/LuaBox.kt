@@ -1,7 +1,5 @@
 package com.nekiplay.neoscripts.features.lua.objects.datatypes.phys
 
-import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
-import net.minecraft.core.Direction
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaTable
