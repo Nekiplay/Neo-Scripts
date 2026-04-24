@@ -1,7 +1,9 @@
 package com.nekiplay.neoscripts.features.lua.objects.datatypes
 
+import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.ComparatorBlock
 import net.minecraft.world.level.block.CropBlock
 import net.minecraft.world.level.block.DirectionalBlock
@@ -13,10 +15,11 @@ import net.minecraft.world.level.block.RepeaterBlock
 import net.minecraft.world.level.block.SnowLayerBlock
 import net.minecraft.world.level.block.piston.PistonBaseBlock
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.state.properties.IntegerProperty
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 
-class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
+class LuaBlockState(var blockState: BlockState) : LuaUserdata(blockState) {
     override fun get(key: LuaValue): LuaValue {
         return when (val field = key.tojstring()) {
             "id" -> valueOf(Block.getId(blockState))
@@ -126,6 +129,49 @@ class LuaBlockState(val blockState: BlockState) : LuaUserdata(blockState) {
             }
 
             else -> super.get(key)
+        }
+    }
+
+    override fun set(key: LuaValue, value: LuaValue) {
+        if (blockState.`is`(Blocks.AIR)) return
+
+        when (val field = key.tojstring()) {
+            "extended" -> {
+                if (value.isboolean() && blockState.hasProperty(PistonBaseBlock.EXTENDED)) {
+                    blockState = blockState.setValue(PistonBaseBlock.EXTENDED, value.toboolean())
+                }
+            }
+            "layers" -> {
+                if (value.isnumber() && blockState.hasProperty(SnowLayerBlock.LAYERS)) {
+                    blockState = blockState.setValue(SnowLayerBlock.LAYERS, value.toint())
+                }
+            }
+            "lit" -> {
+                if (value.isboolean() && blockState.hasProperty(RedstoneTorchBlock.LIT)) {
+                    blockState = blockState.setValue(RedstoneTorchBlock.LIT, value.toboolean())
+                }
+            }
+            "power" -> {
+                if (value.isnumber() && blockState.hasProperty(RedStoneWireBlock.POWER)) {
+                    blockState = blockState.setValue(RedStoneWireBlock.POWER, value.toint())
+                }
+            }
+            "locked" -> {
+                if (value.isboolean() && blockState.hasProperty(RepeaterBlock.LOCKED)) {
+                    blockState = blockState.setValue(RepeaterBlock.LOCKED, value.toboolean())
+                }
+            }
+            "delay" -> {
+                if (value.isnumber() && blockState.hasProperty(RepeaterBlock.DELAY)) {
+                    blockState = blockState.setValue(RepeaterBlock.DELAY, value.toint())
+                }
+            }
+            "age" -> {
+                if (value.isnumber() && blockState.hasProperty(CropBlock.AGE)) {
+                    blockState = blockState.setValue(CropBlock.AGE, value.toint())
+                }
+            }
+            else -> super.set(key, value)
         }
     }
 
