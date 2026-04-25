@@ -13,7 +13,6 @@ import com.nekiplay.neoscripts.sugar.getTab
 import com.nekiplay.neoscripts.utils.PlayerUtils
 import com.nekiplay.neoscripts.utils.RaycastUtils
 import com.nekiplay.neoscripts.utils.RotationuUtils
-import com.nekiplay.neoscripts.utils.StatusBarTracker
 import com.nekiplay.neoscripts.utils.Utils
 import com.nekiplay.neoscripts.utils.aiming.RotationManager
 import com.nekiplay.neoscripts.utils.trackers.ColdTracker
