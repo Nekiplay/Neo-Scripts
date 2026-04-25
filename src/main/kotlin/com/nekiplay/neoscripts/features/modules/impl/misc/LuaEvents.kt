@@ -6,14 +6,15 @@ import com.nekiplay.neoscripts.Main.LUA_MANAGER
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.events.KeyEvent
 import com.nekiplay.neoscripts.events.MouseButtonEvent
+import com.nekiplay.neoscripts.events.PacketEvent
+import com.nekiplay.neoscripts.events.RenderEvent
 import com.nekiplay.neoscripts.events.SkyblockEvents
-import com.nekiplay.neoscripts.events.network.PacketEvent
+import com.nekiplay.neoscripts.events.main.Callback
 import com.nekiplay.neoscripts.events.player.AddItemInventoryEvent
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.neoscripts.features.modules.ClientModule
-import com.nekiplay.neoscripts.mixins.packets.ServerboundMovePlayerPacketAccessor
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.sugar.getJsonString
 import com.nekiplay.neoscripts.utils.render.WorldRenderExtractionCallback
@@ -46,6 +47,134 @@ import org.luaj.vm2.LuaValue
 
 
 object LuaEvents : ClientModule() {
+
+    @Callback
+    fun onSendPacket(event : PacketEvent.Send) {
+        val allow = when (event.packet) {
+            is ServerboundMovePlayerPacket -> {
+                val packet = event.packet as ServerboundMovePlayerPacket
+                var allowed = true
+                LUA_MANAGER?.scripts?.values?.forEach { script ->
+                    if (!script.onPlayerSendMovement(
+                            packet.hasPosition(),
+                            packet.getX(0.0),
+                            packet.getY(0.0),
+                            packet.getZ(0.0),
+                            packet.hasPosition(),
+                            packet.getYRot(0f),
+                            packet.getXRot(0f),
+                            packet.isOnGround
+                        )) {
+                        allowed = false
+                    }
+                }
+                allowed
+            }
+            else -> true
+        }
+        if (!allow) event.cancelled = true
+    }
+
+    @Callback
+    fun onRecivePacket(event : PacketEvent.Send) {
+        when (event.packet) {
+            is ClientboundLevelParticlesPacket -> {
+                val packet = event.packet as ClientboundLevelParticlesPacket
+
+                LUA_MANAGER?.scripts?.values?.forEach { script ->
+                    script.onSpawnParticleEvent(
+                        BuiltInRegistries.PARTICLE_TYPE.getId(packet.particle.type),
+                        packet.x,
+                        packet.y,
+                        packet.z,
+                        packet.xDist,
+                        packet.yDist,
+                        packet.zDist,
+                        packet.maxSpeed,
+                        packet.count
+                    )
+                }
+            }
+
+            is ClientboundSetTimePacket -> {
+                val packet = event.packet as ClientboundSetTimePacket
+
+                LUA_MANAGER?.scripts?.values?.forEach { script ->
+                    script.onServerSideSetTimeEvent(packet.dayTime, packet.gameTime, packet.tickDayTime)
+                }
+            }
+
+            is ClientboundSoundPacket -> {
+                val packet = event.packet as ClientboundSoundPacket
+
+                LUA_MANAGER?.scripts?.values?.forEach { script ->
+                    script.onSoundPlay(packet.sound, packet.x, packet.y, packet.z, packet.pitch.toDouble(), packet.volume.toDouble())
+                }
+            }
+        }
+        val allow = when (val packet = event.packet) {
+            is ClientboundPlayerRotationPacket -> {
+                var rotationAllowed = true
+                LUA_MANAGER?.scripts?.values?.forEach { script ->
+                    if (!script.onServerSideRotationEvent(packet.xRot, packet.yRot)) {
+                        rotationAllowed = false
+                    }
+                }
+                rotationAllowed
+            }
+
+            is ClientboundBlockUpdatePacket -> {
+                var allowedBlockUpdate = true
+                val packet = event.packet as ClientboundBlockUpdatePacket
+
+                val table = LuaValue.tableOf()
+
+                table.set("position", LuaBlockPos(packet.pos))
+                val oldState = mc.level?.getBlockState(packet.pos)
+                if (oldState != null) {
+                    table.set("old", LuaBlockState(oldState))
+                }
+                if (packet.blockState != null) {
+                    table.set("new", LuaBlockState(packet.blockState))
+                }
+
+                LUA_MANAGER?.scripts?.values?.forEach { script ->
+                    if (!script.onBlockUpdateEvent(table)) {
+                        allowedBlockUpdate = false
+                    }
+                }
+
+                allowedBlockUpdate
+            }
+
+            is ClientboundPlayerPositionPacket -> {
+                var rotationAllowed = true
+                var teleportAllowed = true
+
+                LUA_MANAGER?.scripts?.values?.forEach { script ->
+                    if (!script.onServerSideRotationEvent(packet.change.xRot(), packet.change.yRot())) {
+                        rotationAllowed = false
+                    }
+                    if (!script.onServerSideTeleportEvent(
+                            packet.change.position.x,
+                            packet.change.position.y,
+                            packet.change.position.z
+                        )
+                    ) {
+                        teleportAllowed = false
+                    }
+                }
+
+                rotationAllowed && teleportAllowed
+            }
+
+            else -> true
+        }
+
+        if (!allow) event.cancelled = true
+    }
+
+
     override fun init() {
         ClientTickEvents.END_CLIENT_TICK.register { _ ->
             LUA_MANAGER?.scripts?.values?.forEach { script ->
@@ -245,153 +374,6 @@ object LuaEvents : ClientModule() {
                     // Обработка ошибок
                 }
             }
-        }
-        PacketEvent.SEND.register { event ->
-            val allow = when (event.packet) {
-                is ServerboundMovePlayerPacket -> {
-                    val packet = event.packet as ServerboundMovePlayerPacket
-                    var allowed = true
-                    LUA_MANAGER?.scripts?.values?.forEach { script ->
-                        if (!script.onPlayerSendMovement(
-                                packet.hasPosition(),
-                                packet.getX(0.0),
-                                packet.getY(0.0),
-                                packet.getZ(0.0),
-                                packet.hasPosition(),
-                                packet.getYRot(0f),
-                                packet.getXRot(0f),
-                                packet.isOnGround
-                            )) {
-                            allowed = false
-                        }
-                    }
-                    allowed
-                }
-                else -> true
-            }
-            if (allow) InteractionResult.PASS else InteractionResult.FAIL
-        }
-        PacketEvent.SENT.register { event ->
-            val allow = when (event.packet) {
-                is ServerboundMovePlayerPacket -> {
-                    val packet = event.packet as ServerboundMovePlayerPacket
-                    var allowed = true
-                    LUA_MANAGER?.scripts?.values?.forEach { script ->
-                        if (!script.onPlayerSendMovement(
-                                packet.hasPosition(),
-                                packet.getX(0.0),
-                                packet.getY(0.0),
-                                packet.getZ(0.0),
-                                packet.hasPosition(),
-                                packet.getYRot(0f),
-                                packet.getXRot(0f),
-                                packet.isOnGround
-                            )) {
-                            allowed = false
-                        }
-                    }
-                    allowed
-                }
-                else -> true
-            }
-            if (allow) InteractionResult.PASS else InteractionResult.FAIL
-        }
-        PacketEvent.RECEIVE.register { event ->
-            when (event.packet) {
-                is ClientboundLevelParticlesPacket -> {
-                    val packet = event.packet as ClientboundLevelParticlesPacket
-
-                    LUA_MANAGER?.scripts?.values?.forEach { script ->
-                        script.onSpawnParticleEvent(
-                            BuiltInRegistries.PARTICLE_TYPE.getId(packet.particle.type),
-                            packet.x,
-                            packet.y,
-                            packet.z,
-                            packet.xDist,
-                            packet.yDist,
-                            packet.zDist,
-                            packet.maxSpeed,
-                            packet.count
-                        )
-                    }
-                }
-
-                is ClientboundSetTimePacket -> {
-                    val packet = event.packet as ClientboundSetTimePacket
-
-                    LUA_MANAGER?.scripts?.values?.forEach { script ->
-                        script.onServerSideSetTimeEvent(packet.dayTime, packet.gameTime, packet.tickDayTime)
-                    }
-                }
-
-                is ClientboundSoundPacket -> {
-                    val packet = event.packet as ClientboundSoundPacket
-
-                    LUA_MANAGER?.scripts?.values?.forEach { script ->
-                        script.onSoundPlay(packet.sound, packet.x, packet.y, packet.z, packet.pitch.toDouble(), packet.volume.toDouble())
-                    }
-                }
-            }
-            val allow = when (val packet = event.packet) {
-                is ClientboundPlayerRotationPacket -> {
-                    var rotationAllowed = true
-                    LUA_MANAGER?.scripts?.values?.forEach { script ->
-                        if (!script.onServerSideRotationEvent(packet.xRot, packet.yRot)) {
-                            rotationAllowed = false
-                        }
-                    }
-                    rotationAllowed
-                }
-
-                is ClientboundBlockUpdatePacket -> {
-                    var allowedBlockUpdate = true
-                    val packet = event.packet as ClientboundBlockUpdatePacket
-
-                    val table = LuaValue.tableOf()
-
-                    table.set("position", LuaBlockPos(packet.pos))
-                    val oldState = mc.level?.getBlockState(packet.pos)
-                    if (oldState != null) {
-                        table.set("old", LuaBlockState(oldState))
-                    }
-                    if (packet.blockState != null) {
-                        table.set("new", LuaBlockState(packet.blockState))
-                    }
-
-                    LUA_MANAGER?.scripts?.values?.forEach { script ->
-                        if (!script.onBlockUpdateEvent(table)) {
-                            allowedBlockUpdate = false
-                        }
-                    }
-
-                    allowedBlockUpdate
-                }
-
-                is ClientboundPlayerPositionPacket -> {
-                    var rotationAllowed = true
-                    var teleportAllowed = true
-
-                    LUA_MANAGER?.scripts?.values?.forEach { script ->
-                        if (!script.onServerSideRotationEvent(packet.change.xRot(), packet.change.yRot())) {
-                            rotationAllowed = false
-                        }
-                        if (!script.onServerSideTeleportEvent(
-                                packet.change.position.x,
-                                packet.change.position.y,
-                                packet.change.position.z
-                            )
-                        ) {
-                            teleportAllowed = false
-                        }
-                    }
-
-                    rotationAllowed && teleportAllowed
-                }
-
-                else -> true
-            }
-
-            if (allow) InteractionResult.PASS else InteractionResult.FAIL
         }
         AddItemInventoryEvent.EVENT.register { event ->
             var allow = true
