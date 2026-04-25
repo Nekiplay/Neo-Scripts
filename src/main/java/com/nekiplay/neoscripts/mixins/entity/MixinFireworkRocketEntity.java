@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 public abstract class MixinFireworkRocketEntity {
     @Redirect(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getLookAngle()Lnet/minecraft/world/phys/Vec3;"))
     private Vec3 getLookAngleHook(LivingEntity instance) {
-        if (!Rotations.INSTANCE.getMoveFix()) {
+        if (Rotations.INSTANCE.getMoveFix() && !Float.isNaN(RotationManager.INSTANCE.getCurrentYaw())) {
 
             return instance.calculateViewVector(
                     RotationManager.INSTANCE.getCurrentPitch(),
