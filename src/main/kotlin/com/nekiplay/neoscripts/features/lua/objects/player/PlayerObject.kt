@@ -18,6 +18,7 @@ import com.nekiplay.neoscripts.utils.Utils
 import com.nekiplay.neoscripts.utils.aiming.RotationManager
 import com.nekiplay.neoscripts.utils.trackers.ColdTracker
 import com.nekiplay.neoscripts.utils.trackers.PetCache
+import com.nekiplay.neoscripts.utils.trackers.StatusBarTracker
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.components.LerpingBossEvent
 import net.minecraft.client.gui.components.toasts.SystemToast
