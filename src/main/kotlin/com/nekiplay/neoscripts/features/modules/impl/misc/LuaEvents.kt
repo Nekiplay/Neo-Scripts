@@ -7,7 +7,6 @@ import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.events.KeyEvent
 import com.nekiplay.neoscripts.events.MouseButtonEvent
 import com.nekiplay.neoscripts.events.PacketEvent
-import com.nekiplay.neoscripts.events.RenderEvent
 import com.nekiplay.neoscripts.events.SkyblockEvents
 import com.nekiplay.neoscripts.events.main.Callback
 import com.nekiplay.neoscripts.events.player.AddItemInventoryEvent
@@ -35,7 +34,6 @@ import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
 import net.minecraft.network.protocol.game.ClientboundSetTimePacket
 import net.minecraft.network.protocol.game.ClientboundSoundPacket
-import net.minecraft.network.protocol.game.ServerboundContainerClickPacket
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
@@ -76,7 +74,7 @@ object LuaEvents : ClientModule() {
     }
 
     @Callback
-    fun onRecivePacket(event : PacketEvent.Send) {
+    fun onRecivePacket(event : PacketEvent.Receive) {
         when (event.packet) {
             is ClientboundLevelParticlesPacket -> {
                 val packet = event.packet as ClientboundLevelParticlesPacket
