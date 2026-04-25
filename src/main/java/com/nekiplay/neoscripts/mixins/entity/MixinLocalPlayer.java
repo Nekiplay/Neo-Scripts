@@ -64,7 +64,7 @@ public abstract class MixinLocalPlayer extends AbstractClientPlayer {
 
         }
 
-        if (Float.isNaN(RotationManager.INSTANCE.getCurrentYaw())) {
+        if (!Float.isNaN(RotationManager.INSTANCE.getCurrentYaw())) {
             return RaycastUtils.findCrosshairTarget(camera,
                     camera.getEyePosition(),
                     RotationManager.INSTANCE.getCurrentYaw(),
@@ -84,7 +84,7 @@ public abstract class MixinLocalPlayer extends AbstractClientPlayer {
             return original;
         }
 
-        if (Float.isNaN(RotationManager.INSTANCE.getCurrentYaw())) {
+        if (!Float.isNaN(RotationManager.INSTANCE.getCurrentYaw())) {
             return Vec3.directionFromRotation(RotationManager.INSTANCE.getCurrentYaw(), RotationManager.INSTANCE.getCurrentPitch());
         }
         else {
