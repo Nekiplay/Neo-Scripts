@@ -6,12 +6,16 @@ import com.nekiplay.neoscripts.events.main.EventBus
 import com.nekiplay.neoscripts.features.commands.impl.LuaCommand
 import com.nekiplay.neoscripts.features.lua.LuaManager
 import com.nekiplay.neoscripts.features.modules.ModuleManager.registerInbuilt
+import com.nekiplay.neoscripts.utils.NEURepoManager
 import com.nekiplay.neoscripts.utils.Utils
+import com.nekiplay.neoscripts.utils.render.RenderHelper
 import com.nekiplay.neoscripts.utils.scheduler.Scheduler
+import com.nekiplay.neoscripts.utils.trackers.ColdTracker
+import com.nekiplay.neoscripts.utils.trackers.PetCache
+import com.nekiplay.neoscripts.utils.trackers.StatusBarTracker
 import io.github.classgraph.ClassGraph
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
@@ -77,8 +81,14 @@ object Main : ClientModInitializer {
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, registryAccess ->
             LuaCommand.register(dispatcher, registryAccess)
         }
-
+        // Load events
+        ColdTracker.init()
+        PetCache.init()
+        StatusBarTracker.init()
+        RenderHelper.init()
         registerInbuilt()
+        Utils.init()
+        NEURepoManager.init()
 
         Scheduler.INSTANCE.scheduleCyclic(Runnable { Utils.update() }, 20)
 
