@@ -1,6 +1,7 @@
 package com.nekiplay.neoscripts.mixins.minecraft.item;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.nekiplay.neoscripts.utils.aiming.RotationManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -17,8 +18,8 @@ public abstract class MixinItem {
             target = "Lnet/minecraft/world/entity/player/Player;calculateViewVector(FF)Lnet/minecraft/world/phys/Vec3;"))
     private static Vec3 hookFixRotation(Vec3 original, Level world, Player player, ClipContext.Fluid fluidHandling) {
         if (player == Minecraft.getInstance().player) {
-            if (Rotations.rotating) {
-                return Vec3.directionFromRotation(Rotations.serverPitch, Rotations.serverYaw);
+            if (!Float.isNaN(RotationManager.INSTANCE.getCurrentYaw())) {
+                return Vec3.directionFromRotation(RotationManager.INSTANCE.getCurrentPitch(), RotationManager.INSTANCE.getCurrentYaw());
             }
         }
         return original;
