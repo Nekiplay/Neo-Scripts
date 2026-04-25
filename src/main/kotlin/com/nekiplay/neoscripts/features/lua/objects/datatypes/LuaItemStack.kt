@@ -16,8 +16,16 @@ import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.component.DataComponents
 import net.minecraft.nbt.NbtOps
 import net.minecraft.network.chat.Component
+import net.minecraft.tags.ItemTags
+import net.minecraft.world.item.BlockItem
+import net.minecraft.world.item.FishingRodItem
+import net.minecraft.world.item.InstrumentItem
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.MaceItem
 import net.minecraft.world.item.MapItem
+import net.minecraft.world.item.ShearsItem
+import net.minecraft.world.item.ShieldItem
+import net.minecraft.world.item.TridentItem
 import net.minecraft.world.item.component.ItemLore
 import net.minecraft.world.level.block.Block
 import org.luaj.vm2.LuaDouble
@@ -48,6 +56,46 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
             "is_museum_donated" -> valueOf(stack.isMuseumDonated())
             "is_enchanted" -> valueOf(stack.isEnchanted)
             "uuid" -> valueOf(stack.getItemUuid())
+
+            "is_sword" -> {
+                valueOf(stack.`is`(ItemTags.SWORDS))
+            }
+            "is_pickaxe" -> {
+                valueOf(stack.`is`(ItemTags.PICKAXES))
+            }
+            "is_axe" -> {
+                valueOf(stack.`is`(ItemTags.AXES))
+            }
+            "is_hoe" -> {
+                valueOf(stack.`is`(ItemTags.HOES))
+            }
+            "is_shovel" -> {
+                valueOf(stack.`is`(ItemTags.SHOVELS))
+            }
+            "is_map" -> {
+                valueOf(stack.item is MapItem)
+            }
+            "is_trident" -> {
+                valueOf(stack.item is TridentItem)
+            }
+            "is_instrument" -> {
+                valueOf(stack.item is InstrumentItem)
+            }
+            "is_shield" -> {
+                valueOf(stack.item is ShieldItem)
+            }
+            "is_shears" -> {
+                valueOf(stack.item is ShearsItem)
+            }
+            "is_mace" -> {
+                valueOf(stack.item is MaceItem)
+            }
+            "is_fishing_rod" -> {
+                valueOf(stack.item is FishingRodItem)
+            }
+            "is_block" -> {
+                valueOf(stack.item is BlockItem)
+            }
 
             "map" -> {
                 if (stack.item is MapItem && mc.level != null) {

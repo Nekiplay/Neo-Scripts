@@ -2,9 +2,10 @@ package com.nekiplay.neoscripts.mixins.entity;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.mojang.authlib.GameProfile;
-import com.nekiplay.neoscripts.events.SendMovementPacketsEvent;
+import com.nekiplay.neoscripts.events.*;
+import com.nekiplay.neoscripts.events.main.EventBus;
 import com.nekiplay.neoscripts.utils.RaycastUtils;
-import com.nekiplay.neoscripts.utils.Rotations;
+import com.nekiplay.neoscripts.utils.aiming.RotationManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -18,8 +19,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(LocalPlayer.class)
 public abstract class MixinLocalPlayer extends AbstractClientPlayer {
@@ -32,18 +33,30 @@ public abstract class MixinLocalPlayer extends AbstractClientPlayer {
         super(world, profile);
     }
 
-    // Rotations
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void tickHook(CallbackInfo ci) {
+        EventBus.INSTANCE.send(new PlayerTickEvent());
+    }
 
     @Inject(method = "sendPosition", at = @At("HEAD"))
-    private void onSendMovementPacketsHead(CallbackInfo ci) {
-        SendMovementPacketsEvent.PRE.invoker().onSendMovementPacketsPre(getYRot(), getXRot());
+    private void sendPositionHook(CallbackInfo ci) {
+        EventBus.INSTANCE.send(new SyncPosEvent(true));
     }
 
     @Inject(method = "sendPosition", at = @At("RETURN"))
-    private void onSendMovementPacketsTail(CallbackInfo info) {
-        SendMovementPacketsEvent.POST.invoker().onSendMovementPacketsPost();
+    private void sendPostPositionHook(CallbackInfo ci) {
+        EventBus.INSTANCE.send(new SyncPosEvent(false));
     }
 
+    @Inject(method = "applyInput", at = @At("HEAD"), cancellable = true)
+    private void applyInputHook(CallbackInfo ci) {
+        if (EventBus.INSTANCE.sendCancellable(new ApplyInputEvent())) ci.cancel();
+    }
+
+    @Inject(method = "raycastHitResult", at = @At("RETURN"))
+    private void raycastPostHitResultHook(float f, Entity entity, CallbackInfoReturnable<HitResult> cir) {
+        EventBus.INSTANCE.send(new RaycastHitEvent(false));
+    }
     @ModifyExpressionValue(method = "pick(Lnet/minecraft/world/entity/Entity;DDF)Lnet/minecraft/world/phys/HitResult;", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;pick(DFZ)Lnet/minecraft/world/phys/HitResult;"))
     private static HitResult hookRaycast(HitResult original, Entity camera, double blockInteractionRange, double entityInteractionRange, float tickDelta) {
         if (camera != Minecraft.getInstance().player) {
@@ -51,11 +64,11 @@ public abstract class MixinLocalPlayer extends AbstractClientPlayer {
 
         }
 
-        if (Rotations.rotating) {
+        if (!Float.isNaN(RotationManager.INSTANCE.getCurrentYaw())) {
             return RaycastUtils.findCrosshairTarget(camera,
                     camera.getEyePosition(),
-                    Rotations.serverYaw,
-                    Rotations.serverPitch,
+                    RotationManager.INSTANCE.getCurrentYaw(),
+                    RotationManager.INSTANCE.getCurrentPitch(),
                     ((Player) camera).blockInteractionRange(),
                     ((Player) camera).entityInteractionRange()
             );
@@ -71,31 +84,11 @@ public abstract class MixinLocalPlayer extends AbstractClientPlayer {
             return original;
         }
 
-        if (Rotations.rotating) {
-            return Vec3.directionFromRotation(Rotations.serverYaw, Rotations.serverPitch);
+        if (!Float.isNaN(RotationManager.INSTANCE.getCurrentYaw())) {
+            return Vec3.directionFromRotation(RotationManager.INSTANCE.getCurrentYaw(), RotationManager.INSTANCE.getCurrentPitch());
         }
         else {
             return original;
         }
-    }
-
-    @ModifyExpressionValue(method = {"sendPosition",
-            "tick"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getYRot()F"))
-    private float hookSilentRotationYaw(float original) {
-        if (!Rotations.rotating) {
-            return original;
-        }
-
-        return Rotations.serverYaw;
-    }
-
-    @ModifyExpressionValue(method = {"sendPosition",
-            "tick"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getXRot()F"))
-    private float hookSilentRotationPitch(float original) {
-        if (!Rotations.rotating) {
-            return original;
-        }
-
-        return Rotations.serverPitch;
     }
 }

@@ -1,7 +1,5 @@
 package com.nekiplay.neoscripts.annotations;
 
-import com.nekiplay.neoscripts.Main;
-
 import java.lang.annotation.*;
 
 /**

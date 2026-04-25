@@ -23,17 +23,24 @@ data class DirectionalInput(
         right = movementSideways < 0.0
     )
 
-    fun invert(): DirectionalInput {
-        return DirectionalInput(
-            forwards = backwards,
-            backwards = forwards,
-            left = right,
-            right = left
-        )
+    fun getForwardValue(): Int = when {
+        forwards -> 1
+        backwards -> -1
+        else -> 0
     }
 
-    val isMoving: Boolean
-        get() = forwards != backwards || left != right
+    fun getSidewaysValue(): Int = when {
+        right -> 1
+        left -> -1
+        else -> 0
+    }
+
+    fun invert(): DirectionalInput = DirectionalInput(
+        forwards = backwards,
+        backwards = forwards,
+        left = right,
+        right = left
+    )
 
     companion object {
         @JvmField

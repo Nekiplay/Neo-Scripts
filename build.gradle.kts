@@ -6,7 +6,6 @@ plugins {
     id("fabric-loom") version "1.15-SNAPSHOT"
     id("org.jetbrains.kotlin.jvm") version "2.2.21"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.21"
-    id("com.nekiplay.neoscripts.annotation-processor")
     id("com.gradleup.shadow") version "9.3.0"
 }
 
@@ -81,6 +80,8 @@ dependencies {
 
     // Legacy Item DFU (https://maven.azureaaron.net/releases/net/azureaaron/legacy-item-dfu)
     include(implementation("net.azureaaron:legacy-item-dfu:${property("legacy_item_dfu_version")}")!!)
+
+    include(implementation("io.github.classgraph:classgraph:4.8.184")!!)
 
     // ImGUI
     val imguiVersion = property("imgui_version") as String

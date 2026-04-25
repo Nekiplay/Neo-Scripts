@@ -12,17 +12,16 @@ import com.nekiplay.neoscripts.sugar.getScorebordLines
 import com.nekiplay.neoscripts.sugar.getTab
 import com.nekiplay.neoscripts.utils.PlayerUtils
 import com.nekiplay.neoscripts.utils.RaycastUtils
-import com.nekiplay.neoscripts.utils.Rotations
+import com.nekiplay.neoscripts.utils.RotationuUtils
 import com.nekiplay.neoscripts.utils.StatusBarTracker
 import com.nekiplay.neoscripts.utils.Utils
+import com.nekiplay.neoscripts.utils.aiming.RotationManager
 import com.nekiplay.neoscripts.utils.trackers.ColdTracker
 import com.nekiplay.neoscripts.utils.trackers.PetCache
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.components.BossHealthOverlay
 import net.minecraft.client.gui.components.LerpingBossEvent
 import net.minecraft.client.gui.components.toasts.SystemToast
 import net.minecraft.network.chat.Component
-import java.lang.reflect.Field
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.Vec3
@@ -69,7 +68,6 @@ class PlayerObject : LuaValue() {
             "getPos", "getPosition" -> GetPlayerPosFunction()
             "getRotation" -> GetPlayerRotationFunction()
             "getSilentRotation", "getServerRotation" -> GetPlayerSilentRotationFunction()
-            "isSilentRotationg" -> GetPlayerSilentIsRotationFunction()
             "setRotation" -> SetPlayerRotationFunction()
             "setSilentRotation", "setServerRotation" -> SetPlayerSilentRotationFunction()
             "getName" -> GetPlayerNameFunction()
@@ -290,7 +288,7 @@ class PlayerObject : LuaValue() {
         override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue? {
             if (arg1.isnumber() && arg2.isnumber()) {
                 val table = tableOf()
-                val rotations = Rotations.getDirectionFromYawPitch(arg1.tofloat(), arg2.tofloat())
+                val rotations = RotationuUtils.getDirectionFromYawPitch(arg1.tofloat(), arg2.tofloat())
                 table.set("direction", LuaVector3d(rotations))
                 return table
             }
@@ -325,12 +323,12 @@ class PlayerObject : LuaValue() {
                     return NIL
                 }
 
-                val hitResult = if (Rotations.rotating) {
+                val hitResult = if (!RotationManager.getCurrentLastYaw().isNaN()) {
                     RaycastUtils.rayTrace(
                         mc.cameraEntity,
                         4.5,
-                        Rotations.serverYaw,
-                        Rotations.serverPitch,
+                        RotationManager.getCurrentLastYaw(),
+                        RotationManager.getCurrentPitch(),
                         targetBlocks
                     )
                 }
@@ -359,12 +357,12 @@ class PlayerObject : LuaValue() {
         ): LuaValue? {
             if (arg1?.isnumber() == true) {
                 val player = mc.player ?: return NIL
-                val hitResult = if (Rotations.rotating) {
+                val hitResult = if (!RotationManager.getCurrentYaw().isNaN()) {
                     RaycastUtils.findCrosshairTarget(
                         mc.cameraEntity,
                         player.eyePosition,
-                        Rotations.serverYaw,
-                        Rotations.serverPitch,
+                        RotationManager.getCurrentYaw(),
+                        RotationManager.getCurrentPitch(),
                         arg1.todouble(),
                         arg1.todouble()
                     )
@@ -475,7 +473,7 @@ class PlayerObject : LuaValue() {
                         silentMovementCorrection = arg4?.optboolean(false) ?: false
                     }
 
-                    Rotations.rotate(yaw, pitch, movementCorrection, silentMovementCorrection)
+                    RotationManager.rotateTo(yaw.toFloat(), pitch.toFloat(), 1,  1, movementCorrection, silentMovementCorrection)
                     return TRUE
                 }
                 return FALSE
@@ -509,20 +507,14 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class GetPlayerSilentIsRotationFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(Rotations.rotating)
-        }
-    }
-
     private inner class GetPlayerSilentRotationFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val player = mc.player;
             return if (player != null) {
                 val table = tableOf()
-                if (Rotations.rotating) {
-                    table.set("yaw", valueOf(Rotations.serverYaw.toDouble()))
-                    table.set("pitch", valueOf(Rotations.serverPitch.toDouble()))
+                if (!RotationManager.getCurrentYaw().isNaN()) {
+                    table.set("yaw", valueOf(RotationManager.getCurrentYaw().toDouble()))
+                    table.set("pitch", valueOf(RotationManager.getCurrentPitch().toDouble()))
                 }
                 else {
                     table.set("yaw", valueOf(player.yRot.toDouble()))

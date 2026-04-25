@@ -276,11 +276,15 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 }
             }
             "nbt" -> {
-                val registryLookup = Utils.getRegistryWrapperLookup()
-                val reporter = ProblemReporter.ScopedCollector(Main.LOGGER)
-                val output = TagValueOutput.createWithContext(reporter, registryLookup)
-                entity.saveWithoutId(output)
-                valueOf(output.buildResult().toString())
+                val logger = Main.LOGGER
+                if (logger != null) {
+                    val registryLookup = Utils.getRegistryWrapperLookup()
+                    val reporter = ProblemReporter.ScopedCollector(Main.LOGGER)
+                    val output = TagValueOutput.createWithContext(reporter, registryLookup)
+                    entity.saveWithoutId(output)
+                    valueOf(output.buildResult().toString())
+                }
+                else { NIL }
             }
             "teleport" -> TeleportFunction()
             else -> super.get(key)

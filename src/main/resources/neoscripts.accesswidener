@@ -7,6 +7,16 @@ accessible field net/minecraft/world/level/saveddata/maps/MapItemSavedData track
 accessible field net/minecraft/world/level/saveddata/maps/MapItemSavedData frameMarkers Ljava/util/Map;
 accessible method net/minecraft/client/player/KeyboardInput calculateImpulse (ZZ)F
 
+accessible field net/minecraft/client/KeyMapping key Lcom/mojang/blaze3d/platform/InputConstants$Key;
+accessible field net/minecraft/client/player/ClientInput moveVector Lnet/minecraft/world/phys/Vec2;
+accessible field net/minecraft/network/protocol/game/ServerboundUseItemPacket yRot F
+mutable field net/minecraft/network/protocol/game/ServerboundUseItemPacket yRot F
+accessible field net/minecraft/network/protocol/game/ServerboundUseItemPacket xRot F
+mutable field net/minecraft/network/protocol/game/ServerboundUseItemPacket xRot F
+accessible field net/minecraft/client/multiplayer/ClientLevel blockStatePredictionHandler Lnet/minecraft/client/multiplayer/prediction/BlockStatePredictionHandler;
+accessible field net/minecraft/client/player/LocalPlayer yRotLast F
+accessible field net/minecraft/client/player/LocalPlayer xRotLast F
+
 accessible class net/minecraft/client/Minecraft$GameLoadCookie
 
 accessible field net/minecraft/client/gui/components/BossHealthOverlay events Ljava/util/Map;

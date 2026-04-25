@@ -22,6 +22,7 @@
     "minecraft.GamemodeAccessor",
     "minecraft.MixinKeyboardInput",
     "minecraft.MixinServerboundUseItemPacket",
+    "minecraft.MouseHandlerMixin",
     "minecraft.item.MixinItem",
     "packets.ServerboundMovePlayerPacketAccessor",
     "renderer.GameRendererAccessor"
