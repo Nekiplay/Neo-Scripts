@@ -12,6 +12,7 @@ import com.nekiplay.neoscripts.sugar.getScorebordLines
 import com.nekiplay.neoscripts.sugar.getTab
 import com.nekiplay.neoscripts.utils.PlayerUtils
 import com.nekiplay.neoscripts.utils.RaycastUtils
+import com.nekiplay.neoscripts.utils.RotationuUtils
 import com.nekiplay.neoscripts.utils.StatusBarTracker
 import com.nekiplay.neoscripts.utils.Utils
 import com.nekiplay.neoscripts.utils.aiming.RotationManager
@@ -287,7 +288,7 @@ class PlayerObject : LuaValue() {
         override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue? {
             if (arg1.isnumber() && arg2.isnumber()) {
                 val table = tableOf()
-                val rotations = Rotations.getDirectionFromYawPitch(arg1.tofloat(), arg2.tofloat())
+                val rotations = RotationuUtils.getDirectionFromYawPitch(arg1.tofloat(), arg2.tofloat())
                 table.set("direction", LuaVector3d(rotations))
                 return table
             }
@@ -322,12 +323,12 @@ class PlayerObject : LuaValue() {
                     return NIL
                 }
 
-                val hitResult = if (Rotations.rotating) {
+                val hitResult = if (!RotationManager.getCurrentLastYaw().isNaN()) {
                     RaycastUtils.rayTrace(
                         mc.cameraEntity,
                         4.5,
-                        Rotations.serverYaw,
-                        Rotations.serverPitch,
+                        RotationManager.getCurrentLastYaw(),
+                        RotationManager.getCurrentPitch(),
                         targetBlocks
                     )
                 }
@@ -356,12 +357,12 @@ class PlayerObject : LuaValue() {
         ): LuaValue? {
             if (arg1?.isnumber() == true) {
                 val player = mc.player ?: return NIL
-                val hitResult = if (Rotations.rotating) {
+                val hitResult = if (!RotationManager.getCurrentYaw().isNaN()) {
                     RaycastUtils.findCrosshairTarget(
                         mc.cameraEntity,
                         player.eyePosition,
-                        Rotations.serverYaw,
-                        Rotations.serverPitch,
+                        RotationManager.getCurrentYaw(),
+                        RotationManager.getCurrentPitch(),
                         arg1.todouble(),
                         arg1.todouble()
                     )
@@ -511,7 +512,7 @@ class PlayerObject : LuaValue() {
             val player = mc.player;
             return if (player != null) {
                 val table = tableOf()
-                if (Rotations.rotating) {
+                if (!RotationManager.getCurrentYaw().isNaN()) {
                     table.set("yaw", valueOf(RotationManager.getCurrentYaw().toDouble()))
                     table.set("pitch", valueOf(RotationManager.getCurrentPitch().toDouble()))
                 }

@@ -3,11 +3,13 @@ package com.nekiplay.neoscripts.sugar
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.mixins.ClientPlayerInteractionManagerAccessor
 import com.nekiplay.neoscripts.utils.RaycastUtils
+import com.nekiplay.neoscripts.utils.aiming.RotationManager
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.MultiPlayerGameMode
 import net.minecraft.client.multiplayer.prediction.PredictiveAction
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.core.Rotations
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.phys.BlockHitResult
@@ -17,11 +19,11 @@ import net.minecraft.world.phys.Vec3
 
 
 fun MultiPlayerGameMode.getRotationRaycast(): HitResult {
-    var yaw: Float = mc.player?.yRot ?: Rotations.serverYaw
-    var pitch: Float = mc.player?.xRot ?: Rotations.serverPitch
-    if (Rotations.rotating) {
-        yaw = Rotations.serverYaw
-        pitch = Rotations.serverPitch
+    var yaw: Float = mc.player?.yRot ?: RotationManager.getCurrentYaw()
+    var pitch: Float = mc.player?.xRot ?: RotationManager.getCurrentPitch()
+    if (!RotationManager.getCurrentYaw().isNaN()) {
+        yaw = RotationManager.getCurrentYaw()
+        pitch = RotationManager.getCurrentPitch()
     }
     val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, mc.player?.eyePosition, yaw, pitch, mc.player?.blockInteractionRange() ?: 4.5, mc.player?.entityInteractionRange() ?: 3.0)
     return hitResult

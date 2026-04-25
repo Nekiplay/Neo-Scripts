@@ -11,6 +11,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaRaycast
 import com.nekiplay.neoscripts.mixins.minecraft.LevelRendererAccessor
 import com.nekiplay.neoscripts.utils.RaycastUtils
+import com.nekiplay.neoscripts.utils.RotationuUtils
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.core.BlockPos
 import net.minecraft.resources.Identifier
@@ -358,8 +359,8 @@ class WorldObject : LuaValue() {
             arg3: LuaValue?
         ): LuaValue? {
             return if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
-                val yaw = Rotations.getYaw(Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble()))
-                val pitch = Rotations.getPitch(Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble()))
+                val yaw = RotationuUtils.getYaw(Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble()))
+                val pitch = RotationuUtils.getPitch(Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble()))
                 val table = tableOf()
                 table.set("yaw", valueOf(yaw))
                 table.set("pitch", valueOf(pitch))
@@ -368,8 +369,8 @@ class WorldObject : LuaValue() {
             else if (arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos) {
                 val pos = arg1.touserdata() as LuaBlockPos
 
-                val yaw = Rotations.getYaw(Vec3(pos.pos.x.toDouble(), pos.pos.y.toDouble(), pos.pos.z.toDouble()))
-                val pitch = Rotations.getPitch(Vec3(pos.pos.x.toDouble(), pos.pos.y.toDouble(), pos.pos.z.toDouble()))
+                val yaw = RotationuUtils.getYaw(Vec3(pos.pos.x.toDouble(), pos.pos.y.toDouble(), pos.pos.z.toDouble()))
+                val pitch = RotationuUtils.getPitch(Vec3(pos.pos.x.toDouble(), pos.pos.y.toDouble(), pos.pos.z.toDouble()))
                 val table = tableOf()
                 table.set("yaw", valueOf(yaw))
                 table.set("pitch", valueOf(pitch))
