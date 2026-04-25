@@ -44,7 +44,6 @@ public abstract class ClientConnectionMixin {
     private void onChannelRead(ChannelHandlerContext channelHandlerContext, Packet<?> packet, CallbackInfo ci) {
         if (packet instanceof ClientboundSetEntityDataPacket entityDataPacket) {
             if (mc.level == null) return;
-
             Entity entity = mc.level.getEntity(entityDataPacket.id());
             if (entity instanceof FakePlayer) {
                 ci.cancel();

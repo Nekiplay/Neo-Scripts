@@ -1,7 +1,6 @@
 package com.nekiplay.neoscripts.mixins.minecraft.item;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
-import com.nekiplay.neoscripts.utils.Rotations;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;

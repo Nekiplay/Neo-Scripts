@@ -1,23 +1,16 @@
 package com.nekiplay.neoscripts.mixins.entity;
 
-import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.nekiplay.neoscripts.events.ExtractRenderStateEvent;
 import com.nekiplay.neoscripts.events.main.EventBus;
-import com.nekiplay.neoscripts.utils.Rotations;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
-import org.jspecify.annotations.NullMarked;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 @Mixin(LivingEntityRenderer.class)
 public class MixinLivingEntityRenderer<T extends LivingEntity, S extends LivingEntityRenderState, M extends EntityModel<? super S>> {

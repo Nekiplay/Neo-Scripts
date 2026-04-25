@@ -3,7 +3,6 @@ package com.nekiplay.neoscripts.sugar
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.mixins.ClientPlayerInteractionManagerAccessor
 import com.nekiplay.neoscripts.utils.RaycastUtils
-import com.nekiplay.neoscripts.utils.Rotations
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.MultiPlayerGameMode
 import net.minecraft.client.multiplayer.prediction.PredictiveAction

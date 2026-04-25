@@ -11,9 +11,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaRaycast
 import com.nekiplay.neoscripts.mixins.minecraft.LevelRendererAccessor
 import com.nekiplay.neoscripts.utils.RaycastUtils
-import com.nekiplay.neoscripts.utils.Rotations
 import net.minecraft.client.multiplayer.ClientLevel
-import net.minecraft.client.resources.sounds.SoundInstance
 import net.minecraft.core.BlockPos
 import net.minecraft.resources.Identifier
 import net.minecraft.sounds.SoundEvent
