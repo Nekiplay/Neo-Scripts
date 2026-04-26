@@ -2,7 +2,6 @@ package com.nekiplay.neoscripts.features.lua.objects.player
 
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
-import com.nekiplay.neoscripts.mixins.gui.AbstractContainerMenuMixin
 import com.nekiplay.neoscripts.mixins.gui.AbstractSignEditScreenAccessor
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.utils.InventoryUtils
@@ -30,7 +29,7 @@ class InventoryObject: LuaValue() {
             "isSignOpened" -> IsSignOpenedFunction()
             "isAnyScreenOpened" -> IsAnyScreenOpened()
             "getContainerSlots" -> GetContainerSlotsFunction()
-            "getChestTitle" -> GetChestTitleFunction()
+            "getChestTitle", "getContainerTitle" -> GetChestTitleFunction()
 
             "setStackInContainer", "setItemInContainer" -> SetStackInContainerFunction()
             "setStack", "setItem" -> SetStackFunction()
@@ -154,7 +153,7 @@ class InventoryObject: LuaValue() {
     private inner class GetChestTitleFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val screen = mc.screen
-            return if (screen is ContainerScreen) {
+            return if (screen is AbstractContainerMenu) {
                 valueOf(screen.title.getFormattedString())
             } else {
                 NIL
@@ -242,7 +241,7 @@ class InventoryObject: LuaValue() {
     private inner class GetContainerSlotsFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val screen = mc.player?.containerMenu
-            if (screen is ChestMenu) {
+            if (screen is AbstractContainerMenu) {
                 val slots = screen.slots.size
                 return valueOf(slots)
             }
