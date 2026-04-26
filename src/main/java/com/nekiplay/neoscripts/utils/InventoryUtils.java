@@ -4,7 +4,7 @@ import static com.nekiplay.neoscripts.Main.mc;
 
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.world.inventory.ClickType;
-import net.minecraft.world.inventory.AbstractContainerMenu
+import net.minecraft.world.inventory.AbstractContainerMenu;
 
 public class InventoryUtils {
     public static void clickSlotWithId(int slotId, int button, ClickType actionType, int syncId) {
