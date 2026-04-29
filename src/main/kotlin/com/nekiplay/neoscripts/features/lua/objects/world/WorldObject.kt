@@ -21,6 +21,7 @@ import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.ClipContext
+import net.minecraft.world.level.LightLayer
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
@@ -139,6 +140,8 @@ class WorldObject : LuaValue() {
             // Functions
             "getRotation" -> GetRotationFunction()
             "getBlock", "getBlockState" -> GetBlockFunction()
+            "getLight", "getBrightness" -> GetLightFunction()
+            "getLightSky", "getBrightnessSky" -> GetLightSkyFunction()
             "setBlock" -> SetBlockFunction()
             "isBlockLoaded" -> IsBlockLoadedFunction()
 
@@ -468,6 +471,40 @@ class WorldObject : LuaValue() {
                 val state = mc.level?.getBlockState(blockPos)
                 if (state != null) {
                     return LuaBlockState(state);
+                }
+            }
+            return NIL
+        }
+    }
+
+    private inner class GetLightFunction : ThreeArgFunction() {
+        override fun call(
+            arg1: LuaValue?,
+            arg2: LuaValue?,
+            arg3: LuaValue?
+        ): LuaValue? {
+            val blockPos = parseBlockPos(arg1, arg2, arg3)
+            if (blockPos != null) {
+                val lighth = mc.level?.getBrightness(LightLayer.BLOCK, blockPos)
+                if (lighth != null) {
+                    return valueOf(lighth)
+                }
+            }
+            return NIL
+        }
+    }
+
+    private inner class GetLightSkyFunction : ThreeArgFunction() {
+        override fun call(
+            arg1: LuaValue?,
+            arg2: LuaValue?,
+            arg3: LuaValue?
+        ): LuaValue? {
+            val blockPos = parseBlockPos(arg1, arg2, arg3)
+            if (blockPos != null) {
+                val lighth = mc.level?.getBrightness(LightLayer.SKY, blockPos)
+                if (lighth != null) {
+                    return valueOf(lighth)
                 }
             }
             return NIL

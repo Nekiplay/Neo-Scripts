@@ -85,6 +85,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val particleCallbacks = ArrayList<LuaValue>()
     private val soundCallbacks = ArrayList<LuaValue>()
     private val slotClicksCallbacks = ArrayList<LuaValue>()
+    private val titleCallbacks = ArrayList<LuaValue>()
+    private val actionBarCallbacks = ArrayList<LuaValue>()
 
     // Packet events
     private val serverSideRotationCallbacks = ArrayList<LuaValue>()
@@ -380,9 +382,48 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 }
             }
         })
+        scriptGlobals.set("registerTitleEvent", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(titleCallbacks.add(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("registerActionBarEvent", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(actionBarCallbacks.add(callback))
+                }
+            }
+        })
     }
 
     private fun registerEventUnregistrationFunctions() {
+        scriptGlobals.set("unregisterActionBarEvent", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(actionBarCallbacks.remove(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("unregisterTitleEvent", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(titleCallbacks.remove(callback))
+                }
+            }
+        })
+
         scriptGlobals.set("unregisterPlayerSendMovementEvent", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
@@ -928,6 +969,44 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         return allow
     }
 
+    fun onActionBar(text: String): Boolean {
+        var allow = true
+        val callbacks = synchronized(callbacksLock) {
+            actionBarCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(LuaValue.valueOf(text))
+                if (res.isboolean() && !res.toboolean()) {
+                    allow = false
+                }
+            } catch (e: Exception) {
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in action bar callback in ${scriptName}", e)
+            }
+        }
+        return allow
+    }
+
+    fun onTitle(text: String, isSubTitle: Boolean): Boolean {
+        var allow = true
+        val callbacks = synchronized(callbacksLock) {
+            titleCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(LuaValue.valueOf(text), LuaValue.valueOf(isSubTitle))
+                if (res.isboolean() && !res.toboolean()) {
+                    allow = false
+                }
+            } catch (e: Exception) {
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in title callback in ${scriptName}", e)
+            }
+        }
+        return allow
+    }
+
     fun onPlayerSendMovement(hasPosition: Boolean, x: Double, y: Double, z: Double, hasRotation: Boolean, yaw: Float, pitch: Float, isOnGround: Boolean): Boolean {
         val callbacks = synchronized(callbacksLock) {
             clientSidePlayerSetPositionCallbacks.toTypedArray()
@@ -1450,6 +1529,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             imguiInitCallbacks.clear()
             slotClicksCallbacks.clear()
             clientSidePlayerSetPositionCallbacks.clear()
+            titleCallbacks.clear()
+            actionBarCallbacks.clear()
         }
         imguiLib?.cleanup()
         imguiLib?.queue?.clear()

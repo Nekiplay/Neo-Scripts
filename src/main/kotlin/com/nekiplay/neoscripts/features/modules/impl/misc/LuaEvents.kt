@@ -32,7 +32,10 @@ import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
+import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket
+import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket
 import net.minecraft.network.protocol.game.ClientboundSetTimePacket
+import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket
 import net.minecraft.network.protocol.game.ClientboundSoundPacket
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
 import net.minecraft.world.InteractionHand
@@ -143,6 +146,45 @@ object LuaEvents : ClientModule() {
                 }
 
                 allowedBlockUpdate
+            }
+
+            is ClientboundSetTitleTextPacket -> {
+                var allowed = true
+                val packet = event.packet as ClientboundSetTitleTextPacket
+
+                LUA_MANAGER?.scripts?.values?.forEach { script ->
+                    if (!script.onTitle(packet.text.getFormattedString(), false)) {
+                        allowed = false
+                    }
+                }
+
+                allowed
+            }
+
+            is ClientboundSetActionBarTextPacket -> {
+                var allowed = true
+                val packet = event.packet as ClientboundSetTitleTextPacket
+
+                LUA_MANAGER?.scripts?.values?.forEach { script ->
+                    if (!script.onActionBar(packet.text.getFormattedString())) {
+                        allowed = false
+                    }
+                }
+
+                allowed
+            }
+
+            is ClientboundSetSubtitleTextPacket -> {
+                var allowed = true
+                val packet = event.packet as ClientboundSetTitleTextPacket
+
+                LUA_MANAGER?.scripts?.values?.forEach { script ->
+                    if (!script.onTitle(packet.text.getFormattedString(), true)) {
+                        allowed = false
+                    }
+                }
+
+                allowed
             }
 
             is ClientboundPlayerPositionPacket -> {
