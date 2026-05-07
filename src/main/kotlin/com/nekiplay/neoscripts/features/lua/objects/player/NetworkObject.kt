@@ -68,8 +68,6 @@ class NetworkObject : LuaValue() {
             val disconnectPacket =
                 ClientboundDisconnectPacket(disconnectReason)
 
-
-            // Правильный способ отключения в 1.21.11
             minecraft.connection?.handleDisconnect(disconnectPacket)
         }
     }
@@ -93,10 +91,7 @@ class NetworkObject : LuaValue() {
             // Создаем ServerData (информация о сервере)
             val serverData = ServerData("My Server", host.tojstring() + ":" + port.toint(), ServerData.Type.OTHER)
 
-
-            if (minecraft.getConnection() != null) {
-                minecraft.getConnection()?.createDisconnectionInfo(Component.literal("Connecting to another server..."));
-            }
+            disconnectFromServer("Connecting to another server")
 
             ConnectScreen.startConnecting(
                 null,
