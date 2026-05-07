@@ -11,6 +11,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.sugar.getRotation
 import com.nekiplay.neoscripts.utils.Utils
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
 import net.minecraft.util.ProblemReporter
 import net.minecraft.world.entity.Entity
@@ -35,6 +36,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "id" -> valueOf(entity.id)
             "uuid" -> valueOf(entity.stringUUID)
             "name" -> valueOf(entity.name.string)
+            "identifier" -> valueOf(BuiltInRegistries.ENTITY_TYPE.getKey(entity.type).toString())
             "display_name" -> valueOf(entity.displayName?.getFormattedString()) ?: NIL
             "type" -> valueOf(entity.type.toString())
 

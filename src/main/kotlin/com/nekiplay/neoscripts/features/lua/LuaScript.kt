@@ -17,6 +17,7 @@ import com.nekiplay.neoscripts.features.lua.objects.misc.CatboostLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.Creator
 import com.nekiplay.neoscripts.features.lua.objects.misc.DJLLuaTrainer
 import com.nekiplay.neoscripts.features.lua.objects.misc.EncodingLib
+import com.nekiplay.neoscripts.features.lua.objects.misc.Entities
 import com.nekiplay.neoscripts.features.lua.objects.misc.FFILib
 import com.nekiplay.neoscripts.features.lua.objects.misc.ImGuiLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.Items
@@ -1417,6 +1418,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
             "blocks" -> {
                 Blocks()
+            }
+            "entities" -> {
+                Entities()
             }
             else -> return null
         }
