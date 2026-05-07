@@ -45,6 +45,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
             "max_count" -> valueOf(stack.maxStackSize.toDouble())
             "name" -> valueOf(stack.item.name.string)
             "id" -> valueOf(BuiltInRegistries.ITEM.getId(stack.item))
+            "identifier" -> valueOf(stack.item.toString())
             "display_name" -> valueOf(stack.displayName.getFormattedString())
             "is_empty" -> valueOf(stack.isEmpty)
             "head_texture" -> valueOf(stack.getHeadTexture())
