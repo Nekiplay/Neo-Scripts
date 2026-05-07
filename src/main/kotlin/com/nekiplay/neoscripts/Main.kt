@@ -6,6 +6,7 @@ import com.nekiplay.neoscripts.events.main.EventBus
 import com.nekiplay.neoscripts.features.commands.impl.LuaCommand
 import com.nekiplay.neoscripts.features.lua.LuaManager
 import com.nekiplay.neoscripts.features.modules.ModuleManager.registerInbuilt
+import com.nekiplay.neoscripts.sugar.MiningHandler
 import com.nekiplay.neoscripts.utils.NEURepoManager
 import com.nekiplay.neoscripts.utils.Utils
 import com.nekiplay.neoscripts.utils.render.RenderHelper
@@ -89,6 +90,7 @@ object Main : ClientModInitializer {
         registerInbuilt()
         Utils.init()
         NEURepoManager.init()
+        MiningHandler.init()
 
         Scheduler.INSTANCE.scheduleCyclic(Runnable { Utils.update() }, 20)
 

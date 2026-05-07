@@ -1,9 +1,11 @@
 package com.nekiplay.neoscripts.sugar
 
+import com.nekiplay.neoscripts.Main.LUA_MANAGER
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.mixins.ClientPlayerInteractionManagerAccessor
 import com.nekiplay.neoscripts.utils.RaycastUtils
 import com.nekiplay.neoscripts.utils.aiming.RotationManager
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.MultiPlayerGameMode
 import net.minecraft.client.multiplayer.prediction.PredictiveAction
@@ -16,7 +18,6 @@ import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.Vec3
-
 
 fun MultiPlayerGameMode.getRotationRaycast(): HitResult {
     var yaw: Float = mc.player?.yRot ?: RotationManager.getCurrentYaw()
@@ -58,6 +59,42 @@ fun MultiPlayerGameMode.attackBlock(): Boolean {
         }
     }
     return false
+}
+
+object MiningHandler {
+    private var initialized = false
+
+    fun init() {
+        if (initialized) return
+        initialized = true
+
+        ClientTickEvents.END_CLIENT_TICK.register { _ ->
+            if (MiningState.isMining) {
+                val player = mc.player ?: return@register
+                val gameMode = mc.gameMode ?: return@register
+
+                val hitResult = gameMode.getRotationRaycast()
+                val targetPos = MiningState.targetPos ?: run { resetMining(); return@register }
+                val targetDir = MiningState.targetDir ?: run { resetMining(); return@register }
+
+                val isSameBlock = hitResult.type == HitResult.Type.BLOCK &&
+                        (hitResult as BlockHitResult).blockPos == targetPos &&
+                        player.distanceToSqr(Vec3.atCenterOf(targetPos)) <= 36.0
+
+                if (!isSameBlock) {
+                    gameMode.stopDestroyBlock()
+                    resetMining()
+                    return@register
+                }
+            }
+        }
+    }
+
+    private fun resetMining() {
+        MiningState.isMining = false
+        MiningState.targetPos = null
+        MiningState.targetDir = null
+    }
 }
 
 object MiningState {
@@ -125,6 +162,7 @@ fun MultiPlayerGameMode.attackEntity(): Boolean {
     val hitResult = getRotationRaycast()
     if (hitResult.type == HitResult.Type.ENTITY && mc.screen == null && mc.player?.isBlocking == false) {
         this.attack(player, (hitResult as EntityHitResult).entity)
+        mc.player?.swing(InteractionHand.MAIN_HAND)
         return true
     }
     return false

@@ -217,13 +217,13 @@ object LuaEvents : ClientModule() {
 
     override fun init() {
         ClientTickEvents.END_CLIENT_TICK.register { _ ->
-            LUA_MANAGER?.scripts?.values?.forEach { script ->
-                try {
-                    script.onClientTick()
-                } catch (e: Exception) {
-                    // Обработка ошибок
+                LUA_MANAGER?.scripts?.values?.forEach { script ->
+                    try {
+                        script.onClientTick()
+                    } catch (e: Exception) {
+                        // Обработка ошибок
+                    }
                 }
-            }
         }
 
         ClientTickEvents.START_CLIENT_TICK.register { _ ->
