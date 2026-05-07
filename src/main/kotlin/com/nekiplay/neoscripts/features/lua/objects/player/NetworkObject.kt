@@ -2,14 +2,23 @@ package com.nekiplay.neoscripts.features.lua.objects.player
 
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.customArgs.FourArgFunction
-import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
+import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.sugar.sendSequencedPacket
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.screens.ConnectScreen
+import net.minecraft.client.multiplayer.ServerData
+import net.minecraft.client.multiplayer.resolver.ServerAddress
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.network.chat.Component
+import net.minecraft.network.protocol.common.ClientboundDisconnectPacket
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket
 import org.luaj.vm2.LuaValue
+import org.luaj.vm2.lib.OneArgFunction
+import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
+
 
 class NetworkObject : LuaValue() {
     override fun call(): LuaValue {
@@ -40,12 +49,65 @@ class NetworkObject : LuaValue() {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "getPlayersList" -> GetPlayerList()
+            "connectToServer" -> ConnectToServer()
+            "disconnectFromServer" -> DisconnectFromServer()
             
             "sendStartDestroyBlockPacket" -> SendStartDestroyBlockPacket()
             "sendStopDestroyBlockPacket" -> SendStopDestroyBlockPacket()
             "sendAbortDestroyBlockPacket" -> SendAbortDestroyBlockPacket()
             else -> NIL
         } as LuaValue
+    }
+
+    fun disconnectFromServer(reason: String) {
+        val minecraft = Minecraft.getInstance()
+
+        if (minecraft.connection != null) {
+            val disconnectReason: Component = Component.literal(reason)
+
+            val disconnectPacket =
+                ClientboundDisconnectPacket(disconnectReason)
+
+
+            // Правильный способ отключения в 1.21.11
+            minecraft.connection?.handleDisconnect(disconnectPacket)
+        }
+    }
+
+    private inner class DisconnectFromServer : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            disconnectFromServer(arg.tojstring())
+            return TRUE
+        }
+    }
+
+    private inner class ConnectToServer : TwoArgFunction() {
+        override fun call(host: LuaValue, port: LuaValue): LuaValue {
+            val minecraft = Minecraft.getInstance()
+
+
+            // Создаем адрес сервера
+            val serverAddress = ServerAddress(host.tojstring(), port.toint())
+
+
+            // Создаем ServerData (информация о сервере)
+            val serverData = ServerData("My Server", host.tojstring() + ":" + port.toint(), ServerData.Type.OTHER)
+
+
+            if (minecraft.getConnection() != null) {
+                minecraft.getConnection()?.createDisconnectionInfo(Component.literal("Connecting to another server..."));
+            }
+
+            ConnectScreen.startConnecting(
+                null,
+                minecraft,
+                serverAddress,
+                serverData,
+                false,
+                null
+            )
+            return TRUE
+        }
     }
 
     private inner class GetPlayerList : ZeroArgFunction() {
