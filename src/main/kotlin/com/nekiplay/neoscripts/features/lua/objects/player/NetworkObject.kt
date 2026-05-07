@@ -83,24 +83,22 @@ class NetworkObject : LuaValue() {
         override fun call(host: LuaValue, port: LuaValue): LuaValue {
             val minecraft = Minecraft.getInstance()
 
+            if (minecraft.screen != null) {
+                val serverAddress = ServerAddress(host.tojstring(), port.toint())
 
-            // Создаем адрес сервера
-            val serverAddress = ServerAddress(host.tojstring(), port.toint())
+                val serverData = ServerData("My Server", host.tojstring() + ":" + port.toint(), ServerData.Type.OTHER)
 
+                disconnectFromServer("Connecting to another server")
 
-            // Создаем ServerData (информация о сервере)
-            val serverData = ServerData("My Server", host.tojstring() + ":" + port.toint(), ServerData.Type.OTHER)
-
-            disconnectFromServer("Connecting to another server")
-
-            ConnectScreen.startConnecting(
-                minecraft.screen,
-                minecraft,
-                serverAddress,
-                serverData,
-                false,
-                null
-            )
+                ConnectScreen.startConnecting(
+                    minecraft.screen!!,
+                    minecraft,
+                    serverAddress,
+                    serverData,
+                    false,
+                    null
+                )
+            }
             return TRUE
         }
     }
