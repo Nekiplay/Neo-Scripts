@@ -12,12 +12,14 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.misc.ArchiveLib
+import com.nekiplay.neoscripts.features.lua.objects.misc.Blocks
 import com.nekiplay.neoscripts.features.lua.objects.misc.CatboostLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.Creator
 import com.nekiplay.neoscripts.features.lua.objects.misc.DJLLuaTrainer
 import com.nekiplay.neoscripts.features.lua.objects.misc.EncodingLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.FFILib
 import com.nekiplay.neoscripts.features.lua.objects.misc.ImGuiLib
+import com.nekiplay.neoscripts.features.lua.objects.misc.Items
 import com.nekiplay.neoscripts.features.lua.objects.misc.JsonLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.TCPLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.ThreadLib
@@ -1409,6 +1411,12 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
             "block_iterator", "blockiterator" -> {
                 BlockScannerObject()
+            }
+            "items" -> {
+                Items()
+            }
+            "blocks" -> {
+                Blocks()
             }
             else -> return null
         }

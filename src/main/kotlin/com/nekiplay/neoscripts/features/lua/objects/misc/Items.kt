@@ -1,0 +1,72 @@
+package com.nekiplay.neoscripts.features.lua.objects.misc
+
+import com.nekiplay.neoscripts.Main
+import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaBlockState
+import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.resources.Identifier
+import net.minecraft.world.item.Items
+import net.minecraft.world.level.block.Block
+import org.luaj.vm2.LuaValue
+import org.luaj.vm2.Varargs
+import org.luaj.vm2.lib.OneArgFunction
+import org.luaj.vm2.lib.VarArgFunction
+
+class Items : LuaValue() {
+    override fun typename(): String = "items"
+    override fun tojstring(): String = "ItemsObject"
+    override fun isnil(): Boolean = false
+    override fun type(): Int {
+        return TUSERDATA
+    }
+
+    override fun call(): LuaValue {
+        return this
+    }
+
+    override fun get(key: LuaValue): LuaValue {
+        return when (key.tojstring()) {
+            "getAll", "getItems", "getItemStacks" -> GetItems()
+            "getFromId" -> GetFromId()
+            "getFromIdentifier" -> GetFromIdentifier()
+            else -> super.get(key)
+        }
+    }
+
+    inner class GetFromIdentifier : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (args.arg(1).isstring()) {
+                val optional = BuiltInRegistries.ITEM.get(Identifier.parse(args.arg(1).tojstring()))
+                if (optional.isPresent) {
+                    return LuaItemStack(optional.get().value().defaultInstance)
+                }
+            }
+            return NIL
+        }
+    }
+
+    inner class GetFromId : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (args.arg(1).isint()) {
+                val optional = BuiltInRegistries.ITEM.get(args.arg(1).toint())
+                if (optional.isPresent) {
+                    return LuaItemStack(optional.get().value().defaultInstance)
+                }
+            }
+            return NIL
+        }
+    }
+
+    inner class GetItems : OneArgFunction() {
+        override fun call(jsonString: LuaValue): LuaValue {
+            val itemsTable = LuaValue.tableOf()
+            var index = 1
+            for (item in BuiltInRegistries.ITEM) {
+                if (item != Items.AIR) { // optional filter
+                    itemsTable.set(index++, LuaItemStack(item.defaultInstance))
+                }
+            }
+            return itemsTable
+        }
+    }
+}

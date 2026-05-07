@@ -1,7 +1,9 @@
 package com.nekiplay.neoscripts.features.lua.objects.datatypes
 
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
+import com.nekiplay.neoscripts.sugar.getFormattedString
 import net.minecraft.core.Direction
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.ComparatorBlock
@@ -28,7 +30,9 @@ class LuaBlockState(var blockState: BlockState) : LuaUserdata(blockState) {
     override fun get(key: LuaValue): LuaValue {
         return when (val field = key.tojstring()) {
             "id" -> valueOf(Block.getId(blockState))
-            "name" -> valueOf(blockState.block.descriptionId)
+            "identefier" -> valueOf(BuiltInRegistries.BLOCK.wrapAsHolder(blockState.block).registeredName)
+            "traslation_id" -> valueOf(blockState.block.descriptionId)
+            "name" -> valueOf(blockState.block.name.getFormattedString())
             "type" -> valueOf(blockState.toString())
             "hardness" -> valueOf(blockState.block.friction.toDouble())
             "blast_resistance" -> valueOf(blockState.block.explosionResistance.toDouble())

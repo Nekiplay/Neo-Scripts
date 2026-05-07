@@ -12,6 +12,11 @@ import com.nekiplay.neoscripts.sugar.isRecombobulated
 import com.nekiplay.neoscripts.sugar.setDisplayName
 import com.nekiplay.neoscripts.utils.ItemUtils
 import com.nekiplay.neoscripts.utils.Utils
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.screens.ConnectScreen
+import net.minecraft.client.multiplayer.ServerData
+import net.minecraft.client.multiplayer.resolver.ServerAddress
+import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.component.DataComponents
 import net.minecraft.nbt.NbtOps
@@ -28,12 +33,15 @@ import net.minecraft.world.item.ShieldItem
 import net.minecraft.world.item.TridentItem
 import net.minecraft.world.item.component.ItemLore
 import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.state.BlockState
 import org.luaj.vm2.LuaDouble
 import org.luaj.vm2.LuaInteger
 import org.luaj.vm2.LuaLong
 import org.luaj.vm2.LuaNumber
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
+import org.luaj.vm2.lib.OneArgFunction
+import org.luaj.vm2.lib.TwoArgFunction
 
 class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
 
@@ -43,9 +51,10 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
         return when (val field = key.tojstring()) {
             "count" -> valueOf(stack.count.toDouble())
             "max_count" -> valueOf(stack.maxStackSize.toDouble())
-            "name" -> valueOf(stack.item.name.string)
+            "name" -> valueOf(stack.item.name.getFormattedString())
             "id" -> valueOf(BuiltInRegistries.ITEM.getId(stack.item))
             "identifier" -> valueOf(stack.item.toString())
+            "translation_id" -> valueOf(stack.item.descriptionId)
             "display_name" -> valueOf(stack.displayName.getFormattedString())
             "is_empty" -> valueOf(stack.isEmpty)
             "head_texture" -> valueOf(stack.getHeadTexture())
@@ -57,7 +66,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
             "is_museum_donated" -> valueOf(stack.isMuseumDonated())
             "is_enchanted" -> valueOf(stack.isEnchanted)
             "uuid" -> valueOf(stack.getItemUuid())
-
+            "is_сorrect_tool" -> isCorrectToolForDrops()
             "is_sword" -> {
                 valueOf(stack.`is`(ItemTags.SWORDS))
             }
@@ -230,6 +239,20 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                 setLore(value)
             }
             else -> super.set(key, value)
+        }
+    }
+
+    private inner class isCorrectToolForDrops : OneArgFunction() {
+        override fun call(block: LuaValue): LuaValue {
+            if (block.touserdata() is BlockState) {
+                val blockState = block.touserdata() as BlockState
+                return valueOf(stack.isCorrectToolForDrops(blockState))
+            }
+            else if (block.touserdata() is LuaBlockState) {
+                val blockState = block.touserdata() as LuaBlockState
+                return valueOf(stack.isCorrectToolForDrops(blockState.blockState))
+            }
+            return FALSE
         }
     }
 
