@@ -94,7 +94,7 @@ class NetworkObject : LuaValue() {
             disconnectFromServer("Connecting to another server")
 
             ConnectScreen.startConnecting(
-                null,
+                minecraft.screen,
                 minecraft,
                 serverAddress,
                 serverData,
