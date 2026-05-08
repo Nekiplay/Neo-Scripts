@@ -1,9 +1,11 @@
 package com.nekiplay.neoscripts.features.lua.objects.modules
 
+import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.Main.LUA_MANAGER
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
+import java.io.File
 
 class ModulesObject: LuaValue() {
     override fun call(): LuaValue {
@@ -14,8 +16,28 @@ class ModulesObject: LuaValue() {
         return when (key.tojstring()) {
             "getLoadedScripts" -> GetLoadedScriptsFunction()
             "getScriptRequirements" -> GetScriptRequirements ()
+            "loadScript" -> LoadScript()
+            "unloadScript" -> UnLoadScript()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class UnLoadScript : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            return valueOf(Main.LUA_MANAGER?.unloadScript(arg.tojstring()) ?: false)
+        }
+    }
+
+    private inner class LoadScript : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            val file = File(arg.tojstring())
+            if (file.exists()) {
+                Main.LUA_MANAGER?.unloadScript(file.nameWithoutExtension)
+                Main.LUA_MANAGER?.executeScript(file)
+                return TRUE
+            }
+            return FALSE
+        }
     }
 
     private inner class GetScriptRequirements : OneArgFunction() {
