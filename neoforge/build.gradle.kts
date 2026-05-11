@@ -105,6 +105,14 @@ tasks {
         enabled = false
     }
 
+    assemble {
+        dependsOn(shadowJar)
+    }
+
+    named<Jar>("jar") {
+        archiveClassifier.set("thin")
+    }
+
     // NeoGradle compiles the game, but we don't want to add our common code to the game's code
     val notNeoTask: (Task) -> Boolean = { !it.name.startsWith("neo") && !it.name.startsWith("compileService") }
 
