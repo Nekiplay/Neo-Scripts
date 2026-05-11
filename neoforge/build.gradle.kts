@@ -3,7 +3,6 @@ plugins {
     id("idea")
     id("net.neoforged.moddev") version "2.0.141"
     id("org.jetbrains.kotlin.jvm") version "2.2.21"
-    id("com.gradleup.shadow") version "9.3.0"
 }
 
 repositories {
@@ -48,10 +47,6 @@ neoForge {
     }
 }
 
-val shadowModImpl by configurations.creating {
-    configurations.implementation.get().extendsFrom(this)
-}
-
 dependencies {
     implementation("thedarkcolour:kotlinforforge-neoforge:5.3.0")
 
@@ -89,7 +84,7 @@ dependencies {
 
     // Apache Commons Compress for archive handling
     val commonsCompressVersion = "1.27.1"
-    shadowModImpl(implementation("org.apache.commons:commons-compress:$commonsCompressVersion")!!)
+    jarJar(implementation("org.apache.commons:commons-compress:$commonsCompressVersion")!!)
 }
 
 tasks {
