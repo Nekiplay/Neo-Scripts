@@ -1,4 +1,4 @@
-modLoader="javafml" #mandatory
+modLoader="kotlinforforge" #mandatory
 loaderVersion="${neo_loader_version_range}" #mandatory
 license="${mod_license}"
 
