@@ -1,143 +1,76 @@
-val lwjgl_version: String by project
-
 plugins {
-    java
-    `maven-publish`
-    id("fabric-loom") version "1.15-SNAPSHOT"
-    id("org.jetbrains.kotlin.jvm") version "2.2.21"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.21"
-    id("com.gradleup.shadow") version "9.3.0"
+    id("java")
+    id("idea")
+    id("fabric-loom") version "1.15-SNAPSHOT" apply false
 }
 
-configurations.all {
-    resolutionStrategy.eachDependency {
-        if (requested.group == "org.lwjgl") {
-            useVersion(lwjgl_version)
+subprojects {
+    apply(plugin = "java-library")
+    apply(plugin = "idea")
+    apply(plugin = "maven-publish")
+
+    repositories {
+        mavenCentral()
+        mavenLocal()
+
+        maven("https://maven.notenoughupdates.org/releases/")
+        maven("https://repo.codemc.io/repository/maven-public/")
+        maven("https://maven.azureaaron.net/releases")
+        maven("https://repo1.maven.org/maven2/")
+        maven("https://repo.nea.moe/releases")
+        maven("https://api.modrinth.com/maven")
+        maven("https://maven.fabricmc.net/")
+        maven("https://maven.neoforged.net/releases")
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = "Modrinth"
+                    url = uri("https://api.modrinth.com/maven")
+                }
+            }
+            filter {
+                includeGroup("maven.modrinth")
+            }
         }
     }
-}
 
-repositories {
-    flatDir {
-        dirs("libs")
-    }
-    mavenLocal()
-    mavenCentral()
-    gradlePluginPortal()
-    maven { url = uri("https://maven.fabricmc.net/") }
-    maven { url = uri("https://maven.notenoughupdates.org/releases/") }
-    maven { url = uri("https://repo.codemc.io/repository/maven-public/") }
-    maven { url = uri("https://maven.azureaaron.net/releases") }
-    maven { url = uri("https://repo1.maven.org/maven2/") }
-    maven { url = uri("https://repo.nea.moe/releases") }
-    maven { url = uri("https://api.modrinth.com/maven") }
-}
+    java.toolchain.languageVersion = JavaLanguageVersion.of(rootProject.properties["java_version"].toString())
 
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
-    }
-}
+    tasks {
+        withType<JavaCompile> {
+            options.encoding = "UTF-8"
+            options.release.set(rootProject.properties["java_version"].toString().toInt())
+        }
+        withType<GenerateModuleMetadata>().configureEach {
+            enabled = false
+        }
 
-base {
-    archivesName.set(project.property("archives_base_name") as String)
-}
+        jar {
+            // put all built jars in the correct directory
+            destinationDirectory = rootDir.resolve("build").resolve("libs_${project.name}")
 
-version = project.property("mod_version") as String
-group = project.property("maven_group") as String
+            // add license file to jars
+            from(rootDir.resolve("LICENSE.md"))
 
-val shadowModImpl by configurations.creating {
-    configurations.modImplementation.get().extendsFrom(this)
-}
-
-dependencies {
-    minecraft("com.mojang:minecraft:${property("minecraft_version")}")
-    mappings(loom.officialMojangMappings())
-
-    val luaj = "local:luaj-jse:3.0.2" 
-    implementation(luaj)
-    include(luaj)
-    shadowModImpl(luaj)
-
-    modImplementation("net.fabricmc:fabric-loader:${property("loader_version")}")
-    modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_version")}")
-    modImplementation("net.fabricmc:fabric-language-kotlin:${property("fabric_kotlin_version")}")
-
-    // HM-API (https://github.com/AzureAaron/hm-api/releases)
-    include(modImplementation("net.azureaaron:hm-api:${property("hm_api_version")}")!!)  // HM API (Hypixel Mod API Library)
-
-    // Occlusion Culling
-    include(implementation("com.logisticscraft:occlusionculling:${property("occlusionculling_version")}")!!)
-
-    // NEU RepoParser (https://repo.nea.moe/#/releases/moe/nea/neurepoparser)
-    include(implementation("moe.nea:neurepoparser:${property("repoparser_version")}")!!)
-
-    // Networth Calculator (https://maven.azureaaron.net/#/releases/net/azureaaron/networth-calculator)
-    include(implementation("net.azureaaron:networth-calculator:${property("networth_calculator_version")}")!!)
-
-    // JGit used pull data from the NEU item repo
-    include(implementation("org.eclipse.jgit:org.eclipse.jgit:${property("jgit_version")}")!!)
-
-    // Legacy Item DFU (https://maven.azureaaron.net/releases/net/azureaaron/legacy-item-dfu)
-    include(implementation("net.azureaaron:legacy-item-dfu:${property("legacy_item_dfu_version")}")!!)
-
-    include(implementation("io.github.classgraph:classgraph:4.8.184")!!)
-
-    // ImGUI
-    val imguiVersion = property("imgui_version") as String
-    implementation("io.github.spair:imgui-java-binding:$imguiVersion")
-    implementation("io.github.spair:imgui-java-lwjgl3:$imguiVersion")
-    implementation("io.github.spair:imgui-java-natives-windows:$imguiVersion")
-    implementation("io.github.spair:imgui-java-natives-linux:$imguiVersion")
-    implementation("io.github.spair:imgui-java-natives-macos:$imguiVersion")
-    include("io.github.spair:imgui-java-binding:$imguiVersion")
-    include("io.github.spair:imgui-java-lwjgl3:$imguiVersion")
-    include("io.github.spair:imgui-java-natives-windows:$imguiVersion")
-    include("io.github.spair:imgui-java-natives-linux:$imguiVersion")
-    include("io.github.spair:imgui-java-natives-macos:$imguiVersion")
-
-    // Catboost
-    val catboostDep = "ai.catboost:catboost-prediction:${property("catboost_version")}"
-    include(implementation(catboostDep)!!)
-
-    val catboostTransitive = "ai.catboost:catboost-common:${property("catboost_version")}"
-    include(implementation(catboostTransitive)!!)
-
-    modRuntimeOnly(files("libs/firmament.jar"))
-
-    include(implementation("ai.djl:api:0.36.0")!!)
-    include(implementation("ai.djl:basicdataset:0.36.0")!!)
-
-    include(implementation("ai.djl.pytorch:pytorch-engine:0.36.0")!!)
-    include(implementation("ai.djl.pytorch:pytorch-native-cpu:2.7.1")!!)
-
-    // Apache Commons Compress for archive handling
-    val commonsCompressVersion = "1.27.1"
-    include(implementation("org.apache.commons:commons-compress:$commonsCompressVersion")!!)
-}
-
-tasks {
-    shadowJar {
-        from(sourceSets.main.get().output)
-        configurations = listOf(shadowModImpl)
-        archiveClassifier.set("shadow")
-        mergeServiceFiles()
+            // required because apparently some classes are duplicated
+            duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        }
     }
 
-    remapJar {
-        dependsOn(shadowJar)
-        inputFile.set(shadowJar.get().archiveFile)
+    version = properties["mod_version"].toString()
+    group = properties["mod_group"].toString()
+
+    base {
+        // format artifact names as [mod_id]-[loader]-[mc_version]-[mod_version].jar
+        archivesName =
+            "${rootProject.properties["mod_id"]}-${project.name}-${rootProject.properties["minecraft_version"]}"
+    }
+
+    dependencies {
+        compileOnly("org.jetbrains:annotations:26.0.1")
     }
 }
 
-loom {
-    clientOnlyMinecraftJar()
-    accessWidenerPath.set(file("src/main/resources/neoscripts.accesswidener"))
-    mixin.useLegacyMixinAp.set(false)
-}
-
-tasks.withType<JavaCompile> {
-    options.encoding = "UTF-8"
-    sourceCompatibility = "21"
-    targetCompatibility = "21"
+tasks.jar {
+    enabled = false
 }

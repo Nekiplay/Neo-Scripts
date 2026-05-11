@@ -22,4 +22,5 @@ jobs:
         with:
           name: binaries
           path: |
-            ./build/libs/*.jar
+            ./fabric/build/libs/*.jar
+            ./neoforge/build/libs/*.jar

@@ -1,0 +1,36 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.nekiplay.neoscripts.mixins",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "ClientPlayerInteractionManagerAccessor",
+    "KeyboardMixin",
+    "MinecraftClientAccessor",
+    "PlayerListHudAccessor",
+    "entity.MixinEntity",
+    "entity.MixinFireworkRocketEntity",
+    "entity.MixinLivingEntity",
+    "entity.MixinLivingEntityRenderer",
+    "entity.MixinPlayer",
+    "gui.AbstractContainerMenuMixin",
+    "gui.AbstractSignEditScreenAccessor",
+    "minecraft.BossHealthOverlayAccessor",
+    "minecraft.ClientInputAccessor",
+    "minecraft.GamemodeAccessor",
+    "minecraft.LevelRendererAccessor",
+    "minecraft.MixinKeyboardInput",
+    "minecraft.MouseHandlerMixin",
+    "minecraft.packets.ServerboundUseItemPacketAccessor"
+  ],
+  "client": [
+    "entity.MixinLocalPlayer",
+    "gui.AbstractContainerScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}
