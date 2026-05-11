@@ -88,7 +88,7 @@ dependencies {
 }
 
 tasks {
-    jarJar {
+    withType<AbstractArchiveTask>().matching { it.name == "bundleJarJar" }.configureEach {
         archiveClassifier.set("")
     }
 
@@ -100,25 +100,21 @@ tasks {
         dependsOn(jarJar)
     }
 
-    // NeoGradle compiles the game, but we don't want to add our common code to the game's code
-    val notNeoTask: (Task) -> Boolean = { !it.name.startsWith("neo") && !it.name.startsWith("compileService") }
-
-    withType<ProcessResources>().matching(notNeoTask).configureEach {
-        // the properties listed here can be used in the mods.toml
-        val properties =
-            listOf(
-                "mc_versions_neo", "neo_loader_version_range", "mod_version", "mod_id", "mod_name",
-                "mod_description", "mod_authors", "mod_license"
-            )
-
-        // store a map of the properties so the configuration cache can be used
-        val map = mutableMapOf<String, String>()
-        properties.forEach { map[it] = rootProject.properties[it].toString() }
-        inputs.property("property_map", map)
+    withType<ProcessResources>().configureEach {
+        val properties = mapOf(
+            "mod_id" to rootProject.properties["mod_id"].toString(),
+            "mod_version" to rootProject.properties["mod_version"].toString(),
+            "mc_versions_neo" to rootProject.properties["mc_versions_neo"].toString(),
+            "neo_loader_version_range" to rootProject.properties["neo_loader_version_range"].toString(),
+            "mod_name" to rootProject.properties["mod_name"].toString(),
+            "mod_description" to rootProject.properties["mod_description"].toString(),
+            "mod_authors" to rootProject.properties["mod_authors"].toString(),
+            "mod_license" to rootProject.properties["mod_license"].toString()
+        )
+        inputs.properties(properties)
 
         filesMatching("META-INF/neoforge.mods.toml") {
-            @Suppress("UNCHECKED_CAST")
-            expand(inputs.properties["property_map"] as Map<String, String>)
+            expand(properties)
         }
     }
 }
