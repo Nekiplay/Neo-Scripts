@@ -105,6 +105,9 @@ tasks {
         enabled = false
     }
 
+    // NeoGradle compiles the game, but we don't want to add our common code to the game's code
+    val notNeoTask: (Task) -> Boolean = { !it.name.startsWith("neo") && !it.name.startsWith("compileService") }
+
     withType<ProcessResources>().matching(notNeoTask).configureEach {
         // the properties listed here can be used in the mods.toml
         val properties =
