@@ -719,7 +719,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         private val pendingCommands = mutableListOf<String>()
 
         @SubscribeEvent
-        @JvmStatic
         fun onRegisterCommands(event: RegisterClientCommandsEvent) {
             dispatcher = event.dispatcher
             // Регистрируем все отложенные команды

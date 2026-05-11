@@ -1,6 +1,6 @@
-package com.nekiplay.neoscripts.modules.impl.misc
+package com.nekiplay.neoscripts.features.modules.impl.misc
 
-import com.mojang.brigadier.CommandDispatcher
+import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.Main.LUA_MANAGER
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.events.PacketEvent
@@ -8,12 +8,11 @@ import com.nekiplay.neoscripts.events.main.Callback
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
-import com.nekiplay.neoscripts.modules.ClientModule
+import com.nekiplay.neoscripts.features.modules.ClientModule
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.sugar.getJsonString
 import com.nekiplay.neoscripts.utils.render.RenderHelper
-import com.nekiplay.neoscripts.utils.render.primitive.PrimitiveCollector
-import com.nekiplay.neoscripts.utils.render.primitive.PrimitiveCollectorImpl
+import com.nekiplay.neoscripts.utils.render.WorldRenderExtractionCallback
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket
@@ -25,7 +24,9 @@ import net.minecraft.network.protocol.game.ClientboundSetTimePacket
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket
 import net.minecraft.network.protocol.game.ClientboundSoundPacket
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
+import net.neoforged.api.distmarker.Dist
 import net.neoforged.bus.api.SubscribeEvent
+import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.event.ClientChatEvent
 import net.neoforged.neoforge.client.event.ClientChatReceivedEvent
 import net.neoforged.neoforge.client.event.ClientTickEvent
@@ -36,8 +37,8 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent
 import org.luaj.vm2.LuaValue
 
 
+@EventBusSubscriber(modid = Main.ID, value = [Dist.CLIENT])
 object LuaEvents : ClientModule() {
-
     @Callback
     fun onSendPacket(event : PacketEvent.Send) {
         val allow = when (event.packet) {
@@ -120,7 +121,7 @@ object LuaEvents : ClientModule() {
                 val table = LuaValue.tableOf()
 
                 table.set("position", LuaBlockPos(packet.pos))
-                val oldState = mc.level?.getBlockState(packet.pos)
+                val oldState = mc?.level?.getBlockState(packet.pos)
                 if (oldState != null) {
                     table.set("old", LuaBlockState(oldState))
                 }
@@ -205,7 +206,6 @@ object LuaEvents : ClientModule() {
 
 
     @SubscribeEvent
-    @JvmStatic
     fun onClientTickEnd(event: ClientTickEvent.Post) {
         LUA_MANAGER?.scripts?.values?.forEach { script ->
             try {
@@ -217,7 +217,6 @@ object LuaEvents : ClientModule() {
     }
 
     @SubscribeEvent
-    @JvmStatic
     fun onClientTickStart(event: ClientTickEvent.Pre) {
         LUA_MANAGER?.scripts?.values?.forEach { script ->
             try {
@@ -229,9 +228,8 @@ object LuaEvents : ClientModule() {
     }
 
     @SubscribeEvent
-    @JvmStatic
-    fun onRenderWorldAfterSky(event: RenderLevelStageEvent.AfterSky) {
-        val renderContext = WorldRendererObject(RenderHelper.collector)
+    fun onRenderWorldAfterSky(event: WorldRenderExtractionCallback) {
+        val renderContext = WorldRendererObject(event.collector)
         LUA_MANAGER?.scripts?.values?.forEach { script ->
             try {
                 script.onRenderTick(renderContext)
@@ -243,7 +241,6 @@ object LuaEvents : ClientModule() {
 
     // ==================== Рендер 2D (HUD) ====================
     @SubscribeEvent
-    @JvmStatic
     fun onRenderGui(event: RenderGuiEvent.Post) {
         LUA_MANAGER?.scripts?.values?.forEach { script ->
             try {
@@ -256,7 +253,6 @@ object LuaEvents : ClientModule() {
 
     // ==================== Клавиатура и мышь ====================
     @SubscribeEvent
-    @JvmStatic
     fun onKeyInput(event: InputEvent.Key) {
         var allow = true
         LUA_MANAGER?.scripts?.values?.forEach { script ->
@@ -271,8 +267,7 @@ object LuaEvents : ClientModule() {
     }
 
     @SubscribeEvent
-    @JvmStatic
-    fun onMouseInput(event: InputEvent.MouseButton) {
+    fun onMouseInput(event: InputEvent.MouseButton.Pre) {
         var allow = true
         LUA_MANAGER?.scripts?.values?.forEach { script ->
             try {
@@ -287,7 +282,6 @@ object LuaEvents : ClientModule() {
 
     // ==================== Блоки (правый/левый клик) ====================
     @SubscribeEvent
-    @JvmStatic
     fun onRightClickBlock(event: PlayerInteractEvent.RightClickBlock) {
         if (event.side.isClient) {
             var allow = true
@@ -305,7 +299,6 @@ object LuaEvents : ClientModule() {
     }
 
     @SubscribeEvent
-    @JvmStatic
     fun onLeftClickBlock(event: PlayerInteractEvent.LeftClickBlock) {
         if (event.side.isClient) {
             var allow = true
@@ -324,7 +317,6 @@ object LuaEvents : ClientModule() {
 
     // ==================== Чаты и команды ====================
     @SubscribeEvent
-    @JvmStatic
     fun onChatReceived(event: ClientChatReceivedEvent) {
         var allow = true
         val text = event.message.getFormattedString() // или getFormattedString()
@@ -342,7 +334,6 @@ object LuaEvents : ClientModule() {
     }
 
     @SubscribeEvent
-    @JvmStatic
     fun onSendChat(event: ClientChatEvent) {
         var allow = true
         LUA_MANAGER?.scripts?.values?.forEach { script ->
@@ -358,7 +349,6 @@ object LuaEvents : ClientModule() {
     }
 
     @SubscribeEvent
-    @JvmStatic
     fun onSendCommand(event: ClientChatEvent) {
         var allow = true
         val command = event.message

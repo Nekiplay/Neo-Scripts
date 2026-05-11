@@ -560,9 +560,9 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             io.addConfigFlags(ImGuiConfigFlags.DockingEnable)
             io.setBackendFlags(ImGuiBackendFlags.HasMouseCursors)
             script.onImGuiInitEvent()
-            imGuiGlfw.init(Main.mc.getWindow().handle(), true)
+            imGuiGlfw.init(Main.mc?.getWindow()?.handle() ?: 0, true)
             imGuiGl3.init()
-            windowHandle = Main.mc.getWindow().handle()
+            windowHandle = Main.mc?.getWindow()?.handle() ?: 0
         }
     }
 

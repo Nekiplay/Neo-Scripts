@@ -37,7 +37,6 @@ object LuaCommand {
     }
 
     @SubscribeEvent
-    @JvmStatic
     fun onRegisterCommands(event: RegisterClientCommandsEvent) {
         val dispatcher = event.dispatcher
         val luaCommand = Commands.literal("lua")

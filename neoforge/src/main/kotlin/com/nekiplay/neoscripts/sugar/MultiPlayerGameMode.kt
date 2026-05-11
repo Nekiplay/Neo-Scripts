@@ -24,18 +24,18 @@ import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.event.ClientTickEvent
 
 fun MultiPlayerGameMode.getRotationRaycast(): HitResult {
-    var yaw: Float = mc.player?.yRot ?: RotationManager.getCurrentYaw()
-    var pitch: Float = mc.player?.xRot ?: RotationManager.getCurrentPitch()
+    var yaw: Float = mc?.player?.yRot ?: RotationManager.getCurrentYaw()
+    var pitch: Float = mc?.player?.xRot ?: RotationManager.getCurrentPitch()
     if (!RotationManager.getCurrentYaw().isNaN()) {
         yaw = RotationManager.getCurrentYaw()
         pitch = RotationManager.getCurrentPitch()
     }
-    val hitResult = RaycastUtils.findCrosshairTarget(mc.cameraEntity, mc.player?.eyePosition, yaw, pitch, mc.player?.blockInteractionRange() ?: 4.5, mc.player?.entityInteractionRange() ?: 3.0)
+    val hitResult = RaycastUtils.findCrosshairTarget(mc?.cameraEntity, mc?.player?.eyePosition, yaw, pitch, mc?.player?.blockInteractionRange() ?: 4.5, mc?.player?.entityInteractionRange() ?: 3.0)
     return hitResult
 }
 
 fun MultiPlayerGameMode.silentUse(useSlot: Int): Boolean {
-    val player = mc.player ?: return false
+    val player = mc?.player ?: return false
     val inventory = player.inventory
     val originalSlot = inventory.selectedSlot
 
@@ -52,10 +52,10 @@ fun MultiPlayerGameMode.silentUse(useSlot: Int): Boolean {
 fun MultiPlayerGameMode.attackBlock(): Boolean {
     val hitResult = getRotationRaycast()
 
-    if (hitResult.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
+    if (hitResult.type == HitResult.Type.BLOCK && mc?.screen == null && mc?.player?.isBlocking == false) {
         val blockHitResult = hitResult as BlockHitResult
         val blockPos = blockHitResult.blockPos
-        mc.level?.getBlockState(blockPos)?.isAir?.let {
+        mc?.level?.getBlockState(blockPos)?.isAir?.let {
             if (!it) {
                 this.startDestroyBlock(blockPos, blockHitResult.direction)
                 return true
@@ -68,11 +68,10 @@ fun MultiPlayerGameMode.attackBlock(): Boolean {
 @EventBusSubscriber(modid = Main.ID, value = [Dist.CLIENT])
 object MiningHandler {
     @SubscribeEvent
-    @JvmStatic
     fun onClientTick(event: ClientTickEvent.Post) {
         if (MiningState.isMining) {
-            val player = mc.player ?: return
-            val gameMode = mc.gameMode ?: return
+            val player = mc?.player ?: return
+            val gameMode = mc?.gameMode ?: return
 
             val hitResult = gameMode.getRotationRaycast() // ваш метод
             val targetPos = MiningState.targetPos ?: run { resetMining(); return }
@@ -159,23 +158,23 @@ private fun resetMining() {
 }
 
 fun MultiPlayerGameMode.attackEntity(): Boolean {
-    val player = mc.player ?: return false
+    val player = mc?.player ?: return false
     val hitResult = getRotationRaycast()
-    if (hitResult.type == HitResult.Type.ENTITY && mc.screen == null && mc.player?.isBlocking == false) {
+    if (hitResult.type == HitResult.Type.ENTITY && mc?.screen == null && mc?.player?.isBlocking == false) {
         this.attack(player, (hitResult as EntityHitResult).entity)
-        mc.player?.swing(InteractionHand.MAIN_HAND)
+        mc?.player?.swing(InteractionHand.MAIN_HAND)
         return true
     }
     return false
 }
 
 fun MultiPlayerGameMode.interactBlock(): Boolean {
-    val player = mc.player ?: return false
+    val player = mc?.player ?: return false
     val hitResult = getRotationRaycast()
-    if (hitResult.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
+    if (hitResult.type == HitResult.Type.BLOCK && mc?.screen == null && mc?.player?.isBlocking == false) {
         for (hand in InteractionHand.entries) {
-            val wasSneaking: Boolean = mc.player?.isShiftKeyDown ?: false
-            mc.player?.isShiftKeyDown = false
+            val wasSneaking: Boolean = mc?.player?.isShiftKeyDown ?: false
+            mc?.player?.isShiftKeyDown = false
 
             val actionResult2: InteractionResult? = this.useItemOn(player, hand, hitResult as BlockHitResult)
             if (actionResult2 is InteractionResult.Success) {
@@ -183,7 +182,7 @@ fun MultiPlayerGameMode.interactBlock(): Boolean {
                     player.swing(hand)
                 }
             }
-            mc.player?.isShiftKeyDown = wasSneaking
+            mc?.player?.isShiftKeyDown = wasSneaking
             return true
         }
     }
@@ -191,20 +190,20 @@ fun MultiPlayerGameMode.interactBlock(): Boolean {
 }
 
 fun MultiPlayerGameMode.interactBlock(hitResult: HitResult?): Boolean {
-    val player = mc.player ?: return false
+    val player = mc?.player ?: return false
     if (hitResult == null) return false
 
-    if (hitResult.type == HitResult.Type.BLOCK && mc.screen == null && mc.player?.isBlocking == false) {
+    if (hitResult.type == HitResult.Type.BLOCK && mc?.screen == null && mc?.player?.isBlocking == false) {
         for (hand in InteractionHand.entries) {
-            val wasSneaking: Boolean = mc.player?.isShiftKeyDown ?: false
-            mc.player?.isShiftKeyDown = false
+            val wasSneaking: Boolean = mc?.player?.isShiftKeyDown ?: false
+            mc?.player?.isShiftKeyDown = false
             val actionResult2: InteractionResult? = this.useItemOn(player, hand, hitResult as BlockHitResult)
             if (actionResult2 is InteractionResult.Success) {
                 if (actionResult2.swingSource() == InteractionResult.SwingSource.CLIENT) {
                     player.swing(hand)
                 }
             }
-            mc.player?.isShiftKeyDown = wasSneaking
+            mc?.player?.isShiftKeyDown = wasSneaking
             return true
         }
     }
@@ -212,9 +211,9 @@ fun MultiPlayerGameMode.interactBlock(hitResult: HitResult?): Boolean {
 }
 
 fun MultiPlayerGameMode.interactEntity(): Boolean {
-    val player = mc.player ?: return false
+    val player = mc?.player ?: return false
     val hitResult = getRotationRaycast()
-    if (hitResult.type == HitResult.Type.ENTITY && mc.screen == null) {
+    if (hitResult.type == HitResult.Type.ENTITY && mc?.screen == null) {
         for (hand in InteractionHand.entries) {
             val actionResult2: InteractionResult =
                 this.interact(player, (hitResult as EntityHitResult).entity, hand)
@@ -230,7 +229,7 @@ fun MultiPlayerGameMode.interactEntity(): Boolean {
 }
 
 fun MultiPlayerGameMode.useItem(): Boolean {
-    if (mc.screen == null) {
+    if (mc?.screen == null) {
         val player = Minecraft.getInstance().player ?: return false
         val result = this.useItem(player, InteractionHand.MAIN_HAND)
         if (result is InteractionResult.Success) {
@@ -249,5 +248,5 @@ fun MultiPlayerGameMode.syncSelectedSlot(): Boolean {
 }
 
 fun MultiPlayerGameMode.sendSequencedPacket(packetCreator: PredictiveAction) {
-    (this as ClientPlayerInteractionManagerAccessor).sendSequencedPacket(mc.level, packetCreator)
+    (this as ClientPlayerInteractionManagerAccessor).sendSequencedPacket(mc?.level, packetCreator)
 }

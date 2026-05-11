@@ -6,7 +6,7 @@ import net.minecraft.world.entity.Entity
 import kotlin.isNaN
 
 fun Entity.getRotation(): Pair<Float, Float> {
-    return if (this == mc.player && !RotationManager.getCurrentYaw().isNaN()) {
+    return if (this == mc?.player && !RotationManager.getCurrentYaw().isNaN()) {
         Pair(RotationManager.getCurrentYaw(), RotationManager.getCurrentPitch())
     }
     else {

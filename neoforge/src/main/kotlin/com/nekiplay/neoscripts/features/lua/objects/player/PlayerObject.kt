@@ -41,16 +41,16 @@ class PlayerObject : LuaValue() {
 
             // Variables
             "entity" -> {
-                if (mc.player != null) {
-                    LuaEntity(mc.player!!)
+                if (mc?.player != null) {
+                    LuaEntity(mc?.player!!)
                 }
                 else {
                     NIL
                 }
             }
             "fishHook" -> {
-                if (mc.player != null && mc.player?.fishing != null) {
-                    LuaEntity(mc.player!!.fishing!!)
+                if (mc?.player != null && mc?.player?.fishing != null) {
+                    LuaEntity(mc?.player!!.fishing!!)
                 }
                 else {
                     NIL
@@ -92,12 +92,12 @@ class PlayerObject : LuaValue() {
     private inner class IsHasLineOfSight : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue? {
             if (arg is LuaEntity) {
-                if (mc.player?.hasLineOfSight(arg.entity) == true) {
+                if (mc?.player?.hasLineOfSight(arg.entity) == true) {
                     return TRUE
                 }
             }
             else if (arg.touserdata() is LuaEntity) {
-                if (mc.player?.hasLineOfSight((arg.touserdata() as LuaEntity).entity) == true) {
+                if (mc?.player?.hasLineOfSight((arg.touserdata() as LuaEntity).entity) == true) {
                     return TRUE
                 }
             }
@@ -107,7 +107,7 @@ class PlayerObject : LuaValue() {
 
     private inner class GetBossBarFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            val bossOverlay = mc.gui.bossOverlay ?: return NIL
+            val bossOverlay = mc?.gui?.bossOverlay ?: return NIL
             val accessed = bossOverlay as BossHealthOverlayAccessor
             val eventsMap = accessed.events
             val table = tableOf()
@@ -137,7 +137,7 @@ class PlayerObject : LuaValue() {
             if (arg?.isstring() == true && arg2?.isstring() == true && arg3?.isnumber() == true) {
                 val type = SystemToast.SystemToastId(arg3.tonumber().tolong())
                 SystemToast.add(
-                    mc.toastManager,
+                    mc?.toastManager!!,
                     type,
                     Component.literal(arg.tojstring()),
                     Component.literal(arg2.tojstring())
@@ -152,14 +152,14 @@ class PlayerObject : LuaValue() {
         override fun call(arg: LuaValue?): LuaValue? {
             if (arg?.isboolean() == true) {
                 if (arg.toboolean()) {
-                    mc.player?.swing(InteractionHand.OFF_HAND)
+                    mc?.player?.swing(InteractionHand.OFF_HAND)
                 }
                 else {
-                    mc.player?.swing(InteractionHand.MAIN_HAND)
+                    mc?.player?.swing(InteractionHand.MAIN_HAND)
                 }
             }
             else {
-                mc.player?.swing(InteractionHand.MAIN_HAND)
+                mc?.player?.swing(InteractionHand.MAIN_HAND)
             }
             return TRUE
         }
@@ -167,7 +167,7 @@ class PlayerObject : LuaValue() {
 
     private inner class GetTabFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val tab = mc.player?.getTab()
+            val tab = mc?.player?.getTab()
             val table = tableOf()
 
             table.set("header", if (tab?.header?.isPresent == true)
@@ -206,7 +206,7 @@ class PlayerObject : LuaValue() {
             arg2: LuaValue
         ): LuaValue? {
             if (arg1?.isnumber() == true) {
-                val player = mc.player ?: return NIL
+                val player = mc?.player ?: return NIL
                 val targetBlocks = mutableListOf<Block>()
                 if (arg2.istable()) {
                     val table = arg2.checktable()
@@ -229,7 +229,7 @@ class PlayerObject : LuaValue() {
 
                 val hitResult = if (!RotationManager.getCurrentLastYaw().isNaN()) {
                     RaycastUtils.rayTrace(
-                        mc.cameraEntity,
+                        mc?.cameraEntity!!,
                         4.5,
                         RotationManager.getCurrentLastYaw(),
                         RotationManager.getCurrentPitch(),
@@ -238,7 +238,7 @@ class PlayerObject : LuaValue() {
                 }
                 else {
                     RaycastUtils.rayTrace(
-                        mc.cameraEntity,
+                        mc?.cameraEntity!!,
                         4.5,
                         player.yRot,
                         player.xRot,
@@ -260,10 +260,10 @@ class PlayerObject : LuaValue() {
             arg1: LuaValue?
         ): LuaValue? {
             if (arg1?.isnumber() == true) {
-                val player = mc.player ?: return NIL
+                val player = mc?.player ?: return NIL
                 val hitResult = if (!RotationManager.getCurrentYaw().isNaN()) {
                     RaycastUtils.findCrosshairTarget(
-                        mc.cameraEntity,
+                        mc?.cameraEntity!!,
                         player.eyePosition,
                         RotationManager.getCurrentYaw(),
                         RotationManager.getCurrentPitch(),
@@ -272,8 +272,8 @@ class PlayerObject : LuaValue() {
                     )
                 } else {
                     RaycastUtils.findCrosshairTarget(
-                        mc.cameraEntity,
-                        mc.player?.eyePosition,
+                        mc?.cameraEntity!!,
+                        mc?.player?.eyePosition!!,
                         player.yRot,
                         player.xRotO,
                         arg1.todouble(),
@@ -293,20 +293,20 @@ class PlayerObject : LuaValue() {
     private inner class AddChatMessageFunction : OneArgFunction() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
-                mc.execute {
-                    mc.player?.displayClientMessage(Component.literal(message.tojstring()), false)
+                mc?.execute {
+                    mc?.player?.displayClientMessage(Component.literal(message.tojstring()), false)
                 }
                 return TRUE
             }
             else if (message is LuaComponent) {
-                mc.execute {
-                    mc.player?.displayClientMessage(message.component, false)
+                mc?.execute {
+                    mc?.player?.displayClientMessage(message.component, false)
                 }
                 return TRUE
             }
             else if (message is LuaComponentBuilder) {
-                mc.execute {
-                    mc.player?.displayClientMessage(message.buildComponent(), false)
+                mc?.execute {
+                    mc?.player?.displayClientMessage(message.buildComponent(), false)
                 }
                 return TRUE
             }
@@ -341,8 +341,8 @@ class PlayerObject : LuaValue() {
     private inner class SendChatMessageFunction : OneArgFunction() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
-                mc.execute {
-                    mc.connection?.sendChat(message.tojstring())
+                mc?.execute {
+                    mc?.connection?.sendChat(message.tojstring())
                 }
                 return TRUE
             }
@@ -358,7 +358,7 @@ class PlayerObject : LuaValue() {
             arg4: LuaValue?
         ): LuaValue? {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true) {
-                val player = mc.player
+                val player = mc?.player
                 if (player != null) {
                     // Ограничиваем yaw в диапазоне -180° до 180°
                     var yaw = arg1.todouble()
@@ -389,7 +389,7 @@ class PlayerObject : LuaValue() {
     private inner class SetPlayerRotationFunction : TwoArgFunction() {
         override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
             if (arg1.isnumber() && arg2.isnumber()) {
-                val player = mc.player
+                val player = mc?.player
                 if (player != null) {
                     // Ограничиваем yaw в диапазоне -180° до 180°
                     var yaw = arg1.tofloat()
@@ -413,7 +413,7 @@ class PlayerObject : LuaValue() {
 
     private inner class GetPlayerSilentRotationFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val player = mc.player;
+            val player = mc?.player;
             return if (player != null) {
                 val table = tableOf()
                 if (!RotationManager.getCurrentYaw().isNaN()) {
@@ -434,7 +434,7 @@ class PlayerObject : LuaValue() {
 
     private inner class GetPlayerRotationFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val player = mc.player;
+            val player = mc?.player;
             return if (player != null) {
                 val table = tableOf()
                 table.set("yaw", valueOf(player.yRot.toDouble()))
@@ -448,7 +448,7 @@ class PlayerObject : LuaValue() {
 
     private inner class GetPlayerPosFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val player = mc.player
+            val player = mc?.player
             return if (player != null) {
                 LuaVector3d(player.getPosition(1f))
             } else {
@@ -459,25 +459,25 @@ class PlayerObject : LuaValue() {
 
     private inner class GetPlayerNameFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return valueOf(mc.player?.name?.string ?: "Unknown")
+            return valueOf(mc?.player?.name?.string ?: "Unknown")
         }
     }
 
     private inner class IsPlayerSneakingFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return valueOf(mc.player?.isShiftKeyDown ?: false)
+            return valueOf(mc?.player?.isShiftKeyDown ?: false)
         }
     }
 
     private inner class IsPlayerSprintingFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return valueOf(mc.player?.isSprinting ?: false)
+            return valueOf(mc?.player?.isSprinting ?: false)
         }
     }
 
     private inner class IsPlayerOnGroundFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return valueOf(mc.player?.onGround() ?: false)
+            return valueOf(mc?.player?.onGround() ?: false)
         }
     }
 

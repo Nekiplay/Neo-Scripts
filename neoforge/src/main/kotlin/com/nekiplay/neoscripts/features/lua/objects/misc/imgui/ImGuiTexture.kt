@@ -79,9 +79,9 @@ class ImGuiTexture(val texture: AtomicInteger) : LuaUserdata(AtomicInteger(0)) {
                     val texture = DynamicTexture(Supplier { textureName }, nativeImage)
 
                     // Register texture
-                    mc.textureManager.register(indf, texture)
+                    mc?.textureManager?.register(indf, texture)
 
-                    val texture2 = mc.textureManager.getTexture(indf).getTextureView() as GlTextureView
+                    val texture2 = mc?.textureManager?.getTexture(indf)?.getTextureView() as GlTextureView
                     return texture2.texture().glId()
                 }
                 return 0
@@ -96,8 +96,8 @@ class ImGuiTexture(val texture: AtomicInteger) : LuaUserdata(AtomicInteger(0)) {
     private fun releaseTexture() {
         try {
             _identifier?.let { identifier ->
-                if (mc.textureManager.getTexture(identifier) != null) {
-                    mc.textureManager.release(identifier)
+                if (mc?.textureManager?.getTexture(identifier) != null) {
+                    mc?.textureManager?.release(identifier)
                 }
             }
             _identifier = null

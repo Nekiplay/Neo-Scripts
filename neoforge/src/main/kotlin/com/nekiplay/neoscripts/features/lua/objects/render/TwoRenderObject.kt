@@ -30,7 +30,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         // Очистка кэша для конкретного скрипта
         fun clearScriptCache(scriptId: String) {
             textureCache[scriptId]?.values?.forEach { identifier ->
-                mc.textureManager.release(identifier)
+                mc?.textureManager?.release(identifier)
             }
             textureCache.remove(scriptId)
         }
@@ -39,7 +39,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         fun clearAllCaches() {
             textureCache.values.forEach { scriptCache ->
                 scriptCache.values.forEach { identifier ->
-                    mc.textureManager.release(identifier)
+                    mc?.textureManager?.release(identifier)
                 }
             }
             textureCache.clear()
@@ -68,7 +68,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         override fun invoke(args: Varargs): Varargs {
             val text = args.arg1()
             if (text.isstring()) {
-                val textRenderer: Font? = mc.font
+                val textRenderer: Font? = mc?.font
                 val width: Int? = textRenderer?.width(text.tojstring())
                 if (width != null) {
                     return valueOf(width)
@@ -81,8 +81,8 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
     private inner class GetWindowScaleFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val table = tableOf()
-            val width: Int = mc.window.guiScaledWidth
-            val height: Int = mc.window.guiScaledHeight
+            val width: Int = mc?.window?.guiScaledWidth ?: 0
+            val height: Int = mc?.window?.guiScaledHeight ?: 0
 
             table.set("width", width)
             table.set("height", height)
@@ -109,7 +109,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
                     (green and 0xFF shl 8) or
                     (blue and 0xFF)
 
-            val textRenderer: Font? = mc.font
+            val textRenderer: Font? = mc?.font
             if (textRenderer != null) {
                 if (scale != 1.0f) {
                     context.pose().pushMatrix()
@@ -200,7 +200,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
 
                 // Создаем идентификатор
                 val identifier = Identifier.fromNamespaceAndPath("neoscripts", "texture_${scriptCacheId}_${textureCounter.get()}")
-                mc.textureManager.register(identifier, texture)
+                mc?.textureManager?.register(identifier, texture)
 
                 // Сохраняем в кэш текущего скрипта
                 scriptCache[path] = identifier

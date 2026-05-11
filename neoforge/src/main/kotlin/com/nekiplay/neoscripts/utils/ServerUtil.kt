@@ -67,13 +67,13 @@ object ServerUtil {
     }
 
     fun sendPacket(packet : Packet<*>) {
-        mc.player?.connection?.connection?.send(packet)
+        mc?.player?.connection?.connection?.send(packet)
     }
 
     @Deprecated(message = "Ignores absolutely all callbacks. Use EventBus.setIgnore(value : Boolean, type : Class<Event>, instance : Any?)")
     fun sendPacketSilently(packet : Packet<*>) {
         silentPackets.add(packet)
-        mc.player?.connection?.connection?.send(packet)
+        mc?.player?.connection?.connection?.send(packet)
     }
 
     fun sendPacket(packet : Packet<*>, delay : Int) {

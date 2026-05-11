@@ -28,10 +28,8 @@ import java.util.logging.Level
 @Mod(Main.ID)
 object Main {
     const val ID = "neoscripts"
-    @JvmField
-    val mc = Minecraft.getInstance()
-    @JvmField
-    var LUA_MANAGER: LuaManager? = null
+    lateinit var mc: Minecraft
+    lateinit var LUA_MANAGER: LuaManager
 
     @JvmField
     var neuDir: File? = null
@@ -49,31 +47,8 @@ object Main {
     val LOGGER: Logger = LoggerFactory.getLogger(ID)
 
     init {
-        val obj = runForDist(
-            clientTarget = {
-                MOD_BUS.addListener(::onClientSetup)
-                Minecraft.getInstance()
-            },
-            serverTarget = {
-                MOD_BUS.addListener(::onServerSetup)
-                "test"
-            })
-
-        println(obj)
-    }
-
-    fun saveConfig(){
-        for (script in LUA_MANAGER?.getLoadedScripts() ?: emptyList()) {
-            LUA_MANAGER?.unloadScript(script.scriptName)
-        }
-    }
-
-    /**
-     * This is used for initializing client specific
-     * things such as renderers and keymaps
-     * Fired on the mod specific event bus.
-     */
-    private fun onClientSetup(event: FMLClientSetupEvent) {
+        MOD_BUS.addListener(::onCommonSetup)
+        MOD_BUS.addListener(::onClientSetup)
 
         neuDir = FMLPaths.CONFIGDIR.get().resolve("neoscripts").toFile()
         neuDir!!.mkdirs()
@@ -86,8 +61,6 @@ object Main {
         if (!libsDir.exists()) {
             libsDir.mkdir()
         }
-
-        Runtime.getRuntime().addShutdownHook(Thread(Runnable { saveConfig() }))
 
         val classes = HashSet<Class<*>>()
 
@@ -115,11 +88,21 @@ object Main {
         LOGGER.info("Initializing client...")
     }
 
+    fun saveConfig(){
+        for (script in LUA_MANAGER?.getLoadedScripts() ?: emptyList()) {
+            LUA_MANAGER?.unloadScript(script.scriptName)
+        }
+    }
+
     /**
-     * Fired on the global Forge bus.
+     * This is used for initializing client specific
+     * things such as renderers and keymaps
+     * Fired on the mod specific event bus.
      */
-    private fun onServerSetup(event: FMLDedicatedServerSetupEvent) {
-        LOGGER.info("Server starting...")
+    @SubscribeEvent
+    private fun onClientSetup(event: FMLClientSetupEvent) {
+        mc = Minecraft.getInstance()
+        Runtime.getRuntime().addShutdownHook(Thread(Runnable { saveConfig() }))
     }
 
     @SubscribeEvent

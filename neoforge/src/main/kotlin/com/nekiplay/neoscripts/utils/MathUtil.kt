@@ -13,7 +13,7 @@ object MathUtil {
         return i
     }
 
-    fun getGCD() = ((mc.options.sensitivity().get() * 0.6 + 0.2).pow(3.0)) * 1.2
+    fun getGCD() = ((mc!!.options.sensitivity().get() * 0.6 + 0.2).pow(3.0)) * 1.2
 
     fun applyGCD(current: Float, previous: Float): Float {
         val gcd = getGCD()

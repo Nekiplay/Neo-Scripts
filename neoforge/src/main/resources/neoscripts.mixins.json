@@ -5,9 +5,12 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ClientPlayerInteractionManagerAccessor",
+    "FrustumInvoker",
     "KeyboardMixin",
     "MinecraftClientAccessor",
     "PlayerListHudAccessor",
+    "TailRenderMixin",
+    "WindowMixin",
     "entity.MixinEntity",
     "entity.MixinFireworkRocketEntity",
     "entity.MixinLivingEntity",

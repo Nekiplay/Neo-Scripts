@@ -93,11 +93,7 @@ tasks {
     }
 
     jar {
-        archiveClassifier.set("thin")
-    }
-
-    assemble {
-        dependsOn(jarJar)
+        archiveClassifier.set("")
     }
 
     withType<ProcessResources>().configureEach {
@@ -117,4 +113,7 @@ tasks {
             expand(properties)
         }
     }
+}
+tasks.build {
+    dependsOn(tasks.jarJar)
 }

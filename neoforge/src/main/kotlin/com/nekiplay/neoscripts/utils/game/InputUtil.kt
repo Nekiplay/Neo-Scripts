@@ -15,12 +15,12 @@ object InputUtil {
     private val keyMap = HashMap<Int, String>()
     val stringMap = HashMap<String, Int>()
 
-    private val forwardKey by lazy { Key(mc.options.keyUp) }
-    private val backwardKey by lazy { Key(mc.options.keyDown) }
-    private val leftKey by lazy { Key(mc.options.keyLeft) }
-    private val rightKey by lazy { Key(mc.options.keyRight) }
-    private val spaceKey by lazy { Key(mc.options.keyJump) }
-    private val sprintKey by lazy { Key(mc.options.keySprint) }
+    private val forwardKey by lazy { Key(mc?.options?.keyUp!!) }
+    private val backwardKey by lazy { Key(mc?.options?.keyDown!!) }
+    private val leftKey by lazy { Key(mc?.options?.keyLeft!!) }
+    private val rightKey by lazy { Key(mc?.options?.keyRight!!) }
+    private val spaceKey by lazy { Key(mc?.options?.keyJump!!) }
+    private val sprintKey by lazy { Key(mc?.options?.keySprint!!) }
 
     init {
         for (field in GLFW::class.java.fields) {
@@ -65,7 +65,7 @@ object InputUtil {
     }
 
     fun isPressed(key : Int) : Boolean {
-        return isPressed(key, mc.window.handle())
+        return isPressed(key, mc?.window?.handle() ?: 0)
     }
 
     fun calculateCorrectedKeys(
@@ -172,7 +172,7 @@ object InputUtil {
 
             if (set) {
                 key.isDown = value
-                mc.player?.input?.tick()
+                mc?.player?.input?.tick()
             }
 
             if (ticks >= 0) {
@@ -185,7 +185,7 @@ object InputUtil {
                         ticks = -1
                         set = false
                         key.isDown = isPressed(key.key.value)
-                        mc.player?.input?.tick()
+                        mc?.player?.input?.tick()
                     }
                 }
             }

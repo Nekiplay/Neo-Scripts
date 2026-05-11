@@ -106,7 +106,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
             "age" -> valueOf(entity.tickCount)
             "distance_to_player" -> {
-                val player = mc.player
+                val player = mc?.player
                 if (player != null) {
                     valueOf(entity.distanceToSqr(player))
                 } else {
@@ -326,12 +326,12 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             arg3: LuaValue?,
             arg4: LuaValue?
         ): LuaValue? {
-            if (entity != mc.player) return FALSE
+            if (entity != mc?.player) return FALSE
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isboolean() == true) {
                 val vector = Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble())
                 entity.setPos(vector.x, vector.y, vector.z)
                 val rot = entity.getRotation()
-                mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, arg4.toboolean(), entity.horizontalCollision))
+                mc?.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, arg4.toboolean(), entity.horizontalCollision))
                 return TRUE
             }
             else if (arg1?.istable() ?: false) {
@@ -343,27 +343,27 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 val vector = Vec3(x, y, z)
                 entity.setPos(vector.x, vector.y, vector.z)
                 val rot = entity.getRotation()
-                mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, on_ground, entity.horizontalCollision))
+                mc?.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, on_ground, entity.horizontalCollision))
                 return TRUE
             }
             else if (arg1?.isuserdata() == true && arg1.touserdata() is LuaVector3d) {
                 val vector = arg1.touserdata() as LuaVector3d
                 entity.setPos(vector.location.x, vector.location.y, vector.location.z)
                 val rot = entity.getRotation()
-                mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector.location, rot.first, rot.second, arg2?.toboolean() ?: true, entity.horizontalCollision))
+                mc?.connection?.send(ServerboundMovePlayerPacket.PosRot(vector.location, rot.first, rot.second, arg2?.toboolean() ?: true, entity.horizontalCollision))
             }
             else if (arg1?.isuserdata() == true && arg1.touserdata() is Vec3) {
                 val vector = arg1.touserdata() as Vec3
                 entity.setPos(vector.x, vector.y, vector.z)
                 val rot = entity.getRotation()
-                mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, arg2?.toboolean() ?: true, entity.horizontalCollision))
+                mc?.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, arg2?.toboolean() ?: true, entity.horizontalCollision))
             }
             return FALSE
         }
     }
 
     override fun set(key: LuaValue, value: LuaValue) {
-        if (entity != mc.player) return
+        if (entity != mc?.player) return
 
         when (val field = key.tojstring()) {
             "velocity_x" -> {
@@ -396,7 +396,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     val vector = Vec3(value.todouble(), entity.getPosition(1f).y, entity.getPosition(1f).z)
                     entity.setPos(vector.x, vector.y, vector.z)
                     val rot = entity.getRotation()
-                    mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
+                    mc?.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
                 }
             }
             "y" -> {
@@ -404,7 +404,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     val vector = Vec3(entity.getPosition(1f).x, value.todouble(), entity.getPosition(1f).z)
                     entity.setPos(vector.x, vector.y, vector.z)
                     val rot = entity.getRotation()
-                    mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
+                    mc?.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
                 }
             }
             "z" -> {
@@ -412,7 +412,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     val vector = Vec3(entity.getPosition(1f).x, entity.getPosition(1f).y, value.todouble())
                     entity.setPos(vector.x, vector.y, vector.z)
                     val rot = entity.getRotation()
-                    mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
+                    mc?.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
                 }
             }
             "pos", "position" -> {
@@ -420,13 +420,13 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     val vector = value.touserdata() as LuaVector3d
                     entity.setPos(vector.location.x, vector.location.y, vector.location.z)
                     val rot = entity.getRotation()
-                    mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector.location, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
+                    mc?.connection?.send(ServerboundMovePlayerPacket.PosRot(vector.location, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
                 }
                 else if (value.isuserdata() && value.touserdata() is Vec3) {
                     val vector = value.touserdata() as Vec3
                     entity.setPos(vector.x, vector.y, vector.z)
                     val rot = entity.getRotation()
-                    mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
+                    mc?.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
                 }
             }
         }

@@ -42,11 +42,11 @@ class BlockIteratorObject(
 
     private var currX = centerX - radius
     private var currZ = centerZ - radius
-    private var currY = mc.level?.minY ?: -60
+    private var currY = mc?.level?.minY ?: -60
 
     private val maxX = centerX + radius
     private val maxZ = centerZ + radius
-    private val maxY = mc.level?.maxY ?: 320
+    private val maxY = mc?.level?.maxY ?: 320
 
     private val mutablePos = BlockPos.MutableBlockPos()
 
@@ -70,7 +70,7 @@ class BlockIteratorObject(
 
             while (count < limit && currY <= maxY) {
                 mutablePos.set(currX, currY, currZ)
-                val state = mc.level?.getBlockState(mutablePos)
+                val state = mc?.level?.getBlockState(mutablePos)
 
                 // Пропускаем воздух в батче для экономии памяти и CPU
                 if (state != null && !state.isAir) {

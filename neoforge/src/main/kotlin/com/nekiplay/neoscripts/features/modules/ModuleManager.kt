@@ -1,6 +1,6 @@
-package com.nekiplay.neoscripts.modules
+package com.nekiplay.neoscripts.features.modules
 
-import com.nekiplay.neoscripts.modules.impl.misc.LuaEvents
+import com.nekiplay.neoscripts.features.modules.impl.misc.LuaEvents
 
 object ModuleManager {
     private val modulesMap = mutableMapOf<String, ClientModule>()

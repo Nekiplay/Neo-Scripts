@@ -601,7 +601,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
                 )
 
                 val identifier = Identifier.fromNamespaceAndPath("neoscripts", "texture_${scriptCacheId}_${TwoRenderObject.Companion.textureCounter.get()}")
-                mc.textureManager.register(identifier, texture)
+                mc?.textureManager?.register(identifier, texture)
 
                 scriptCache[path] = identifier
 

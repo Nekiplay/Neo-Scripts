@@ -7,9 +7,11 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.profiling.Profiler;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -17,7 +19,10 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.common.NeoForge;
 import org.jetbrains.annotations.Nullable;
+import org.joml.FrustumIntersection;
+import org.joml.Matrix4f;
 
 @EventBusSubscriber(modid = Main.ID, value = Dist.CLIENT)
 public class RenderHelper {
@@ -36,11 +41,23 @@ public class RenderHelper {
         ProfilerFiller profiler = Profiler.get();
         profiler.push("neoscripts_primitiveCollection");
 
-        collector = new PrimitiveCollectorImpl(event.getLevelRenderState(), event.getLevelRenderer().getCapturedFrustum());
+        Matrix4f projectionMatrix = Minecraft.getInstance().gameRenderer.getProjectionMatrix(Minecraft.getInstance().options.fov().get());
+        Matrix4f modelViewMatrix = event.getModelViewMatrix();
 
-        // Вызов кастомного события WorldRenderExtractionCallback (Fabric) — в NeoForge не нужен
-        // Если у вас было своё расширение для других модов, реализуйте аналог через NeoForge event bus
-        // WorldRenderExtractionCallback.EVENT.invoker().onExtract(collector); // удалено
+        Frustum frustum = new Frustum(modelViewMatrix, projectionMatrix);
+
+        Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
+        double cameraX = camera.position().x;
+        double cameraY = camera.position().y;
+        double cameraZ = camera.position().z;
+
+        frustum.prepare(cameraX, cameraY, cameraZ);
+
+        collector = new PrimitiveCollectorImpl(event.getLevelRenderState(), frustum);
+
+
+        WorldRenderExtractionCallback extract = new WorldRenderExtractionCallback(collector);
+        NeoForge.EVENT_BUS.post(extract);
 
         collector.endCollection();
         profiler.pop();

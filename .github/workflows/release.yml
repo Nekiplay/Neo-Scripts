@@ -47,3 +47,4 @@ jobs:
             - **@KreedMan**, **@lmoboy** - Tester
           files: |
             ./build/libs/*.jar
+            ./build/libs_neoforge/*.jar

@@ -105,7 +105,7 @@ class NetworkObject : LuaValue() {
 
     private inner class GetPlayerList : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val playerList = mc.connection?.listedOnlinePlayers ?: return NIL
+            val playerList = mc?.connection?.listedOnlinePlayers ?: return NIL
 
             val table = tableOf()
             var index = 1
@@ -147,7 +147,7 @@ class NetworkObject : LuaValue() {
             arg3: LuaValue?,
             arg4: LuaValue?
         ): LuaValue? {
-            val gamemode = mc.gameMode
+            val gamemode = mc?.gameMode
 
             val (blockPos, direction) = when {
                 arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
@@ -192,7 +192,7 @@ class NetworkObject : LuaValue() {
             arg3: LuaValue?,
             arg4: LuaValue?
         ): LuaValue? {
-            val gamemode = mc.gameMode
+            val gamemode = mc?.gameMode
 
             val (blockPos, direction) = when {
                 arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
@@ -237,7 +237,7 @@ class NetworkObject : LuaValue() {
             arg3: LuaValue?,
             arg4: LuaValue?
         ): LuaValue? {
-            val gamemode = mc.gameMode
+            val gamemode = mc?.gameMode
 
             val (blockPos, direction) = when {
                 arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {

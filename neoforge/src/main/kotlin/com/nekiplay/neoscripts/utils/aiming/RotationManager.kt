@@ -57,17 +57,17 @@ object RotationManager {
     private var originalRenderPitch = Float.NaN
     private var originalRenderLastPitch = Float.NaN
 
-    fun getCurrentYaw() = if (yaw.isNaN()) mc.player?.yRot ?: 0f  else yaw
-    fun getCurrentLastYaw() = if (lastYaw.isNaN()) mc.player?.yRotO ?: 0f  else lastYaw
-    fun getCurrentPitch() = if (pitch.isNaN()) mc.player?.xRot ?: 0f else pitch
-    fun getCurrentLastPitch() = if (lastPitch.isNaN()) mc.player?.xRotO ?: 0f  else lastPitch
+    fun getCurrentYaw() = if (yaw.isNaN()) mc?.player?.yRot ?: 0f  else yaw
+    fun getCurrentLastYaw() = if (lastYaw.isNaN()) mc?.player?.yRotO ?: 0f  else lastYaw
+    fun getCurrentPitch() = if (pitch.isNaN()) mc?.player?.xRot ?: 0f else pitch
+    fun getCurrentLastPitch() = if (lastPitch.isNaN()) mc?.player?.xRotO ?: 0f  else lastPitch
 
     fun rotateTo(yaw : Float, pitch : Float, ticks : Int = 0, priority : Int = 0, correction: Boolean = true, silentCorrection: Boolean = false) {
         Rotations.moveFix = correction
         Rotations.moveFixSilent = silentCorrection
 
 
-        if (Rotations.pauseInInventory && mc.screen != null) return
+        if (Rotations.pauseInInventory && mc?.screen != null) return
 
         if (priority >= currentPriority) {
             if (yaw.isNaN() && pitch.isNaN()) resetRotate(priority)
@@ -104,14 +104,14 @@ object RotationManager {
     fun onRender(event : RenderEvent) {
         if (!Rotations.clientLook) return
 
-        if (!yaw.isNaN()) mc.player?.yRot = AnimationUtil.lerp(getCurrentLastYaw(), yaw, mc.deltaTracker.getGameTimeDeltaPartialTick(false))
-        if (!pitch.isNaN()) mc.player?.xRot = AnimationUtil.lerp(getCurrentLastPitch(), pitch, mc.deltaTracker.getGameTimeDeltaPartialTick(false))
+        if (!yaw.isNaN()) mc?.player?.yRot = AnimationUtil.lerp(getCurrentLastYaw(), yaw, mc?.deltaTracker?.getGameTimeDeltaPartialTick(false)!!)
+        if (!pitch.isNaN()) mc?.player?.xRot = AnimationUtil.lerp(getCurrentLastPitch(), pitch, mc?.deltaTracker?.getGameTimeDeltaPartialTick(false)!!)
     }
 
     @Callback(10)
     fun onTick(event : PlayerTickEvent) {
-        lastYaw = if (!yaw.isNaN()) yaw else mc.player?.yRot ?: Float.NaN
-        lastPitch = if (!pitch.isNaN()) pitch else mc.player?.xRot ?: Float.NaN
+        lastYaw = if (!yaw.isNaN()) yaw else mc?.player?.yRot ?: Float.NaN
+        lastPitch = if (!pitch.isNaN()) pitch else mc?.player?.xRot ?: Float.NaN
     }
 
     @Callback
@@ -121,25 +121,28 @@ object RotationManager {
         if (!yaw.isNaN()) {
             val moveInput = InputUtil.calculateCorrectedKeys(
 
-                mc.player?.input?.keyPresses?.forward ?: false, mc.player?.input?.keyPresses?.backward ?: false, mc.player?.input?.keyPresses?.left ?: false, mc.player?.input?.keyPresses?.right ?: false,
-                mc.player?.yRot ?: 0f, yaw  ?: 0f)
+                mc?.player?.input?.keyPresses?.forward ?: false,
+                mc?.player?.input?.keyPresses?.backward ?: false,
+                mc?.player?.input?.keyPresses?.left ?: false,
+                mc?.player?.input?.keyPresses?.right ?: false,
+                mc?.player?.yRot ?: 0f, yaw  ?: 0f)
 
-            if (mc.player?.isSprinting == true && !moveInput.forward) mc.player?.isSprinting = false
+            if (mc?.player?.isSprinting == true && !moveInput.forward) mc?.player?.isSprinting = false
 
-            val acccessed = mc.player?.input as ClientInputAccessor
+            val acccessed = mc?.player?.input as ClientInputAccessor
 
-            acccessed.moveVector = Vec2(
+            acccessed.setMoveVector(Vec2(
                 InputUtil.calculateImpulse(moveInput.left, moveInput.right),
                 InputUtil.calculateImpulse(moveInput.forward, moveInput.back)
-            )
-            mc.player?.input?.keyPresses = Input(
+            ))
+            mc?.player?.input?.keyPresses = Input(
                 moveInput.forward,
                 moveInput.back,
                 moveInput.left,
                 moveInput.right,
-                mc.player?.input?.keyPresses?.jump ?: false,
-                mc.player?.input?.keyPresses?.shift ?: false,
-                mc.player?.input?.keyPresses?.sprint ?: false
+                mc?.player?.input?.keyPresses?.jump ?: false,
+                mc?.player?.input?.keyPresses?.shift ?: false,
+                mc?.player?.input?.keyPresses?.sprint ?: false
             )
         }
     }
@@ -166,7 +169,7 @@ object RotationManager {
 
     @Callback
     fun onSyncPosition(event: SyncPosEvent) {
-        val player = mc.player ?: return
+        val player = mc?.player ?: return
         if (event.pre) {
             if (!yaw.isNaN()) {
                 originalSyncYaw = player.yRot
@@ -189,7 +192,7 @@ object RotationManager {
                 player.xRot = originalSyncPitch
                 originalSyncPitch = Float.NaN
             }
-            val shouldReset = !(Rotations.pauseInInventory && mc.screen != null)
+            val shouldReset = !(Rotations.pauseInInventory && mc?.screen != null)
             if (shouldReset) {
                 if (rotationSet) {
                     rotationSet = false
@@ -209,20 +212,20 @@ object RotationManager {
 
         if (event.pre) {
             if (!yaw.isNaN()) {
-                originalTravelYaw = mc.player?.yRot ?: Float.NaN
-                mc.player?.yRot = yaw
+                originalTravelYaw = mc?.player?.yRot ?: Float.NaN
+                mc?.player?.yRot = yaw
             }
             if (!pitch.isNaN()) {
-                originalTravelPitch = mc.player?.xRot ?: Float.NaN
-                mc.player?.xRot = pitch
+                originalTravelPitch = mc?.player?.xRot ?: Float.NaN
+                mc?.player?.xRot = pitch
             }
         } else {
             if (!originalTravelYaw.isNaN()) {
-                mc.player?.yRot = originalTravelYaw
+                mc?.player?.yRot = originalTravelYaw
                 originalTravelYaw = Float.NaN
             }
             if (!originalTravelPitch.isNaN()) {
-                mc.player?.xRot = originalTravelPitch
+                mc?.player?.xRot = originalTravelPitch
                 originalTravelPitch = Float.NaN
             }
         }
@@ -234,20 +237,20 @@ object RotationManager {
 
         if (event.pre) {
             if (!yaw.isNaN()) {
-                originalCrosshairYaw = mc.player?.yRot ?: Float.NaN
-                mc.player?.yRot = yaw
+                originalCrosshairYaw = mc?.player?.yRot ?: Float.NaN
+                mc?.player?.yRot = yaw
             }
             if (!pitch.isNaN()) {
-                originalCrosshairPitch = mc.player?.xRot ?: Float.NaN
-                mc.player?.xRot = pitch
+                originalCrosshairPitch = mc?.player?.xRot ?: Float.NaN
+                mc?.player?.xRot = pitch
             }
         } else {
             if (!originalCrosshairYaw.isNaN()) {
-                mc.player?.yRot = originalCrosshairYaw
+                mc?.player?.yRot = originalCrosshairYaw
                 originalCrosshairYaw = Float.NaN
             }
             if (!originalCrosshairPitch.isNaN()) {
-                mc.player?.xRot = originalCrosshairPitch
+                mc?.player?.xRot = originalCrosshairPitch
                 originalCrosshairPitch = Float.NaN
             }
         }
@@ -255,61 +258,61 @@ object RotationManager {
 
     @Callback
     fun onExtractRenderState(event : ExtractRenderStateEvent) {
-        if (event.entity == mc.player) {
+        if (event.entity == mc?.player) {
             if (event.pre) {
-                val currentYaw = if (!yaw.isNaN()) yaw else mc.player?.yRot ?: Float.NaN
-                val previousYaw = if (!lastYaw.isNaN()) lastYaw else mc.player?.yRotO ?: Float.NaN
+                val currentYaw = if (!yaw.isNaN()) yaw else mc?.player?.yRot ?: Float.NaN
+                val previousYaw = if (!lastYaw.isNaN()) lastYaw else mc?.player?.yRotO ?: Float.NaN
 
-                val currentPitch = if (!pitch.isNaN()) pitch else mc.player?.xRot ?: Float.NaN
-                val previousPitch = if (!lastPitch.isNaN()) lastPitch else mc.player?.xRotO ?: Float.NaN
+                val currentPitch = if (!pitch.isNaN()) pitch else mc?.player?.xRot ?: Float.NaN
+                val previousPitch = if (!lastPitch.isNaN()) lastPitch else mc?.player?.xRotO ?: Float.NaN
 
-                val currentBody = if (!bodyYaw.isNaN()) bodyYaw else mc.player?.yBodyRot ?: Float.NaN
-                val previousBody = if (!lastBodyYaw.isNaN()) lastBodyYaw else mc.player?.yBodyRotO ?: Float.NaN
+                val currentBody = if (!bodyYaw.isNaN()) bodyYaw else mc?.player?.yBodyRot ?: Float.NaN
+                val previousBody = if (!lastBodyYaw.isNaN()) lastBodyYaw else mc?.player?.yBodyRotO ?: Float.NaN
 
-                originalRenderYaw = mc.player?.yRot ?: Float.NaN
-                originalRenderLastYaw = mc.player?.yRotO ?: Float.NaN
-                originalRenderPitch = mc.player?.xRot ?: Float.NaN
-                originalRenderLastPitch = mc.player?.xRotO ?: Float.NaN
-                originalRenderBodyYaw = mc.player?.yBodyRot ?: Float.NaN
-                originalRenderLastBodyYaw = mc.player?.yBodyRotO ?: Float.NaN
+                originalRenderYaw = mc?.player?.yRot ?: Float.NaN
+                originalRenderLastYaw = mc?.player?.yRotO ?: Float.NaN
+                originalRenderPitch = mc?.player?.xRot ?: Float.NaN
+                originalRenderLastPitch = mc?.player?.xRotO ?: Float.NaN
+                originalRenderBodyYaw = mc?.player?.yBodyRot ?: Float.NaN
+                originalRenderLastBodyYaw = mc?.player?.yBodyRotO ?: Float.NaN
 
-                mc.player?.yRot = currentYaw
-                mc.player?.yRotO = previousYaw
+                mc?.player?.yRot = currentYaw
+                mc?.player?.yRotO = previousYaw
 
-                mc.player?.yHeadRot = currentYaw
-                mc.player?.yHeadRotO = previousYaw
+                mc?.player?.yHeadRot = currentYaw
+                mc?.player?.yHeadRotO = previousYaw
 
-                mc.player?.xRot = currentPitch
-                mc.player?.xRotO = previousPitch
+                mc?.player?.xRot = currentPitch
+                mc?.player?.xRotO = previousPitch
 
-                mc.player?.yBodyRot = currentBody
-                mc.player?.yBodyRotO = previousBody
+                mc?.player?.yBodyRot = currentBody
+                mc?.player?.yBodyRotO = previousBody
 
             } else {
                 if (!originalRenderYaw.isNaN()) {
-                    mc.player?.yRot = originalRenderYaw
-                    mc.player?.yHeadRot = originalRenderYaw
+                    mc?.player?.yRot = originalRenderYaw
+                    mc?.player?.yHeadRot = originalRenderYaw
                     originalRenderYaw = Float.NaN
                 }
                 if (!originalRenderLastYaw.isNaN()) {
-                    mc.player?.yRotO = originalRenderLastYaw
-                    mc.player?.yHeadRotO = originalRenderLastYaw
+                    mc?.player?.yRotO = originalRenderLastYaw
+                    mc?.player?.yHeadRotO = originalRenderLastYaw
                     originalRenderLastYaw = Float.NaN
                 }
                 if (!originalRenderPitch.isNaN()) {
-                    mc.player?.xRot = originalRenderPitch
+                    mc?.player?.xRot = originalRenderPitch
                     originalRenderPitch = Float.NaN
                 }
                 if (!originalRenderLastPitch.isNaN()) {
-                    mc.player?.xRotO = originalRenderLastPitch
+                    mc?.player?.xRotO = originalRenderLastPitch
                     originalRenderLastPitch = Float.NaN
                 }
                 if (!originalRenderBodyYaw.isNaN()) {
-                    mc.player?.yBodyRot = originalRenderBodyYaw
+                    mc?.player?.yBodyRot = originalRenderBodyYaw
                     originalRenderBodyYaw = Float.NaN
                 }
                 if (!originalRenderLastBodyYaw.isNaN()) {
-                    mc.player?.yBodyRotO = originalRenderLastBodyYaw
+                    mc?.player?.yBodyRotO = originalRenderLastBodyYaw
                     originalRenderLastBodyYaw = Float.NaN
                 }
             }
@@ -317,7 +320,7 @@ object RotationManager {
     }
 
     private fun calcBodyYaw(): Float {
-        val player = mc.player ?: return 0f
+        val player = mc?.player ?: return 0f
         val headYaw = when {
             !yaw.isNaN() -> yaw
             !player.yRot.isNaN() -> player.yRot
@@ -334,7 +337,7 @@ object RotationManager {
             if (diff > 95.0f && diff < 265.0f) moveAngle -= 180.0f
             offset = moveAngle
         }
-        player.attackAnim?.let {
+        player.attackAnim.let {
             if (it > 0.0f) offset = headYaw
         }
         var proposedBodyYaw = renderYaw + MathUtil.wrapDegrees(offset - renderYaw) * 0.3f
@@ -348,7 +351,7 @@ object RotationManager {
 
     fun resetRotate(priority: Int = 0) {
         if (priority >= currentPriority) {
-            val player = mc.player ?: return
+            val player = mc?.player ?: return
             if (!yaw.isNaN()) {
                 val diff = MathUtil.wrapDegrees(player.yRot - yaw)
                 if (abs(player.yRot - yaw) > 180F) {
