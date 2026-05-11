@@ -57,9 +57,9 @@ dependencies {
 
     val luaj = "local:luaj-jse:3.0.2"
     implementation(luaj)
-    shadowModImpl(luaj)
+    jarJar(luaj)
 
-    shadowModImpl(implementation("io.github.classgraph:classgraph:4.8.184")!!)
+    jarJar(implementation("io.github.classgraph:classgraph:4.8.184")!!)
 
     // ImGUI
     val imguiVersion = property("imgui_version") as String
@@ -68,24 +68,24 @@ dependencies {
     implementation("io.github.spair:imgui-java-natives-windows:$imguiVersion")
     implementation("io.github.spair:imgui-java-natives-linux:$imguiVersion")
     implementation("io.github.spair:imgui-java-natives-macos:$imguiVersion")
-    shadowModImpl("io.github.spair:imgui-java-binding:$imguiVersion")
-    shadowModImpl("io.github.spair:imgui-java-lwjgl3:$imguiVersion")
-    shadowModImpl("io.github.spair:imgui-java-natives-windows:$imguiVersion")
-    shadowModImpl("io.github.spair:imgui-java-natives-linux:$imguiVersion")
-    shadowModImpl("io.github.spair:imgui-java-natives-macos:$imguiVersion")
+    jarJar("io.github.spair:imgui-java-binding:$imguiVersion")
+    jarJar("io.github.spair:imgui-java-lwjgl3:$imguiVersion")
+    jarJar("io.github.spair:imgui-java-natives-windows:$imguiVersion")
+    jarJar("io.github.spair:imgui-java-natives-linux:$imguiVersion")
+    jarJar("io.github.spair:imgui-java-natives-macos:$imguiVersion")
 
     // Catboost
     val catboostDep = "ai.catboost:catboost-prediction:${property("catboost_version")}"
-    shadowModImpl(implementation(catboostDep)!!)
+    jarJar(implementation(catboostDep)!!)
 
     val catboostTransitive = "ai.catboost:catboost-common:${property("catboost_version")}"
-    shadowModImpl(implementation(catboostTransitive)!!)
+    jarJar(implementation(catboostTransitive)!!)
 
-    shadowModImpl(implementation("ai.djl:api:0.36.0")!!)
-    shadowModImpl(implementation("ai.djl:basicdataset:0.36.0")!!)
+    jarJar(implementation("ai.djl:api:0.36.0")!!)
+    jarJar(implementation("ai.djl:basicdataset:0.36.0")!!)
 
-    shadowModImpl(implementation("ai.djl.pytorch:pytorch-engine:0.36.0")!!)
-    shadowModImpl(implementation("ai.djl.pytorch:pytorch-native-cpu:2.7.1")!!)
+    jarJar(implementation("ai.djl.pytorch:pytorch-engine:0.36.0")!!)
+    jarJar(implementation("ai.djl.pytorch:pytorch-native-cpu:2.7.1")!!)
 
     // Apache Commons Compress for archive handling
     val commonsCompressVersion = "1.27.1"
@@ -93,24 +93,12 @@ dependencies {
 }
 
 tasks {
-    shadowJar {
-        from(sourceSets.main.get().output)
-        configurations = listOf(shadowModImpl)
-        archiveClassifier.set("shadow")
-        mergeServiceFiles()
-    }
-
-    named("compileTestJava").configure {
-        enabled = false
-    }
-
-    assemble {
-        dependsOn(shadowJar)
+    jarJar {
+        archiveClassifier.set("")
     }
 
     jar {
-        archiveClassifier.set("")
-        from(sourceSets.main.get().output)
+        archiveClassifier.set("thin")
     }
 
     // NeoGradle compiles the game, but we don't want to add our common code to the game's code
