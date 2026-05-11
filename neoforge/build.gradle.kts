@@ -1,5 +1,4 @@
 plugins {
-    id("java-library")
     id("maven-publish")
     id("idea")
     id("net.neoforged.moddev") version "2.0.141"
@@ -109,8 +108,9 @@ tasks {
         dependsOn(shadowJar)
     }
 
-    named<Jar>("jar") {
-        archiveClassifier.set("thin")
+    jar {
+        archiveClassifier.set("")
+        from(sourceSets.main.get().output)
     }
 
     // NeoGradle compiles the game, but we don't want to add our common code to the game's code
