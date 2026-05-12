@@ -33,7 +33,8 @@ jobs:
         with:
           name: binaries
           path: |
-            ./build/libs/*.jar
+            ./fabric/build/libs/*.jar
+            ./build/libs_neoforge/*.jar
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -46,5 +47,5 @@ jobs:
             - **@Nekiplay** - Core improvements and feature implementations
             - **@KreedMan**, **@lmoboy** - Tester
           files: |
-            ./build/libs/*.jar
+            ./fabric/build/libs/*.jar
             ./build/libs_neoforge/*.jar
