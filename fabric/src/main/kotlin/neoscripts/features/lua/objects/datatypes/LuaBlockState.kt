@@ -31,7 +31,7 @@ class LuaBlockState(var blockState: BlockState) : LuaUserdata(blockState) {
         return when (val field = key.tojstring()) {
             "id" -> valueOf(Block.getId(blockState))
             "identifier" -> valueOf(BuiltInRegistries.BLOCK.wrapAsHolder(blockState.block).registeredName)
-            "traslation_id" -> valueOf(blockState.block.descriptionId)
+            "translation_id" -> valueOf(blockState.block.descriptionId)
             "name" -> valueOf(blockState.block.name.getFormattedString())
             "type" -> valueOf(blockState.toString())
             "hardness" -> valueOf(blockState.block.friction.toDouble())

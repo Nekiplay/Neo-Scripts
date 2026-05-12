@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "neoscripts",
-  "version": "1.2.1.6.9",
-  "name": "Neo Scripts",
-  "description": "",
+  "id": "${mod_id}",
+  "version": "${mod_version}",
+  "name": "${mod_name}",
+  "description": "${mod_description}",
   "authors": [
     "Neki_play",
     "smarrtie",
@@ -14,7 +14,7 @@
     "issues": "https://github.com/Nekiplay/Neo-Scripts/issues",
     "sources": "https://github.com/Nekiplay/Neo-Scripts"
   },
-  "license": "GPL-3.0",
+  "license": "${mod_license}",
   "icon": "assets/neoscripts/logo.png",
   "environment": "client",
   "entrypoints": {

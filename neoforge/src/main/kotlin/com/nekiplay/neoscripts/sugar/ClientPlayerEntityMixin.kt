@@ -15,6 +15,12 @@ data class CurrentTabList(
     val body: List<Component>,
 )
 
+fun LocalPlayer.getScorebordLines(): List<Component> {
+    return Utils.STRING_SCOREBOARD.map { it ->
+        Component.literal(it)
+    }
+}
+
 fun LocalPlayer.getTab(): CurrentTabList {
     val tab = mc?.gui?.tabList ?: return CurrentTabList(Optional.empty(), Optional.empty(), listOf())
     val tabAccessor = tab as PlayerListHudAccessor

@@ -9,6 +9,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.text.LuaComponent
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.text.LuaComponentBuilder
 import com.nekiplay.neoscripts.mixins.minecraft.BossHealthOverlayAccessor
 import com.nekiplay.neoscripts.sugar.getFormattedString
+import com.nekiplay.neoscripts.sugar.getScorebordLines
 import com.nekiplay.neoscripts.sugar.getTab
 import com.nekiplay.neoscripts.utils.PlayerUtils
 import com.nekiplay.neoscripts.utils.RaycastUtils
@@ -77,6 +78,7 @@ class PlayerObject : LuaValue() {
             "getEyePosition" -> GetEyePositionFunction()
             "getLookEndPos" -> GetLookEndPosFunction()
             "getDirectionFromYawPitch" -> GetDirectionFromYawPitch()
+            "getScoreBoardLines" -> GetScoreboardLinesFunction()
             "getTab" -> GetTabFunction()
 
             "addToast" -> AddToastFunction()
@@ -87,6 +89,16 @@ class PlayerObject : LuaValue() {
             "raycastToBlocks" -> RayCastToBlocksFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetScoreboardLinesFunction : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            val table = tableOf()
+            mc.player?.getScorebordLines()?.forEachIndexed { index, line ->
+                table.set(index + 1, valueOf(line.getFormattedString()))
+            }
+            return table
+        }
     }
 
     private inner class IsHasLineOfSight : OneArgFunction() {
