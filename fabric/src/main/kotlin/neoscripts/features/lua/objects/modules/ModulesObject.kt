@@ -19,14 +19,14 @@ class ModulesObject: LuaValue() {
             "getScriptRequirements" -> GetScriptRequirements ()
             "loadScript" -> LoadScript()
             "unloadScript" -> UnLoadScript()
-            "getModLoaded" -> GetModLoader()
+            "getModLoader" -> GetModLoader()
             "isModLoaded" -> IsModLoaded()
             "getLoadedMods" -> GetLoadedMods()
             else -> NIL
         } as LuaValue
     }
 
-    private inner class GetLoadedMods : OneArgFunction() {
+    private inner class GetLoadedMods : ZeroArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val table = tableOf()
             val fabricLoader = FabricLoader.getInstance()
@@ -76,7 +76,7 @@ class ModulesObject: LuaValue() {
         }
     }
 
-    private inner class GetModLoader : OneArgFunction() {
+    private inner class GetModLoader : ZeroArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             return valueOf("Fabric")
         }
