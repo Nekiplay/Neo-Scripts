@@ -1,5 +1,6 @@
 package com.nekiplay.neoscripts.features.modules.impl.misc
 
+import com.mojang.brigadier.CommandDispatcher
 import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.Main.LUA_MANAGER
 import com.nekiplay.neoscripts.Main.mc
@@ -13,6 +14,8 @@ import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.sugar.getJsonString
 import com.nekiplay.neoscripts.utils.render.RenderHelper
 import com.nekiplay.neoscripts.utils.render.WorldRenderExtractionCallback
+import net.minecraft.client.Minecraft
+import net.minecraft.client.multiplayer.ClientSuggestionProvider
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket
@@ -350,22 +353,53 @@ object LuaEvents : ClientModule() {
 
     @SubscribeEvent
     fun onSendCommand(event: ClientChatEvent) {
+        val message = event.message.trim()
+        if (!message.startsWith("/")) return
+
+        val command = message.substring(1) // строка команды без слеша
+        val cmdName = command.split(" ")[0]
         var allow = true
-        val command = event.message
-        if (command.startsWith("/")) {
-            val cmdName = command.substring(1).split(" ")[0]
-            LUA_MANAGER?.scripts?.values?.forEach { script ->
-                try {
-                    if (!script.onSendChatCommandEvent(command)) {
-                        allow = false
-                    }
-                } catch (e: Exception) {
-                    // Обработка ошибок
+
+        // 1. Даём Lua-скриптам возможность запретить команду
+        LUA_MANAGER?.scripts?.values?.forEach { script ->
+            try {
+                if (!script.onSendChatCommandEvent(command)) {
+                    allow = false
                 }
+            } catch (e: Exception) {
+                // игнорируем ошибки в Lua
             }
         }
+
         if (!allow) {
             event.isCanceled = true
+            return
+        }
+
+        // 2. Ищем скрипт, в котором зарегистрирована эта команда
+        var found = false
+        for (script in LUA_MANAGER?.scripts?.values ?: emptyList()) {
+            if (script.commandCallbacks.containsKey(cmdName) && script.commandDispatchers.containsKey(cmdName)) {
+                found = true
+                val player = Minecraft.getInstance().player ?: continue
+                try {
+                    val connection = player.connection
+                    val source = connection.suggestionsProvider // ClientSuggestionProvider
+                    val dispatcher = script.commandDispatchers[cmdName]
+                    @Suppress("UNCHECKED_CAST")
+                    val result = (dispatcher as CommandDispatcher<ClientSuggestionProvider>).execute(command, source)
+                    if (result >= 1) {
+                        Main.LOGGER?.info("${Main.LOG_PREFIX}Executing command: $command")
+                    }
+                } catch (ex: Exception) {
+                    Main.LOGGER?.error("${Main.LOG_PREFIX}Error executing command $command", ex)
+                }
+                break // команда обработана первым подходящим скриптом
+            }
+        }
+
+        if (found) {
+            event.isCanceled = true // не даём команде уйти на сервер
         }
     }
 

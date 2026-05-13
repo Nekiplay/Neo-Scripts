@@ -679,14 +679,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         })
     }
 
-    // Methods for adding callbacks
-    fun addScriptUnloadCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            return scriptUnloadCallbacks.add(callback)
-        }
-    }
-
     fun addCommandCallback(commandName: String, callback: LuaValue, suggestionsCallback: LuaValue? = null): Boolean {
         if (!callback.isfunction()) return false
         if (commandName.isBlank()) return false

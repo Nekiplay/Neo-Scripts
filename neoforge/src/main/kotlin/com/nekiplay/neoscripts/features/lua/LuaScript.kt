@@ -2,9 +2,13 @@ package com.nekiplay.neoscripts.features.lua
 
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.StringArgumentType
+import com.mojang.brigadier.builder.LiteralArgumentBuilder
+import com.mojang.brigadier.builder.RequiredArgumentBuilder
+import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.suggestion.SuggestionProvider
 import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
+import com.mojang.brigadier.tree.CommandNode
 import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
@@ -33,8 +37,11 @@ import com.nekiplay.neoscripts.features.lua.objects.world.BlockScannerObject
 import com.nekiplay.neoscripts.features.lua.objects.world.WorldObject
 import com.nekiplay.neoscripts.utils.misc.input.KeyAction
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.multiplayer.ClientPacketListener
+import net.minecraft.client.multiplayer.ClientSuggestionProvider
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
+import net.minecraft.commands.SharedSuggestionProvider
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.Holder
@@ -59,6 +66,7 @@ import java.util.Collections
 import java.util.Stack
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.collections.set
 
 class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     // Локальный стек загрузки для этого конкретного экземпляра скрипта
@@ -95,16 +103,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val serverSideSetTimeCallbacks = ArrayList<LuaValue>()
 
     private val clientSidePlayerSetPositionCallbacks = ArrayList<LuaValue>()
-
-    // Command events
-    val commandCallbacks = ConcurrentHashMap<String, LuaValue>()
-    val commandSuggestionsCallbacks = ConcurrentHashMap<String, LuaValue>()
-
     // Script events
     private val scriptUnloadCallbacks = ArrayList<LuaValue>()
-
-    // Synchronize only when needed
-    private val callbacksLock = Any()
 
     // Script-specific libraries
     private var tcpLib: TCPLib? = null
@@ -657,41 +657,39 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         })
     }
 
-    // Methods for adding callbacks
-    fun addScriptUnloadCallback(callback: LuaValue): Boolean {
-        if (!callback.isfunction()) return false
-        synchronized(callbacksLock) {
-            return scriptUnloadCallbacks.add(callback)
-        }
-    }
+    private val callbacksLock = Any()
+    val commandCallbacks = mutableMapOf<String, LuaValue>()
+    private val commandSuggestionsCallbacks = mutableMapOf<String, LuaValue>()
+    val commandDispatchers = mutableMapOf<String, CommandDispatcher<ClientSuggestionProvider>>()
+
+    // Данные о зарегистрированной команде для перерегистрации при входе в мир
+    private data class RegisteredCommand(
+        val name: String,
+        val callback: LuaValue,
+        val suggestionsCallback: LuaValue?
+    )
+    private val registeredCommands = mutableMapOf<String, RegisteredCommand>()
 
     fun addCommandCallback(commandName: String, callback: LuaValue, suggestionsCallback: LuaValue? = null): Boolean {
         if (!callback.isfunction()) return false
         if (commandName.isBlank()) return false
         if (suggestionsCallback != null && !suggestionsCallback.isfunction()) return false
+
         synchronized(callbacksLock) {
             if (commandCallbacks.containsKey(commandName)) return false
+
             commandCallbacks[commandName] = callback
-            if (suggestionsCallback != null) {
-                commandSuggestionsCallbacks[commandName] = suggestionsCallback
-            }
-            // Регистрируем через глобальный реестр
-            return LuaCommandRegistry.registerCommand(commandName, callback, suggestionsCallback)
+            if (suggestionsCallback != null) commandSuggestionsCallbacks[commandName] = suggestionsCallback
+
+            // Сохраняем для возможной перерегистрации при LoggingIn
+            registeredCommands[commandName] = RegisteredCommand(commandName, callback, suggestionsCallback)
+
+            registerMinecraftCommand(commandName)
+            return true
         }
     }
 
-    fun removeCommandCallback(commandName: String): Boolean {
-        synchronized(callbacksLock) {
-            commandSuggestionsCallbacks.remove(commandName)
-            val removed = commandCallbacks.remove(commandName) != null
-            if (removed) {
-                LuaCommandRegistry.unregisterCommand(commandName)
-            }
-            return removed
-        }
-    }
-
-    private fun registerCommandFunctions() {
+    fun registerCommandFunctions() {
         scriptGlobals.set("registerCommand", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val commandName = args.arg(1).checkjstring()
@@ -709,147 +707,167 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         })
     }
 
-    @EventBusSubscriber(modid = Main.ID, value = [Dist.CLIENT])
-    object LuaCommandRegistry {
-        private var dispatcher: CommandDispatcher<CommandSourceStack>? = null
-        private val commandCallbacks = ConcurrentHashMap<String, LuaValue>()
-        private val suggestionCallbacks = ConcurrentHashMap<String, LuaValue>()
+    private fun registerMinecraftCommand(commandName: String) {
+        try {
+            val client = Main.mc
+            val networkHandler: ClientPacketListener? = client.connection
 
-        // Отложенные команды (если событие ещё не пришло)
-        private val pendingCommands = mutableListOf<String>()
-
-        @SubscribeEvent
-        fun onRegisterCommands(event: RegisterClientCommandsEvent) {
-            dispatcher = event.dispatcher
-            // Регистрируем все отложенные команды
-            pendingCommands.forEach { registerCommandNow(it) }
-            pendingCommands.clear()
-        }
-
-        fun registerCommand(name: String, callback: LuaValue, suggCallback: LuaValue?): Boolean {
-            if (commandCallbacks.containsKey(name)) return false
-            commandCallbacks[name] = callback
-            if (suggCallback != null) suggestionCallbacks[name] = suggCallback
-            val d = dispatcher
-            if (d != null) {
-                registerCommandNow(name)
-            } else {
-                pendingCommands.add(name)
+            if (networkHandler != null) {
+                val dispatcher: CommandDispatcher<ClientSuggestionProvider> = networkHandler.commands // CommandDispatcher<SharedSuggestionProvider>
+                commandDispatchers[commandName] = dispatcher
+                actualRegister(dispatcher, commandName)
+                Main.LOGGER?.info("${Main.LOG_PREFIX}Registered Minecraft command: /$commandName")
             }
-            return true
+        } catch (e: Exception) {
+            Main.LOGGER?.error("${Main.LOG_PREFIX}Failed to register Minecraft command: /$commandName", e)
         }
+    }
 
-        fun unregisterCommand(name: String): Boolean {
-            commandCallbacks.remove(name)
-            suggestionCallbacks.remove(name)
-            val d = dispatcher
-            if (d != null) {
-                removeCommandFromDispatcher(d, name)
-            } else {
-                pendingCommands.remove(name)
-            }
-            return true
-        }
-
-        private fun registerCommandNow(name: String) {
-            val d = dispatcher ?: return
-            // Удаляем предыдущую регистрацию, если была
-            removeCommandFromDispatcher(d, name)
-
-            val builder = Commands.literal(name)
-                .executes { ctx ->
-                    executeLuaCommand(name, emptyArray(), ctx.source)
-                    1
-                }
-
-            val argBuilder = Commands.argument("args", StringArgumentType.greedyString())
-                .executes { ctx ->
-                    val args = StringArgumentType.getString(ctx, "args").split(" ").toTypedArray()
-                    executeLuaCommand(name, args, ctx.source)
-                    1
-                }
-
-            suggestionCallbacks[name]?.let { sugg ->
-                argBuilder.suggests(SuggestionProvider { _, builder ->
-                    getSuggestionsFromLua(name, builder, sugg)
-                })
-            }
-
-            builder.then(argBuilder)
-            d.register(builder)
-        }
-
-        private fun removeCommandFromDispatcher(dispatcher: CommandDispatcher<CommandSourceStack>, name: String) {
-            val root = dispatcher.root
+    private fun actualRegister(dispatcher: CommandDispatcher<ClientSuggestionProvider>, commandName: String) {
+        // Удаляем старую команду, если она была
+        val root = dispatcher.root
+        if (root.getChild(commandName) != null) {
             try {
-                // Удаляем из внутренних мап Brigadier
-                val fields = listOf("children", "literals", "arguments")
-                for (fieldName in fields) {
-                    val field = root.javaClass.getDeclaredField(fieldName)
+                val nodeClass: Class<*> = root.javaClass.superclass ?: return
+                val fieldsToClear = arrayOf("children", "literals", "arguments")
+                for (fieldName in fieldsToClear) {
+                    try {
+                        val field = nodeClass.getDeclaredField(fieldName)
+                        field.isAccessible = true
+                        @Suppress("UNCHECKED_CAST")
+                        val map = field.get(root) as MutableMap<String, Any>
+                        map.remove(commandName)
+                    } catch (e: NoSuchFieldException) {
+                        Main.LOGGER?.warn("Field $fieldName not found in CommandNode")
+                    }
+                }
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
+
+        // Строим команду для ClientSuggestionProvider
+        val literal = LiteralArgumentBuilder.literal<ClientSuggestionProvider>(commandName)
+        val suggestionsCallback = commandSuggestionsCallbacks[commandName]
+
+        literal.executes { 1 } // фактическое выполнение перехватывается ClientChatEvent
+
+        val argsArg = RequiredArgumentBuilder.argument<ClientSuggestionProvider, String>(
+            "args", StringArgumentType.greedyString()
+        )
+
+        if (suggestionsCallback != null) {
+            argsArg.suggests { context, builder ->
+                getSuggestionsFromLua(commandName, context, builder, suggestionsCallback)
+            }
+        }
+
+        argsArg.executes { 1 }
+        literal.then(argsArg)
+
+        dispatcher.register(literal)
+
+        if (dispatcher.root.getChild(commandName) == null) {
+            Main.LOGGER?.error("Failed to inject node into dispatcher root!")
+        } else {
+            Main.LOGGER?.info("Successfully injected command: $commandName")
+        }
+    }
+
+    private fun getSuggestionsFromLua(
+        commandName: String,
+        context: CommandContext<ClientSuggestionProvider>,
+        builder: SuggestionsBuilder,
+        suggestionsCallback: LuaValue
+    ): CompletableFuture<Suggestions> {
+        return CompletableFuture.supplyAsync {
+            try {
+                val input = builder.remaining
+                val fullInput = builder.input
+
+                val infoTable = LuaValue.tableOf()
+                infoTable.set("input", LuaValue.valueOf(input))
+                infoTable.set("fullInput", LuaValue.valueOf(fullInput))
+
+                val result = suggestionsCallback.call(infoTable)
+
+                if (result.istable()) {
+                    val suggestions = result.checktable()
+                    var i = 1
+                    while (true) {
+                        val suggestion = suggestions.get(i)
+                        if (suggestion.isnil()) break
+                        if (suggestion.isstring()) {
+                            builder.suggest(suggestion.tojstring())
+                        } else if (suggestion.istable()) {
+                            val suggestionTable = suggestion.checktable()
+                            val text = suggestionTable.get("text").tojstring()
+                            val tooltip = suggestionTable.get("tooltip")
+                            if (!tooltip.isnil()) {
+                                builder.suggest(text, Component.literal(tooltip.tojstring()))
+                            } else {
+                                builder.suggest(text)
+                            }
+                        }
+                        i++
+                    }
+                } else if (result.isstring()) {
+                    builder.suggest(result.tojstring())
+                }
+            } catch (e: Exception) {
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error getting suggestions for command /$commandName", e)
+            }
+            builder.build()
+        }
+    }
+
+    fun removeCommandCallback(commandName: String): Boolean {
+        synchronized(callbacksLock) {
+            val dispatcher = commandDispatchers[commandName]
+            if (dispatcher != null) {
+                unregisterCommandInternal(dispatcher, commandName)
+            }
+            commandSuggestionsCallbacks.remove(commandName)
+            registeredCommands.remove(commandName)
+            return commandCallbacks.remove(commandName) != null
+        }
+    }
+
+    private fun unregisterCommandInternal(dispatcher: CommandDispatcher<ClientSuggestionProvider>, commandName: String) {
+        try {
+            val root = dispatcher.root
+
+            val nodeClass: Class<*> = root.javaClass.superclass ?: return // CommandNode
+            val fieldsToClear = arrayOf("children", "literals", "arguments")
+
+            for (fieldName in fieldsToClear) {
+                try {
+                    val field: java.lang.reflect.Field = nodeClass.getDeclaredField(fieldName)
                     field.isAccessible = true
                     @Suppress("UNCHECKED_CAST")
-                    val map = field.get(root) as MutableMap<String, *>
-                    map.remove(name)
+                    val map: MutableMap<String, Any> = field.get(root) as MutableMap<String, Any>
+                    map.remove(commandName)
+                } catch (e: NoSuchFieldException) {
+                    Main.LOGGER?.warn("Field $fieldName not found in CommandNode")
                 }
-            } catch (e: Exception) {
-                // Игнорируем — команды могло и не быть
             }
-        }
 
-        private fun getSuggestionsFromLua(
-            commandName: String,
-            builder: SuggestionsBuilder,
-            suggCallback: LuaValue
-        ): CompletableFuture<Suggestions> {
-            return CompletableFuture.supplyAsync {
-                try {
-                    val info = LuaValue.tableOf()
-                    info.set("input", LuaValue.valueOf(builder.remaining))
-                    info.set("fullInput", LuaValue.valueOf(builder.input))
-                    val result = suggCallback.call(info)
-                    if (result.istable()) {
-                        val table = result.checktable()
-                        var i = 1
-                        while (true) {
-                            val item = table.get(i)
-                            if (item.isnil()) break
-                            when {
-                                item.isstring() -> builder.suggest(item.tojstring())
-                                item.istable() -> {
-                                    val t = item.checktable()
-                                    val text = t.get("text").tojstring()
-                                    val tooltip = t.get("tooltip")
-                                    if (!tooltip.isnil()) {
-                                        builder.suggest(text, Component.literal(tooltip.tojstring()))
-                                    } else {
-                                        builder.suggest(text)
-                                    }
-                                }
-                            }
-                            i++
-                        }
-                    } else if (result.isstring()) {
-                        builder.suggest(result.tojstring())
-                    }
-                } catch (e: Exception) {
-                    Main.LOGGER?.error("Error in suggestion provider for /$commandName", e)
-                }
-                builder.build()
-            }
+            commandDispatchers.remove(commandName)
+            Main.LOGGER?.info("${Main.LOG_PREFIX}Successfully unregistered Lua command: /$commandName")
+        } catch (e: Exception) {
+            Main.LOGGER?.error("${Main.LOG_PREFIX}Failed to unregister command /$commandName", e)
         }
+    }
 
-        private fun executeLuaCommand(name: String, args: Array<String>, source: CommandSourceStack) {
-            val callback = commandCallbacks[name] ?: return
-            if (!callback.isfunction()) return
+    private fun executeLuaCommand(commandName: String, args: Array<String>) {
+        val callback = commandCallbacks[commandName] ?: return
+        if (callback.isfunction()) {
             try {
                 val argsTable = LuaValue.listOf(args.map { LuaValue.valueOf(it) }.toTypedArray())
-                val playerName = try {
-                    source.player?.name?.string ?: ""
-                } catch (e: Exception) { "" }
-                callback.call(LuaValue.valueOf(name), argsTable, LuaValue.valueOf(playerName))
+                callback.call(LuaValue.valueOf(commandName), argsTable, LuaValue.valueOf(Main.mc.player?.name?.string ?: ""))
             } catch (e: Exception) {
-                source.sendFailure(Component.literal("Error: ${e.message}"))
-                Main.LOGGER?.error("Error executing Lua command /$name", e)
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error executing Lua command: /$commandName", e)
+                Main.mc.gui.chat.addMessage(Component.literal("§cError executing command: ${e.message}"))
             }
         }
     }
