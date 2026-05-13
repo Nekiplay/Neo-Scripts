@@ -2,6 +2,7 @@ package com.nekiplay.neoscripts.features.lua.objects.modules
 
 import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.Main.LUA_MANAGER
+import net.neoforged.fml.ModList
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
@@ -18,8 +19,15 @@ class ModulesObject: LuaValue() {
             "getScriptRequirements" -> GetScriptRequirements ()
             "loadScript" -> LoadScript()
             "unloadScript" -> UnLoadScript()
+            "isModLoaded" -> IsModLoaded()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class IsModLoaded : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            return valueOf(ModList.get().isLoaded(arg.tojstring())) ?: FALSE
+        }
     }
 
     private inner class UnLoadScript : OneArgFunction() {
