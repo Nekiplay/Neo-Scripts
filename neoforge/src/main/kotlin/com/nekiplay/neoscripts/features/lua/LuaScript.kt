@@ -663,12 +663,12 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     val commandDispatchers = mutableMapOf<String, CommandDispatcher<ClientSuggestionProvider>>()
 
     // Данные о зарегистрированной команде для перерегистрации при входе в мир
-    private data class RegisteredCommand(
+    data class RegisteredCommand(
         val name: String,
         val callback: LuaValue,
         val suggestionsCallback: LuaValue?
     )
-    private val registeredCommands = mutableMapOf<String, RegisteredCommand>()
+    public val registeredCommands = mutableMapOf<String, RegisteredCommand>()
 
     fun addCommandCallback(commandName: String, callback: LuaValue, suggestionsCallback: LuaValue? = null): Boolean {
         if (!callback.isfunction()) return false
@@ -723,7 +723,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         }
     }
 
-    private fun actualRegister(dispatcher: CommandDispatcher<ClientSuggestionProvider>, commandName: String) {
+    public fun actualRegister(dispatcher: CommandDispatcher<ClientSuggestionProvider>, commandName: String) {
         // Удаляем старую команду, если она была
         val root = dispatcher.root
         if (root.getChild(commandName) != null) {

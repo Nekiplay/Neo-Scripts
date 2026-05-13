@@ -2,6 +2,7 @@ package com.nekiplay.neoscripts.features.modules.impl.misc
 
 import com.mojang.brigadier.CommandDispatcher
 import com.nekiplay.neoscripts.Main
+import com.nekiplay.neoscripts.Main.LOGGER
 import com.nekiplay.neoscripts.Main.LUA_MANAGER
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.events.PacketEvent
@@ -15,8 +16,10 @@ import com.nekiplay.neoscripts.sugar.getJsonString
 import com.nekiplay.neoscripts.utils.render.RenderHelper
 import com.nekiplay.neoscripts.utils.render.WorldRenderExtractionCallback
 import net.minecraft.client.Minecraft
+import net.minecraft.client.multiplayer.ClientPacketListener
 import net.minecraft.client.multiplayer.ClientSuggestionProvider
 import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.network.Connection
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
@@ -32,12 +35,14 @@ import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.event.ClientChatEvent
 import net.neoforged.neoforge.client.event.ClientChatReceivedEvent
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent
 import net.neoforged.neoforge.client.event.ClientTickEvent
 import net.neoforged.neoforge.client.event.InputEvent
 import net.neoforged.neoforge.client.event.RenderGuiEvent
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent
 import org.luaj.vm2.LuaValue
+import java.lang.reflect.Field
 
 
 @EventBusSubscriber(modid = Main.ID, value = [Dist.CLIENT])
@@ -351,55 +356,91 @@ object LuaEvents : ClientModule() {
         if (!allow) event.isCanceled = true
     }
 
+
     @SubscribeEvent
-    fun onSendCommand(event: ClientChatEvent) {
+    fun onClientChat(event: ClientChatEvent) {
         val message = event.message.trim()
         if (!message.startsWith("/")) return
 
-        val command = message.substring(1) // строка команды без слеша
+        val command = message.removePrefix("/")
         val cmdName = command.split(" ")[0]
         var allow = true
 
-        // 1. Даём Lua-скриптам возможность запретить команду
+        // 1. Lua‑скрипты могут запретить команду
         LUA_MANAGER?.scripts?.values?.forEach { script ->
             try {
                 if (!script.onSendChatCommandEvent(command)) {
                     allow = false
                 }
-            } catch (e: Exception) {
-                // игнорируем ошибки в Lua
-            }
+            } catch (_: Exception) { }
         }
 
         if (!allow) {
-            event.isCanceled = true
+            event.isCanceled = true   // блокируем отправку на сервер
             return
         }
 
         // 2. Ищем скрипт, в котором зарегистрирована эта команда
         var found = false
+        LOGGER?.info("${Main.LOG_PREFIX}Detecting command: $cmdName")
         for (script in LUA_MANAGER?.scripts?.values ?: emptyList()) {
             if (script.commandCallbacks.containsKey(cmdName) && script.commandDispatchers.containsKey(cmdName)) {
                 found = true
-                val player = Minecraft.getInstance().player ?: continue
+                val player = Minecraft.getInstance().player ?: break
                 try {
                     val connection = player.connection
-                    val source = connection.suggestionsProvider // ClientSuggestionProvider
+                    val source = connection.suggestionsProvider   // ClientSuggestionProvider
                     val dispatcher = script.commandDispatchers[cmdName]
                     @Suppress("UNCHECKED_CAST")
                     val result = (dispatcher as CommandDispatcher<ClientSuggestionProvider>).execute(command, source)
                     if (result >= 1) {
-                        Main.LOGGER?.info("${Main.LOG_PREFIX}Executing command: $command")
+                        LOGGER?.info("${Main.LOG_PREFIX}Executing command: $command")
                     }
                 } catch (ex: Exception) {
-                    Main.LOGGER?.error("${Main.LOG_PREFIX}Error executing command $command", ex)
+                    LOGGER?.error("${Main.LOG_PREFIX}Error executing command $command", ex)
                 }
-                break // команда обработана первым подходящим скриптом
+                break
             }
         }
 
         if (found) {
-            event.isCanceled = true // не даём команде уйти на сервер
+            event.isCanceled = true   // команда выполнена локально, серверу не отправляем
+        }
+    }
+
+    private fun getCommandDispatcher(connection: Connection): CommandDispatcher<ClientSuggestionProvider>? {
+        try {
+            // 1. Получаем поле packetListener из Connection
+            val packetListenerField: Field = Connection::class.java.getDeclaredField("packetListener")
+            packetListenerField.isAccessible = true
+            val packetListener: Any? = packetListenerField.get(connection) ?: return null
+
+            // 2. Приводим к ClientPacketListener (если не он – вернём null)
+            if (packetListener !is ClientPacketListener) return null
+
+            // 3. Из ClientPacketListener вытаскиваем диспетчер.
+            //    В маппингах 1.21.1 поле называется "commands" (CommandDispatcher<SharedSuggestionProvider>),
+            //    но на самом деле у клиента оно имеет тип CommandDispatcher<ClientSuggestionProvider>.
+            val commandsField = ClientPacketListener::class.java.getDeclaredField("commands")
+            commandsField.isAccessible = true
+            @Suppress("UNCHECKED_CAST")
+            return commandsField.get(packetListener) as? CommandDispatcher<ClientSuggestionProvider>
+        } catch (e: Exception) {
+            Main.LOGGER?.error("${Main.LOG_PREFIX}Failed to get command dispatcher via reflection", e)
+            return null
+        }
+    }
+
+    // Обработчик входа на сервер – перерегистрация команд в новом диспетчере
+    @SubscribeEvent
+    fun onPlayerLoggingIn(event: ClientPlayerNetworkEvent.LoggingIn) {
+        val dispatcher = getCommandDispatcher(event.connection) ?: return
+
+        LUA_MANAGER?.scripts?.values?.forEach { script ->
+            for (cmd in script.registeredCommands.values) {
+                script.commandDispatchers[cmd.name] = dispatcher
+                script.actualRegister(dispatcher, cmd.name)
+            }
         }
     }
 
