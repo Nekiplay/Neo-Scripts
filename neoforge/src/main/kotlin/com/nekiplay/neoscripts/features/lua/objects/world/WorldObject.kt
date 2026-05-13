@@ -14,6 +14,7 @@ import com.nekiplay.neoscripts.utils.RaycastUtils
 import com.nekiplay.neoscripts.utils.RotationUtils
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.core.BlockPos
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.Identifier
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
@@ -158,7 +159,8 @@ class WorldObject : LuaValue() {
             "getOutlineBoxes" -> GetOutlineBoxesFunction()
 
             "raycast" -> RaycastFunction()
-            "raycastToBlocks" -> RaycastToBlocksFunction()
+            "raycastToBlocksFromId" -> RaycastToBlocksFunction()
+            "raycastToBlocksFromIdentifier" -> RaycastToBlocksFromIdentifierFunction()
             "getBreakingBlocksInfo" -> GetBreakingBlocksInfo()
             "playSound" -> PlaySoundFunction()
             else -> NIL
@@ -335,6 +337,52 @@ class WorldObject : LuaValue() {
 
                             if (state != null) {
                                 targetBlocks.add(state.block)
+                            } else {
+                                Main.LOGGER?.warn("No block found for ID: $id")
+                            }
+                        }
+                    }
+                } else {
+                }
+
+                val hitResult = RaycastUtils.rayTraceToBlocks(startVec, endVec, targetBlocks)
+                return if (hitResult != null) {
+                    LuaRaycast(hitResult)
+                } else {
+                    NIL
+                }
+            } else {
+                NIL
+            }
+        }
+    }
+
+    private inner class RaycastToBlocksFromIdentifierFunction : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue {
+            return if (arg?.istable() == true) {
+                val startX = arg.get("startX").optdouble(0.0)
+                val startY = arg.get("startY").optdouble(0.0)
+                val startZ = arg.get("startZ").optdouble(0.0)
+                val endX = arg.get("endX").optdouble(0.0)
+                val endY = arg.get("endY").optdouble(0.0)
+                val endZ = arg.get("endZ").optdouble(0.0)
+
+                val startVec = Vec3(startX, startY, startZ)
+                val endVec = Vec3(endX, endY, endZ)
+
+                // Получаем список блоков для проверки (если указаны)
+                val blocksTable = arg.get("blocks")
+                val targetBlocks = mutableListOf<Block>()
+                if (blocksTable.istable()) {
+                    val len = blocksTable.length() // или lua_len(arg2)
+                    for (i in 1..len) {
+                        val value = blocksTable.get(i)
+                        if (value.isint()) {
+                            val id = value.tojstring()
+                            val state = BuiltInRegistries.BLOCK.get(Identifier.parse(id))
+
+                            if (state.isPresent) {
+                                targetBlocks.add(state.get().value())
                             } else {
                                 Main.LOGGER?.warn("No block found for ID: $id")
                             }

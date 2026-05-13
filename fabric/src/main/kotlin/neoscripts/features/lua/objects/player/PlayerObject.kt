@@ -21,7 +21,9 @@ import com.nekiplay.neoscripts.utils.trackers.StatusBarTracker
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.components.LerpingBossEvent
 import net.minecraft.client.gui.components.toasts.SystemToast
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
+import net.minecraft.resources.Identifier
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.Vec3
@@ -109,7 +111,8 @@ class PlayerObject : LuaValue() {
             "getBossBar" -> GetBossBarFunction()
 
             "raycast" -> RayCastFunction()
-            "raycastToBlocks" -> RayCastToBlocksFunction()
+            "raycastToBlocksFromId" -> RayCastToBlocksFunction()
+            "raycastToBlocksFromIdentifier" -> RayCastToBlocksFromIdentifierFunction()
             else -> NIL
         } as LuaValue
     }
@@ -335,6 +338,61 @@ class PlayerObject : LuaValue() {
                 else {
                     RaycastUtils.rayTrace(
                         mc.cameraEntity,
+                        4.5,
+                        player.yRot,
+                        player.xRot,
+                        targetBlocks
+                    )
+                }
+                return if (hitResult != null) {
+                    LuaRaycast(hitResult)
+                } else {
+                    NIL
+                }
+            }
+            return NIL
+        }
+    }
+
+    private inner class RayCastToBlocksFromIdentifierFunction : TwoArgFunction() {
+        override fun call(
+            arg1: LuaValue?,
+            arg2: LuaValue
+        ): LuaValue? {
+            if (arg1?.isnumber() == true) {
+                val player = mc?.player ?: return NIL
+                val targetBlocks = mutableListOf<Block>()
+                if (arg2.istable()) {
+                    val table = arg2.checktable()
+                    val len = table.length()
+
+                    for (i in 1..len) {
+                        val value = table.get(i)
+                        if (value.isint()) {
+                            val id = value.tojstring()
+                            val state = BuiltInRegistries.BLOCK.get(Identifier.parse(id))
+
+                            if (state.isPresent) {
+                                targetBlocks.add(state.get().value())
+                            }
+                        }
+                    }
+                } else {
+                    return NIL
+                }
+
+                val hitResult = if (!RotationManager.getCurrentLastYaw().isNaN()) {
+                    RaycastUtils.rayTrace(
+                        mc?.cameraEntity!!,
+                        4.5,
+                        RotationManager.getCurrentLastYaw(),
+                        RotationManager.getCurrentPitch(),
+                        targetBlocks
+                    )
+                }
+                else {
+                    RaycastUtils.rayTrace(
+                        mc?.cameraEntity!!,
                         4.5,
                         player.yRot,
                         player.xRot,

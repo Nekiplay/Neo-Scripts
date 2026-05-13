@@ -3,6 +3,7 @@ package com.nekiplay.neoscripts.features.lua.objects.modules
 import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.Main.LUA_MANAGER
 import net.neoforged.fml.ModList
+import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
@@ -19,9 +20,61 @@ class ModulesObject: LuaValue() {
             "getScriptRequirements" -> GetScriptRequirements ()
             "loadScript" -> LoadScript()
             "unloadScript" -> UnLoadScript()
+            "getModLoaded" -> GetModLoader()
             "isModLoaded" -> IsModLoaded()
+            "getLoadedMods" -> GetLoadedMods()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetLoadedMods : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            val table = LuaTable()
+            val modList = ModList.get()
+
+            val mods = modList.mods
+
+            mods.forEachIndexed { index, modInfo ->
+                val modTable = LuaTable()
+
+                // Базовые строки
+                modTable.set("name", modInfo.displayName)
+                modTable.set("id", modInfo.modId)
+                modTable.set("description", modInfo.description ?: "")
+                modTable.set("version", modInfo.version.toString())
+                modTable.set("loader", modInfo.loader.name() ?: "")
+                modTable.set("loader_version", modInfo.loader.version() ?: "")
+
+                // Иконка (путь к файлу внутри JAR, может быть null)
+                modInfo.logoFile?.let { logoPath ->
+                    modTable.set("iconPath", logoPath.toString())
+                }
+
+                // Зависимости — Collection<? extends IModDependency>
+                val depsTable = LuaTable()
+                modInfo.dependencies.forEach { dep ->
+                    val depId = dep.modId
+                    val depData = LuaTable()
+                    // kind — тип зависимости: DEPENDENCY, RECOMMENDED, INCOMPATIBLE, OPTIONAL?
+                    depData.set("kind", dep.type.name) // или dep.type.toString()
+                    depData.set("modId", dep.modId)
+                    // versionRequirements — строка или список
+                    val versionReqs = dep.versionRange?.toString() ?: ""
+                    depData.set("versionRequirements", versionReqs)
+                    depsTable.set(depId, depData)
+                }
+                modTable.set("dependencies", depsTable)
+
+                table.set(index + 1, modTable)
+            }
+            return table
+        }
+    }
+
+    private inner class GetModLoader : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            return valueOf("NeoForge")
+        }
     }
 
     private inner class IsModLoaded : OneArgFunction() {

@@ -19,9 +19,67 @@ class ModulesObject: LuaValue() {
             "getScriptRequirements" -> GetScriptRequirements ()
             "loadScript" -> LoadScript()
             "unloadScript" -> UnLoadScript()
+            "getModLoaded" -> GetModLoader()
             "isModLoaded" -> IsModLoaded()
+            "getLoadedMods" -> GetLoadedMods()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetLoadedMods : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            val table = tableOf()
+            val fabricLoader = FabricLoader.getInstance()
+            fabricLoader.allMods.forEachIndexed { index, mod ->
+
+                val modTable = tableOf()
+                val meta = mod.metadata
+
+                // Базовые строки
+                modTable.set("name", meta.name)
+                modTable.set("id", meta.id)
+                modTable.set("description", meta.description)
+                modTable.set("version", meta.version.friendlyString)   // версия как строка
+                modTable.set("license", meta.license.first() ?: "")
+
+                // Авторы
+                val authorsTable = tableOf()
+                meta.authors.forEachIndexed { i, person ->
+                    authorsTable.set(i + 1, person.name)
+                }
+                modTable.set("authors", authorsTable)
+
+                // Зависимости (простая версия: id -> массив строк условий)
+                val depsTable = tableOf()
+                meta.dependencies.forEach { dep ->
+                    val depData = tableOf()
+                    depData.set("kind", dep.kind.name)
+                    depData.set("modId", dep.modId)
+                    val versionReqs = dep.versionRequirements.joinToString(" || ") { it.toString() }
+                    depData.set("versionRequirements", versionReqs)
+                    depsTable.set(dep.modId, depData)
+                }
+                modTable.set("dependencies", depsTable)
+
+                // Вкладчики (contributors) – если есть
+                if (meta.contributors.isNotEmpty()) {
+                    val contribTable = tableOf()
+                    meta.contributors.forEachIndexed { i, person ->
+                        contribTable.set(i + 1, person.name)
+                    }
+                    modTable.set("contributors", contribTable)
+                }
+
+                table.set(index + 1, modTable)
+            }
+            return table
+        }
+    }
+
+    private inner class GetModLoader : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            return valueOf("Fabric")
+        }
     }
 
     private inner class IsModLoaded : OneArgFunction() {
