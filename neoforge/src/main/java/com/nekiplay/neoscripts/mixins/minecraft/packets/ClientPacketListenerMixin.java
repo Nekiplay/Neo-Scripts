@@ -1,11 +1,10 @@
 package com.nekiplay.neoscripts.mixins.minecraft.packets;
 
-import com.mojang.brigadier.CommandDispatcher;
 import com.nekiplay.neoscripts.Main;
 import com.nekiplay.neoscripts.features.lua.LuaScript;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.client.multiplayer.ClientSuggestionProvider;
+import org.luaj.vm2.LuaValue;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -16,50 +15,70 @@ public class ClientPacketListenerMixin {
 
     @Inject(method = "sendCommand", at = @At("HEAD"), cancellable = true)
     private void onSendCommand(String command, CallbackInfo ci) {
-        // Имя команды — первое слово
         String cmdName = command.split(" ")[0];
         boolean allow = true;
 
         // 1. Lua-скрипты могут запретить команду
-        for (LuaScript script : Main.LUA_MANAGER.getScripts().values()) {
-            try {
-                if (!script.onSendChatCommandEvent(command)) {
-                    allow = false;
-                    break; // одного запрета достаточно
-                }
-            } catch (Exception ignored) {
+        if (Main.LUA_MANAGER != null && Main.LUA_MANAGER.getScripts() != null) {
+            for (LuaScript script : Main.LUA_MANAGER.getScripts().values()) {
+                try {
+                    if (!script.onSendChatCommandEvent(command)) {
+                        allow = false;
+                        break;
+                    }
+                } catch (Exception ignored) {}
             }
         }
 
         if (!allow) {
-            ci.cancel(); // команда не уходит на сервер
+            ci.cancel();
             return;
         }
 
-        // 2. Ищем скрипт, зарегистрировавший эту команду
-        for (LuaScript script : Main.LUA_MANAGER.getScripts().values()) {
-            if (script.getCommandCallbacks().containsKey(cmdName)
-                    && script.getCommandDispatchers().containsKey(cmdName)) {
+        // 2. Ищем скрипт с зарегистрированной командой и выполняем Lua-колбэк
+        if (Main.LUA_MANAGER != null && Main.LUA_MANAGER.getScripts() != null) {
+            for (LuaScript script : Main.LUA_MANAGER.getScripts().values()) {
+                if (script.getCommandCallbacks().containsKey(cmdName)
+                        && script.getCommandDispatchers().containsKey(cmdName)) {
 
-                Minecraft mc = Minecraft.getInstance();
-                if (mc.player == null) break;
+                    LuaValue callback = script.getCommandCallbacks().get(cmdName);
+                    if (callback != null && callback.isfunction()) {
+                        // Разбираем аргументы
+                        String[] args = command.contains(" ")
+                                ? command.substring(command.indexOf(" ") + 1).split(" ")
+                                : new String[0];
 
-                try {
-                    CommandDispatcher<ClientSuggestionProvider> dispatcher =
-                            (CommandDispatcher<ClientSuggestionProvider>) script.getCommandDispatchers().get(cmdName);
-                    ClientSuggestionProvider source = mc.player.connection.getSuggestionsProvider();
-                    int result = dispatcher.execute(command, source);
-                    if (result >= 1) {
-                        Main.LOGGER.info(Main.LOG_PREFIX + "Executing command: " + command);
+                        // Формируем Lua-таблицу аргументов
+                        LuaValue[] luaArgs = new LuaValue[args.length];
+                        for (int i = 0; i < args.length; i++) {
+                            luaArgs[i] = LuaValue.valueOf(args[i]);
+                        }
+                        LuaValue argsTable = LuaValue.listOf(luaArgs);
+
+                        // Получаем имя игрока (если доступно)
+                        String playerName = "";
+                        Minecraft mc = Minecraft.getInstance();
+                        if (mc.player != null) {
+                            playerName = mc.player.getName().getString();
+                        }
+
+                        try {
+                            callback.call(
+                                    LuaValue.valueOf(cmdName),
+                                    argsTable,
+                                    LuaValue.valueOf(playerName)
+                            );
+                            Main.LOGGER.info(Main.LOG_PREFIX + "Executing command: " + command);
+                        } catch (Exception e) {
+                            Main.LOGGER.error(Main.LOG_PREFIX + "Error executing Lua command: " + command, e);
+                        }
                     }
-                } catch (Exception e) {
-                    Main.LOGGER.error(Main.LOG_PREFIX + "Error executing command " + command, e);
-                }
 
-                ci.cancel(); // команда выполнена локально, на сервер не отправляем
-                return;
+                    ci.cancel(); // команда выполнена локально, серверу не отправляем
+                    return;
+                }
             }
         }
-        // Если команда не найдена, она уходит на сервер (миксин не отменяет вызов)
+        // Если команда не найдена – она уйдёт на сервер (миксин не отменяет вызов)
     }
 }
