@@ -341,64 +341,6 @@ object LuaEvents : ClientModule() {
         if (!allow) event.isCanceled = true
     }
 
-    @SubscribeEvent
-    fun onClientChat(event: ClientChatEvent) {
-        LOGGER.info("ClientChatEvent fired: '${event.message}'")
-        val message = event.message.trim()
-        if (message.startsWith("/")) {
-            // === Обработка команд ===
-            val command = message.removePrefix("/")
-            val cmdName = command.split(" ")[0]
-
-            var allow = true
-            LUA_MANAGER?.scripts?.values?.forEach { script ->
-                try {
-                    if (!script.onSendChatCommandEvent(command)) {
-                        allow = false
-                    }
-                } catch (_: Exception) { }
-            }
-
-            if (!allow) {
-                event.isCanceled = true
-                return
-            }
-
-            for (script in LUA_MANAGER?.scripts?.values ?: emptyList()) {
-                if (script.commandCallbacks.containsKey(cmdName) && script.commandDispatchers.containsKey(cmdName)) {
-                    val player = Minecraft.getInstance().player ?: break
-                    try {
-                        val source = player.connection.suggestionsProvider
-                        val dispatcher = script.commandDispatchers[cmdName]
-                        @Suppress("UNCHECKED_CAST")
-                        val result = (dispatcher as CommandDispatcher<ClientSuggestionProvider>).execute(command, source)
-                        if (result >= 1) {
-                            LOGGER?.info("${Main.LOG_PREFIX}Executing command: $command")
-                        }
-                    } catch (ex: Exception) {
-                        LOGGER?.error("${Main.LOG_PREFIX}Error executing command $command", ex)
-                    }
-                    event.isCanceled = true   // команда обработана локально
-                    return
-                }
-            }
-            // если команда не найдена, оставляем событие неотменённым (уйдёт на сервер)
-        } else {
-            // === Обработка обычных сообщений ===
-            var allow = true
-            LUA_MANAGER?.scripts?.values?.forEach { script ->
-                try {
-                    if (!script.onSendChatMessageEvent(message)) {
-                        allow = false
-                    }
-                } catch (_: Exception) { }
-            }
-            if (!allow) {
-                event.isCanceled = true
-            }
-        }
-    }
-
     private fun getCommandDispatcher(connection: Connection): CommandDispatcher<ClientSuggestionProvider>? {
         try {
             // 1. Получаем поле packetListener из Connection

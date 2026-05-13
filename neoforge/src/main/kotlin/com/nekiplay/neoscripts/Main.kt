@@ -46,6 +46,7 @@ object Main {
     val GSON_COMPACT: Gson = GsonBuilder().create()
 
     // the logger for our mod
+    @JvmField
     val LOGGER: Logger = LoggerFactory.getLogger(ID)
 
     init {

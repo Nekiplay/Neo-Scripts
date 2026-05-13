@@ -24,6 +24,7 @@
     "minecraft.LevelRendererAccessor",
     "minecraft.MixinKeyboardInput",
     "minecraft.MouseHandlerMixin",
+    "minecraft.packets.ClientPacketListenerMixin",
     "minecraft.packets.ServerboundUseItemPacketAccessor"
   ],
   "client": [
