@@ -28,7 +28,7 @@ class ModulesObject: LuaValue() {
     }
 
     private inner class GetLoadedMods : ZeroArgFunction() {
-        override fun call(arg: LuaValue): LuaValue {
+        override fun call(): LuaValue {
             val table = LuaTable()
             val modList = ModList.get()
 
@@ -72,7 +72,7 @@ class ModulesObject: LuaValue() {
     }
 
     private inner class GetModLoader : ZeroArgFunction() {
-        override fun call(arg: LuaValue): LuaValue {
+        override fun call(): LuaValue {
             return valueOf("NeoForge")
         }
     }

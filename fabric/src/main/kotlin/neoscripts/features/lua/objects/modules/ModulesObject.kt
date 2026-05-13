@@ -27,7 +27,7 @@ class ModulesObject: LuaValue() {
     }
 
     private inner class GetLoadedMods : ZeroArgFunction() {
-        override fun call(arg: LuaValue): LuaValue {
+        override fun call(): LuaValue {
             val table = tableOf()
             val fabricLoader = FabricLoader.getInstance()
             fabricLoader.allMods.forEachIndexed { index, mod ->
@@ -77,7 +77,7 @@ class ModulesObject: LuaValue() {
     }
 
     private inner class GetModLoader : ZeroArgFunction() {
-        override fun call(arg: LuaValue): LuaValue {
+        override fun call(): LuaValue {
             return valueOf("Fabric")
         }
     }
