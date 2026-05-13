@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.nekiplay.neoscripts.events.main.EventBus
 import com.nekiplay.neoscripts.features.lua.LuaManager
+import com.nekiplay.neoscripts.features.modules.impl.misc.LuaEvents
 import io.github.classgraph.ClassGraph
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
@@ -13,6 +14,7 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent
 import net.neoforged.fml.event.lifecycle.FMLDedicatedServerSetupEvent
 import net.neoforged.fml.loading.FMLPaths
+import net.neoforged.neoforge.common.NeoForge
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
@@ -86,6 +88,7 @@ object Main {
         EventBus.init(classes)
 
         LOGGER.info("Initializing client...")
+        NeoForge.EVENT_BUS.register(LuaEvents)
     }
 
     fun saveConfig(){

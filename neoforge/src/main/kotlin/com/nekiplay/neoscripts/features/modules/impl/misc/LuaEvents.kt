@@ -31,6 +31,7 @@ import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket
 import net.minecraft.network.protocol.game.ClientboundSoundPacket
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
 import net.neoforged.api.distmarker.Dist
+import net.neoforged.bus.api.EventPriority
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.event.ClientChatEvent
@@ -45,7 +46,6 @@ import org.luaj.vm2.LuaValue
 import java.lang.reflect.Field
 
 
-@EventBusSubscriber(modid = Main.ID, value = [Dist.CLIENT])
 object LuaEvents : ClientModule() {
     @Callback
     fun onSendPacket(event : PacketEvent.Send) {
@@ -342,69 +342,60 @@ object LuaEvents : ClientModule() {
     }
 
     @SubscribeEvent
-    fun onSendChat(event: ClientChatEvent) {
-        var allow = true
-        LUA_MANAGER?.scripts?.values?.forEach { script ->
-            try {
-                if (!script.onSendChatMessageEvent(event.message)) {
-                    allow = false
-                }
-            } catch (e: Exception) {
-                // Обработка ошибок
-            }
-        }
-        if (!allow) event.isCanceled = true
-    }
-
-
-    @SubscribeEvent
     fun onClientChat(event: ClientChatEvent) {
+        LOGGER.info("ClientChatEvent fired: '${event.message}'")
         val message = event.message.trim()
-        if (!message.startsWith("/")) return
+        if (message.startsWith("/")) {
+            // === Обработка команд ===
+            val command = message.removePrefix("/")
+            val cmdName = command.split(" ")[0]
 
-        val command = message.removePrefix("/")
-        val cmdName = command.split(" ")[0]
-        var allow = true
-
-        // 1. Lua‑скрипты могут запретить команду
-        LUA_MANAGER?.scripts?.values?.forEach { script ->
-            try {
-                if (!script.onSendChatCommandEvent(command)) {
-                    allow = false
-                }
-            } catch (_: Exception) { }
-        }
-
-        if (!allow) {
-            event.isCanceled = true   // блокируем отправку на сервер
-            return
-        }
-
-        // 2. Ищем скрипт, в котором зарегистрирована эта команда
-        var found = false
-        LOGGER?.info("${Main.LOG_PREFIX}Detecting command: $cmdName")
-        for (script in LUA_MANAGER?.scripts?.values ?: emptyList()) {
-            if (script.commandCallbacks.containsKey(cmdName) && script.commandDispatchers.containsKey(cmdName)) {
-                found = true
-                val player = Minecraft.getInstance().player ?: break
+            var allow = true
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
                 try {
-                    val connection = player.connection
-                    val source = connection.suggestionsProvider   // ClientSuggestionProvider
-                    val dispatcher = script.commandDispatchers[cmdName]
-                    @Suppress("UNCHECKED_CAST")
-                    val result = (dispatcher as CommandDispatcher<ClientSuggestionProvider>).execute(command, source)
-                    if (result >= 1) {
-                        LOGGER?.info("${Main.LOG_PREFIX}Executing command: $command")
+                    if (!script.onSendChatCommandEvent(command)) {
+                        allow = false
                     }
-                } catch (ex: Exception) {
-                    LOGGER?.error("${Main.LOG_PREFIX}Error executing command $command", ex)
-                }
-                break
+                } catch (_: Exception) { }
             }
-        }
 
-        if (found) {
-            event.isCanceled = true   // команда выполнена локально, серверу не отправляем
+            if (!allow) {
+                event.isCanceled = true
+                return
+            }
+
+            for (script in LUA_MANAGER?.scripts?.values ?: emptyList()) {
+                if (script.commandCallbacks.containsKey(cmdName) && script.commandDispatchers.containsKey(cmdName)) {
+                    val player = Minecraft.getInstance().player ?: break
+                    try {
+                        val source = player.connection.suggestionsProvider
+                        val dispatcher = script.commandDispatchers[cmdName]
+                        @Suppress("UNCHECKED_CAST")
+                        val result = (dispatcher as CommandDispatcher<ClientSuggestionProvider>).execute(command, source)
+                        if (result >= 1) {
+                            LOGGER?.info("${Main.LOG_PREFIX}Executing command: $command")
+                        }
+                    } catch (ex: Exception) {
+                        LOGGER?.error("${Main.LOG_PREFIX}Error executing command $command", ex)
+                    }
+                    event.isCanceled = true   // команда обработана локально
+                    return
+                }
+            }
+            // если команда не найдена, оставляем событие неотменённым (уйдёт на сервер)
+        } else {
+            // === Обработка обычных сообщений ===
+            var allow = true
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
+                try {
+                    if (!script.onSendChatMessageEvent(message)) {
+                        allow = false
+                    }
+                } catch (_: Exception) { }
+            }
+            if (!allow) {
+                event.isCanceled = true
+            }
         }
     }
 
