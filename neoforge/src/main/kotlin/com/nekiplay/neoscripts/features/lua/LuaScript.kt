@@ -14,6 +14,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
+import com.nekiplay.neoscripts.features.lua.objects.datatypes.text.LuaComponentBuilder
 import com.nekiplay.neoscripts.features.lua.objects.misc.ArchiveLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.Blocks
 import com.nekiplay.neoscripts.features.lua.objects.misc.CatboostLib
@@ -638,8 +639,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     private fun registerOtherCustomFunctions() {
-        scriptGlobals.set("currentScriptName", LuaValue.valueOf(scriptName))
-
         // Register print function
         scriptGlobals.set("print", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
@@ -655,6 +654,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 return NIL
             }
         })
+
+        scriptGlobals.set("currentScriptName", LuaValue.valueOf(scriptName))
     }
 
     private val callbacksLock = Any()
@@ -1347,6 +1348,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
             "entities" -> {
                 Entities()
+            }
+            "text_builder", "textbuilder", "component_builder", "componentbuilder" -> {
+                LuaComponentBuilder.createLibrary()
             }
             else -> return null
         }

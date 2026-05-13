@@ -1,8 +1,9 @@
 package com.nekiplay.neoscripts.events.player;
 
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.bus.api.ICancellableEvent;
 
-public class AddItemInventoryEvent extends net.neoforged.bus.api.Event {
+public class AddItemInventoryEvent extends net.neoforged.bus.api.Event implements ICancellableEvent {
     private int slot = 0;
     private ItemStack item = ItemStack.EMPTY;
 

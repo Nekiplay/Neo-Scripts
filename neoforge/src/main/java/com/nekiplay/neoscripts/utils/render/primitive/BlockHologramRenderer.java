@@ -31,32 +31,6 @@ public final class BlockHologramRenderer implements PrimitiveRenderer<BlockHolog
 
     @Override
     public void submitPrimitives(BlockHologramRenderState state, CameraRenderState cameraState) {
-        PoseStack poseStack = new PoseStack();
-        poseStack.translate(
-                state.pos.getX() - cameraState.pos.x(),
-                state.pos.getY() - cameraState.pos.y(),
-                state.pos.getZ() - cameraState.pos.z()
-        );
 
-        BlockState blockState = state.state;
-        BlockRenderDispatcher dispatcher = CLIENT.getBlockRenderer();
-        BlockStateModel model = dispatcher.getBlockModel(blockState);
-
-        // Создаём ByteBufferBuilder и оборачиваем в MultiBufferSource
-        ByteBufferBuilder byteBufferBuilder = new ByteBufferBuilder(786432);
-        MultiBufferSource.BufferSource bufferSource = MultiBufferSource.immediate(byteBufferBuilder);
-        VertexConsumer consumer = bufferSource.getBuffer(RenderTypes.translucentMovingBlock());
-
-        // Используем deprecated метод renderModel, который принимает VertexConsumer
-        ModelBlockRenderer.renderModel(
-                poseStack.last(),
-                consumer,
-                model,
-                1.0F, 1.0F, 1.0F,
-                0x00F000F0,
-                OverlayTexture.NO_OVERLAY
-        );
-
-        bufferSource.endBatch();
     }
 }

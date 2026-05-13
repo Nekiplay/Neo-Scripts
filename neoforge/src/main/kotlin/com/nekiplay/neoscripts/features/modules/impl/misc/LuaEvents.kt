@@ -7,6 +7,7 @@ import com.nekiplay.neoscripts.Main.LUA_MANAGER
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.events.PacketEvent
 import com.nekiplay.neoscripts.events.main.Callback
+import com.nekiplay.neoscripts.events.player.AddItemInventoryEvent
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
@@ -30,6 +31,7 @@ import net.minecraft.network.protocol.game.ClientboundSetTimePacket
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket
 import net.minecraft.network.protocol.game.ClientboundSoundPacket
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
+import net.minecraft.world.InteractionResult
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.bus.api.EventPriority
 import net.neoforged.bus.api.SubscribeEvent
@@ -212,6 +214,23 @@ object LuaEvents : ClientModule() {
         if (!allow) event.cancelled = true
     }
 
+    @SubscribeEvent
+    fun onItemAdd(event: AddItemInventoryEvent) {
+        var allow = true
+        LUA_MANAGER?.scripts?.values?.forEach { script ->
+            try {
+                if (!script.onInventoryItemAChange(event.slot, event.item)) {
+                    allow = false
+                }
+            } catch (e: Exception) {
+                // Обработка ошибок
+            }
+        }
+
+        if (!allow) {
+            event.isCanceled = true
+        }
+    }
 
     @SubscribeEvent
     fun onClientTickEnd(event: ClientTickEvent.Post) {
@@ -343,17 +362,12 @@ object LuaEvents : ClientModule() {
 
     private fun getCommandDispatcher(connection: Connection): CommandDispatcher<ClientSuggestionProvider>? {
         try {
-            // 1. Получаем поле packetListener из Connection
             val packetListenerField: Field = Connection::class.java.getDeclaredField("packetListener")
             packetListenerField.isAccessible = true
             val packetListener: Any? = packetListenerField.get(connection) ?: return null
 
-            // 2. Приводим к ClientPacketListener (если не он – вернём null)
             if (packetListener !is ClientPacketListener) return null
 
-            // 3. Из ClientPacketListener вытаскиваем диспетчер.
-            //    В маппингах 1.21.1 поле называется "commands" (CommandDispatcher<SharedSuggestionProvider>),
-            //    но на самом деле у клиента оно имеет тип CommandDispatcher<ClientSuggestionProvider>.
             val commandsField = ClientPacketListener::class.java.getDeclaredField("commands")
             commandsField.isAccessible = true
             @Suppress("UNCHECKED_CAST")
