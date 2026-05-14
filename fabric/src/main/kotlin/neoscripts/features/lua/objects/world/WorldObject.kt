@@ -377,7 +377,7 @@ class WorldObject : LuaValue() {
                     val len = blocksTable.length() // или lua_len(arg2)
                     for (i in 1..len) {
                         val value = blocksTable.get(i)
-                        if (value.isint()) {
+                        if (value.isstring()) {
                             val id = value.tojstring()
                             val state = BuiltInRegistries.BLOCK.get(Identifier.parse(id))
 
