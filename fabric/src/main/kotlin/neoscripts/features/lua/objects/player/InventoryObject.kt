@@ -5,6 +5,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.neoscripts.mixins.gui.AbstractSignEditScreenAccessor
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.utils.InventoryUtils
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.client.gui.screens.inventory.ContainerScreen
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.minecraft.client.gui.screens.inventory.SignEditScreen
@@ -153,7 +154,7 @@ class InventoryObject: LuaValue() {
     private inner class GetChestTitleFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val screen = mc.screen
-            return if (screen is AbstractContainerMenu) {
+            return if (screen is AbstractContainerScreen<*>) {
                 valueOf(screen.title.getFormattedString())
             } else {
                 NIL
