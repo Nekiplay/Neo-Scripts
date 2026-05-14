@@ -368,7 +368,7 @@ class PlayerObject : LuaValue() {
 
                     for (i in 1..len) {
                         val value = table.get(i)
-                        if (value.isint()) {
+                        if (value.isstring()) {
                             val id = value.tojstring()
                             val state = BuiltInRegistries.BLOCK.get(Identifier.parse(id))
 
