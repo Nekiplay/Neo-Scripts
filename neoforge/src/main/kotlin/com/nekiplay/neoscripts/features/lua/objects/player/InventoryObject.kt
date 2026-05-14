@@ -29,6 +29,7 @@ class InventoryObject: LuaValue() {
         return when (key.tojstring()) {
             "isSignOpened" -> IsSignOpenedFunction()
             "isAnyScreenOpened" -> IsAnyScreenOpened()
+            "isContainerScreenOpened" -> IsContainerScreenOpened()
             "getContainerSlots" -> GetContainerSlotsFunction()
             "getChestTitle", "getContainerTitle" -> GetChestTitleFunction()
 
@@ -55,6 +56,17 @@ class InventoryObject: LuaValue() {
             "openInventory" -> OpenInventoryFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class IsContainerScreenOpened : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val screen = mc?.screen
+            return if (screen is AbstractContainerScreen<*>) {
+                TRUE
+            } else {
+                FALSE
+            }
+        }
     }
 
     private inner class OpenInventoryFunction : ZeroArgFunction() {
