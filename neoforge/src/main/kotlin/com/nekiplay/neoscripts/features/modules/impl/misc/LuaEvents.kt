@@ -165,7 +165,7 @@ object LuaEvents : ClientModule() {
                 var allowed = true
                 val packet = event.packet as ClientboundSetActionBarTextPacket
 
-                LUA_MANAGER?.scripts?.values?.forEach { script -
+                LUA_MANAGER?.scripts?.values?.forEach { script ->
                     if (!script.onActionBar(packet.text.getFormattedString())) {
                         allowed = false
                     }
