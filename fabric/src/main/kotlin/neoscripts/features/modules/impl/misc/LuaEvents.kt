@@ -163,7 +163,7 @@ object LuaEvents : ClientModule() {
 
             is ClientboundSetActionBarTextPacket -> {
                 var allowed = true
-                val packet = event.packet as ClientboundSetTitleTextPacket
+                val packet = event.packet as ClientboundSetActionBarTextPacket
 
                 LUA_MANAGER?.scripts?.values?.forEach { script ->
                     if (!script.onActionBar(packet.text.getFormattedString())) {
@@ -176,7 +176,7 @@ object LuaEvents : ClientModule() {
 
             is ClientboundSetSubtitleTextPacket -> {
                 var allowed = true
-                val packet = event.packet as ClientboundSetTitleTextPacket
+                val packet = event.packet as ClientboundSetSubtitleTextPacket
 
                 LUA_MANAGER?.scripts?.values?.forEach { script ->
                     if (!script.onTitle(packet.text.getFormattedString(), true)) {
