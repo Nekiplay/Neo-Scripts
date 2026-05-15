@@ -18,9 +18,9 @@ public class ClientPacketListenerMixin {
         String cmdName = command.split(" ")[0];
         boolean allow = true;
 
-        if (cmdName == "lua") {
+        if (cmdName.equalsIgnoreCase("lua")) {
             ci.cancel();
-            return
+            return;
         }
 
         // 1. Lua-скрипты могут запретить команду
