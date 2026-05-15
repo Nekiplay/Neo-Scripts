@@ -1,4 +1,4 @@
-package com.nekiplay.neoscripts.mixins.minecraft.packets;
+package com.nekiplay.neoscripts.mixins.packets;
 
 import com.nekiplay.neoscripts.Main;
 import com.nekiplay.neoscripts.features.lua.LuaScript;

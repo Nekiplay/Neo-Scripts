@@ -25,6 +25,7 @@
     "minecraft.MixinServerboundUseItemPacket",
     "minecraft.MouseHandlerMixin",
     "minecraft.item.MixinItem",
+    "packets.ClientPacketListenerMixin",
     "packets.ServerboundMovePlayerPacketAccessor",
     "renderer.GameRendererAccessor"
   ],

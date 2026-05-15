@@ -351,51 +351,6 @@ object LuaEvents : ClientModule() {
             allow
         })
 
-        ClientSendMessageEvents.ALLOW_COMMAND.register { command ->
-            var allow = true
-            val cmdName = command.split(" ")[0]
-            LUA_MANAGER?.scripts?.values?.forEach { script ->
-                try {
-                    if (!script.onSendChatCommandEvent(command)) {
-                        allow = false
-                    }
-                } catch (e: Exception) {
-                    // Обработка ошибок
-                }
-            }
-
-            if (allow) {
-                var founded = false
-                LUA_MANAGER?.scripts?.values?.forEach { script ->
-                    if (script.commandCallbacks.containsKey(cmdName) && script.commandDispatchers.containsKey(cmdName)) {
-                        founded = true
-                        player?.let {
-                            try {
-                                val connection = player!!.connection
-                                val source = connection.suggestionsProvider
-                                // Выполняем команду
-                                val dispatcher = script.commandDispatchers[cmdName]
-                                @Suppress("UNCHECKED_CAST")
-                                val result = (dispatcher as CommandDispatcher<SharedSuggestionProvider>).execute(command, source)
-                                if (result >= 1) {
-                                    Main.LOGGER?.info("${Main.LOG_PREFIX}Executing command: $command")
-                                    return@register false
-                                }
-
-                            } catch (e: Exception) {
-
-                            }
-                        }
-                    }
-                }
-                if (founded) {
-                    return@register false
-                }
-            }
-
-            return@register allow
-        }
-
         HudRenderCallback.EVENT.register(HudRenderCallback { context, _ ->
             LUA_MANAGER?.scripts?.values?.forEach { script ->
                 try {
