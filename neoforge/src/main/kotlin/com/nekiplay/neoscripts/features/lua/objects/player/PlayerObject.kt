@@ -7,6 +7,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaRaycast
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.text.LuaComponent
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.text.LuaComponentBuilder
+import com.nekiplay.neoscripts.mixins.gui.GuiAccessor
 import com.nekiplay.neoscripts.mixins.minecraft.BossHealthOverlayAccessor
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.sugar.getScorebordLines
@@ -90,8 +91,36 @@ class PlayerObject : LuaValue() {
             "raycast" -> RayCastFunction()
             "raycastToBlocksFromId" -> RayCastToBlocksFunction()
             "raycastToBlocksFromIdentifier" -> RayCastToBlocksFromIdentifierFunction()
+
+            "getTitle" -> GetTitleFunction()
+            "getSubTitle" -> GetSubTitleFunction()
+            "getActionBar" -> GetActionBarFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetTitleFunction : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            val table = tableOf()
+            val accessed = mc.gui as GuiAccessor
+            return valueOf(accessed.title?.getFormattedString() ?: null)
+        }
+    }
+
+    private inner class GetSubTitleFunction : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            val table = tableOf()
+            val accessed = mc.gui as GuiAccessor
+            return valueOf(accessed.subtitle?.getFormattedString() ?: null)
+        }
+    }
+
+    private inner class GetActionBarFunction : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            val table = tableOf()
+            val accessed = mc.gui as GuiAccessor
+            return valueOf(accessed.actionBar?.getFormattedString() ?: null)
+        }
     }
 
     private inner class GetScoreboardLinesFunction : ZeroArgFunction() {

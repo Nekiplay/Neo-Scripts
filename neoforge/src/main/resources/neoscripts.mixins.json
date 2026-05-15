@@ -18,6 +18,7 @@
     "entity.MixinPlayer",
     "gui.AbstractContainerMenuMixin",
     "gui.AbstractSignEditScreenAccessor",
+    "gui.GuiAccessor",
     "minecraft.BossHealthOverlayAccessor",
     "minecraft.ClientInputAccessor",
     "minecraft.GamemodeAccessor",

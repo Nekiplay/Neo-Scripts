@@ -18,6 +18,7 @@
     "entity.MixinLivingEntityRenderer",
     "entity.MixinLocalPlayer",
     "entity.MixinPlayer",
+    "gui.GuiAccessor",
     "minecraft.ClientConnectionMixin",
     "minecraft.GamemodeAccessor",
     "minecraft.MixinKeyboardInput",
