@@ -124,25 +124,22 @@ class PlayerObject : LuaValue() {
 
     private inner class GetTitleFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            val table = tableOf()
             val accessed = mc.gui as GuiAccessor
-            return valueOf(accessed.title?.getFormattedString() ?: null)
+            return valueOf(accessed.title?.getFormattedString())
         }
     }
 
     private inner class GetSubTitleFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            val table = tableOf()
             val accessed = mc.gui as GuiAccessor
-            return valueOf(accessed.subtitle?.getFormattedString() ?: null)
+            return valueOf(accessed.subtitle?.getFormattedString())
         }
     }
 
     private inner class GetActionBarFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            val table = tableOf()
             val accessed = mc.gui as GuiAccessor
-            return valueOf(accessed.actionBar?.getFormattedString() ?: null)
+            return valueOf(accessed.actionBar?.getFormattedString())
         }
     }
 
