@@ -4,6 +4,7 @@ import com.nekiplay.neoscripts.Main;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.registries.VanillaRegistries;
@@ -65,51 +66,53 @@ public class Utils {
             LocalPlayer player = client.player;
             if (player == null) return;
 
-            Scoreboard scoreboard = player.getTeam() != null ? player.getTeam().getScoreboard() : null;
+            // Получаем scoreboard из мира клиента
+            ClientLevel level = client.level;
+            if (level == null) return;
+            Scoreboard scoreboard = level.getScoreboard();
             if (scoreboard == null) return;
 
             Objective objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
             if (objective == null) return;
 
-            ObjectArrayList<net.minecraft.network.chat.Component> textLines = new ObjectArrayList<>();
+            ObjectArrayList<Component> textLines = new ObjectArrayList<>();
             ObjectArrayList<String> stringLines = new ObjectArrayList<>();
 
-            // Получаем заголовок scoreboard
-            net.minecraft.network.chat.Component title = objective.getDisplayName();
+            // Заголовок
+            Component title = objective.getDisplayName();
             if (title != null && !title.getString().trim().isEmpty()) {
                 stringLines.add(title.getString());
                 textLines.add(title.copy());
             }
 
-            // Собираем все строки scoreboard
-            java.util.List<net.minecraft.world.scores.ScoreHolder> scoredHolders = new java.util.ArrayList<>();
-            for (ScoreHolder scoreHolder : scoreboard.getTrackedPlayers()) {
-                var scoresMap = scoreboard.listPlayerScores(scoreHolder);
-                if (scoresMap.get(objective) != null) {
-                    scoredHolders.add(scoreHolder);
+            // Собираем всех участников с оценками по текущей цели
+            java.util.List<ScoreHolder> scoredHolders = new java.util.ArrayList<>();
+            for (ScoreHolder holder : scoreboard.getTrackedPlayers()) {
+                if (scoreboard.listPlayerScores(holder).get(objective) != null) {
+                    scoredHolders.add(holder);
                 }
             }
 
-            // Сортируем по score (убывание - сверху вниз)
+            // Сортировка по убыванию очков
             scoredHolders.sort((a, b) -> {
                 int scoreA = scoreboard.listPlayerScores(a).get(objective);
                 int scoreB = scoreboard.listPlayerScores(b).get(objective);
-                return Integer.compare(scoreB, scoreA); // descending
+                return Integer.compare(scoreB, scoreA);
             });
 
-            for (ScoreHolder scoreHolder : scoredHolders) {
-                String scoreboardName = scoreHolder.getScoreboardName();
-                PlayerTeam team = scoreboard.getPlayersTeam(scoreboardName);
+            for (ScoreHolder holder : scoredHolders) {
+                String name = holder.getScoreboardName();
+                PlayerTeam team = scoreboard.getPlayersTeam(name);
 
-                net.minecraft.network.chat.Component displayName;
+                Component displayName;
                 String plainName;
 
                 if (team != null) {
-                    displayName = PlayerTeam.formatNameForTeam(team, net.minecraft.network.chat.Component.literal(scoreboardName));
-                    plainName = team.getPlayerPrefix().getString() + scoreboardName + team.getPlayerSuffix().getString();
+                    displayName = PlayerTeam.formatNameForTeam(team, Component.literal(name));
+                    plainName = team.getPlayerPrefix().getString() + name + team.getPlayerSuffix().getString();
                 } else {
-                    displayName = Component.literal(scoreboardName);
-                    plainName = scoreboardName;
+                    displayName = Component.literal(name);
+                    plainName = name;
                 }
 
                 String trimmed = plainName.trim();
@@ -117,7 +120,7 @@ public class Utils {
                     String stripped = ChatFormatting.stripFormatting(trimmed);
                     if (!stripped.trim().isEmpty()) {
                         textLines.add(displayName);
-                        stringLines.add(trimmed); // Сохраняем с цветовыми кодами
+                        stringLines.add(trimmed);
                     }
                 }
             }
@@ -125,7 +128,7 @@ public class Utils {
             TEXT_SCOREBOARD.addAll(textLines);
             STRING_SCOREBOARD.addAll(stringLines);
         } catch (Exception e) {
-            //Do nothing
+            e.printStackTrace();
         }
     }
 
