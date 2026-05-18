@@ -82,7 +82,6 @@ object MiningHandler {
                         player.distanceToSqr(Vec3.atCenterOf(targetPos)) <= 36.0
 
                 if (!isSameBlock) {
-                    gameMode.stopDestroyBlock()
                     resetMining()
                     return@register
                 }
@@ -107,15 +106,16 @@ fun MultiPlayerGameMode.mineBlock(): Boolean {
     val mc = Minecraft.getInstance()
     val player = mc.player ?: return false
     val level = mc.level ?: return false
+    val accessor = this as ClientPlayerInteractionManagerAccessor
 
+    // 1. Если мы уже в процессе долгого копания (не моментальный блок)
     if (MiningState.isMining) {
         val hitResult = getRotationRaycast()
         val targetPos = MiningState.targetPos ?: run { resetMining(); return false }
         val targetDir = MiningState.targetDir ?: run { resetMining(); return false }
 
         val isSameBlock = hitResult.type == HitResult.Type.BLOCK &&
-                (hitResult as BlockHitResult).blockPos == targetPos &&
-                player.distanceToSqr(Vec3.atCenterOf(targetPos)) <= 36.0
+                (hitResult as BlockHitResult).blockPos == targetPos
 
         if (!isSameBlock) {
             this.stopDestroyBlock()
@@ -127,7 +127,7 @@ fun MultiPlayerGameMode.mineBlock(): Boolean {
         return true
     }
 
-    resetMining()
+    // 2. Поиск цели
     if (mc.screen != null || player.isBlocking) return false
 
     val hitResult = getRotationRaycast()
@@ -141,6 +141,26 @@ fun MultiPlayerGameMode.mineBlock(): Boolean {
     if (state.isAir) return false
     if (player.distanceToSqr(Vec3.atCenterOf(pos)) > 36.0) return false
 
+    // ПРОВЕРКА НА МОМЕНТАЛЬНОЕ ЛОМАНИЕ
+    // getDestroyProgress возвращает >= 1.0f, если блок ломается за 1 тик (инструмент подходит)
+    val progress = state.getDestroyProgress(player, level, pos)
+
+    if (progress >= 1.0f) {
+        // Сбрасываем задержку ДО вызова startDestroyBlock,
+        // так как startDestroyBlock проверяет destroyDelay внутри себя
+        accessor.setDestroyDelay(0)
+
+        if (this.startDestroyBlock(pos, dir)) {
+            // После успешного ломания снова сбрасываем задержку,
+            // чтобы на следующем тике (или в этом же цикле) можно было ломать снова
+            accessor.setDestroyDelay(0)
+            return true
+        }
+        return false
+    }
+
+    // 3. Обычное медленное копание
+    accessor.setDestroyDelay(0) // Убираем задержку перед началом
     if (this.startDestroyBlock(pos, dir)) {
         MiningState.isMining = true
         MiningState.targetPos = pos
