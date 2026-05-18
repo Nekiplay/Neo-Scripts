@@ -44,6 +44,7 @@ import java.awt.datatransfer.StringSelection;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -269,77 +270,49 @@ public class Utils {
             TEXT_SCOREBOARD.clear();
             STRING_SCOREBOARD.clear();
 
-            LocalPlayer player = client.player;
-            if (player == null) return;
+            ClientLevel world = client.level;
+            if (world == null) return;
 
-            // Получаем scoreboard из мира клиента
-            ClientLevel level = client.level;
-            if (level == null) return;
-            Scoreboard scoreboard = level.getScoreboard();
-            if (scoreboard == null) return;
-
-            Objective objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
-            if (objective == null) return;
-
+            Scoreboard scoreboard = world.getScoreboard();
+            Objective objective = scoreboard.getDisplayObjective(DisplaySlot.BY_ID.apply(1));
             ObjectArrayList<Component> textLines = new ObjectArrayList<>();
             ObjectArrayList<String> stringLines = new ObjectArrayList<>();
 
-            // Заголовок
-            Component title = objective.getDisplayName();
-            if (title != null && !title.getString().trim().isEmpty()) {
-                stringLines.add(title.getString());
-                textLines.add(title.copy());
-            }
+            for (ScoreHolder scoreHolder : scoreboard.getTrackedPlayers()) {
+                //Limit to just objectives displayed in the scoreboard (specifically sidebar objective)
+                if (scoreboard.listPlayerScores(scoreHolder).containsKey(objective)) {
+                    PlayerTeam team = scoreboard.getPlayersTeam(scoreHolder.getScoreboardName());
 
-            // Собираем всех участников с оценками по текущей цели
-            java.util.List<ScoreHolder> scoredHolders = new java.util.ArrayList<>();
-            for (ScoreHolder holder : scoreboard.getTrackedPlayers()) {
-                if (scoreboard.listPlayerScores(holder).get(objective) != null) {
-                    scoredHolders.add(holder);
-                }
-            }
+                    if (team != null) {
+                        Component textLine = Component.empty().append(team.getPlayerPrefix().copy()).append(team.getPlayerSuffix().copy());
+                        String strLine = team.getPlayerPrefix().getString() + team.getPlayerSuffix().getString();
 
-            // Сортировка по убыванию очков
-            scoredHolders.sort((a, b) -> {
-                int scoreA = scoreboard.listPlayerScores(a).get(objective);
-                int scoreB = scoreboard.listPlayerScores(b).get(objective);
-                return Integer.compare(scoreB, scoreA);
-            });
+                        if (!strLine.trim().isEmpty()) {
+                            String formatted = ChatFormatting.stripFormatting(strLine);
 
-            for (ScoreHolder holder : scoredHolders) {
-                String name = holder.getScoreboardName();
-                PlayerTeam team = scoreboard.getPlayersTeam(name);
-
-                Component displayName;
-                String plainName;
-
-                if (team != null) {
-                    displayName = PlayerTeam.formatNameForTeam(team, Component.literal(name));
-                    plainName = team.getPlayerPrefix().getString() + name + team.getPlayerSuffix().getString();
-                } else {
-                    displayName = Component.literal(name);
-                    plainName = name;
-                }
-
-                String trimmed = plainName.trim();
-                if (!trimmed.isEmpty()) {
-                    String stripped = ChatFormatting.stripFormatting(trimmed);
-                    if (!stripped.trim().isEmpty()) {
-                        textLines.add(displayName);
-                        stringLines.add(trimmed);
+                            textLines.add(textLine);
+                            stringLines.add(formatted);
+                        }
                     }
                 }
             }
 
+            if (objective != null) {
+                stringLines.add(objective.getDisplayName().getString());
+                textLines.add(Component.empty().append(objective.getDisplayName().copy()));
+
+                Collections.reverse(stringLines);
+                Collections.reverse(textLines);
+            }
+
             TEXT_SCOREBOARD.addAll(textLines);
             STRING_SCOREBOARD.addAll(stringLines);
-
             if (isOnSkyblock) {
                 Utils.updatePurse();
                 updateArea();
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (NullPointerException e) {
+            //Do nothing
         }
     }
 
