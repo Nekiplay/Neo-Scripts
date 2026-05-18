@@ -9,6 +9,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.scores.*;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -21,7 +22,9 @@ import java.awt.datatransfer.StringSelection;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 
 @EventBusSubscriber(modid = Main.ID, value = Dist.CLIENT)
 public class Utils {
@@ -69,41 +72,52 @@ public class Utils {
             if (world == null) return;
 
             Scoreboard scoreboard = world.getScoreboard();
-            Objective objective = scoreboard.getDisplayObjective(DisplaySlot.BY_ID.apply(1));
-            ObjectArrayList<Component> textLines = new ObjectArrayList<>();
-            ObjectArrayList<String> stringLines = new ObjectArrayList<>();
+            Objective objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
 
-            for (ScoreHolder scoreHolder : scoreboard.getTrackedPlayers()) {
-                //Limit to just objectives displayed in the scoreboard (specifically sidebar objective)
-                if (scoreboard.listPlayerScores(scoreHolder).containsKey(objective)) {
-                    PlayerTeam team = scoreboard.getPlayersTeam(scoreHolder.getScoreboardName());
+            if (objective == null) return;
 
-                    if (team != null) {
-                        Component textLine = Component.empty().append(team.getPlayerPrefix().copy()).append(team.getPlayerSuffix().copy());
-                        String strLine = team.getPlayerPrefix().getString() + team.getPlayerSuffix().getString();
+            // Получаем список записей
+            var scoreEntries = scoreboard.listPlayerScores(objective);
 
-                        if (!strLine.trim().isEmpty()) {
-                            String formatted = ChatFormatting.stripFormatting(strLine);
+            // Создаем список и сортируем его по значению очков (от большего к меньшему)
+            ArrayList<PlayerScoreEntry> sortedScores = new ArrayList<PlayerScoreEntry>(scoreEntries);
+            sortedScores.sort(Comparator.comparingInt(PlayerScoreEntry::value).reversed());
 
-                            textLines.add(textLine);
-                            stringLines.add(formatted);
-                        }
-                    }
+            for (PlayerScoreEntry entry : sortedScores) {
+                // В вашей версии это entry.owner() (строка-идентификатор)
+                String owner = entry.owner();
+
+                // Получаем команду, используя строку owner
+                PlayerTeam team = scoreboard.getPlayersTeam(owner);
+
+                // entry.ownerName() возвращает либо display name, либо literal от owner
+                Component lineBase = entry.ownerName();
+
+                MutableComponent fullLine = Component.empty();
+
+                if (team != null) {
+                    // Склеиваем: Префикс + Основной текст + Суффикс
+                    fullLine.append(team.getPlayerPrefix())
+                            .append(lineBase)
+                            .append(team.getPlayerSuffix());
+                } else {
+                    fullLine.append(lineBase);
+                }
+
+                String rawString = fullLine.getString();
+
+                if (!rawString.trim().isEmpty()) {
+                    TEXT_SCOREBOARD.add(fullLine);
+                    // ChatFormatting.stripFormatting убирает значки §
+                    STRING_SCOREBOARD.add(ChatFormatting.stripFormatting(rawString));
                 }
             }
 
-            if (objective != null) {
-                stringLines.add(objective.getDisplayName().getString());
-                textLines.add(Component.empty().append(objective.getDisplayName().copy()));
-
-                Collections.reverse(stringLines);
-                Collections.reverse(textLines);
-            }
-
-            TEXT_SCOREBOARD.addAll(textLines);
-            STRING_SCOREBOARD.addAll(stringLines);
-        } catch (NullPointerException e) {
-            //Do nothing
+            // Добавляем заголовок в начало списка
+            STRING_SCOREBOARD.add(0, ChatFormatting.stripFormatting(objective.getDisplayName().getString()));
+            TEXT_SCOREBOARD.add(0, objective.getDisplayName().copy());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
