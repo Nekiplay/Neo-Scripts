@@ -41,10 +41,8 @@ import java.awt.datatransfer.StringSelection;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.UUID;
+import java.util.*;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -265,64 +263,82 @@ public class Utils {
     }
 
     private static void updateScoreboard(Minecraft client) {
+        if (client.level == null) return;
+
         try {
-            TEXT_SCOREBOARD.clear();
-            STRING_SCOREBOARD.clear();
+            Scoreboard scoreboard = client.level.getScoreboard();
 
-            ClientLevel world = client.level;
-            if (world == null) return;
-
-            Scoreboard scoreboard = world.getScoreboard();
+            // 1. Пытаемся получить обьектив сайдбара
             Objective objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
+
+            // Если через SIDEBAR не нашлось (бывает на некоторых серверах),
+            // берем первый попавшийся обьектив, у которого есть очки
+            if (objective == null) {
+                objective = scoreboard.getObjectives().stream().findFirst().orElse(null);
+            }
 
             if (objective == null) return;
 
-            // Получаем список записей
-            var scoreEntries = scoreboard.listPlayerScores(objective);
+            // Временные списки
+            ArrayList<Component> newTextLines = new ArrayList<>();
+            ArrayList<String> newStringLines = new ArrayList<>();
 
-            // Создаем список и сортируем его по значению очков (от большего к меньшему)
-            ArrayList<PlayerScoreEntry> sortedScores = new ArrayList<PlayerScoreEntry>(scoreEntries);
-            sortedScores.sort(Comparator.comparingInt(PlayerScoreEntry::value).reversed());
+            // 2. Получаем все записи для этого обьектива
+            java.util.Collection<PlayerScoreEntry> scores = scoreboard.listPlayerScores(objective);
+            if (scores.isEmpty()) return;
+
+            // 3. Сортируем (как в ванилле: сначала по значению, потом по имени)
+            List<PlayerScoreEntry> sortedScores = scores.stream()
+                    .sorted(Comparator.comparingInt(PlayerScoreEntry::value)
+                            .reversed()
+                            .thenComparing(entry -> entry.owner(), String.CASE_INSENSITIVE_ORDER))
+                    .toList();
 
             for (PlayerScoreEntry entry : sortedScores) {
-                // В вашей версии это entry.owner() (строка-идентификатор)
+                // Имя записи (может быть "fake player" именем или реальным ником)
                 String owner = entry.owner();
-
-                // Получаем команду, используя строку owner
                 PlayerTeam team = scoreboard.getPlayersTeam(owner);
 
-                // entry.ownerName() возвращает либо display name, либо literal от owner
-                Component lineBase = entry.ownerName();
-
+                // В 1.21 важно правильно собрать компоненты
                 MutableComponent fullLine = Component.empty();
 
                 if (team != null) {
-                    // Склеиваем: Префикс + Основной текст + Суффикс
-                    fullLine.append(team.getPlayerPrefix())
-                            .append(lineBase)
-                            .append(team.getPlayerSuffix());
+                    fullLine.append(team.getPlayerPrefix());
+                    // Если имя игрока — это просто технический ID (например, #line1),
+                    // то ownerName() может быть не нужен, но обычно на серверах там пробелы для цвета
+                    fullLine.append(entry.ownerName());
+                    fullLine.append(team.getPlayerSuffix());
                 } else {
-                    fullLine.append(lineBase);
+                    fullLine.append(entry.ownerName());
                 }
 
-                String rawString = fullLine.getString();
+                // Убираем лишние пробелы и проверяем на пустоту
+                String rawText = fullLine.getString();
+                if (rawText.trim().isEmpty()) continue;
 
-                if (!rawString.trim().isEmpty()) {
-                    TEXT_SCOREBOARD.add(fullLine);
-                    // ChatFormatting.stripFormatting убирает значки §
-                    STRING_SCOREBOARD.add(ChatFormatting.stripFormatting(rawString));
-                }
+                newTextLines.add(fullLine);
+                newStringLines.add(ChatFormatting.stripFormatting(rawText));
             }
 
-            // Добавляем заголовок в начало списка
-            STRING_SCOREBOARD.add(0, ChatFormatting.stripFormatting(objective.getDisplayName().getString()));
-            TEXT_SCOREBOARD.add(0, objective.getDisplayName().copy());
+            // 4. Добавляем заголовок
+            Component title = objective.getDisplayName();
+            newTextLines.add(0, title);
+            newStringLines.add(0, ChatFormatting.stripFormatting(title.getString()));
+
+            // Атомарно обновляем основные списки
+            TEXT_SCOREBOARD.clear();
+            TEXT_SCOREBOARD.addAll(newTextLines);
+
+            STRING_SCOREBOARD.clear();
+            STRING_SCOREBOARD.addAll(newStringLines);
 
             if (isOnSkyblock) {
                 Utils.updatePurse();
                 updateArea();
             }
+
         } catch (Exception e) {
+            // Чтобы увидеть ошибку в логах, если она есть
             e.printStackTrace();
         }
     }
