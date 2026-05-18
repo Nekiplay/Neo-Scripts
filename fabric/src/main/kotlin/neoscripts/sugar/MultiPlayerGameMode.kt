@@ -79,7 +79,7 @@ object MiningHandler {
 
                 val isSameBlock = hitResult.type == HitResult.Type.BLOCK &&
                         (hitResult as BlockHitResult).blockPos == targetPos &&
-                        player.distanceToSqr(Vec3.atCenterOf(targetPos)) <= 36.0
+                        isBlockInRange(targetPos, mc.player!!)
 
                 if (!isSameBlock) {
                     resetMining()
@@ -102,36 +102,36 @@ object MiningState {
     var targetDir: Direction? = null
 }
 
+fun isBlockInRange(pos: BlockPos, player: net.minecraft.world.entity.player.Player): Boolean {
+    val reach = player.blockInteractionRange() // Обычно 4.5 в выживании
+    val state = player.level().getBlockState(pos)
+
+    // Получаем реальный хитбокс блока (AABB)
+    val shape = state.getShape(player.level(), pos)
+    if (shape.isEmpty) return player.eyePosition.distanceToSqr(Vec3.atCenterOf(pos)) < reach * reach
+
+    val aabb = shape.bounds().move(pos)
+    // distanceToSqr до AABB возвращает 0.0, если точка внутри,
+    // или расстояние до ближайшей точки на поверхности
+    return aabb.distanceToSqr(player.eyePosition) <= (reach * reach)
+}
+
 fun MultiPlayerGameMode.mineBlock(): Boolean {
     val mc = Minecraft.getInstance()
     val player = mc.player ?: return false
     val level = mc.level ?: return false
     val accessor = this as ClientPlayerInteractionManagerAccessor
 
-    // 1. Если мы уже в процессе долгого копания (не моментальный блок)
-    if (MiningState.isMining) {
-        val hitResult = getRotationRaycast()
-        val targetPos = MiningState.targetPos ?: run { resetMining(); return false }
-        val targetDir = MiningState.targetDir ?: run { resetMining(); return false }
+    // 1. Получаем то, куда мы реально смотрим
+    val hitResult = getRotationRaycast()
 
-        val isSameBlock = hitResult.type == HitResult.Type.BLOCK &&
-                (hitResult as BlockHitResult).blockPos == targetPos
-
-        if (!isSameBlock) {
+    if (hitResult.type != HitResult.Type.BLOCK) {
+        if (MiningState.isMining) {
             this.stopDestroyBlock()
             resetMining()
-            return false
         }
-
-        this.continueDestroyBlock(targetPos, targetDir)
-        return true
+        return false
     }
-
-    // 2. Поиск цели
-    if (mc.screen != null || player.isBlocking) return false
-
-    val hitResult = getRotationRaycast()
-    if (hitResult.type != HitResult.Type.BLOCK) return false
 
     val blockHit = hitResult as BlockHitResult
     val pos = blockHit.blockPos
@@ -139,33 +139,37 @@ fun MultiPlayerGameMode.mineBlock(): Boolean {
     val state = level.getBlockState(pos)
 
     if (state.isAir) return false
-    if (player.distanceToSqr(Vec3.atCenterOf(pos)) > 36.0) return false
 
-    // ПРОВЕРКА НА МОМЕНТАЛЬНОЕ ЛОМАНИЕ
-    // getDestroyProgress возвращает >= 1.0f, если блок ломается за 1 тик (инструмент подходит)
+    // Дистанция: getRotationRaycast уже учитывает blockInteractionRange().
+    // Если raycast попал в блок, значит мы ДОТЯГИВАЕМСЯ до его грани.
+    // Дополнительная проверка distanceToSqr здесь больше не нужна.
+
     val progress = state.getDestroyProgress(player, level, pos)
 
+    // МОМЕНТАЛЬНЫЕ БЛОКИ (Трава, факелы, блоки в креативе)
     if (progress >= 1.0f) {
-        // Сбрасываем задержку ДО вызова startDestroyBlock,
-        // так как startDestroyBlock проверяет destroyDelay внутри себя
-        accessor.setDestroyDelay(0)
-
+        accessor.setDestroyDelay(0) // Сброс задержки перед
         if (this.startDestroyBlock(pos, dir)) {
-            // После успешного ломания снова сбрасываем задержку,
-            // чтобы на следующем тике (или в этом же цикле) можно было ломать снова
-            accessor.setDestroyDelay(0)
+            accessor.setDestroyDelay(0) // Сброс задержки после
+            resetMining()
             return true
         }
         return false
     }
 
-    // 3. Обычное медленное копание
-    accessor.setDestroyDelay(0) // Убираем задержку перед началом
-    if (this.startDestroyBlock(pos, dir)) {
-        MiningState.isMining = true
-        MiningState.targetPos = pos
-        MiningState.targetDir = dir
+    // ОБЫЧНЫЕ БЛОКИ (Процесс копания)
+    if (MiningState.isMining && MiningState.targetPos == pos) {
+        this.continueDestroyBlock(pos, dir)
         return true
+    } else {
+        // Начинаем копать новый блок
+        accessor.setDestroyDelay(0)
+        if (this.startDestroyBlock(pos, dir)) {
+            MiningState.isMining = true
+            MiningState.targetPos = pos
+            MiningState.targetDir = dir
+            return true
+        }
     }
 
     return false
