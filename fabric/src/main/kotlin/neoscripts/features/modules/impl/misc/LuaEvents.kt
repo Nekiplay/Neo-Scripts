@@ -18,6 +18,8 @@ import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.sugar.getJsonString
 import com.nekiplay.neoscripts.utils.render.WorldRenderExtractionCallback
 import com.nekiplay.neoscripts.utils.render.primitive.PrimitiveCollector
+import com.nekiplay.neoscripts.utils.scheduler.MessageScheduler
+import com.nekiplay.neoscripts.utils.scheduler.Scheduler
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
@@ -233,6 +235,13 @@ object LuaEvents : ClientModule() {
                 } catch (e: Exception) {
                     // Обработка ошибок
                 }
+            }
+            try {
+                Scheduler.INSTANCE.tick();
+                MessageScheduler.INSTANCE.tick();
+            }
+            catch (e: Exception) {
+
             }
         }
 
