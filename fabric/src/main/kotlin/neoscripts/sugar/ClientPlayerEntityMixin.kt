@@ -10,9 +10,7 @@ import java.util.*
 import kotlin.run
 
 fun LocalPlayer.getScorebordLines(): List<Component> {
-    return Utils.STRING_SCOREBOARD.map { it ->
-        Component.literal(it)
-    }
+    return Utils.TEXT_SCOREBOARD
 }
 
 data class CurrentTabList(

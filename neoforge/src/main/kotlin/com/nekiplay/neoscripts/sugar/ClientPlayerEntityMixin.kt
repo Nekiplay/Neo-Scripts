@@ -16,9 +16,7 @@ data class CurrentTabList(
 )
 
 fun LocalPlayer.getScorebordLines(): List<Component> {
-    return Utils.STRING_SCOREBOARD.map { it ->
-        Component.literal(it)
-    }
+    return Utils.TEXT_SCOREBOARD
 }
 
 fun LocalPlayer.getTab(): CurrentTabList {
