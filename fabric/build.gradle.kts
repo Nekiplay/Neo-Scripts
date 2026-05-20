@@ -95,6 +95,9 @@ dependencies {
     // Apache Commons Compress for archive handling
     val commonsCompressVersion = "1.27.1"
     include(implementation("org.apache.commons:commons-compress:$commonsCompressVersion")!!)
+
+    // HWID System
+    include(implementation("com.github.oshi:oshi-core:7.1.0")!!)
 }
 
 tasks {

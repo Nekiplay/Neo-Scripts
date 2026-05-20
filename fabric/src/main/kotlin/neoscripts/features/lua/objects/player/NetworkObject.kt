@@ -51,12 +51,36 @@ class NetworkObject : LuaValue() {
             "getPlayersList" -> GetPlayerList()
             "connectToServer" -> ConnectToServer()
             "disconnectFromServer" -> DisconnectFromServer()
+            "getCurrentServer" -> getCurrentServer()
             
             "sendStartDestroyBlockPacket" -> SendStartDestroyBlockPacket()
             "sendStopDestroyBlockPacket" -> SendStopDestroyBlockPacket()
             "sendAbortDestroyBlockPacket" -> SendAbortDestroyBlockPacket()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class getCurrentServer : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val mc = Minecraft.getInstance()
+            val server = mc.currentServer
+
+            if (server != null) {
+                val address = server.ip
+                // Разбор IP и порта
+                if (address.contains(":")) {
+                    val ip = address.substring(0, address.lastIndexOf(':'))
+                    val port = address.substring(address.lastIndexOf(':'.code.toChar()) + 1).toInt()
+                    return valueOf("$ip:$port")
+                } else {
+                    val ip = address // порт по умолчанию 25565
+                    val port = 25565
+
+                    return valueOf("$ip:$port")
+                }
+            }
+            return NIL
+        }
     }
 
     fun disconnectFromServer(reason: String) {

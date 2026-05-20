@@ -2,6 +2,7 @@ package com.nekiplay.neoscripts.features.lua.objects.modules
 
 import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.Main.LUA_MANAGER
+import com.nekiplay.neoscripts.utils.Utils
 import net.fabricmc.loader.api.FabricLoader
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
@@ -22,8 +23,15 @@ class ModulesObject: LuaValue() {
             "getModLoader" -> GetModLoader()
             "isModLoaded" -> IsModLoaded()
             "getLoadedMods" -> GetLoadedMods()
+            "getHWID" -> GetHWID()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetHWID : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            return valueOf(Utils.getHWID8())
+        }
     }
 
     private inner class GetLoadedMods : ZeroArgFunction() {

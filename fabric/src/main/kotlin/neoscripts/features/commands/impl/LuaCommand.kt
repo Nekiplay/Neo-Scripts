@@ -6,6 +6,7 @@ import com.mojang.brigadier.suggestion.SuggestionProvider
 import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import com.nekiplay.neoscripts.Main
+import com.nekiplay.neoscripts.utils.Utils
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.client.Minecraft
@@ -53,6 +54,12 @@ object LuaCommand {
                         1
                     }
                 )
+            )
+            .then(ClientCommandManager.literal("hwid")
+                .executes { context ->
+                    context.source.sendFeedback(Component.literal("${Main.PREFIX}§aHWID: §c" + Utils.getHWID8()))
+                    1
+                }
             )
             .then(ClientCommandManager.literal("list")
                 .executes { context ->

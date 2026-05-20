@@ -34,6 +34,11 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.Util;
 import net.minecraft.world.scores.*;
 import org.jetbrains.annotations.NotNull;
+import oshi.SystemInfo;
+import oshi.hardware.CentralProcessor;
+import oshi.hardware.ComputerSystem;
+import oshi.hardware.HardwareAbstractionLayer;
+import oshi.hardware.NetworkIF;
 
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
@@ -41,10 +46,12 @@ import java.awt.datatransfer.StringSelection;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.CRC32;
 
 import static com.nekiplay.neoscripts.utils.itemlist.recipes.SkyblockRecipe.LOGGER;
 
@@ -532,5 +539,57 @@ public class Utils {
         Minecraft client = Minecraft.getInstance();
         // Null check on client for tests
         return client != null && client.getConnection() != null && client.getConnection().registryAccess() != null ? client.getConnection().registryAccess() : LOOKUP;
+    }
+
+    public static String getHWID8() {
+        SystemInfo si = new SystemInfo();
+        HardwareAbstractionLayer hal = si.getHardware();
+        ComputerSystem cs = hal.getComputerSystem();
+        CentralProcessor cpu = hal.getProcessor();
+
+        List<String> components = new ArrayList<>();
+
+        addIfValid(components, cs.getSerialNumber());
+        addIfValid(components, cs.getBaseboard().getSerialNumber());
+        addIfValid(components, cpu.getProcessorIdentifier().getProcessorID());
+
+        if (components.isEmpty()) {
+            String mac = getPrimaryMac(hal.getNetworkIFs());
+            if (mac != null) components.add(mac);
+            components.add(cpu.getProcessorIdentifier().getName());
+        }
+
+        Collections.sort(components);
+        String seed = String.join("|", components);
+
+        CRC32 crc = new CRC32();
+        crc.update(seed.getBytes(StandardCharsets.UTF_8));
+        return String.format("%08X", crc.getValue());
+    }
+
+    private static void addIfValid(List<String> list, String value) {
+        if (value == null) return;
+        String s = value.trim().toUpperCase();
+        if (s.isEmpty()) return;
+        if (s.contains("TO BE FILLED") || s.contains("NOT AVAILABLE")
+                || s.contains("DEFAULT STRING") || s.contains("NONE")
+                || s.contains("SERIAL") || s.contains("0123456789")) {
+            return;
+        }
+        list.add(s);
+    }
+
+    private static String getPrimaryMac(List<NetworkIF> networkIFs) {
+        for (NetworkIF nif : networkIFs) {
+            String mac = nif.getMacaddr();
+            if (mac == null || mac.isEmpty() || "00:00:00:00:00:00".equals(mac)) continue;
+
+            String name = nif.getName();
+            if (name != null && (name.startsWith("lo") || name.startsWith("docker")
+                    || name.startsWith("br-") || name.startsWith("veth"))) continue;
+
+            return mac.replace(":", "").replace("-", "").toUpperCase();
+        }
+        return null;
     }
 }
