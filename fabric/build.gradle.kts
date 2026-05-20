@@ -97,7 +97,7 @@ dependencies {
     include(implementation("org.apache.commons:commons-compress:$commonsCompressVersion")!!)
 
     // HWID System
-    include(implementation("com.github.oshi:oshi-core:7.1.0")!!)
+    include(implementation("com.github.oshi:oshi-core:6.9.0")!!)
 }
 
 tasks {
