@@ -91,6 +91,7 @@ class PlayerObject : LuaValue() {
             "getBossBar" -> GetBossBarFunction()
 
             "raycast" -> RayCastFunction()
+            "raycastToEntity" -> RayCastToEntityFunction()
             "raycastToBlocksFromId" -> RayCastToBlocksFunction()
             "raycastToBlocksFromIdentifier" -> RayCastToBlocksFromIdentifierFunction()
 
@@ -375,6 +376,39 @@ class PlayerObject : LuaValue() {
                         player.yRot,
                         player.xRotO,
                         arg1.todouble(),
+                        arg1.todouble()
+                    )
+                }
+                return if (hitResult != null) {
+                    LuaRaycast(hitResult)
+                } else {
+                    NIL
+                }
+            }
+            return NIL
+        }
+    }
+
+    private inner class RayCastToEntityFunction : OneArgFunction() {
+        override fun call(
+            arg1: LuaValue?
+        ): LuaValue? {
+            if (arg1?.isnumber() == true) {
+                val player = mc.player ?: return NIL
+                val hitResult = if (!RotationManager.getCurrentYaw().isNaN()) {
+                    RaycastUtils.findCrosshairEntity(
+                        mc.cameraEntity,
+                        player.eyePosition,
+                        RotationManager.getCurrentYaw(),
+                        RotationManager.getCurrentPitch(),
+                        arg1.todouble()
+                    )
+                } else {
+                    RaycastUtils.findCrosshairEntity(
+                        mc.cameraEntity,
+                        mc.player?.eyePosition,
+                        player.yRot,
+                        player.xRotO,
                         arg1.todouble()
                     )
                 }

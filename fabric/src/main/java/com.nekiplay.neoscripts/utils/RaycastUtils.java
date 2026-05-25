@@ -418,6 +418,39 @@ public class RaycastUtils {
         return closestHit;
     }
 
+    public static EntityHitResult findCrosshairEntity(Entity sourceEntity, Vec3 startPos, float yaw, float pitch, double entityInteractionRange) {
+        // 1. Превращаем yaw и pitch в вектор направления (lookVec)
+        float f = pitch * ((float)Math.PI / 180F);
+        float f1 = -yaw * ((float)Math.PI / 180F);
+        float f2 = Mth.cos(f1);
+        float f3 = Mth.sin(f1);
+        float f4 = Mth.cos(f);
+        float f5 = Mth.sin(f);
+
+        // Вычисляем вектор взгляда
+        Vec3 lookVec = new Vec3((double)(f3 * f4), (double)(-f5), (double)(f2 * f4));
+
+        // 2. Вычисляем конечную точку луча на основе дистанции взаимодействия с сущностями
+        Vec3 endVec = startPos.add(lookVec.x * entityInteractionRange, lookVec.y * entityInteractionRange, lookVec.z * entityInteractionRange);
+
+        // 3. Трассировка сущностей
+        // Создаем область поиска (AABB), немного расширенную для точности
+        AABB searchBox = new AABB(startPos, endVec).inflate(1.0D);
+
+        EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(
+                sourceEntity,
+                startPos,
+                endVec,
+                searchBox,
+                (e) -> !e.isSpectator() && e.isPickable(),
+                entityInteractionRange * entityInteractionRange // Квадрат максимальной дистанции
+        );
+
+        // 4. Возвращаем результат (будет null, если сущность не найдена)
+        return entityHit;
+    }
+
+
     public static HitResult findCrosshairTarget(Entity sourceEntity, Vec3 startPos, float yaw, float pitch, double blockInteractionRange, double entityInteractionRange) {
         // 1. Превращаем yaw и pitch в вектор направления (lookVec)
         // В Minecraft:

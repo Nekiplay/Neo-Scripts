@@ -121,9 +121,31 @@ class InputObject: LuaValue() {
         }
     }
 
-    private inner class MineBlockFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            return valueOf(mc?.gameMode?.mineBlock() == true)
+    private inner class MineBlockFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            return if (args.narg() == 0) {
+                valueOf(mc?.gameMode?.mineBlock() == true)
+            }
+            else if (args.narg() == 1) {
+                val result = when {
+                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is LuaRaycast -> {
+                        (args.arg1().touserdata() as LuaRaycast).hitResult
+                    }
+                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is HitResult -> {
+                        (args.arg1().touserdata() as HitResult)
+                    }
+                    else -> null
+                }
+                if (result != null) {
+                    valueOf(mc?.gameMode?.mineBlock(result) == true)
+                }
+                else {
+                    FALSE
+                }
+            }
+            else {
+                FALSE
+            }
         }
     }
 
@@ -133,9 +155,31 @@ class InputObject: LuaValue() {
         }
     }
 
-    private inner class AttackEntityFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            return valueOf(mc?.gameMode?.attackEntity() == true)
+    private inner class AttackEntityFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            return if (args.narg() == 0) {
+                valueOf(mc?.gameMode?.attackEntity() == true)
+            }
+            else if (args.narg() == 1) {
+                val result = when {
+                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is LuaRaycast -> {
+                        (args.arg1().touserdata() as LuaRaycast).hitResult
+                    }
+                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is HitResult -> {
+                        (args.arg1().touserdata() as HitResult)
+                    }
+                    else -> null
+                }
+                if (result != null) {
+                    valueOf(mc?.gameMode?.attackEntity(result) == true)
+                }
+                else {
+                    FALSE
+                }
+            }
+            else {
+                FALSE
+            }
         }
     }
 

@@ -58,6 +58,7 @@ fun MultiPlayerGameMode.attackBlock(): Boolean {
         mc?.level?.getBlockState(blockPos)?.isAir?.let {
             if (!it) {
                 this.startDestroyBlock(blockPos, blockHitResult.direction)
+                mc.player?.swing(InteractionHand.MAIN_HAND)
                 return true
             }
         }
@@ -117,13 +118,17 @@ fun isBlockInRange(pos: BlockPos, player: net.minecraft.world.entity.player.Play
 }
 
 fun MultiPlayerGameMode.mineBlock(): Boolean {
+    // 1. Получаем то, куда мы реально смотрим
+    val hitResult = getRotationRaycast()
+
+    return mineBlock(hitResult)
+}
+
+fun MultiPlayerGameMode.mineBlock(hitResult: HitResult): Boolean {
     val mc = Minecraft.getInstance()
     val player = mc.player ?: return false
     val level = mc.level ?: return false
     val accessor = this as ClientPlayerInteractionManagerAccessor
-
-    // 1. Получаем то, куда мы реально смотрим
-    val hitResult = getRotationRaycast()
 
     if (hitResult.type != HitResult.Type.BLOCK) {
         if (MiningState.isMining) {
@@ -151,6 +156,7 @@ fun MultiPlayerGameMode.mineBlock(): Boolean {
         accessor.setDestroyDelay(0) // Сброс задержки перед
         if (this.startDestroyBlock(pos, dir)) {
             accessor.setDestroyDelay(0) // Сброс задержки после
+            player.swing(InteractionHand.MAIN_HAND)
             resetMining()
             return true
         }
@@ -160,6 +166,7 @@ fun MultiPlayerGameMode.mineBlock(): Boolean {
     // ОБЫЧНЫЕ БЛОКИ (Процесс копания)
     if (MiningState.isMining && MiningState.targetPos == pos) {
         this.continueDestroyBlock(pos, dir)
+        player.swing(InteractionHand.MAIN_HAND)
         return true
     } else {
         // Начинаем копать новый блок
@@ -168,6 +175,7 @@ fun MultiPlayerGameMode.mineBlock(): Boolean {
             MiningState.isMining = true
             MiningState.targetPos = pos
             MiningState.targetDir = dir
+            player.swing(InteractionHand.MAIN_HAND)
             return true
         }
     }
@@ -182,11 +190,15 @@ private fun resetMining() {
 }
 
 fun MultiPlayerGameMode.attackEntity(): Boolean {
-    val player = mc?.player ?: return false
     val hitResult = getRotationRaycast()
-    if (hitResult.type == HitResult.Type.ENTITY && mc?.screen == null && mc?.player?.isBlocking == false) {
+    return attackEntity(hitResult)
+}
+
+fun MultiPlayerGameMode.attackEntity(hitResult: HitResult): Boolean {
+    val player = mc.player ?: return false
+    if (hitResult.type == HitResult.Type.ENTITY && mc.screen == null && mc.player?.isBlocking == false) {
         this.attack(player, (hitResult as EntityHitResult).entity)
-        mc?.player?.swing(InteractionHand.MAIN_HAND)
+        mc.player?.swing(InteractionHand.MAIN_HAND)
         return true
     }
     return false
