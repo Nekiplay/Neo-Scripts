@@ -1,12 +1,9 @@
 package com.nekiplay.neoscripts.features.lua.objects.misc
 
-import com.nekiplay.neoscripts.Main
-import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.Identifier
 import net.minecraft.world.item.Items
-import net.minecraft.world.level.block.Block
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction

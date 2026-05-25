@@ -58,8 +58,6 @@ class Blocks : LuaValue() {
             var index = 1
 
             for (block in BuiltInRegistries.BLOCK) {
-                if (block == AIR) continue
-                if (block == net.minecraft.world.level.block.Blocks.CAVE_AIR || block == net.minecraft.world.level.block.Blocks.VOID_AIR) continue
                 blocksList.set(index++, LuaBlockState(block.defaultBlockState()))
             }
 

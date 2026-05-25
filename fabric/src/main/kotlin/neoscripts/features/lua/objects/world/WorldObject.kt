@@ -159,6 +159,7 @@ class WorldObject : LuaValue() {
             "getOutlineBoxes" -> GetOutlineBoxesFunction()
 
             "raycast" -> RaycastFunction()
+            "raycastFromRotation" -> RaycastFromRotationFunction()
             "raycastToBlocksFromId" -> RaycastToBlocksFunction()
             "raycastToBlocksFromIdentifier" -> RaycastToBlocksFromIdentifierFunction()
             "getBreakingBlocksInfo" -> GetBreakingBlocksInfo()
@@ -241,6 +242,59 @@ class WorldObject : LuaValue() {
             }
 
             return result
+        }
+    }
+
+    private inner class RaycastFromRotationFunction : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue {
+            if (arg == null || !arg.istable()) return NIL
+
+            val startX = arg.get("startX").optdouble(0.0)
+            val startY = arg.get("startY").optdouble(0.0)
+            val startZ = arg.get("startZ").optdouble(0.0)
+            val yaw = arg.get("yaw").optdouble(0.0).toFloat()
+            val pitch = arg.get("pitch").optdouble(0.0).toFloat()
+            val range = arg.get("range").optdouble(0.0)
+
+            val includeFluid = arg.get("include_fluid").optboolean(false)
+            val includeEntity = arg.get("include_entity").optboolean(false)
+
+            val player = mc.player ?: return NIL
+            val level = mc.level ?: return NIL
+
+            val startVec = Vec3(startX, startY, startZ)
+
+            // 1. Вычисляем вектор направления из вращения (Rotation to Vector)
+            val f = Math.cos(-yaw * 0.017453292 - Math.PI).toFloat()
+            val f1 = Math.sin(-yaw * 0.017453292 - Math.PI).toFloat()
+            val f2 = -Math.cos(-pitch * 0.017453292).toFloat()
+            val f3 = Math.sin(-pitch * 0.017453292).toFloat()
+            val dirVec = Vec3((f1 * f2).toDouble(), f3.toDouble(), (f * f2).toDouble())
+
+            // 2. Вычисляем конечную точку луча
+            val endVec = startVec.add(dirVec.scale(range))
+
+            var hitResult: HitResult? = null
+
+            if (includeEntity) {
+                hitResult = RaycastUtils.findCrosshairTarget(player, startVec, yaw, pitch, range, range)
+            } else {
+                val fluidMode = if (includeFluid) ClipContext.Fluid.ANY else ClipContext.Fluid.NONE
+                val context = ClipContext(
+                    startVec,
+                    endVec,
+                    ClipContext.Block.OUTLINE,
+                    fluidMode,
+                    player
+                )
+                hitResult = level.clip(context)
+            }
+
+            return if (hitResult != null && hitResult.type != HitResult.Type.MISS) {
+                LuaRaycast(hitResult)
+            } else {
+                NIL
+            }
         }
     }
 
@@ -422,6 +476,16 @@ class WorldObject : LuaValue() {
 
                 val yaw = RotationUtils.getYaw(Vec3(pos.pos.x.toDouble(), pos.pos.y.toDouble(), pos.pos.z.toDouble()))
                 val pitch = RotationUtils.getPitch(Vec3(pos.pos.x.toDouble(), pos.pos.y.toDouble(), pos.pos.z.toDouble()))
+                val table = tableOf()
+                table.set("yaw", valueOf(yaw))
+                table.set("pitch", valueOf(pitch))
+                table
+            }
+            else if (arg1?.isuserdata() == true && arg1.touserdata() is BlockPos) {
+                val pos = arg1.touserdata() as BlockPos
+
+                val yaw = RotationUtils.getYaw(Vec3(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble()))
+                val pitch = RotationUtils.getPitch(Vec3(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble()))
                 val table = tableOf()
                 table.set("yaw", valueOf(yaw))
                 table.set("pitch", valueOf(pitch))
