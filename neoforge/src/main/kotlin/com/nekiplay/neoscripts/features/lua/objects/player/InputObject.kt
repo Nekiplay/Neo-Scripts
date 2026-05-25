@@ -16,6 +16,7 @@ import com.nekiplay.neoscripts.sugar.syncSelectedSlot
 import com.nekiplay.neoscripts.sugar.useItem
 import net.minecraft.client.KeyMapping
 import net.minecraft.core.BlockPos
+import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket
 import net.minecraft.world.phys.HitResult
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
@@ -78,10 +79,29 @@ class InputObject: LuaValue() {
             "isPressedAttack" -> IsPressedAttackFunction()
             "isPressedUse" -> IsPressedUseFunction()
 
+            // Breaking progress
             "getBreakingProgress" -> GetBreakingProgress()
             "setBreakingProgress" -> SetBreakingProgress()
+
+            // Elytra
+            "startElytraFly" -> StartElytraFly()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class StartElytraFly : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            if (mc.player != null && mc.player?.connection != null) {
+                mc.player?.connection?.send(
+                    ServerboundPlayerCommandPacket(
+                        mc.player!!,
+                        ServerboundPlayerCommandPacket.Action.START_FALL_FLYING
+                    )
+                )
+                return TRUE
+            }
+            return FALSE
+        }
     }
 
     private inner class GetBreakingProgress : ZeroArgFunction() {
@@ -149,9 +169,31 @@ class InputObject: LuaValue() {
         }
     }
 
-    private inner class AttackBlockFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            return valueOf(mc?.gameMode?.attackBlock() == true)
+    private inner class AttackBlockFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            return if (args.narg() == 0) {
+                valueOf(mc?.gameMode?.attackBlock() == true)
+            }
+            else if (args.narg() == 1) {
+                val result = when {
+                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is LuaRaycast -> {
+                        (args.arg1().touserdata() as LuaRaycast).hitResult
+                    }
+                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is HitResult -> {
+                        (args.arg1().touserdata() as HitResult)
+                    }
+                    else -> null
+                }
+                if (result != null) {
+                    valueOf(mc?.gameMode?.attackBlock(result) == true)
+                }
+                else {
+                    FALSE
+                }
+            }
+            else {
+                FALSE
+            }
         }
     }
 
@@ -183,9 +225,31 @@ class InputObject: LuaValue() {
         }
     }
 
-    private inner class InteractEntityFunction : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            return valueOf(mc?.gameMode?.interactEntity() == true)
+    private inner class InteractEntityFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            return if (args.narg() == 0) {
+                valueOf(mc?.gameMode?.interactEntity() == true)
+            }
+            else if (args.narg() == 1) {
+                val result = when {
+                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is LuaRaycast -> {
+                        (args.arg1().touserdata() as LuaRaycast).hitResult
+                    }
+                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is HitResult -> {
+                        (args.arg1().touserdata() as HitResult)
+                    }
+                    else -> null
+                }
+                if (result != null) {
+                    valueOf(mc?.gameMode?.interactEntity(result) == true)
+                }
+                else {
+                    FALSE
+                }
+            }
+            else {
+                FALSE
+            }
         }
     }
 

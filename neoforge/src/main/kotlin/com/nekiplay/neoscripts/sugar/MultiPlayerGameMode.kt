@@ -51,7 +51,10 @@ fun MultiPlayerGameMode.silentUse(useSlot: Int): Boolean {
 
 fun MultiPlayerGameMode.attackBlock(): Boolean {
     val hitResult = getRotationRaycast()
+    return attackBlock(hitResult)
+}
 
+fun MultiPlayerGameMode.attackBlock(hitResult: HitResult): Boolean {
     if (hitResult.type == HitResult.Type.BLOCK && mc?.screen == null && mc?.player?.isBlocking == false) {
         val blockHitResult = hitResult as BlockHitResult
         val blockPos = blockHitResult.blockPos
@@ -247,8 +250,12 @@ fun MultiPlayerGameMode.interactBlock(hitResult: HitResult?): Boolean {
 }
 
 fun MultiPlayerGameMode.interactEntity(): Boolean {
-    val player = mc?.player ?: return false
     val hitResult = getRotationRaycast()
+    return interactEntity(hitResult)
+}
+
+fun MultiPlayerGameMode.interactEntity(hitResult: HitResult): Boolean {
+    val player = mc?.player ?: return false
     if (hitResult.type == HitResult.Type.ENTITY && mc?.screen == null) {
         for (hand in InteractionHand.entries) {
             val actionResult2: InteractionResult =
