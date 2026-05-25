@@ -26,9 +26,11 @@ import net.minecraft.world.InteractionHand
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaValue
+import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
+import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 
 class PlayerObject : LuaValue() {
@@ -446,34 +448,31 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class SetPlayerSilentRotationFunction : FourArgFunction() {
-        override fun invoke(
-            arg1: LuaValue?,
-            arg2: LuaValue?,
-            arg3: LuaValue?,
-            arg4: LuaValue?
-        ): LuaValue? {
-            if (arg1?.isnumber() == true && arg2?.isnumber() == true) {
-                val player = mc?.player
+    private inner class SetPlayerSilentRotationFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (args.isnumber(1) && args.isnumber(2)) {
+                val player = mc.player
                 if (player != null) {
                     // Ограничиваем yaw в диапазоне -180° до 180°
-                    var yaw = arg1.todouble()
+                    var yaw = args.optdouble(1, 0.0)
                     yaw %= 360f
                     if (yaw > 180f) yaw -= 360f
                     if (yaw < -180f) yaw += 360f
 
                     // Ограничиваем pitch в диапазоне -90° до 90° (стандартные ограничения Minecraft)
-                    var pitch = arg2.todouble()
+                    var pitch = args.optdouble(2, 0.0)
                     pitch = pitch.coerceIn(-90.0, 90.0)
 
 
-                    val movementCorrection = arg3?.optboolean(true) ?: true
+                    val movementCorrection = args.optboolean(3, true) ?: true
                     var silentMovementCorrection = false
                     if (movementCorrection) {
-                        silentMovementCorrection = arg4?.optboolean(false) ?: false
+                        silentMovementCorrection = args.optboolean(4, false) ?: false
                     }
 
-                    RotationManager.rotateTo(yaw.toFloat(), pitch.toFloat(), 1,  1, movementCorrection, silentMovementCorrection)
+                    var priority = args.optint(5, 1)
+
+                    RotationManager.rotateTo(yaw.toFloat(), pitch.toFloat(), 1,  priority, movementCorrection, silentMovementCorrection)
                     return TRUE
                 }
                 return FALSE
