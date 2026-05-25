@@ -25,6 +25,8 @@
     "minecraft.LevelRendererAccessor",
     "minecraft.MixinKeyboardInput",
     "minecraft.MouseHandlerMixin",
+    "minecraft.item.MixinFireworkRocketEntity",
+    "minecraft.item.MixinItem",
     "minecraft.packets.ClientPacketListenerMixin",
     "minecraft.packets.ServerboundUseItemPacketAccessor"
   ],

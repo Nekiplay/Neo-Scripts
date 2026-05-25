@@ -24,6 +24,7 @@
     "minecraft.MixinKeyboardInput",
     "minecraft.MixinServerboundUseItemPacket",
     "minecraft.MouseHandlerMixin",
+    "minecraft.item.MixinFireworkRocketEntity",
     "minecraft.item.MixinItem",
     "packets.ClientPacketListenerMixin",
     "packets.ServerboundMovePlayerPacketAccessor",
