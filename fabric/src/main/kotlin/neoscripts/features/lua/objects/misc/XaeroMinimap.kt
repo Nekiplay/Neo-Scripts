@@ -64,9 +64,10 @@ class XaeroMinimap : LuaValue() {
             val y = args.arg(3).optint(0)
             val z = args.arg(4).optint(0)
             val text = args.arg(5).optjstring("text")
-            val color = args.arg(6).optint(0)
+            val initials = args.arg(6).optjstring("T")
+            val color = args.arg(7).optint(0)
 
-            minimapworld.currentWaypointSet.add(Waypoint(x, y, z, text, text, color))
+            minimapworld.currentWaypointSet.add(Waypoint(x, y, z, text, initials, color))
 
             return NIL
         }
