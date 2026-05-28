@@ -25,6 +25,7 @@ import com.nekiplay.neoscripts.features.lua.objects.misc.Items
 import com.nekiplay.neoscripts.features.lua.objects.misc.JsonLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.TCPLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.ThreadLib
+import com.nekiplay.neoscripts.features.lua.objects.misc.XaeroMinimap
 import com.nekiplay.neoscripts.features.lua.objects.misc.http.HttpClientLib
 import com.nekiplay.neoscripts.features.lua.objects.modules.ModulesObject
 import com.nekiplay.neoscripts.features.lua.objects.player.PlayerObject
@@ -1417,6 +1418,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
             "text_builder", "textbuilder", "component_builder", "componentbuilder" -> {
                 LuaComponentBuilder.createLibrary()
+            }
+            "xaero", "xaero-minimap" -> {
+                XaeroMinimap()
             }
             else -> return null
         }

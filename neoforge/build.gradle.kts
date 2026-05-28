@@ -87,6 +87,8 @@ dependencies {
 
     // HWID System
     jarJar(implementation("com.github.oshi:oshi-core:6.9.0")!!)
+
+    implementation(files("../libs/xaerominimap-neoforge-1.21.11-25.3.12.jar"))
 }
 
 tasks {

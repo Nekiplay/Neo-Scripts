@@ -13,13 +13,13 @@ subprojects {
         mavenCentral()
         mavenLocal()
 
+		maven("https://maven.fabricmc.net/")
         maven("https://maven.notenoughupdates.org/releases/")
         maven("https://repo.codemc.io/repository/maven-public/")
         maven("https://maven.azureaaron.net/releases")
         maven("https://repo1.maven.org/maven2/")
         maven("https://repo.nea.moe/releases")
         maven("https://api.modrinth.com/maven")
-        maven("https://maven.fabricmc.net/")
         maven("https://maven.neoforged.net/releases")
         exclusiveContent {
             forRepository {
