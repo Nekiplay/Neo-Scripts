@@ -28,7 +28,7 @@ class XaeroMinimap : LuaValue() {
         return when (key.tojstring()) {
             "createWaypoint" -> CreateWaypoint()
             "removeWaypoint" -> RemoveWaypoint()
-            "getWatpoints" -> GetWaypoints()
+            "getWaypoints" -> GetWaypoints()
             else -> super.get(key)
         }
     }
@@ -100,7 +100,7 @@ class XaeroMinimap : LuaValue() {
                 wp.set("color", valueOf(waypoint.waypointColor.hex))
                 wp.set("x", valueOf(waypoint.x))
                 wp.set("y", valueOf(waypoint.y))
-                wp.set("z", valueOf(waypoint.y))
+                wp.set("z", valueOf(waypoint.z))
                 table.set(index + 1, wp)
             }
             return table
