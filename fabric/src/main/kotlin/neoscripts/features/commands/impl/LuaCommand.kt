@@ -57,7 +57,7 @@ object LuaCommand {
             )
             .then(ClientCommandManager.literal("hwid")
                 .executes { context ->
-                    context.source.sendFeedback(Component.literal("${Main.PREFIX}§aHWID: §c" + Utils.getHWID8()))
+                    context.source.sendFeedback(Component.literal("${Main.PREFIX}§7HWID: §a" + Utils.getHWID8()))
                     1
                 }
             )

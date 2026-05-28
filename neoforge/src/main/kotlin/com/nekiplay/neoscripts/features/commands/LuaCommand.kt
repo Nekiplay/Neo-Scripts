@@ -63,7 +63,7 @@ object LuaCommand {
             )
             .then(Commands.literal("hwid")
                 .executes { context ->
-                    context.source.sendSuccess({ Component.literal("${Main.PREFIX}§aHWID: §c" + Utils.getHWID8()) }, false)
+                    context.source.sendSuccess({ Component.literal("${Main.PREFIX}§7HWID: §a" + Utils.getHWID8()) }, false)
                     1
                 }
             )

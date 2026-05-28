@@ -98,6 +98,8 @@ dependencies {
 
     // HWID System
     include(implementation("com.github.oshi:oshi-core:6.9.0")!!)
+
+    modImplementation(files("../libs/xaerominimap-fabric-1.21.11-25.3.12.jar"))
 }
 
 tasks {
