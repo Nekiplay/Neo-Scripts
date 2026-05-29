@@ -1354,7 +1354,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             "text_builder", "textbuilder", "component_builder", "componentbuilder" -> {
                 LuaComponentBuilder.createLibrary()
             }
-            "xaero", "xaero-minimap" -> {
+            "xaero", "xaero-minimap", "xaerominimap", "xaeros-minimap", "xaerosminimap", "xaero's-minimap", "xaero'sminimap" -> {
                 if (ModList.get().isLoaded("xaerominimap")) {
                     XaeroMinimap()
                 }
