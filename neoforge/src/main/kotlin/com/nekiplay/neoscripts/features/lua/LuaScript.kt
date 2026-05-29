@@ -54,6 +54,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.phys.Vec3
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.bus.api.SubscribeEvent
+import net.neoforged.fml.ModList
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent
 import org.luaj.vm2.Globals
@@ -1354,7 +1355,12 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 LuaComponentBuilder.createLibrary()
             }
             "xaero", "xaero-minimap" -> {
-                XaeroMinimap()
+                if (ModList.get().isLoaded("xaerominimap")) {
+                    XaeroMinimap()
+                }
+                else {
+                    error("Xaero's minimap not found")
+                }
             }
             else -> return null
         }

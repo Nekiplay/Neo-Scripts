@@ -40,6 +40,7 @@ import imgui.ImGui
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
+import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
@@ -1420,7 +1421,12 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 LuaComponentBuilder.createLibrary()
             }
             "xaero", "xaero-minimap" -> {
-                XaeroMinimap()
+                if (FabricLoader.getInstance().isModLoaded("xaerominimap")) {
+                    XaeroMinimap()
+                }
+                else {
+                    error("Xaero's minimap not found")
+                }
             }
             else -> return null
         }

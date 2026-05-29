@@ -56,8 +56,8 @@ class XaeroMinimap : LuaValue() {
 
     inner class CreateWaypoint : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val world = args.arg(1).optjstring("overworld")
-            val dim = ResourceKey.create(Registries.DIMENSION, Identifier.withDefaultNamespace(world));
+            val world = args.arg(1).optjstring("minecraft:overworld")
+            val dim = ResourceKey.create(Registries.DIMENSION, Identifier.parse(world));
             val minimapworld = getMinimapWorld(dim) ?: return error("Minimap world not found")
 
             val x = args.arg(2).optint(0)
@@ -74,8 +74,8 @@ class XaeroMinimap : LuaValue() {
     }
     inner class RemoveWaypoint : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val world = args.arg(1).optjstring("overworld")
-            val dim = ResourceKey.create(Registries.DIMENSION, Identifier.withDefaultNamespace(world));
+            val world = args.arg(1).optjstring("minecraft:overworld")
+            val dim = ResourceKey.create(Registries.DIMENSION, Identifier.parse(world));
             val minimapworld = getMinimapWorld(dim) ?: return error("Minimap world not found")
 
             val index = args.arg(2).optint(0)
@@ -86,8 +86,8 @@ class XaeroMinimap : LuaValue() {
     }
     inner class GetWaypoints : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val world = args.arg(1).optjstring("overworld")
-            val dim = ResourceKey.create(Registries.DIMENSION, Identifier.withDefaultNamespace(world));
+            val world = args.arg(1).optjstring("minecraft:overworld")
+            val dim = ResourceKey.create(Registries.DIMENSION, Identifier.parse(world));
             val minimapworld = getMinimapWorld(dim) ?: return error("Minimap world not found")
 
             val table = tableOf()

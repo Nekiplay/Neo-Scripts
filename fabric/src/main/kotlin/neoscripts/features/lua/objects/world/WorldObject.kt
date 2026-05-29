@@ -143,6 +143,7 @@ class WorldObject : LuaValue() {
             "getBlock", "getBlockState" -> GetBlockFunction()
             "getLight", "getBrightness" -> GetLightFunction()
             "getLightSky", "getBrightnessSky" -> GetLightSkyFunction()
+            "getDimension" -> GetDimension()
             "setBlock" -> SetBlockFunction()
             "isBlockLoaded" -> IsBlockLoadedFunction()
 
@@ -166,6 +167,23 @@ class WorldObject : LuaValue() {
             "playSound" -> PlaySoundFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetDimension : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val level = mc.level;
+
+            if (level != null) {
+                // Получаем ключ измерения (ResourceKey<Level>)
+                val dimensionKey = level.dimension();
+
+                // Получаем уникальный текстовый идентификатор (ResourceLocation), например, "minecraft:overworld"
+                val dimensionLocation = dimensionKey.identifier();
+                val dimensionString = dimensionLocation.toString();
+                return valueOf(dimensionString)
+            }
+            return NIL
+        }
     }
 
     private inner class GetBreakingBlocksInfo : ZeroArgFunction() {
