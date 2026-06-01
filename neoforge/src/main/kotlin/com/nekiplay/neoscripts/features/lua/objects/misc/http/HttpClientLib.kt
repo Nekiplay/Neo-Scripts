@@ -50,6 +50,8 @@ class HttpClientLib : LuaValue() {
         }
     }
 
+    public var servers = ArrayList<HttpServer>();
+
     private fun createServerFunction() = object : ThreeArgFunction() {
         override fun call(hostVal: LuaValue, portVal: LuaValue, callbackVal: LuaValue): LuaValue {
             val host = hostVal.checkjstring()
@@ -127,6 +129,7 @@ class HttpClientLib : LuaValue() {
 
                 server.executor = asyncExecutor
                 server.start()
+                servers.add(server)
 
                 object : LuaValue() {
                     override fun typename(): String = "HttpServer"

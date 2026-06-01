@@ -115,6 +115,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     var imguiLib: ImGuiLib? = null
     private var djlLibrary: DJLLuaTrainer? = null
     private var ffi: FFILib? = null
+    private var http: HttpClientLib? = null
 
     // Dependency tracking for nested requires
     private val dependencies = ConcurrentHashMap<String, MutableList<String>>()
@@ -1322,7 +1323,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 JsonLib()
             }
             "http" -> {
-                HttpClientLib()
+                if (http == null)
+                    http = HttpClientLib()
+                http!!
             }
             "encoding" -> {
                 EncodingLib()
@@ -1483,6 +1486,10 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         djlLibrary?.inputShapes?.clear()
         djlLibrary?.modelModes?.clear()
         ffi?.disposeLoadedLibraries()
+        http?.servers?.forEach { server ->
+            server.stop(0)
+        }
+
 
         localDependencyGraph.remove(scriptName)
         // Очищаем зависимости

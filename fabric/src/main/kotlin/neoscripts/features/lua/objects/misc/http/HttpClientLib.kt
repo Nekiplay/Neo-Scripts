@@ -15,6 +15,8 @@ import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.*
+import kotlin.collections.component1
+import kotlin.collections.component2
 
 class HttpClientLib : LuaValue() {
     private val asyncExecutor: ExecutorService = Executors.newCachedThreadPool()
@@ -47,6 +49,8 @@ class HttpClientLib : LuaValue() {
             else -> super.get(key)
         }
     }
+
+    public var servers = ArrayList<HttpServer>();
 
     private fun createServerFunction() = object : ThreeArgFunction() {
         override fun call(hostVal: LuaValue, portVal: LuaValue, callbackVal: LuaValue): LuaValue {
@@ -125,6 +129,7 @@ class HttpClientLib : LuaValue() {
 
                 server.executor = asyncExecutor
                 server.start()
+                servers.add(server)
 
                 object : LuaValue() {
                     override fun typename(): String = "HttpServer"
