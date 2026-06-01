@@ -9,6 +9,8 @@ import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 import java.io.File
+import java.util.concurrent.CompletableFuture
+import java.util.function.Consumer
 
 class ModulesObject: LuaValue() {
     override fun call(): LuaValue {
@@ -93,8 +95,8 @@ class ModulesObject: LuaValue() {
                     // 5. Ищем метод takeScreenshot.
                     // В новых версиях он асинхронный и принимает (RenderTarget, Consumer<NativeImage>)
                     val asyncTakeMethod = screenshotClass.methods.firstOrNull {
-                        it.name == "takeScreenshot" && it.parameterCount == 2 &&
-                                it.parameterTypes[1] == Consumer::class.java
+                        (it.name == "takeScreenshot") && (it.parameterCount == 2) &&
+                                (it.parameterTypes[1] == Consumer::class.java)
                     }
 
                     if (asyncTakeMethod != null) {
