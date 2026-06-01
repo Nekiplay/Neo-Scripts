@@ -152,6 +152,18 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
                 }
             }
 
+            "distanceToSqr", "distanceTo" -> object : VarArgFunction() {
+                override fun invoke(args: Varargs): LuaValue {
+                    if (args.narg() == 1 && args.arg1().istable()) {
+                        val vec = tableToVec3(args.arg1().checktable())
+                        return valueOf(box.distanceToSqr(vec))
+                    } else if (args.narg() >= 3) {
+                        return valueOf(box.distanceToSqr(Vec3(args.arg(1).checkdouble(), args.arg(2).checkdouble(), args.arg(3).checkdouble())))
+                    }
+                    return NIL
+                }
+            }
+
             // offset -> alias for move
             "offset" -> get("move")
 
