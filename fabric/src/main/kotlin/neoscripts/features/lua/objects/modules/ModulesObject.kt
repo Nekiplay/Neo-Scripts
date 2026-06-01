@@ -29,56 +29,108 @@ class ModulesObject: LuaValue() {
         } as LuaValue
     }
 
-    class ScreenshotFunction : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            if (GraphicsEnvironment.isHeadless()) {
-                throw LuaError("Cannot take screenshot: GraphicsEnvironment is headless")
-            }
-
-            // Если передан аргумент, используем его как путь для сохранения файла
-            val path = if (args.arg1().isnil()) null else args.arg1().checkjstring()
-
+    class ScreenshotFunction : ZeroArgFunction() {
+        override fun call(): LuaValue {
             return try {
-                // Ищем активное и показываемое (isShowing) на экране окно, либо просто первое видимое
-                val window = Window.getWindows().firstOrNull { it.isShowing && it.isActive }
-                    ?: Window.getWindows().firstOrNull { it.isShowing }
-                    ?: throw LuaError("No showing Java windows found to screenshot")
+                val bytes = captureMinecraftScreenshot()
 
-                // Получаем координаты и размеры окна
-                val loc = window.locationOnScreen
-                val rect = Rectangle(loc.x, loc.y, window.width, window.height)
+                // Создаем пустую Lua-таблицу
+                val bytesTable = tableOf()
 
-                // Захватываем область экрана
-                val robot = Robot()
-                val image = robot.createScreenCapture(rect)
-
-                if (path != null) {
-                    val file = File(path)
-                    val parent = file.parentFile
-                    if (parent != null && !parent.exists()) {
-                        parent.mkdirs()
-                    }
-                    val success = ImageIO.write(image, "png", file)
-                    if (!success) {
-                        throw LuaError("Failed to write image to path: $path")
-                    }
-                    TRUE
-                } else {
-                    // Конвертируем изображение в PNG байты
-                    val baos = ByteArrayOutputStream()
-                    ImageIO.write(image, "png", baos)
-                    val bytes = baos.toByteArray()
-
-                    // Возвращаем таблицу байтов (аналогично toLuaTable)
-                    val bytesTable = tableOf()
-                    for (i in bytes.indices) {
-                        bytesTable.set(i + 1, valueOf(bytes[i].toInt() and 0xFF))
-                    }
-                    bytesTable
+                // Заполняем её байтами в виде чисел (0-255) с индексацией от 1
+                for (i in bytes.indices) {
+                    bytesTable.set(i + 1, valueOf(bytes[i].toInt() and 0xFF))
                 }
+
+                bytesTable
             } catch (e: Exception) {
-                throw LuaError("Failed to capture screenshot: ${e.message}")
+                error("Failed to capture Minecraft screenshot: ${e.message}")
             }
+        }
+
+        private fun captureMinecraftScreenshot(): ByteArray {
+            // 1. Находим класс Minecraft/MinecraftClient независимо от загрузчика (Fabric/Yarn или Forge/Mojang)
+            val mcClass = try {
+                Class.forName("net.minecraft.client.MinecraftClient") // Fabric/Yarn
+            } catch (e: ClassNotFoundException) {
+                Class.forName("net.minecraft.client.Minecraft") // Forge/Mojang
+            }
+
+            val getInstanceMethod = mcClass.getMethod("getInstance")
+            val mcInstance = getInstanceMethod.invoke(null)
+
+            // 2. Ищем метод execute(Runnable) для отправки задачи на основной поток рендеринга игры
+            val executeMethod = mcClass.methods.firstOrNull {
+                it.name == "execute" && it.parameterCount == 1 && Runnable::class.java.isAssignableFrom(it.parameterTypes[0])
+            } ?: throw Exception("Main thread executor not found in Minecraft instance")
+
+            val future = CompletableFuture<ByteArray>()
+
+            // Выполняем захват в потоке OpenGL (это предотвратит черный экран и краши LWJGL)
+            executeMethod.invoke(mcInstance, Runnable {
+                try {
+                    // 3. Получаем объект Framebuffer (или RenderTarget в новых версиях)
+                    val framebufferMethod = mcClass.methods.firstOrNull {
+                        val returnTypeName = it.returnType.name
+                        returnTypeName.contains("Framebuffer") || returnTypeName.contains("RenderTarget")
+                    } ?: throw Exception("Framebuffer / RenderTarget method not found")
+                    val framebuffer = framebufferMethod.invoke(mcInstance)
+
+                    // 4. Находим класс ScreenshotHelper / ScreenshotRecorder
+                    val screenshotClass = try {
+                        Class.forName("net.minecraft.client.util.ScreenshotRecorder") // Yarn
+                    } catch (e: ClassNotFoundException) {
+                        try {
+                            Class.forName("net.minecraft.client.Screenshot") // Mojang 1.21+
+                        } catch (e: ClassNotFoundException) {
+                            Class.forName("net.minecraft.util.ScreenShotHelper") // Legacy / Старые версии
+                        }
+                    }
+
+                    var nativeImage: Any? = null
+
+                    // 5. Ищем метод takeScreenshot.
+                    // В новых версиях он асинхронный и принимает (RenderTarget, Consumer<NativeImage>)
+                    val asyncTakeMethod = screenshotClass.methods.firstOrNull {
+                        it.name == "takeScreenshot" && it.parameterCount == 2 &&
+                                it.parameterTypes[1] == Consumer::class.java
+                    }
+
+                    if (asyncTakeMethod != null) {
+                        val futureImage = CompletableFuture<Any>()
+                        val consumer = Consumer<Any> { img ->
+                            futureImage.complete(img)
+                        }
+                        asyncTakeMethod.invoke(null, framebuffer, consumer)
+                        nativeImage = futureImage.get()
+                    } else {
+                        // В более старых версиях он синхронный и возвращает NativeImage напрямую
+                        val syncTakeMethod = screenshotClass.methods.firstOrNull {
+                            it.name == "takeScreenshot" && it.parameterCount == 1
+                        } ?: throw Exception("takeScreenshot method not found")
+                        nativeImage = syncTakeMethod.invoke(null, framebuffer)
+                    }
+
+                    if (nativeImage == null) {
+                        throw Exception("Failed to capture NativeImage from Framebuffer")
+                    }
+
+                    // 6. Получаем байты PNG изображения из NativeImage
+                    val getBytesMethod = nativeImage.javaClass.getMethod("getBytes")
+                    val bytes = getBytesMethod.invoke(nativeImage) as ByteArray
+
+                    // Освобождаем выделенную нативную память
+                    if (nativeImage is AutoCloseable) {
+                        nativeImage.close()
+                    }
+
+                    future.complete(bytes)
+                } catch (ex: Exception) {
+                    future.completeExceptionally(ex)
+                }
+            })
+
+            return future.get()
         }
     }
 
