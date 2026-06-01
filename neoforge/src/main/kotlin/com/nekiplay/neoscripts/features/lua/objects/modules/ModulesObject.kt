@@ -17,8 +17,9 @@ class ModulesObject: LuaValue() {
 
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
+            "screenshot" -> ScreenshotFunction()
             "getLoadedScripts" -> GetLoadedScriptsFunction()
-            "getScriptRequirements" -> GetScriptRequirements ()
+            "getScriptRequirements" -> GetScriptRequirements()
             "loadScript" -> LoadScript()
             "unloadScript" -> UnLoadScript()
             "getModLoader" -> GetModLoader()
@@ -27,6 +28,59 @@ class ModulesObject: LuaValue() {
             "getHWID" -> GetHWID()
             else -> NIL
         } as LuaValue
+    }
+
+    class ScreenshotFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (GraphicsEnvironment.isHeadless()) {
+                throw LuaError("Cannot take screenshot: GraphicsEnvironment is headless")
+            }
+
+            // Если передан аргумент, используем его как путь для сохранения файла
+            val path = if (args.arg1().isnil()) null else args.arg1().checkjstring()
+
+            return try {
+                // Ищем активное и показываемое (isShowing) на экране окно, либо просто первое видимое
+                val window = Window.getWindows().firstOrNull { it.isShowing && it.isActive }
+                    ?: Window.getWindows().firstOrNull { it.isShowing }
+                    ?: throw LuaError("No showing Java windows found to screenshot")
+
+                // Получаем координаты и размеры окна
+                val loc = window.locationOnScreen
+                val rect = Rectangle(loc.x, loc.y, window.width, window.height)
+
+                // Захватываем область экрана
+                val robot = Robot()
+                val image = robot.createScreenCapture(rect)
+
+                if (path != null) {
+                    val file = File(path)
+                    val parent = file.parentFile
+                    if (parent != null && !parent.exists()) {
+                        parent.mkdirs()
+                    }
+                    val success = ImageIO.write(image, "png", file)
+                    if (!success) {
+                        throw LuaError("Failed to write image to path: $path")
+                    }
+                    return TRUE
+                } else {
+                    // Конвертируем изображение в PNG байты
+                    val baos = ByteArrayOutputStream()
+                    ImageIO.write(image, "png", baos)
+                    val bytes = baos.toByteArray()
+
+                    // Возвращаем таблицу байтов (аналогично toLuaTable)
+                    val bytesTable = tableOf()
+                    for (i in bytes.indices) {
+                        bytesTable.set(i + 1, valueOf(bytes[i].toInt() and 0xFF))
+                    }
+                    bytesTable
+                }
+            } catch (e: Exception) {
+                throw LuaError("Failed to capture screenshot: ${e.message}")
+            }
+        }
     }
 
     private inner class GetHWID : ZeroArgFunction() {

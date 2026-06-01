@@ -1,11 +1,13 @@
 package com.nekiplay.neoscripts.features.lua.objects.misc.http
 
+import com.sun.net.httpserver.HttpServer
 import org.luaj.vm2.LuaError
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.VarArgFunction
+import org.luaj.vm2.lib.ZeroArgFunction
 import java.net.*
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -25,6 +27,8 @@ class HttpClientLib : LuaValue() {
 
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
+            "create_server" -> createServerFunction()
+
             "get" -> this.function
             "get_with_headers" -> this.withHeadersFunction
             "get_async_with_headers_callback" -> this.asyncWithHeadersCallbackFunction
@@ -41,6 +45,105 @@ class HttpClientLib : LuaValue() {
             "post_async_with_headers_with_proxy_callback" -> postAsyncWithHeadersWithProxyCallbackFunction()
 
             else -> super.get(key)
+        }
+    }
+
+    private fun createServerFunction() = object : ThreeArgFunction() {
+        override fun call(hostVal: LuaValue, portVal: LuaValue, callbackVal: LuaValue): LuaValue {
+            val host = hostVal.checkjstring()
+            val port = portVal.checkint()
+            val callback = callbackVal.checkfunction()
+
+            return try {
+                // Создаем привязку к конкретному IP (хосту) и порту
+                val server = HttpServer.create(InetSocketAddress(host, port), 0)
+
+                server.createContext("/") { exchange ->
+                    try {
+                        val method = exchange.requestMethod
+                        val path = exchange.requestURI.path ?: "/"
+
+                        // Парсинг заголовков запроса
+                        val reqHeaders = tableOf()
+                        exchange.requestHeaders.forEach { (k, v) ->
+                            if (k != null) {
+                                reqHeaders.set(k, v.joinToString(", "))
+                            }
+                        }
+
+                        // Чтение тела запроса
+                        val bodyBytes = exchange.requestBody.readBytes()
+                        val body = String(bodyBytes, StandardCharsets.UTF_8)
+
+                        val reqTable = tableOf()
+                        reqTable.set("method", valueOf(method))
+                        reqTable.set("path", valueOf(path))
+                        reqTable.set("headers", reqHeaders)
+                        reqTable.set("body", valueOf(body))
+
+                        // Вызываем Lua callback и получаем ответ
+                        val responseVal = callback.call(reqTable)
+
+                        var status = 200
+                        var respBody = ""
+                        val respHeaders = mutableMapOf<String, String>()
+
+                        if (responseVal.istable()) {
+                            status = responseVal.get("status").optint(200)
+                            respBody = responseVal.get("body").optjstring("")
+
+                            val headersVal = responseVal.get("headers")
+                            if (headersVal.istable()) {
+                                var key = NIL
+                                while (true) {
+                                    val n = headersVal.next(key)
+                                    key = n.arg1()
+                                    if (key.isnil()) break
+                                    respHeaders[key.checkjstring()] = n.arg(2).checkjstring()
+                                }
+                            }
+                        } else if (responseVal.isstring()) {
+                            respBody = responseVal.tojstring()
+                        }
+
+                        val bytes = respBody.toByteArray(StandardCharsets.UTF_8)
+
+                        // Запись заголовков ответа
+                        respHeaders.forEach { (k, v) -> exchange.responseHeaders.add(k, v) }
+
+                        exchange.sendResponseHeaders(status, bytes.size.toLong())
+                        exchange.responseBody.write(bytes)
+                    } catch (e: Exception) {
+                        val errMsg = "Internal Server Error: ${e.message}"
+                        val bytes = errMsg.toByteArray(StandardCharsets.UTF_8)
+                        exchange.sendResponseHeaders(500, bytes.size.toLong())
+                        exchange.responseBody.write(bytes)
+                    } finally {
+                        exchange.close()
+                    }
+                }
+
+                server.executor = asyncExecutor
+                server.start()
+
+                object : LuaValue() {
+                    override fun typename(): String = "HttpServer"
+                    override fun type(): Int = TUSERDATA
+                    override fun get(key: LuaValue): LuaValue {
+                        return when (key.tojstring()) {
+                            "stop" -> object : ZeroArgFunction() {
+                                override fun call(): LuaValue {
+                                    server.stop(0)
+                                    return NIL
+                                }
+                            }
+                            else -> super.get(key)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                throw LuaError("Failed to start HTTP server: ${e.message}")
+            }
         }
     }
 
