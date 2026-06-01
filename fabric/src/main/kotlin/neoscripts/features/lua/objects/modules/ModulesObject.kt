@@ -1,13 +1,19 @@
 package com.nekiplay.neoscripts.features.lua.objects.modules
 
+import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.Main.LUA_MANAGER
+import com.nekiplay.neoscripts.mixins.NativeImageAccessor
 import com.nekiplay.neoscripts.utils.Utils
 import net.fabricmc.loader.api.FabricLoader
+import net.minecraft.client.Minecraft
+import net.minecraft.client.Screenshot
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.nio.channels.Channels
 import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
 
@@ -51,86 +57,36 @@ class ModulesObject: LuaValue() {
         }
 
         private fun captureMinecraftScreenshot(): ByteArray {
-            // 1. Находим класс Minecraft/MinecraftClient независимо от загрузчика (Fabric/Yarn или Forge/Mojang)
-            val mcClass = try {
-                Class.forName("net.minecraft.client.MinecraftClient") // Fabric/Yarn
-            } catch (e: ClassNotFoundException) {
-                Class.forName("net.minecraft.client.Minecraft") // Forge/Mojang
-            }
-
-            val getInstanceMethod = mcClass.getMethod("getInstance")
-            val mcInstance = getInstanceMethod.invoke(null)
-
-            // 2. Ищем метод execute(Runnable) для отправки задачи на основной поток рендеринга игры
-            val executeMethod = mcClass.methods.firstOrNull {
-                it.name == "execute" && it.parameterCount == 1 && Runnable::class.java.isAssignableFrom(it.parameterTypes[0])
-            } ?: throw Exception("Main thread executor not found in Minecraft instance")
-
+            val client = Minecraft.getInstance()
             val future = CompletableFuture<ByteArray>()
 
-            // Выполняем захват в потоке OpenGL (это предотвратит черный экран и краши LWJGL)
-            executeMethod.invoke(mcInstance, Runnable {
+            // Выполняем захват в главном потоке рендеринга игры (предотвращает краш OpenGL)
+            client.execute {
                 try {
-                    // 3. Получаем объект Framebuffer (или RenderTarget в новых версиях)
-                    val framebufferMethod = mcClass.methods.firstOrNull {
-                        val returnTypeName = it.returnType.name
-                        returnTypeName.contains("Framebuffer") || returnTypeName.contains("RenderTarget")
-                    } ?: throw Exception("Framebuffer / RenderTarget method not found")
-                    val framebuffer = framebufferMethod.invoke(mcInstance)
+                    // Получаем RenderTarget
+                    val renderTarget = client.mainRenderTarget
 
-                    // 4. Находим класс ScreenshotHelper / ScreenshotRecorder
-                    val screenshotClass = try {
-                        Class.forName("net.minecraft.client.util.ScreenshotRecorder") // Yarn
-                    } catch (e: ClassNotFoundException) {
+                    // Передаем лямбду в качестве Consumer<NativeImage>
+                    Screenshot.takeScreenshot(renderTarget) { nativeImage: NativeImage ->
                         try {
-                            Class.forName("net.minecraft.client.Screenshot") // Mojang 1.21+
-                        } catch (e: ClassNotFoundException) {
-                            Class.forName("net.minecraft.util.ScreenShotHelper") // Legacy / Старые версии
+                            val baos = ByteArrayOutputStream()
+                            val channel = Channels.newChannel(baos)
+
+                            // Приводим NativeImage к аксессору и вызываем приватный метод через @Invoker
+                            (nativeImage as NativeImageAccessor).invokeWriteToChannel(channel)
+
+                            val bytes = baos.toByteArray()
+                            future.complete(bytes)
+                        } catch (ex: Exception) {
+                            future.completeExceptionally(ex)
+                        } finally {
+                            nativeImage.close() // Освобождаем нативную память
                         }
                     }
-
-                    var nativeImage: Any? = null
-
-                    // 5. Ищем метод takeScreenshot.
-                    // В новых версиях он асинхронный и принимает (RenderTarget, Consumer<NativeImage>)
-                    val asyncTakeMethod = screenshotClass.methods.firstOrNull {
-                        (it.name == "takeScreenshot") && (it.parameterCount == 2) &&
-                                (it.parameterTypes[1] == Consumer::class.java)
-                    }
-
-                    if (asyncTakeMethod != null) {
-                        val futureImage = CompletableFuture<Any>()
-                        val consumer = Consumer<Any> { img ->
-                            futureImage.complete(img)
-                        }
-                        asyncTakeMethod.invoke(null, framebuffer, consumer)
-                        nativeImage = futureImage.get()
-                    } else {
-                        // В более старых версиях он синхронный и возвращает NativeImage напрямую
-                        val syncTakeMethod = screenshotClass.methods.firstOrNull {
-                            it.name == "takeScreenshot" && it.parameterCount == 1
-                        } ?: throw Exception("takeScreenshot method not found")
-                        nativeImage = syncTakeMethod.invoke(null, framebuffer)
-                    }
-
-                    if (nativeImage == null) {
-                        throw Exception("Failed to capture NativeImage from Framebuffer")
-                    }
-
-                    // 6. Получаем байты PNG изображения из NativeImage
-                    val getBytesMethod = nativeImage.javaClass.getMethod("getBytes")
-                    val bytes = getBytesMethod.invoke(nativeImage) as ByteArray
-
-                    // Освобождаем выделенную нативную память
-                    if (nativeImage is AutoCloseable) {
-                        nativeImage.close()
-                    }
-
-                    future.complete(bytes)
                 } catch (ex: Exception) {
                     future.completeExceptionally(ex)
                 }
-            })
+            }
 
             return future.get()
         }

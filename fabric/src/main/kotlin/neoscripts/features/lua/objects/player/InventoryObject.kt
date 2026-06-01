@@ -5,6 +5,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.neoscripts.mixins.gui.AbstractSignEditScreenAccessor
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.utils.InventoryUtils
+import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.client.gui.screens.inventory.ContainerScreen
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
@@ -30,6 +31,7 @@ class InventoryObject: LuaValue() {
             "isSignOpened" -> IsSignOpenedFunction()
             "isAnyScreenOpened" -> IsAnyScreenOpened()
             "isContainerScreenOpened" -> IsContainerScreenOpened()
+            "isChatOpened" -> IsChatOpened()
             "getContainerSlots" -> GetContainerSlotsFunction()
             "getChestTitle", "getContainerTitle" -> GetChestTitleFunction()
 
@@ -56,6 +58,17 @@ class InventoryObject: LuaValue() {
             "openInventory" -> OpenInventoryFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class IsChatOpened : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val screen = mc?.screen
+            return if (screen is ChatScreen) {
+                TRUE
+            } else {
+                FALSE
+            }
+        }
     }
 
     private inner class IsContainerScreenOpened : ZeroArgFunction() {

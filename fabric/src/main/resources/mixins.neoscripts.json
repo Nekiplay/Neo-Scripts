@@ -33,6 +33,7 @@
   "client": [
     "BeaconBlockEntityRendererInvoker",
     "FrustumInvoker",
+    "NativeImageAccessor",
     "WorldChunkMixin",
     "firmament.ModAnnouncerMixin",
     "gui.AbstractContainerMenuMixin",
