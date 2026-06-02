@@ -1,19 +1,18 @@
-package com.nekiplay.neoscripts.features.lua.objects.player
+ package com.nekiplay.neoscripts.features.lua.objects.player
 
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.neoscripts.mixins.gui.AbstractSignEditScreenAccessor
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.utils.InventoryUtils
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
-import net.minecraft.client.gui.screens.inventory.ContainerScreen
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.minecraft.client.gui.screens.inventory.SignEditScreen
 import net.minecraft.client.multiplayer.ClientPacketListener
 import net.minecraft.network.protocol.game.ServerboundSignUpdatePacket
 import net.minecraft.world.inventory.AbstractContainerMenu
-import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.item.ItemStack
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
@@ -21,7 +20,7 @@ import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 
 
-class InventoryObject: LuaValue() {
+ class InventoryObject: LuaValue() {
     override fun call(): LuaValue {
         return this
     }
@@ -30,19 +29,28 @@ class InventoryObject: LuaValue() {
         return when (key.tojstring()) {
             "isSignOpened" -> IsSignOpenedFunction()
             "isAnyScreenOpened" -> IsAnyScreenOpened()
-            "isContainerScreenOpened" -> IsContainerScreenOpened()
+            "isContainerScreenOpened", "isContainerOpened" -> IsContainerScreenOpened()
             "isChatOpened" -> IsChatOpened()
             "getContainerSlots" -> GetContainerSlotsFunction()
             "getChestTitle", "getContainerTitle" -> GetChestTitleFunction()
 
             "setStackInContainer", "setItemInContainer" -> SetStackInContainerFunction()
-            "setStack", "setItem" -> SetStackFunction()
+            "setStack", "setItem", "setItemStack" -> SetStackFunction()
 
-            "getStackFromContainer", "getItemFromContainer" -> GetStackFromContainerFunction()
-            "getStack", "getItem" -> GetStackFunction()
+            "getStackFromContainer", "getItemFromContainer", "getItemStackFromContainer" -> GetStackFromContainerFunction()
+            "getStack", "getItem", "getItemStack" -> GetStackFunction()
             "getSignText" -> GetSignTextFunction()
             "setSignText" -> SetSignTextFunction()
-            "doneSign" -> DoneSignFunction()
+            "doneSign", "confirmSign" -> DoneSignFunction()
+
+            "carriedItem", "carriedItemStack" -> {
+                val carriedStack = mc.player?.containerMenu?.carried
+                return if (carriedStack != null) {
+                    LuaItemStack(carriedStack)
+                } else {
+                    NIL
+                }
+            }
 
             "leftClick" -> LeftClickFunction()
             "rightClick" -> RightClickFunction()

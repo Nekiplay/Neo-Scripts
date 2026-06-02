@@ -30,19 +30,28 @@ class InventoryObject: LuaValue() {
         return when (key.tojstring()) {
             "isSignOpened" -> IsSignOpenedFunction()
             "isAnyScreenOpened" -> IsAnyScreenOpened()
-            "isContainerScreenOpened" -> IsContainerScreenOpened()
+            "isContainerScreenOpened", "isContainerOpened"  -> IsContainerScreenOpened()
             "isChatOpened" -> IsChatOpened()
             "getContainerSlots" -> GetContainerSlotsFunction()
             "getChestTitle", "getContainerTitle" -> GetChestTitleFunction()
 
             "setStackInContainer", "setItemInContainer" -> SetStackInContainerFunction()
-            "setStack", "setItem" -> SetStackFunction()
+            "setStack", "setItem", "setItemStack" -> SetStackFunction()
 
-            "getStackFromContainer", "getItemFromContainer" -> GetStackFromContainerFunction()
-            "getStack", "getItem" -> GetStackFunction()
+            "getStackFromContainer", "getItemFromContainer", "getItemStackFromContainer" -> GetStackFromContainerFunction()
+            "getStack", "getItem", "getItemStack" -> GetStackFunction()
             "getSignText" -> GetSignTextFunction()
             "setSignText" -> SetSignTextFunction()
-            "doneSign" -> DoneSignFunction()
+            "doneSign", "confirmSign" -> DoneSignFunction()
+
+            "carriedItem", "carriedItemStack" -> {
+                val carriedStack = mc.player?.containerMenu?.carried
+                return if (carriedStack != null) {
+                    LuaItemStack(carriedStack)
+                } else {
+                    NIL
+                }
+            }
 
             "leftClick" -> LeftClickFunction()
             "rightClick" -> RightClickFunction()

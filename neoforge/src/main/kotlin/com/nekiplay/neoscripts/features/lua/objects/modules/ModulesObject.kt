@@ -12,6 +12,8 @@ import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
+import org.lwjgl.BufferUtils
+import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.channels.Channels
@@ -37,61 +39,42 @@ class ModulesObject: LuaValue() {
         } as LuaValue
     }
 
-    class ScreenshotFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return try {
-                val bytes = captureMinecraftScreenshot()
+    class ScreenshotFunction : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            val callback = arg.checkfunction() ?: return NIL
 
-                // Создаем пустую Lua-таблицу
-                val bytesTable = tableOf()
-
-                // Заполняем её байтами в виде чисел (0-255) с индексацией от 1
-                for (i in bytes.indices) {
-                    bytesTable.set(i + 1, valueOf(bytes[i].toInt() and 0xFF))
-                }
-
-                bytesTable
-            } catch (e: Exception) {
-                error("Failed to capture Minecraft screenshot: ${e.message}")
-            }
-        }
-
-        private fun captureMinecraftScreenshot(): ByteArray {
             val client = Minecraft.getInstance()
-            val future = CompletableFuture<ByteArray>()
+            val renderTarget = client.mainRenderTarget
 
-            // Выполняем захват в главном потоке рендеринга игры (предотвращает краш OpenGL)
             client.execute {
                 try {
-                    // Получаем RenderTarget
-                    val renderTarget = client.mainRenderTarget
-
-                    // Передаем лямбду в качестве Consumer<NativeImage>
                     Screenshot.takeScreenshot(renderTarget) { nativeImage: NativeImage ->
                         try {
                             val baos = ByteArrayOutputStream()
                             val channel = Channels.newChannel(baos)
-
-                            // Приводим NativeImage к аксессору и вызываем приватный метод через @Invoker
                             (nativeImage as NativeImageAccessor).invokeWriteToChannel(channel)
-
                             val bytes = baos.toByteArray()
-                            future.complete(bytes)
+                            val bytesTable = tableOf()
+                            for (i in bytes.indices) {
+                                bytesTable.set(i + 1, valueOf(bytes[i].toInt() and 0xFF))
+                            }
+                            client.execute {
+                                callback.call(bytesTable)
+                            }
                         } catch (ex: Exception) {
-                            future.completeExceptionally(ex)
+                            ex.printStackTrace()
                         } finally {
-                            nativeImage.close() // Освобождаем нативную память
+                            nativeImage.close()
                         }
                     }
                 } catch (ex: Exception) {
-                    future.completeExceptionally(ex)
+                    ex.printStackTrace()
                 }
             }
 
-            return future.get()
+            return NIL
         }
     }
-
     private inner class GetHWID : ZeroArgFunction() {
         override fun call(): LuaValue {
             return valueOf(Utils.getHWID8())
