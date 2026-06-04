@@ -2,6 +2,7 @@ package com.nekiplay.neoscripts.features.lua.objects.misc.http
 
 import com.sun.net.httpserver.HttpServer
 import org.luaj.vm2.LuaError
+import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.ThreeArgFunction
@@ -89,12 +90,12 @@ class HttpClientLib : LuaValue() {
                         val responseVal = callback.call(reqTable)
 
                         var status = 200
-                        var respBody = ""
+                        var respBody: LuaTable? = null
                         val respHeaders = mutableMapOf<String, String>()
 
                         if (responseVal.istable()) {
                             status = responseVal.get("status").optint(200)
-                            respBody = responseVal.get("body").optjstring("")
+                            respBody = responseVal.get("body").checktable()
 
                             val headersVal = responseVal.get("headers")
                             if (headersVal.istable()) {
@@ -106,17 +107,23 @@ class HttpClientLib : LuaValue() {
                                     respHeaders[key.checkjstring()] = n.arg(2).checkjstring()
                                 }
                             }
-                        } else if (responseVal.isstring()) {
-                            respBody = responseVal.tojstring()
+                        } else if (responseVal.istable()) {
+                            respBody = responseVal.checktable()
                         }
 
-                        val bytes = respBody.toByteArray(StandardCharsets.UTF_8)
+                        if (respBody != null) {
+                            val length = respBody.length() ?: 0
+                            val byteArray = ByteArray(length)
+                            for (i in 1..length) {
+                                val byteValue = respBody.get(i).checkint()
+                                byteArray[i - 1] = (byteValue and 0xFF).toByte()
+                            }
+                            // Запись заголовков ответа
+                            respHeaders.forEach { (k, v) -> exchange.responseHeaders.add(k, v) }
 
-                        // Запись заголовков ответа
-                        respHeaders.forEach { (k, v) -> exchange.responseHeaders.add(k, v) }
-
-                        exchange.sendResponseHeaders(status, bytes.size.toLong())
-                        exchange.responseBody.write(bytes)
+                            exchange.sendResponseHeaders(status, byteArray.size.toLong())
+                            exchange.responseBody.write(byteArray)
+                        }
                     } catch (e: Exception) {
                         val errMsg = "Internal Server Error: ${e.message}"
                         val bytes = errMsg.toByteArray(StandardCharsets.UTF_8)
