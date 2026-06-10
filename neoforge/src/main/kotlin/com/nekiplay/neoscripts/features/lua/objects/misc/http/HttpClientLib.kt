@@ -107,7 +107,7 @@ class HttpClientLib : LuaValue() {
                                     respHeaders[key.checkjstring()] = n.arg(2).checkjstring()
                                 }
                             }
-                        } else if (responseVal.istable()) {
+                            } else if (responseVal.istable()) {
                             respBody = responseVal.checktable()
                         }
 

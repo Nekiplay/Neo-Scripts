@@ -24,8 +24,8 @@ class LuaBlockPos(val pos: BlockPos): LuaUserdata(pos) {
             "west" -> LuaBlockPos(pos.west())
             "south" -> LuaBlockPos(pos.south())
 
-            "distSqr" -> distSqr()
-            "distToCenterSqr" -> distToCenterSqr()
+            "distSqr", "distanceSqr" -> distSqr()
+            "distToCenterSqr", "distanceToCenterSqr" -> distToCenterSqr()
             else -> NIL
         }
     }

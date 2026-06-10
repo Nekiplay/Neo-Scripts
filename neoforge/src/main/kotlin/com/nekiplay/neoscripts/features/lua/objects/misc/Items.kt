@@ -59,9 +59,7 @@ class Items : LuaValue() {
             val itemsTable = LuaValue.tableOf()
             var index = 1
             for (item in BuiltInRegistries.ITEM) {
-                if (item != Items.AIR) { // optional filter
-                    itemsTable.set(index++, LuaItemStack(item.defaultInstance))
-                }
+                itemsTable.set(index++, LuaItemStack(item.defaultInstance))
             }
             return itemsTable
         }

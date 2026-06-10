@@ -30,7 +30,7 @@ class Entities : LuaValue() {
 
             for (entityType in BuiltInRegistries.ENTITY_TYPE) {
                 // Получаем идентификатор типа сущности, например "minecraft:sheep"
-                val id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType)?.toString() ?: continue
+                val id = BuiltInRegistries.ENTITY_TYPE.getKey(entityType).toString() ?: continue
                 entitiesList.set(index++, LuaValue.valueOf(id))
             }
 
