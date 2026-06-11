@@ -31,10 +31,8 @@
     "packets.ClientPacketListenerMixin",
     "packets.ServerboundMovePlayerPacketAccessor",
     "renderer.BlockEntityRenderStateAccessor",
-    "renderer.GameRendererAccessor"
   ],
   "client": [
-    "BeaconBlockEntityRendererInvoker",
     "FrustumInvoker",
     "NativeImageAccessor",
     "WorldChunkMixin",
