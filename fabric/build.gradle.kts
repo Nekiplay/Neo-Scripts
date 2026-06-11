@@ -23,7 +23,7 @@ repositories {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion.set(JavaLanguageVersion.of(25))
     }
 }
 
@@ -100,8 +100,15 @@ dependencies {
 }
 
 tasks {
-    jar {
+    shadowJar {
         from(sourceSets.main.get().output)
+        configurations = listOf(shadowModImpl)
+        archiveClassifier.set("shadow")
+        mergeServiceFiles()
+    }
+
+    jar {
+        dependsOn(shadowJar)
     }
 
     processResources {
@@ -139,6 +146,6 @@ loom {
 
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
-    sourceCompatibility = "21"
-    targetCompatibility = "21"
+    sourceCompatibility = "25"
+    targetCompatibility = "25"
 }

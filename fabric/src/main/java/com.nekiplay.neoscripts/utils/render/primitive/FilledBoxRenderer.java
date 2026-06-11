@@ -5,7 +5,7 @@ import com.nekiplay.neoscripts.utils.render.Renderer;
 import com.nekiplay.neoscripts.utils.render.SkyblockerRenderPipelines;
 import com.nekiplay.neoscripts.utils.render.state.FilledBoxRenderState;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.state.CameraRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import org.joml.Matrix4f;
 
 public final class FilledBoxRenderer implements PrimitiveRenderer<FilledBoxRenderState> {

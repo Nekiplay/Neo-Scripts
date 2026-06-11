@@ -29,6 +29,7 @@
     "minecraft.item.MixinItem",
     "packets.ClientPacketListenerMixin",
     "packets.ServerboundMovePlayerPacketAccessor",
+    "renderer.BlockEntityRenderStateAccessor",
     "renderer.GameRendererAccessor"
   ],
   "client": [

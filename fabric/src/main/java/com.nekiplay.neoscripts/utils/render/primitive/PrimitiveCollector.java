@@ -58,8 +58,6 @@ public interface PrimitiveCollector {
     void submitTexturedQuad(Vec3 pos, float width, float height, float textureWidth, float textureHeight, Vec3 renderOffset, Identifier texture, float[] shaderColour, float alpha, boolean throughWalls);
 
     void submitBlockHologram(BlockPos pos, BlockState state);
-    void submitBlock(BlockPos pos, BlockState state);
-    void submitItem(Vec3 pos, Identifier identifier);
 
     void submitText(Component text, Vec3 pos, boolean throughWalls);
 
@@ -68,7 +66,6 @@ public interface PrimitiveCollector {
     void submitText(Component text, Vec3 pos, float scale, float yOffset, boolean throughWalls);
 
     void submitText(Component text, Vec3 pos, int color, float scale, float yOffset, boolean throughWalls);
-    void submitText(Component text, Vec3 pos, int color, float scale, float yOffset, Quaternionf rotation, boolean throughWalls);
 
     /**
      * Submits a cylinder without the top or bottom faces.

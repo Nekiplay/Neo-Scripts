@@ -1,7 +1,5 @@
 package com.nekiplay.neoscripts.features.modules.impl.misc
 
-import com.mojang.brigadier.CommandDispatcher
-import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.Main.LUA_MANAGER
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.events.KeyEvent
@@ -16,7 +14,7 @@ import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.neoscripts.features.modules.ClientModule
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.sugar.getJsonString
-import com.nekiplay.neoscripts.utils.render.WorldRenderExtractionCallback
+import com.nekiplay.neoscripts.utils.render.LevelRenderExtractionCallback
 import com.nekiplay.neoscripts.utils.render.primitive.PrimitiveCollector
 import com.nekiplay.neoscripts.utils.scheduler.MessageScheduler
 import com.nekiplay.neoscripts.utils.scheduler.Scheduler
@@ -25,7 +23,6 @@ import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
-import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.registries.BuiltInRegistries
@@ -244,7 +241,7 @@ object LuaEvents : ClientModule() {
             }
         }
 
-        WorldRenderExtractionCallback.EVENT.register({ context: PrimitiveCollector? ->
+        LevelRenderExtractionCallback.EVENT.register({ context: PrimitiveCollector? ->
             val renderContext = WorldRendererObject(context)
             LUA_MANAGER?.scripts?.values?.forEach { script ->
                 try {

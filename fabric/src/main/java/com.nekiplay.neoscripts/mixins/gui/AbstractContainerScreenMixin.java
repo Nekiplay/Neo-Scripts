@@ -7,7 +7,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
@@ -23,8 +23,8 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         super(title);
     }
 
-    @Inject(method = "slotClicked", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;handleInventoryMouseClick(IIILnet/minecraft/world/inventory/ClickType;Lnet/minecraft/world/entity/player/Player;)V"))
-    private void neoscripts$onSlotClick(Slot slot, int slotId, int button, ClickType clickType, CallbackInfo ci) {
+    @Inject(method = "slotClicked", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;handleContainerInput(IIILnet/minecraft/world/inventory/ContainerInput;Lnet/minecraft/world/entity/player/Player;)V"))
+    private void neoscripts$onSlotClick(Slot slot, int slotId, int button, ContainerInput containerInput, CallbackInfo ci) {
         if (Utils.isOnSkyblock()) {
             if (slot != null) {
                 String title = getTitle().getString();
@@ -37,9 +37,9 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
     }
 
     @Inject(method = "slotClicked", at = @At(value = "HEAD"))
-    private void neoscripts$onSlotClickHead(Slot slot, int slotId, int button, ClickType clickType, CallbackInfo ci) {
+    private void neoscripts$onSlotClickHead(Slot slot, int slotId, int buttonNum, ContainerInput containerInput, CallbackInfo ci) {
         for (LuaScript script : LUA_MANAGER.getScripts().values()) {
-            script.onSlotClick(slotId, button, clickType.id());
+            script.onSlotClick(slotId, buttonNum, containerInput.id());
         }
     }
 }

@@ -1,6 +1,6 @@
 package com.nekiplay.neoscripts.utils.misc.input;
 
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
 
@@ -20,7 +20,7 @@ public class Input {
     }
 
     public static int getKey(KeyMapping bind) {
-        return KeyBindingHelper.getBoundKeyOf(bind).getValue();
+        return KeyMappingHelper.getBoundKeyOf(bind).getValue();
     }
 
     public static void setKeyState(KeyMapping bind, boolean pressed) {

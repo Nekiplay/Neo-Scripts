@@ -2,6 +2,7 @@ package com.nekiplay.neoscripts.utils.itemlist.recipes;
 
 import com.nekiplay.neoscripts.utils.itemlist.ItemRepository;
 import io.github.moulberry.repo.data.NEUIngredient;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -11,7 +12,6 @@ import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.navigation.ScreenPosition;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -74,7 +74,7 @@ public interface SkyblockRecipe {
      * @param mouseX mouse x
      * @param mouseY mouse y
      */
-    default void render(GuiGraphics context, int width, int height, double mouseX, double mouseY) {}
+    default void render(GuiGraphicsExtractor context, int width, int height, double mouseX, double mouseY) {}
 
     /**
      * Extra text like collection requirements

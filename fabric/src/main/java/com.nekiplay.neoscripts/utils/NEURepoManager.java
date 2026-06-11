@@ -13,8 +13,8 @@ import io.github.moulberry.repo.NEURepository;
 import io.github.moulberry.repo.data.NEUItem;
 import io.github.moulberry.repo.data.NEURecipe;
 import io.github.moulberry.repo.util.NEUId;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -82,8 +82,8 @@ public class NEURepoManager {
     @Init
     public static void init() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
-                dispatcher.register(ClientCommandManager.literal(Main.MOD_ID)
-                        .then(ClientCommandManager.literal("updateRepository").executes(context -> {
+                dispatcher.register(ClientCommands.literal(Main.MOD_ID)
+                        .then(ClientCommands.literal("updateRepository").executes(context -> {
                             deleteAndDownloadRepository(context.getSource().getPlayer());
                             return SINGLE_SUCCESS;
                         }))
@@ -185,7 +185,7 @@ public class NEURepoManager {
 
     private static void sendMessage(Player player, Component text) {
         if (player != null) {
-            player.displayClientMessage(Constants.PREFIX.get().append(text), false);
+            player.sendSystemMessage(Constants.PREFIX.get().append(text));
         } else {
             LOGGER.info("[Neo Scripts NEU Repo] {}", text.getString());
         }

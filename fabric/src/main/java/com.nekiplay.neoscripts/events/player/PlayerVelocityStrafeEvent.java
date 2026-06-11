@@ -3,7 +3,6 @@ package com.nekiplay.neoscripts.events.player;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 public class PlayerVelocityStrafeEvent {

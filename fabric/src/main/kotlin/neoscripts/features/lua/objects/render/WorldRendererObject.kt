@@ -111,8 +111,6 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             "renderBeaconBeam" -> RenderBeaconBeamFunction()
             "renderQuad" -> SubmitQuadFunction()
             "renderHologramBlock" -> RenderHologramBlockFunction()
-            "renderBlock" -> RenderBlockFunction()
-            "renderItem" -> RenderItemFunction()
             else -> NIL
         } as LuaValue
     }
@@ -151,31 +149,6 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             val throughWalls = args.optboolean(offset + 7, true)
 
             context.submitCylinder(pos, radius.toFloat(), height.toFloat(), segments, getArgb(alpha, red, green, blue), throughWalls)
-            return TRUE
-        }
-    }
-
-    private inner class RenderItemFunction : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            if (context == null) return NIL
-
-            val (pos, offset) = parseVec3(args) ?: return NIL
-            val id = args.optjstring(offset, "minecraft:stone")
-
-            val identifier = Identifier.bySeparator(id, ':')
-            context.submitItem(Vec3(pos.x, pos.y, pos.z), identifier)
-            return TRUE
-        }
-    }
-
-    private inner class RenderBlockFunction : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            if (context == null) return NIL
-
-            val (blockPos, blockState) = parseBlockPosWithBlockState(args.arg(1), args.arg(2), args.arg(3), args.arg(4))
-                ?: return NIL
-
-            context.submitBlock(blockPos, blockState)
             return TRUE
         }
     }
@@ -399,35 +372,16 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
 
             val throughWalls = args.optboolean(offset + 5, true)
 
-            val qx = args.optdouble(offset + 6, 0.0)
-            val qy = args.optdouble(offset + 7, 0.0)
-            val qz = args.optdouble(offset + 8, 0.0)
-            val qw = args.optdouble(offset + 9, 0.0)
-
-            val hasRotation = (qx != 0.0 || qy != 0.0 || qz != 0.0 || qw != 0.0)
             val component = Component.literal(text)
 
-            if (hasRotation) {
-                val quaternion = Quaternionf(qx, qy, qz, qw)
-                context.submitText(
-                    component,
-                    pos,
-                    color,
-                    scale,
-                    0.5f,
-                    quaternion,
-                    throughWalls
-                )
-            } else {
-                context.submitText(
-                    component,
-                    pos,
-                    color,
-                    scale,
-                    0.5f,
-                    throughWalls
-                )
-            }
+            context.submitText(
+                component,
+                pos,
+                color,
+                scale,
+                0.5f,
+                throughWalls
+            )
             return TRUE
         }
     }
