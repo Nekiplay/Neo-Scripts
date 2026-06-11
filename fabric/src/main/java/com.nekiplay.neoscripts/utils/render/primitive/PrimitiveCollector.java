@@ -1,6 +1,5 @@
 package com.nekiplay.neoscripts.utils.render.primitive;
 
-import com.logisticscraft.occlusionculling.util.Vec3d;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -60,7 +59,7 @@ public interface PrimitiveCollector {
 
     void submitBlockHologram(BlockPos pos, BlockState state);
     void submitBlock(BlockPos pos, BlockState state);
-    void submitItem(Vec3d pos, Identifier identifier);
+    void submitItem(Vec3 pos, Identifier identifier);
 
     void submitText(Component text, Vec3 pos, boolean throughWalls);
 

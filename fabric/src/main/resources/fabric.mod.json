@@ -35,5 +35,5 @@
     "java": ">=21",
     "minecraft": "1.21.11"
   },
-  "accessWidener": "neoscripts.accesswidener"
+  "accessWidener": "neoscripts.classtweaker"
 }

@@ -1,4 +1,4 @@
-accessWidener	v1	named
+classTweaker v2 official
 
 accessible method net/minecraft/world/entity/Entity getInputVector (Lnet/minecraft/world/phys/Vec3;FF)Lnet/minecraft/world/phys/Vec3;
 accessible field net/minecraft/world/level/saveddata/maps/MapItemSavedData trackingPosition Z
@@ -20,3 +20,6 @@ accessible field net/minecraft/client/player/LocalPlayer xRotLast F
 accessible class net/minecraft/client/Minecraft$GameLoadCookie
 
 accessible field net/minecraft/client/gui/components/BossHealthOverlay events Ljava/util/Map;
+
+# Texel Buffers
+extend-enum com/mojang/blaze3d/textures/TextureFormat SKYBLOCKER$RGBA32F

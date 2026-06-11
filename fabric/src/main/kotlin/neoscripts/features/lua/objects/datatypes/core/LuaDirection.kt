@@ -11,9 +11,6 @@ class LuaDirection(val direction: Direction): LuaUserdata(direction) {
             is LuaDirection if direction.name == other.direction.name -> {
                 LuaValue.TRUE
             }
-            is Direction if direction.name == other.name -> {
-                LuaValue.TRUE
-            }
             else -> {
                 LuaValue.FALSE
             }

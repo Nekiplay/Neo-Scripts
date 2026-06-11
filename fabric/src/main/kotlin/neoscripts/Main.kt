@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder
 import com.nekiplay.neoscripts.events.main.EventBus
 import com.nekiplay.neoscripts.features.commands.impl.LuaCommand
 import com.nekiplay.neoscripts.features.lua.LuaManager
+import com.nekiplay.neoscripts.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.neoscripts.features.modules.ModuleManager.registerInbuilt
 import com.nekiplay.neoscripts.sugar.MiningHandler
 import com.nekiplay.neoscripts.utils.NEURepoManager
@@ -17,15 +18,25 @@ import com.nekiplay.neoscripts.utils.trackers.StatusBarTracker
 import io.github.classgraph.ClassGraph
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import net.minecraft.resources.Identifier
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.nio.file.Path
 
 object Main : ClientModInitializer {
+    const val NAMESPACE: String = "neoscripts"
+
+    @JvmStatic
+    fun id(path: String): Identifier {
+        return Identifier.fromNamespaceAndPath(NAMESPACE, path)
+    }
+
     const val MOD_ID: String = "neoscripts"
     @JvmField
     val LOGGER: Logger? = LoggerFactory.getLogger(MOD_ID)
@@ -46,10 +57,10 @@ object Main : ClientModInitializer {
     val GSON: Gson = GsonBuilder().setPrettyPrinting().create()
     @JvmField
     val GSON_COMPACT: Gson = GsonBuilder().create()
-
     /**
      * Do not instantiate this class. Use [.getInstance] instead.
      */
+
     @Deprecated("")
     fun Main() {
         INSTANCE = this
@@ -117,5 +128,22 @@ object Main : ClientModInitializer {
             }
 
         EventBus.init(classes)
+
+        HudElementRegistry.addLast(
+            Identifier.fromNamespaceAndPath("neoscripts", "lua_hud_layer"),
+            HudElement { graphics, deltaTracker ->
+                // 1. Обновляем контекст в TwoRenderObject перед отрисовкой
+                TwoRenderObject.extractBeforeMiscOverlay(graphics, deltaTracker)
+
+                // 2. Отрисовываем ваши Lua-скрипты
+                LUA_MANAGER?.scripts?.values?.forEach { script ->
+                    try {
+                        script.on2DRenderTick(graphics)
+                    } catch (e: Exception) {
+                        // Обработка ошибок скрипта
+                    }
+                }
+            }
+        )
     }
 }

@@ -1,9 +1,9 @@
 val lwjgl_version: String by project
 
 plugins {
-    id("fabric-loom") version "1.15-SNAPSHOT"
-    id("org.jetbrains.kotlin.jvm") version "2.2.21"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.21"
+    id("net.fabricmc.fabric-loom") version "1.16-SNAPSHOT"
+    id("org.jetbrains.kotlin.jvm") version "2.4.0"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.4.0"
     id("com.gradleup.shadow") version "9.3.0"
 }
 
@@ -28,27 +28,24 @@ java {
 }
 
 val shadowModImpl by configurations.creating {
-    configurations.modImplementation.get().extendsFrom(this)
+    configurations.implementation.get().extendsFrom(this)
 }
 
 dependencies {
     minecraft("com.mojang:minecraft:${rootProject.properties["minecraft_version"]}")
-    mappings(loom.officialMojangMappings())
 
     val luaj = "local:luaj-jse:3.0.2"
     implementation(luaj)
     include(luaj)
-    shadowModImpl(luaj)
 
-    modImplementation("net.fabricmc:fabric-loader:${rootProject.properties["fabric_loader_version"]}")
-    modImplementation("net.fabricmc.fabric-api:fabric-api:${rootProject.properties["fabric_api_version"]}")
-    modImplementation("net.fabricmc:fabric-language-kotlin:${rootProject.properties["fabric_kotlin_version"]}")
+    implementation("net.fabricmc:fabric-loader:${rootProject.properties["fabric_loader_version"]}")
+    implementation("net.fabricmc.fabric-api:fabric-api:${rootProject.properties["fabric_api_version"]}")
+    implementation("net.fabricmc:fabric-language-kotlin:${rootProject.properties["fabric_kotlin_version"]}")
 
     // HM-API (https://github.com/AzureAaron/hm-api/releases)
-    include(modImplementation("net.azureaaron:hm-api:${rootProject.properties["hm_api_version"]}")!!)  // HM API (Hypixel Mod API Library)
-
-    // Occlusion Culling
-    include(implementation("com.logisticscraft:occlusionculling:${rootProject.properties["occlusionculling_version"]}")!!)
+    val hmAPi = "local:hm-api:1.0.3+26.1"
+    implementation(hmAPi)
+    include(hmAPi)
 
     // NEU RepoParser (https://repo.nea.moe/#/releases/moe/nea/neurepoparser)
     include(implementation("moe.nea:neurepoparser:${rootProject.properties["repoparser_version"]}")!!)
@@ -62,7 +59,7 @@ dependencies {
     // Legacy Item DFU (https://maven.azureaaron.net/releases/net/azureaaron/legacy-item-dfu)
     include(implementation("net.azureaaron:legacy-item-dfu:${rootProject.properties["legacy_item_dfu_version"]}")!!)
 
-    modRuntimeOnly(files("../libs/firmament.jar"))
+    compileOnly(files("../libs/firmament.jar"))
 
     include(implementation("io.github.classgraph:classgraph:4.8.184")!!)
 
@@ -99,20 +96,12 @@ dependencies {
     // HWID System
     include(implementation("com.github.oshi:oshi-core:6.9.0")!!)
 
-    modImplementation(files("../libs/xaerominimap-fabric-1.21.11-25.3.12.jar"))
+    implementation(files("../libs/xaerominimap-fabric-26.1.2-25.3.14.jar"))
 }
 
 tasks {
-    shadowJar {
+    jar {
         from(sourceSets.main.get().output)
-        configurations = listOf(shadowModImpl)
-        archiveClassifier.set("shadow")
-        mergeServiceFiles()
-    }
-
-    remapJar {
-        dependsOn(shadowJar)
-        inputFile.set(shadowJar.get().archiveFile)
     }
 
     processResources {
@@ -144,7 +133,7 @@ tasks {
 
 loom {
     clientOnlyMinecraftJar()
-    accessWidenerPath.set(file("src/main/resources/neoscripts.accesswidener"))
+    accessWidenerPath = file("src/main/resources/neoscripts.classtweaker")
     mixin.useLegacyMixinAp.set(false)
 }
 

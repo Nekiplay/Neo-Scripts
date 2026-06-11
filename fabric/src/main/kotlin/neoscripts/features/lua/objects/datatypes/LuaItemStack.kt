@@ -51,7 +51,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
         return when (val field = key.tojstring()) {
             "count" -> valueOf(stack.count.toDouble())
             "max_count" -> valueOf(stack.maxStackSize.toDouble())
-            "name" -> valueOf(stack.item.name.getFormattedString())
+            "name" -> valueOf(stack.item.getName(stack).getFormattedString())
             "id" -> valueOf(BuiltInRegistries.ITEM.getId(stack.item))
             "identifier" -> valueOf(stack.item.toString())
             "translation_id" -> valueOf(stack.item.descriptionId)
@@ -193,9 +193,6 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
     override fun eq(other: LuaValue?): LuaValue {
         return when (other) {
             is LuaItemStack if stack == other.stack -> {
-                LuaValue.TRUE
-            }
-            is ItemStack if stack == other -> {
                 LuaValue.TRUE
             }
             is LuaInteger if BuiltInRegistries.ITEM.getId(stack.item) == other.toint() -> {

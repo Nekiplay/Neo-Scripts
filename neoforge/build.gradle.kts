@@ -2,7 +2,7 @@ plugins {
     id("maven-publish")
     id("idea")
     id("net.neoforged.moddev") version "2.0.141"
-    id("org.jetbrains.kotlin.jvm") version "2.2.21"
+    id("org.jetbrains.kotlin.jvm") version "2.4.0"
 }
 
 repositories {
@@ -88,7 +88,7 @@ dependencies {
     // HWID System
     jarJar(implementation("com.github.oshi:oshi-core:6.9.0")!!)
 
-    implementation(files("../libs/xaerominimap-neoforge-1.21.11-25.3.12.jar"))
+    implementation(files("../libs/xaerominimap-neoforge-26.1.2-25.3.14.jar"))
 }
 
 tasks {

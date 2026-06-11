@@ -5,7 +5,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaRaycast
 import com.nekiplay.neoscripts.mixins.minecraft.GamemodeAccessor
 import com.nekiplay.neoscripts.sugar.*
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper
 import net.minecraft.client.KeyMapping
 import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket
 import net.minecraft.world.phys.HitResult
@@ -324,7 +324,7 @@ class InputObject: LuaValue() {
                 if (mc.screen == null) {
                     val sprintKey = mc.options.keySprint
                     sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
+                    val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
                     KeyMapping.set(key, arg.toboolean())
                     if (arg.toboolean()) {
                         KeyMapping.click(key)
@@ -345,7 +345,7 @@ class InputObject: LuaValue() {
                 if (mc.screen == null) {
                     val sprintKey = mc.options.keyUp
                     sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
+                    val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
                     KeyMapping.set(key, arg.toboolean())
                     if (arg.toboolean()) {
                         KeyMapping.click(key)
@@ -366,7 +366,7 @@ class InputObject: LuaValue() {
                 if (mc.screen == null) {
                     val sprintKey = mc.options.keyDown
                     sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
+                    val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
                     KeyMapping.set(key, arg.toboolean())
                     if (arg.toboolean()) {
                         KeyMapping.click(key)
@@ -387,7 +387,7 @@ class InputObject: LuaValue() {
                 if (mc.screen == null) {
                     val sprintKey = mc.options.keyLeft
                     sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
+                    val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
                     KeyMapping.set(key, arg.toboolean())
                     if (arg.toboolean()) {
                         KeyMapping.click(key)
@@ -408,7 +408,7 @@ class InputObject: LuaValue() {
                 if (mc.screen == null) {
                     val sprintKey = mc.options.keyRight
                     sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
+                    val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
                     KeyMapping.set(key, arg.toboolean())
                     if (arg.toboolean()) {
                         KeyMapping.click(key)
@@ -429,7 +429,7 @@ class InputObject: LuaValue() {
                 if (mc.screen == null) {
                     val sprintKey = mc.options.keyJump
                     sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
+                    val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
                     KeyMapping.set(key, arg.toboolean())
                     if (arg.toboolean()) {
                         KeyMapping.click(key)
@@ -450,7 +450,7 @@ class InputObject: LuaValue() {
                 if (mc.screen == null) {
                     val sprintKey = mc.options.keyShift
                     sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
+                    val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
                     KeyMapping.set(key, arg.toboolean())
                     if (arg.toboolean()) {
                         KeyMapping.click(key)
@@ -471,7 +471,7 @@ class InputObject: LuaValue() {
                 if (mc.screen == null) {
                     val sprintKey = mc.options.keyAttack
                     sprintKey.isDown = arg.toboolean()
-                    val key = KeyBindingHelper.getBoundKeyOf(sprintKey)
+                    val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
                     KeyMapping.set(key, arg.toboolean())
                     if (arg.toboolean()) {
                         KeyMapping.click(key)
@@ -492,7 +492,7 @@ class InputObject: LuaValue() {
                 if (mc.screen == null) {
                     val sprintKey = mc.options.keyUse
                     sprintKey.isDown = arg.toboolean()
-                    KeyMapping.set(KeyBindingHelper.getBoundKeyOf(sprintKey), arg.toboolean())
+                    KeyMapping.set(KeyMappingHelper.getBoundKeyOf(sprintKey), arg.toboolean())
                     TRUE
                 }
                 FALSE

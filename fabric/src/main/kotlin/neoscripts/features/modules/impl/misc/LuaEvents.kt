@@ -23,10 +23,9 @@ import com.nekiplay.neoscripts.utils.scheduler.Scheduler
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
-import net.minecraft.commands.SharedSuggestionProvider
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.registries.BuiltInRegistries
@@ -103,7 +102,7 @@ object LuaEvents : ClientModule() {
                 val packet = event.packet as ClientboundSetTimePacket
 
                 LUA_MANAGER?.scripts?.values?.forEach { script ->
-                    script.onServerSideSetTimeEvent(packet.dayTime, packet.gameTime, packet.tickDayTime)
+                    script.onServerSideSetTimeEvent(packet.gameTime, packet.gameTime)
                 }
             }
 
@@ -358,16 +357,6 @@ object LuaEvents : ClientModule() {
                 }
             }
             allow
-        })
-
-        HudRenderCallback.EVENT.register(HudRenderCallback { context, _ ->
-            LUA_MANAGER?.scripts?.values?.forEach { script ->
-                try {
-                    script.on2DRenderTick(context)
-                } catch (e: Exception) {
-                    // Обработка ошибок
-                }
-            }
         })
 
         SkyblockEvents.LOCATION_CHANGE.register { location ->

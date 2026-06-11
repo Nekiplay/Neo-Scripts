@@ -28,18 +28,19 @@ public class IrisCompatibility {
      */
     public static void assignPipelines() {
         if (IRIS_ENABLED) {
+            assignPipeline(SkyblockerRenderPipelines.FILLED_INSTANCED, "BASIC");
+            assignPipeline(SkyblockerRenderPipelines.FILLED_THROUGH_WALLS_INSTANCED, "BASIC");
             assignPipeline(RenderPipelines.DEBUG_FILLED_BOX, "BASIC");
             assignPipeline(SkyblockerRenderPipelines.FILLED_THROUGH_WALLS, "BASIC");
+            assignPipeline(SkyblockerRenderPipelines.OUTLINED_BOX_INSTANCED, "LINES");
+            assignPipeline(SkyblockerRenderPipelines.OUTLINED_BOX_THROUGH_WALLS_INSTANCED, "LINES");
             assignPipeline(SkyblockerRenderPipelines.LINES_THROUGH_WALLS, "LINES");
             assignPipeline(SkyblockerRenderPipelines.QUADS_THROUGH_WALLS, "BASIC");
             assignPipeline(SkyblockerRenderPipelines.TEXTURE, "TEXTURED");
             assignPipeline(SkyblockerRenderPipelines.TEXTURE_THROUGH_WALLS, "TEXTURED");
             assignPipeline(SkyblockerRenderPipelines.CYLINDER, "BASIC");
-            assignPipeline(SkyblockerRenderPipelines.CYLINDER_THROUGH_WALLS, "BASIC");
             assignPipeline(SkyblockerRenderPipelines.CIRCLE, "BASIC");
-            assignPipeline(SkyblockerRenderPipelines.CIRCLE_THROUGH_WALLS, "BASIC");
             assignPipeline(SkyblockerRenderPipelines.CIRCLE_LINES, "BASIC");
-            assignPipeline(SkyblockerRenderPipelines.CIRCLE_LINES_THROUGH_WALLS, "BASIC");
         }
     }
 
@@ -56,7 +57,7 @@ public class IrisCompatibility {
             Objects.requireNonNull(GET_IRIS_PROGRAM, "Iris Program handle must be present to assign a pipeline.");
 
             REGISTER_PIPELINE.invoke(GET_IRIS_API.invoke(), pipeline, GET_IRIS_PROGRAM.invoke(irisProgramName));
-        } catch (IllegalStateException ignored) {
+        } catch (IllegalStateException e) {
             //The pipeline was probably already registered
         } catch (Throwable e) {
             LOGGER.error("[Skyblocker Iris Compatibility] Failed to assign pipeline {} to {}.", pipeline.getLocation(), irisProgramName, e);

@@ -35,11 +35,6 @@ class LuaBlockPos(val pos: BlockPos): LuaUserdata(pos) {
             is LuaBlockPos if pos == other.pos -> {
                 LuaValue.TRUE
             }
-
-            is BlockPos if pos == other -> {
-                LuaValue.TRUE
-            }
-
             else -> {
                 LuaValue.FALSE
             }

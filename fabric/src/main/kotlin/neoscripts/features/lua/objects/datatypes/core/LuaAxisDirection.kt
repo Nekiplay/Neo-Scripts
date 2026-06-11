@@ -19,9 +19,6 @@ class LuaAxisDirection(val axis: Direction.AxisDirection): LuaUserdata(axis) {
             is LuaAxisDirection if axis.name == other.axis.name -> {
                 LuaValue.TRUE
             }
-            is Direction.AxisDirection if axis.name == other.name -> {
-                LuaValue.TRUE
-            }
             else -> {
                 LuaValue.FALSE
             }

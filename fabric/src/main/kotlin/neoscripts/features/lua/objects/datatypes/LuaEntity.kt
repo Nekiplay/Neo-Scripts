@@ -298,9 +298,6 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             is LuaEntity if entity == other.entity -> {
                 LuaValue.TRUE
             }
-            is Entity if entity == other -> {
-                LuaValue.TRUE
-            }
             is LuaInteger if entity.id == other.toint() -> {
                 LuaValue.TRUE
             }

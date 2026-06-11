@@ -11,6 +11,7 @@
     "MouseMixin",
     "PlayerListHudAccessor",
     "TailRenderMixin",
+    "TextureFormatMixin",
     "WindowMixin",
     "entity.MixinEntity",
     "entity.MixinFireworkRocketEntity",

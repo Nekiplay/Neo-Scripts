@@ -7,7 +7,7 @@ import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.utils.Utils
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.client.Minecraft
 import net.minecraft.commands.CommandBuildContext
@@ -34,9 +34,9 @@ object LuaCommand {
     }
 
     fun register(dispatcher: CommandDispatcher<FabricClientCommandSource>, registryAccess: CommandBuildContext) {
-        val luaCommand = ClientCommandManager.literal("lua")
-            .then(ClientCommandManager.literal("load")
-                .then(ClientCommandManager.argument("filename", StringArgumentType.string())
+        val luaCommand = ClientCommands.literal("lua")
+            .then(ClientCommands.literal("load")
+                .then(ClientCommands.argument("filename", StringArgumentType.string())
                     .suggests(SCRIPT_SUGGESTION_PROVIDER)
                     .executes { context ->
                         val filename = StringArgumentType.getString(context, "filename")
@@ -45,8 +45,8 @@ object LuaCommand {
                     }
                 )
             )
-            .then(ClientCommandManager.literal("unload")
-                .then(ClientCommandManager.argument("filename", StringArgumentType.string())
+            .then(ClientCommands.literal("unload")
+                .then(ClientCommands.argument("filename", StringArgumentType.string())
                     .suggests(LOADED_SCRIPT_SUGGESTION_PROVIDER)
                     .executes { context ->
                         val filename = StringArgumentType.getString(context, "filename")
@@ -55,24 +55,24 @@ object LuaCommand {
                     }
                 )
             )
-            .then(ClientCommandManager.literal("hwid")
+            .then(ClientCommands.literal("hwid")
                 .executes { context ->
                     context.source.sendFeedback(Component.literal("${Main.PREFIX}§7HWID: §a" + Utils.getHWID8()))
                     1
                 }
             )
-            .then(ClientCommandManager.literal("list")
+            .then(ClientCommands.literal("list")
                 .executes { context ->
                     listLuaFiles(context.source)
                     1
                 }
             )
-            .then(ClientCommandManager.literal("loaded")
+            .then(ClientCommands.literal("loaded")
                 .executes { context ->
                     listLoadedScripts(context.source, null) // Вызов без аргумента
                     1
                 }
-                .then(ClientCommandManager.argument("scriptName", StringArgumentType.string())
+                .then(ClientCommands.argument("scriptName", StringArgumentType.string())
                     .suggests(LOADED_SCRIPT_SUGGESTION_PROVIDER)
                     .executes { context ->
                         val name = StringArgumentType.getString(context, "scriptName")
@@ -81,8 +81,8 @@ object LuaCommand {
                     }
                 )
             )
-            .then(ClientCommandManager.literal("toggle")
-                .then(ClientCommandManager.argument("scriptName", StringArgumentType.string())
+            .then(ClientCommands.literal("toggle")
+                .then(ClientCommands.argument("scriptName", StringArgumentType.string())
                     .suggests(SCRIPT_SUGGESTION_PROVIDER)
                     .executes { context ->
                         val name = StringArgumentType.getString(context, "scriptName")
@@ -91,14 +91,14 @@ object LuaCommand {
                     }
                 )
             )
-            .then(ClientCommandManager.literal("folder")
+            .then(ClientCommands.literal("folder")
                 .executes { context ->
                     openScriptsFolder(context.source)
                     1
                 }
             )
-            .then(ClientCommandManager.literal("compile")
-                .then(ClientCommandManager.argument("name", StringArgumentType.string())
+            .then(ClientCommands.literal("compile")
+                .then(ClientCommands.argument("name", StringArgumentType.string())
                     .suggests(SOURCE_SCRIPT_SUGGESTION_PROVIDER)
                     .executes { context ->
                         val name = StringArgumentType.getString(context, "name")

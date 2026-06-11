@@ -510,19 +510,19 @@ class PlayerObject : LuaValue() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
                 mc.execute {
-                    mc.player?.displayClientMessage(Component.literal(message.tojstring()), false)
+                    mc.player?.sendSystemMessage(Component.literal(message.tojstring()))
                 }
                 return TRUE
             }
             else if (message is LuaComponent) {
                 mc.execute {
-                    mc.player?.displayClientMessage(message.component, false)
+                    mc.player?.sendSystemMessage(message.component)
                 }
                 return TRUE
             }
             else if (message is LuaComponentBuilder) {
                 mc.execute {
-                    mc.player?.displayClientMessage(message.buildComponent(), false)
+                    mc.player?.sendSystemMessage(message.buildComponent())
                 }
                 return TRUE
             }

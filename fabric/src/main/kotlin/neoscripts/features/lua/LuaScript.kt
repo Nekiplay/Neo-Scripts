@@ -36,12 +36,11 @@ import com.nekiplay.neoscripts.features.lua.objects.world.BlockScannerObject
 import com.nekiplay.neoscripts.features.lua.objects.world.WorldObject
 import com.nekiplay.neoscripts.utils.Location
 import com.nekiplay.neoscripts.utils.misc.input.KeyAction
-import imgui.ImGui
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.fabricmc.loader.api.FabricLoader
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.Holder
@@ -768,7 +767,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
         }
 
-        val commandBuilder = ClientCommandManager.literal(commandName)
+        val commandBuilder = ClientCommands.literal(commandName)
             .executes { context ->
                 executeLuaCommand(commandName, emptyArray(), context.source)
                 1
@@ -780,7 +779,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         if (suggestionsCallback != null) {
             // С автодополнением
             commandBuilder.then(
-                ClientCommandManager.argument("args", StringArgumentType.greedyString())
+                ClientCommands.argument("args", StringArgumentType.greedyString())
                     .suggests { context, builder ->
                         getSuggestionsFromLua(commandName, context, builder, suggestionsCallback)
                     }
@@ -793,7 +792,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         } else {
             // Без автодополнения
             commandBuilder.then(
-                ClientCommandManager.argument("args", StringArgumentType.greedyString())
+                ClientCommands.argument("args", StringArgumentType.greedyString())
                     .executes { context ->
                         val args = StringArgumentType.getString(context, "args").split(" ").toTypedArray()
                         executeLuaCommand(commandName, args, context.source)
@@ -1149,7 +1148,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         }
     }
 
-    fun on2DRenderTick(context: GuiGraphics?) {
+    fun on2DRenderTick(context: GuiGraphicsExtractor) {
         val callbacks = synchronized(callbacksLock) {
             render2DCallbacks.toTypedArray()
         }
@@ -1341,14 +1340,14 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         return allow
     }
 
-    fun onServerSideSetTimeEvent(dayTime: Long, gameTime: Long, tickDayTime: Boolean) {
+    fun onServerSideSetTimeEvent(dayTime: Long, gameTime: Long) {
         val callbacks = synchronized(callbacksLock) {
             serverSideSetTimeCallbacks.toTypedArray()
         }
 
         for (callback in callbacks) {
             try {
-                callback.call(LuaValue.valueOf(dayTime), LuaValue.valueOf(gameTime), LuaValue.valueOf(tickDayTime))
+                callback.call(LuaValue.valueOf(dayTime), LuaValue.valueOf(gameTime))
             } catch (e: Exception) {
                 Main.LOGGER?.error("${Main.LOG_PREFIX}Error in server side time callback in ${scriptName}: ${e.message}")
             }

@@ -1,6 +1,5 @@
 package com.nekiplay.neoscripts.features.lua.objects.render
 
-import com.logisticscraft.occlusionculling.util.Vec3d
 import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaBlockState
@@ -164,7 +163,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             val id = args.optjstring(offset, "minecraft:stone")
 
             val identifier = Identifier.bySeparator(id, ':')
-            context.submitItem(Vec3d(pos.x, pos.y, pos.z), identifier)
+            context.submitItem(Vec3(pos.x, pos.y, pos.z), identifier)
             return TRUE
         }
     }
