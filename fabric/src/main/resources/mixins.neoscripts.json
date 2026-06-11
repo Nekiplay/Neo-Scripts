@@ -5,6 +5,7 @@
   "mixins": [
     "ClientChunkManagerMixin",
     "ClientPlayerInteractionManagerAccessor",
+    "GlConstMixin",
     "KeyboardMixin",
     "MinecraftClientAccessor",
     "MixinClientLoginNetworkHandlerMixin",
