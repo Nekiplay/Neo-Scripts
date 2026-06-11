@@ -47,5 +47,5 @@ jobs:
             - **@Nekiplay** - Core improvements and feature implementations
             - **@KreedMan**, **@lmoboy** - Tester
           files: |
-            ./fabric/build/libs/*.jar
+            ./build/libs_fabric/*.jar
             ./build/libs_neoforge/*.jar
