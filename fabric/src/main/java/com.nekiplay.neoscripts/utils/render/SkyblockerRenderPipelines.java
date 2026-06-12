@@ -49,10 +49,7 @@ public class SkyblockerRenderPipelines {
 			.build());
     /** Similar to {@link RenderPipelines#LINES} */
     public static final RenderPipeline LINES_THROUGH_WALLS = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.LINES_SNIPPET)
-            .withLocation(Main.id("pipeline/debug_filled_box_through_walls_instanced"))
-            .withVertexShader(Main.id("core/filled_box"))
-            .withUniform("BoxData", UniformType.TEXEL_BUFFER, TextureFormat.SKYBLOCKER$RGBA32F)
-            .withVertexFormat(DefaultVertexFormat.POSITION, VertexFormat.Mode.QUADS)
+            .withLocation(Main.id("pipeline/lines_through_walls"))
             .withDepthStencilState(Optional.empty())
             .build());
     /** Similar to {@link RenderPipelines#DEBUG_QUADS}  */
@@ -103,19 +100,6 @@ public class SkyblockerRenderPipelines {
             .withVertexFormat(DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.QUADS)
             .withDepthStencilState(Optional.empty())
             .withCull(false)
-            .build());
-    public static final RenderPipeline OUTLINED_BOX_INSTANCED = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.LINES_SNIPPET)
-            .withLocation(Main.id("pipeline/outlined_box_instanced"))
-            .withVertexShader(Main.id("core/outlined_box"))
-            .withUniform("OutlinedBoxData", UniformType.TEXEL_BUFFER, TextureFormat.SKYBLOCKER$RGBA32F)
-            .withVertexFormat(SkyblockerVertexFormats.POSITION_NORMAL, VertexFormat.Mode.LINES)
-            .build());
-    public static final RenderPipeline OUTLINED_BOX_THROUGH_WALLS_INSTANCED = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.LINES_SNIPPET)
-            .withLocation(Main.id("pipeline/outlined_box_through_walls_instanced"))
-            .withVertexShader(Main.id("core/outlined_box"))
-            .withUniform("OutlinedBoxData", UniformType.TEXEL_BUFFER, TextureFormat.SKYBLOCKER$RGBA32F)
-            .withVertexFormat(SkyblockerVertexFormats.POSITION_NORMAL, VertexFormat.Mode.LINES)
-            .withDepthStencilState(Optional.empty())
             .build());
 
 
