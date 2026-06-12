@@ -1,5 +1,6 @@
 package com.nekiplay.neoscripts.mixins;
 
+import com.mojang.blaze3d.TracyFrameCapture;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.nekiplay.neoscripts.Main;
 import org.spongepowered.asm.mixin.Mixin;
@@ -9,8 +10,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = RenderSystem.class, remap = false)
 public class TailRenderMixin {
-    @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/DynamicUniforms;reset()V"), method="flipFrame")
-    private static void runTickTail(CallbackInfo ci) {
+
+    @Inject(
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lcom/mojang/blaze3d/systems/GpuDevice;presentFrame()V"
+            ),
+            method = "flipFrame"
+    )
+    private static void runTickTail(TracyFrameCapture tracyFrameCapture, CallbackInfo ci) {
         assert Main.LUA_MANAGER != null;
         Main.LUA_MANAGER.getScripts().forEach((name, script) -> {
             if (script.getImguiLib() != null) {
