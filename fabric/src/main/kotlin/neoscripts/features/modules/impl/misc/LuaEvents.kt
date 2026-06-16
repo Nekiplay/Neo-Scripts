@@ -112,16 +112,6 @@ object LuaEvents : ClientModule() {
             }
         }
         val allow = when (val packet = event.packet) {
-            is ClientboundPlayerRotationPacket -> {
-                var rotationAllowed = true
-                LUA_MANAGER?.scripts?.values?.forEach { script ->
-                    if (!script.onServerSideRotationEvent(packet.xRot, packet.yRot)) {
-                        rotationAllowed = false
-                    }
-                }
-                rotationAllowed
-            }
-
             is ClientboundBlockUpdatePacket -> {
                 var allowedBlockUpdate = true
                 val packet = event.packet as ClientboundBlockUpdatePacket
