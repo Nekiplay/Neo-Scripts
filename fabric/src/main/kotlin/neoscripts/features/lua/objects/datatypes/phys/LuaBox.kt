@@ -133,6 +133,19 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
                 }
             }
 
+            "intersects" -> object : OneArgFunction() {
+                override fun call(arg: LuaValue): LuaValue {
+                    if (arg is LuaBox) {
+                        return valueOf(box.intersects(arg.box))
+                    }
+                    val uservalue = arg.touserdata()
+                    if (uservalue is AABB) {
+                        return valueOf(box.intersects(uservalue))
+                    }
+                    return FALSE
+                }
+            }
+
             // union(LuaBox) -> maps to minmax (bounding box of both)
             "union" -> object : OneArgFunction() {
                 override fun call(arg: LuaValue): LuaValue {
