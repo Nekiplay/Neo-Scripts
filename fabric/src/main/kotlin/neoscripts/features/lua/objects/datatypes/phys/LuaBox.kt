@@ -125,6 +125,9 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
                     if (arg is LuaBox) {
                         return LuaBox(box.intersect(arg.box))
                     }
+                    if (arg is AABB) {
+                        return LuaBox(box.intersect(arg))
+                    }
                     return NIL
                 }
             }
@@ -134,6 +137,9 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
                 override fun call(arg: LuaValue): LuaValue {
                     if (arg is LuaBox) {
                         return LuaBox(box.minmax(arg.box))
+                    }
+                    if (arg is AABB) {
+                        return LuaBox(box.minmax(arg))
                     }
                     return NIL
                 }
