@@ -125,7 +125,24 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
                     if (arg is LuaBox) {
                         return LuaBox(box.intersect(arg.box))
                     }
+                    val uservalue = arg.touserdata()
+                    if (uservalue is AABB) {
+                        return LuaBox(box.intersect(uservalue))
+                    }
                     return NIL
+                }
+            }
+
+            "intersects" -> object : OneArgFunction() {
+                override fun call(arg: LuaValue): LuaValue {
+                    if (arg is LuaBox) {
+                        return valueOf(box.intersects(arg.box))
+                    }
+                    val uservalue = arg.touserdata()
+                    if (uservalue is AABB) {
+                        return valueOf(box.intersects(uservalue))
+                    }
+                    return FALSE
                 }
             }
 
@@ -134,6 +151,10 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
                 override fun call(arg: LuaValue): LuaValue {
                     if (arg is LuaBox) {
                         return LuaBox(box.minmax(arg.box))
+                    }
+                    val uservalue = arg.touserdata()
+                    if (uservalue is AABB) {
+                        return LuaBox(box.minmax(uservalue))
                     }
                     return NIL
                 }
