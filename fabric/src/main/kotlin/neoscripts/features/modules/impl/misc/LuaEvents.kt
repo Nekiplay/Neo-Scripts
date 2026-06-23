@@ -14,6 +14,7 @@ import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.neoscripts.features.modules.ClientModule
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.sugar.getJsonString
+import com.nekiplay.neoscripts.utils.aiming.RotationManager
 import com.nekiplay.neoscripts.utils.render.LevelRenderExtractionCallback
 import com.nekiplay.neoscripts.utils.render.primitive.PrimitiveCollector
 import com.nekiplay.neoscripts.utils.scheduler.MessageScheduler
@@ -38,6 +39,7 @@ import net.minecraft.network.protocol.game.ClientboundSoundPacket
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
+import net.minecraft.world.entity.Relative
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
 import net.minecraft.world.phys.BlockHitResult
@@ -179,17 +181,65 @@ object LuaEvents : ClientModule() {
                 var rotationAllowed = true
                 var teleportAllowed = true
 
+                val player = mc.player
+
+                val targetYaw = if (player != null && packet.relatives().contains(Relative.Y_ROT)) {
+                    player.yRot + packet.change.yRot()
+                } else {
+                    packet.change.yRot()
+                }
+
+                val targetPitch = if (player != null && packet.relatives().contains(Relative.X_ROT)) {
+                    player.xRot + packet.change.xRot()
+                } else {
+                    packet.change.xRot()
+                }
+
+                val targetX = if (player != null && packet.relatives().contains(Relative.X)) {
+                    player.x + packet.change.position.x
+                } else {
+                    packet.change.position.x
+                }
+
+                val targetY = if (player != null && packet.relatives().contains(Relative.Y)) {
+                    player.y + packet.change.position.y
+                } else {
+                    packet.change.position.y
+                }
+
+                val targetZ = if (player != null && packet.relatives().contains(Relative.Z)) {
+                    player.z + packet.change.position.z
+                } else {
+                    packet.change.position.z
+                }
+
+                val activeYaw = if (RotationManager.getCurrentYaw().isNaN()) {
+                    player?.yRot ?: 0f
+                } else {
+                    RotationManager.getCurrentYaw()
+                }
+
+                val activePitch = if (RotationManager.getCurrentPitch().isNaN()) {
+                    player?.xRot ?: 0f
+                } else {
+                    RotationManager.getCurrentPitch()
+                }
+
+                // Проверяем наличие фактических изменений
+                val rotationChanged = player == null || targetYaw != activeYaw || targetPitch != activePitch
+                val positionChanged = player == null || targetX != player.x || targetY != player.y || targetZ != player.z
+
                 LUA_MANAGER?.scripts?.values?.forEach { script ->
-                    if (!script.onServerSideRotationEvent(packet.change.xRot(), packet.change.yRot())) {
-                        rotationAllowed = false
+                    if (rotationChanged) {
+                        // Передаем целевой поворот, который пытается установить сервер
+                        if (!script.onServerSideRotationEvent(targetYaw, targetPitch)) {
+                            rotationAllowed = false
+                        }
                     }
-                    if (!script.onServerSideTeleportEvent(
-                            packet.change.position.x,
-                            packet.change.position.y,
-                            packet.change.position.z
-                        )
-                    ) {
-                        teleportAllowed = false
+                    if (positionChanged) {
+                        if (!script.onServerSideTeleportEvent(targetX, targetY, targetZ)) {
+                            teleportAllowed = false
+                        }
                     }
                 }
 
