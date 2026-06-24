@@ -20,9 +20,6 @@ class LuaAxis(val axis: Direction.Axis): LuaUserdata(axis) {
             is LuaAxis if axis.name == other.axis.name -> {
                 TRUE
             }
-            is Direction.Axis if axis.name == other.name -> {
-                TRUE
-            }
             else -> {
                 FALSE
             }

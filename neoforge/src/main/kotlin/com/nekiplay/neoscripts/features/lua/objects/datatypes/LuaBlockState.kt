@@ -146,9 +146,6 @@ class LuaBlockState(var blockState: BlockState) : LuaUserdata(blockState) {
             is LuaBlockState if blockState == other.blockState -> {
                 TRUE
             }
-            is BlockState if blockState == other -> {
-                TRUE
-            }
             is LuaInteger if Block.getId(blockState) == other.toint() -> {
                 TRUE
             }

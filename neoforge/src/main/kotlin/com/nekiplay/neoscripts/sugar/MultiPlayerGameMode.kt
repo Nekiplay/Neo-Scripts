@@ -259,7 +259,7 @@ fun MultiPlayerGameMode.interactEntity(hitResult: HitResult): Boolean {
     if (hitResult.type == HitResult.Type.ENTITY && mc?.screen == null) {
         for (hand in InteractionHand.entries) {
             val actionResult2: InteractionResult =
-                this.interact(player, (hitResult as EntityHitResult).entity, hand)
+                this.interact(player, (hitResult as EntityHitResult).entity, hitResult, hand)
             if (actionResult2 is InteractionResult.Success) {
                 if (actionResult2.swingSource() == InteractionResult.SwingSource.CLIENT) {
                     player.swing(hand)

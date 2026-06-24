@@ -6,6 +6,7 @@
   "mixins": [
     "ClientPlayerInteractionManagerAccessor",
     "FrustumInvoker",
+    "GlConstMixin",
     "KeyboardMixin",
     "MinecraftClientAccessor",
     "PlayerListHudAccessor",
@@ -28,7 +29,9 @@
     "minecraft.item.MixinFireworkRocketEntity",
     "minecraft.item.MixinItem",
     "minecraft.packets.ClientPacketListenerMixin",
-    "minecraft.packets.ServerboundUseItemPacketAccessor"
+    "minecraft.packets.ServerboundUseItemPacketAccessor",
+    "render.BlockEntityRenderStateAccessor",
+    "render.TextureFormatMixin"
   ],
   "client": [
     "NativeImageAccessor",

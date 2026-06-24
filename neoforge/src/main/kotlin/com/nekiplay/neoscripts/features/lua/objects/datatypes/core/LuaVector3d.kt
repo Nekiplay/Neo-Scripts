@@ -45,9 +45,6 @@ class LuaVector3d(val location: Vec3): LuaUserdata(location) {
             is LuaVector3d if location == other.location -> {
                 TRUE
             }
-            is Vec3 if location == other -> {
-                TRUE
-            }
             else -> {
                 FALSE
             }

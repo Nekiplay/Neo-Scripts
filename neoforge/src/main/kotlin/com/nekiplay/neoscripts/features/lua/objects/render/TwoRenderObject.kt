@@ -3,11 +3,11 @@ package com.nekiplay.neoscripts.features.lua.objects.render
 import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
+import net.minecraft.client.DeltaTracker
 import net.minecraft.client.gui.Font
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.DynamicTexture
-import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import net.minecraft.world.item.ItemStack
 import org.luaj.vm2.LuaValue
@@ -21,16 +21,20 @@ import java.util.function.Supplier
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: String? = null): LuaValue() {
+
+class TwoRenderObject(private val gui: GuiGraphicsExtractor, private val scriptId: String? = null): LuaValue() {
     // Кэш для загруженных текстур с разделением по скриптам
     companion object {
         val textureCache = ConcurrentHashMap<String, MutableMap<String, Identifier>>()
         val textureCounter = AtomicInteger(0)
 
+        var context: GuiGraphicsExtractor? = null
+        var deltaTracker: DeltaTracker? = null
+
         // Очистка кэша для конкретного скрипта
         fun clearScriptCache(scriptId: String) {
             textureCache[scriptId]?.values?.forEach { identifier ->
-                mc?.textureManager?.release(identifier)
+                mc.textureManager.release(identifier)
             }
             textureCache.remove(scriptId)
         }
@@ -39,10 +43,15 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         fun clearAllCaches() {
             textureCache.values.forEach { scriptCache ->
                 scriptCache.values.forEach { identifier ->
-                    mc?.textureManager?.release(identifier)
+                    mc.textureManager.release(identifier)
                 }
             }
             textureCache.clear()
+        }
+
+        fun extractBeforeMiscOverlay(graphics: GuiGraphicsExtractor, deltaTracker: DeltaTracker?) {
+            Companion.context = graphics
+            Companion.deltaTracker = deltaTracker
         }
     }
 
@@ -68,7 +77,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         override fun invoke(args: Varargs): Varargs {
             val text = args.arg1()
             if (text.isstring()) {
-                val textRenderer: Font? = mc?.font
+                val textRenderer: Font? = mc.font
                 val width: Int? = textRenderer?.width(text.tojstring())
                 if (width != null) {
                     return valueOf(width)
@@ -81,8 +90,8 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
     private inner class GetWindowScaleFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val table = tableOf()
-            val width: Int = mc?.window?.guiScaledWidth ?: 0
-            val height: Int = mc?.window?.guiScaledHeight ?: 0
+            val width: Int = mc.window.guiScaledWidth
+            val height: Int = mc.window.guiScaledHeight
 
             table.set("width", width)
             table.set("height", height)
@@ -92,7 +101,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
 
     private inner class RenderTextFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            if (context == null) return NIL
+            val ctx = context ?: return NIL
 
             val x = args.optint(1, 0)
             val y = args.optint(2, 0)
@@ -109,18 +118,18 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
                     (green and 0xFF shl 8) or
                     (blue and 0xFF)
 
-            val textRenderer: Font? = mc?.font
+            val textRenderer: Font? = mc.font
             if (textRenderer != null) {
                 if (scale != 1.0f) {
-                    context.pose().pushMatrix()
-                    context.pose().translate(x.toFloat(), y.toFloat())
-                    context.pose().scale(scale, scale)
+                    ctx.pose().pushMatrix()
+                    ctx.pose().translate(x.toFloat(), y.toFloat())
+                    ctx.pose().scale(scale, scale)
 
-                    context.drawString(textRenderer, Component.literal(text), 0, 0, color, shadow)
+                    ctx.text(textRenderer, text, 0, 0, color, shadow)
 
-                    context.pose().popMatrix()
+                    ctx.pose().popMatrix()
                 } else {
-                    context.drawString(textRenderer, Component.literal(text), x, y, color, shadow)
+                    ctx.text(textRenderer, text, x, y, color, shadow)
                 }
             }
             return TRUE
@@ -129,7 +138,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
 
     private inner class RenderImageFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            if (context == null) return NIL
+            val ctx = context ?: return NIL
 
             val path = args.optjstring(1, "") ?: return NIL
             if (path.isEmpty()) return NIL
@@ -146,12 +155,11 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
             try {
                 val identifier = loadTexture(path)
                 if (identifier != null) {
-                    context.blit(
+                    ctx.blit(
                         RenderPipelines.GUI_TEXTURED, identifier,
                         x, y,
                         u.toFloat(), v.toFloat(),
                         width, height,
-                        regionWidth, regionHeight,
                         regionWidth, regionHeight
                     )
                 }
@@ -200,7 +208,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
 
                 // Создаем идентификатор
                 val identifier = Identifier.fromNamespaceAndPath("neoscripts", "texture_${scriptCacheId}_${textureCounter.get()}")
-                mc?.textureManager?.register(identifier, texture)
+                mc.textureManager.register(identifier, texture)
 
                 // Сохраняем в кэш текущего скрипта
                 scriptCache[path] = identifier
@@ -215,7 +223,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
 
     private inner class RenderLineFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            if (context == null) return NIL
+            val ctx = context ?: return NIL
 
             val x1 = args.optint(1, 0)
             val y1 = args.optint(2, 0)
@@ -232,12 +240,12 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
                     (green and 0xFF shl 8) or
                     (blue and 0xFF)
 
-            drawLine(context, x1, y1, x2, y2, color, thickness)
+            drawLine(ctx, x1, y1, x2, y2, color, thickness)
             return TRUE
         }
     }
 
-    private fun drawLine(context: GuiGraphics, x1: Int, y1: Int, x2: Int, y2: Int, color: Int, width: Int = 1) {
+    private fun drawLine(context: GuiGraphicsExtractor, x1: Int, y1: Int, x2: Int, y2: Int, color: Int, width: Int = 1) {
         if (width <= 1) {
             // Обычная линия шириной 1 пиксель
             drawLineBresenham(context, x1, y1, x2, y2, color)
@@ -247,7 +255,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         }
     }
 
-    private fun drawLineBresenham(context: GuiGraphics, x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
+    private fun drawLineBresenham(context: GuiGraphicsExtractor, x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
         val dx = abs(x2 - x1)
         val dy = abs(y2 - y1)
         val sx = if (x1 < x2) 1 else -1
@@ -274,7 +282,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         }
     }
 
-    private fun drawThickLine(context: GuiGraphics, x1: Int, y1: Int, x2: Int, y2: Int, color: Int, width: Int) {
+    private fun drawThickLine(context: GuiGraphicsExtractor, x1: Int, y1: Int, x2: Int, y2: Int, color: Int, width: Int) {
         val dx = x2 - x1
         val dy = y2 - y1
         val length = sqrt((dx * dx + dy * dy).toDouble())
@@ -306,7 +314,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         fillTriangleSimple(context, x1b, y1b, x2a, y2a, x2b, y2b, color)
     }
 
-    private fun fillTriangleSimple(context: GuiGraphics, x1: Int, y1: Int, x2: Int, y2: Int, x3: Int, y3: Int, color: Int) {
+    private fun fillTriangleSimple(context: GuiGraphicsExtractor, x1: Int, y1: Int, x2: Int, y2: Int, x3: Int, y3: Int, color: Int) {
         val minY = minOf(y1, y2, y3)
         val maxY = maxOf(y1, y2, y3)
 
@@ -324,7 +332,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
                         val startX = intersections[i]
                         val endX = intersections[i + 1]
                         if (startX <= endX) {
-                            context.hLine(startX, endX, y, color)
+                            context.verticalLine(startX, endX, y, color)
                         }
                     }
                 }
@@ -346,7 +354,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
 
     private inner class RenderPolygonFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            if (context == null) return NIL
+            val ctx = context ?: return NIL
 
             val table = args.arg1()
             if (!table.istable()) return NIL
@@ -379,7 +387,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
             }
 
             if (points.size >= 3) {
-                drawPolygon(context, points, color)
+                drawPolygon(ctx, points, color)
             }
             return TRUE
         }
@@ -387,7 +395,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
 
     private inner class RenderRectFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            if (context == null) return NIL
+            val ctx = context ?: return NIL
 
             val x = args.optint(1, 0)
             val y = args.optint(2, 0)
@@ -403,12 +411,12 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
                     (green and 0xFF shl 8) or
                     (blue and 0xFF)
 
-            context.fill(x, y, x + width, y + height, color)
+            ctx.fill(x, y, x + width, y + height, color)
             return TRUE
         }
     }
 
-    private fun drawPolygon(context: GuiGraphics, points: List<Pair<Float, Float>>, color: Int) {
+    private fun drawPolygon(context: GuiGraphicsExtractor, points: List<Pair<Float, Float>>, color: Int) {
         if (points.size < 3) return
 
         // Кэшируем первую вершину
@@ -425,7 +433,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
 
     private inner class RenderItemStackFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            if (context == null) return NIL
+            val ctx = context ?: return NIL
 
             if (args.narg() < 3) return NIL
 
@@ -442,13 +450,13 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
 
             if (itemStack != null) {
                 if (scale != 1.0f) {
-                    context.pose().pushMatrix()
-                    context.pose().translate(x.toFloat(), y.toFloat())
-                    context.pose().scale(scale, scale)
-                    context.renderItem(itemStack, 0, 0)
-                    context.pose().popMatrix()
+                    ctx.pose().pushMatrix()
+                    ctx.pose().translate(x.toFloat(), y.toFloat())
+                    ctx.pose().scale(scale, scale)
+                    ctx.fakeItem(itemStack, 0, 0)
+                    ctx.pose().popMatrix()
                 } else {
-                    context.renderItem(itemStack, x, y)
+                    ctx.fakeItem(itemStack, x, y)
                 }
                 return TRUE
             }
@@ -456,22 +464,19 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         }
     }
 
-    private fun drawTriangle(context: GuiGraphics,
+    private fun drawTriangle(context: GuiGraphicsExtractor,
                              x1: Float, y1: Float,
                              x2: Float, y2: Float,
                              x3: Float, y3: Float,
                              color: Int) {
-        // Используем существующие методы DrawContext для рисования треугольника
-        // через линии (контур) или заливку по пикселям оптимизированно
-
-        // Вариант 1: Контур треугольника
+        // Рисуем контур треугольника
         drawTriangleOutline(context, x1, y1, x2, y2, x3, y3, color)
 
-        // Вариант 2: Заливка треугольника (оптимизированная)
+        // Заливка треугольника
         fillTriangle(context, x1, y1, x2, y2, x3, y3, color)
     }
 
-    private fun drawTriangleOutline(context: GuiGraphics,
+    private fun drawTriangleOutline(context: GuiGraphicsExtractor,
                                     x1: Float, y1: Float,
                                     x2: Float, y2: Float,
                                     x3: Float, y3: Float,
@@ -482,7 +487,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         drawLine(context, x3.toInt(), y3.toInt(), x1.toInt(), y1.toInt(), color)
     }
 
-    private fun fillTriangle(context: GuiGraphics,
+    private fun fillTriangle(context: GuiGraphicsExtractor,
                              x1: Float, y1: Float,
                              x2: Float, y2: Float,
                              x3: Float, y3: Float,
@@ -503,9 +508,9 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
                 intersections.sort()
                 for (i in 0 until intersections.size step 2) {
                     if (i + 1 < intersections.size) {
-                        val x1 = intersections[i]
-                        val x2 = intersections[i + 1]
-                        context.hLine(x1, x2, y, color)
+                        val ix1 = intersections[i]
+                        val ix2 = intersections[i + 1]
+                        context.verticalLine(ix1, ix2, y, color)
                     }
                 }
             }
@@ -524,7 +529,7 @@ class TwoRenderObject(private val context: GuiGraphics?, private val scriptId: S
         }
     }
 
-    private fun drawLine(context: GuiGraphics, x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
+    private fun drawLine(context: GuiGraphicsExtractor, x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
         // Алгоритм Брезенхема для рисования линии
         val dx = abs(x2 - x1)
         val dy = abs(y2 - y1)

@@ -8,6 +8,7 @@ import com.nekiplay.neoscripts.features.modules.impl.misc.LuaEvents
 import io.github.classgraph.ClassGraph
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import net.minecraft.resources.Identifier
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.Mod
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent
@@ -35,6 +36,11 @@ object Main {
 
     @JvmField
     var neuDir: File? = null
+
+    @JvmStatic
+    fun id(path: String): Identifier {
+        return Identifier.fromNamespaceAndPath(ID, path)
+    }
 
     val PREFIX: String =
         ChatFormatting.GRAY.toString() + "[" + ChatFormatting.GOLD + "Neo Scripts" + ChatFormatting.GRAY + "] " + ChatFormatting.RESET

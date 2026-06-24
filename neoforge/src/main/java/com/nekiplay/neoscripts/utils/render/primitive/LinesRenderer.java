@@ -5,7 +5,7 @@ import com.nekiplay.neoscripts.utils.render.Renderer;
 import com.nekiplay.neoscripts.utils.render.SkyblockerRenderPipelines;
 import com.nekiplay.neoscripts.utils.render.state.LinesRenderState;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.state.CameraRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;

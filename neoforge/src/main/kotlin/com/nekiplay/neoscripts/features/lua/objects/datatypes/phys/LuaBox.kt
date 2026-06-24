@@ -222,9 +222,6 @@ class LuaBox(val box: AABB) : LuaUserdata(box) {
             is LuaBox if box == other.box -> {
                 TRUE
             }
-            is AABB if box == other -> {
-                TRUE
-            }
             else -> {
                 FALSE
             }

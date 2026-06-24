@@ -38,12 +38,9 @@ import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.neoscripts.features.lua.objects.world.BlockScannerObject
 import com.nekiplay.neoscripts.features.lua.objects.world.WorldObject
 import com.nekiplay.neoscripts.utils.misc.input.KeyAction
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.multiplayer.ClientPacketListener
 import net.minecraft.client.multiplayer.ClientSuggestionProvider
-import net.minecraft.commands.CommandSourceStack
-import net.minecraft.commands.Commands
-import net.minecraft.commands.SharedSuggestionProvider
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.Holder
@@ -52,11 +49,7 @@ import net.minecraft.sounds.SoundEvent
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.phys.Vec3
-import net.neoforged.api.distmarker.Dist
-import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.ModList
-import net.neoforged.fml.common.EventBusSubscriber
-import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaError
 import org.luaj.vm2.LuaValue
@@ -871,7 +864,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 callback.call(LuaValue.valueOf(commandName), argsTable, LuaValue.valueOf(Main.mc.player?.name?.string ?: ""))
             } catch (e: Exception) {
                 Main.LOGGER?.error("${Main.LOG_PREFIX}Error executing Lua command: /$commandName", e)
-                Main.mc.gui.chat.addMessage(Component.literal("§cError executing command: ${e.message}"))
+                Main.mc.gui.chat.addClientSystemMessage(Component.literal("§cError executing command: ${e.message}"))
             }
         }
     }
@@ -1098,7 +1091,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         }
     }
 
-    fun on2DRenderTick(context: GuiGraphics?) {
+    fun on2DRenderTick(context: GuiGraphicsExtractor) {
         val callbacks = synchronized(callbacksLock) {
             render2DCallbacks.toTypedArray()
         }
@@ -1275,14 +1268,14 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         return allow
     }
 
-    fun onServerSideSetTimeEvent(dayTime: Long, gameTime: Long, tickDayTime: Boolean) {
+    fun onServerSideSetTimeEvent(dayTime: Long, gameTime: Long) {
         val callbacks = synchronized(callbacksLock) {
             serverSideSetTimeCallbacks.toTypedArray()
         }
 
         for (callback in callbacks) {
             try {
-                callback.call(LuaValue.valueOf(dayTime), LuaValue.valueOf(gameTime), LuaValue.valueOf(tickDayTime))
+                callback.call(LuaValue.valueOf(dayTime), LuaValue.valueOf(gameTime))
             } catch (e: Exception) {
                 Main.LOGGER?.error("${Main.LOG_PREFIX}Error in server side time callback in ${scriptName}: ${e.message}")
             }

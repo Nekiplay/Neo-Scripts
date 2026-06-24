@@ -8,7 +8,7 @@ import com.nekiplay.neoscripts.utils.render.SkyblockerRenderPipelines;
 import com.nekiplay.neoscripts.utils.render.state.TexturedQuadRenderState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.render.TextureSetup;
-import net.minecraft.client.renderer.state.CameraRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import org.joml.Matrix4f;
 
 public final class TexturedQuadRenderer implements PrimitiveRenderer<TexturedQuadRenderState> {

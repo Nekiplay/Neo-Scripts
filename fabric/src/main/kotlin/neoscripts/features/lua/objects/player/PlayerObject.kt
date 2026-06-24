@@ -11,6 +11,7 @@ import com.nekiplay.neoscripts.mixins.gui.GuiAccessor
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.sugar.getScorebordLines
 import com.nekiplay.neoscripts.sugar.getTab
+import com.nekiplay.neoscripts.utils.MathUtil
 import com.nekiplay.neoscripts.utils.PlayerUtils
 import com.nekiplay.neoscripts.utils.RaycastUtils
 import com.nekiplay.neoscripts.utils.RotationUtils
@@ -603,7 +604,7 @@ class PlayerObject : LuaValue() {
         override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
             if (arg1.isnumber() && arg2.isnumber()) {
                 val player = mc.player
-                if (player != null) {
+                if (player != null && mc.screen == null) {
                     // Ограничиваем yaw в диапазоне -180° до 180°
                     var yaw = arg1.tofloat()
                     yaw %= 360f
@@ -614,8 +615,8 @@ class PlayerObject : LuaValue() {
                     var pitch = arg2.tofloat()
                     pitch = pitch.coerceIn(-90f, 90f)
 
-                    player.yRot = yaw
-                    player.xRot = pitch
+                    player.yRot = MathUtil.applyGCD(yaw, yaw)
+                    player.xRot = MathUtil.applyGCD(yaw, yaw)
                     return TRUE
                 }
                 return FALSE

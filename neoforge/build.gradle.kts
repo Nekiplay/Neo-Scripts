@@ -15,8 +15,8 @@ repositories {
     }
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
-kotlin.jvmToolchain(21)
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+kotlin.jvmToolchain(25)
 
 neoForge {
     version = rootProject.properties["neoforge_version"].toString()

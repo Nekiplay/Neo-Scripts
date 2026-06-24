@@ -1,9 +1,9 @@
 package com.nekiplay.neoscripts.utils.render.primitive;
 
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.state.LevelRenderState;
+import net.minecraft.client.renderer.state.level.LevelRenderState;
 
 public interface VanillaRenderer<S> {
 
-    void submitVanilla(S state, LevelRenderState worldState, SubmitNodeCollector commandQueue);
+    void submitVanilla(S state, LevelRenderState levelState, SubmitNodeCollector submitNodeCollector);
 }

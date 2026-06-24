@@ -5,7 +5,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -21,7 +21,7 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
     }
 
     @Inject(method = "slotClicked", at = @At(value = "HEAD"))
-    private void neoscripts$onSlotClickHead(Slot slot, int slotId, int button, ClickType clickType, CallbackInfo ci) {
+    private void neoscripts$onSlotClickHead(Slot slot, int slotId, int button, ContainerInput clickType, CallbackInfo ci) {
         for (LuaScript script : LUA_MANAGER.getScripts().values()) {
             script.onSlotClick(slotId, button, clickType.id());
         }

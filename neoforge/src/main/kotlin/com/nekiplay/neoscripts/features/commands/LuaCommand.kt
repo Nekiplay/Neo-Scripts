@@ -63,7 +63,7 @@ object LuaCommand {
             )
             .then(Commands.literal("hwid")
                 .executes { context ->
-                    context.source.sendSuccess({ Component.literal("${Main.PREFIX}§7HWID: §a" + Utils.getHWID8()) }, false)
+                    context.source.sendSystemMessage(Component.literal("${Main.PREFIX}§7HWID: §a" + Utils.getHWID8()))
                     1
                 }
             )
@@ -136,12 +136,12 @@ object LuaCommand {
             }
 
             ProcessBuilder(*command).start()
-            source.sendSuccess({ Component.literal("${Main.PREFIX}§aOpening scripts folder...") }, false)
+            source.sendSystemMessage(Component.literal("${Main.PREFIX}§aOpening scripts folder..."))
         } catch (e: Exception) {
             if (os.contains("nix") || os.contains("nux")) {
-                source.sendSuccess({ Component.literal("${Main.PREFIX}§cCould not open folder. Path: §7$absolutePath") }, false)
+                source.sendSystemMessage(Component.literal("${Main.PREFIX}§cCould not open folder. Path: §7$absolutePath"))
             } else {
-                source.sendSuccess({ Component.literal("${Main.PREFIX}§cError: ${e.message}") }, false)
+                source.sendSystemMessage(Component.literal("${Main.PREFIX}§cError: ${e.message}"))
             }
             e.printStackTrace()
         }
@@ -156,9 +156,9 @@ object LuaCommand {
         if (loadedInstance != null) {
             try {
                 luaManager?.unloadScript(loadedInstance.scriptName)
-                source.sendSuccess({ Component.literal("${Main.PREFIX}§7Script §a${loadedInstance.scriptName} §7has been §cunloaded§7.") }, false)
+                source.sendSystemMessage(Component.literal("${Main.PREFIX}§7Script §a${loadedInstance.scriptName} §7has been §cunloaded§7."))
             } catch (e: Exception) {
-                source.sendSuccess({ Component.literal("${Main.PREFIX}§cError unloading script: ${e.message}") }, false)
+                source.sendSystemMessage(Component.literal("${Main.PREFIX}§cError unloading script: ${e.message}"))
             }
         } else {
             val scriptsDir = getScriptsDirectory()
@@ -169,12 +169,12 @@ object LuaCommand {
             if (scriptFile.exists()) {
                 try {
                     luaManager?.executeScript(scriptFile)
-                    source.sendSuccess({ Component.literal("${Main.PREFIX}§7Script §a$name §7is now §aloaded§7.") }, false)
+                    source.sendSystemMessage(Component.literal("${Main.PREFIX}§7Script §a$name §7is now §aloaded§7."))
                 } catch (e: Exception) {
-                    source.sendSuccess({ Component.literal("${Main.PREFIX}§cFailed to load script §e$name§c: ${e.message}") }, false)
+                    source.sendSystemMessage(Component.literal("${Main.PREFIX}§cFailed to load script §e$name§c: ${e.message}"))
                 }
             } else {
-                source.sendSuccess({ Component.literal("${Main.PREFIX}§cFile §e$name.lua §cnot found in scripts directory.") }, false)
+                source.sendSystemMessage(Component.literal("${Main.PREFIX}§cFile §e$name.lua §cnot found in scripts directory."))
             }
         }
     }
@@ -243,14 +243,14 @@ object LuaCommand {
 
         if (!scriptsDir.exists()) {
             scriptsDir.mkdirs()
-            source.sendSuccess({ Component.literal(Main.PREFIX + "§cDirectory for scripts: ${scriptsDir.path}") }, false)
+            source.sendSystemMessage(Component.literal(Main.PREFIX + "§cDirectory for scripts: ${scriptsDir.path}"))
             return
         }
 
         val scriptFile = resolveScriptFile(scriptsDir, filename)
 
         if (!scriptFile.exists()) {
-            source.sendSuccess({ Component.literal(Main.PREFIX + "§cScript ${scriptFile.name} not found") }, false)
+            source.sendSystemMessage(Component.literal(Main.PREFIX + "§cScript ${scriptFile.name} not found"))
             return
         }
 
@@ -259,12 +259,12 @@ object LuaCommand {
             val result = luaManager?.executeScript(scriptFile)
 
             if (wasLoaded == true) {
-                source.sendSuccess({ Component.literal(Main.PREFIX + "§aScript '${scriptFile.nameWithoutExtension}' restarted successfully, result: '$result'") }, false)
+                source.sendSystemMessage(Component.literal(Main.PREFIX + "§aScript '${scriptFile.nameWithoutExtension}' restarted successfully, result: '$result'"))
             } else {
-                source.sendSuccess({ Component.literal(Main.PREFIX + "§aScript '${scriptFile.nameWithoutExtension}' executed successfully, result: '$result'") }, false)
+                source.sendSystemMessage(Component.literal(Main.PREFIX + "§aScript '${scriptFile.nameWithoutExtension}' executed successfully, result: '$result'"))
             }
         } catch (e: Exception) {
-            source.sendSuccess({ Component.literal(Main.PREFIX + "§cScript execution error: ${e.message}") }, false)
+            source.sendSystemMessage(Component.literal(Main.PREFIX + "§cScript execution error: ${e.message}"))
             e.printStackTrace()
         }
     }
@@ -288,9 +288,9 @@ object LuaCommand {
         }
 
         if (luaManager?.unloadScript(scriptName) == true) {
-            source.sendSuccess({ Component.literal(Main.PREFIX + "§aScript '$scriptName' unloaded successfully") }, false)
+            source.sendSystemMessage(Component.literal(Main.PREFIX + "§aScript '$scriptName' unloaded successfully"))
         } else {
-            source.sendSuccess({ Component.literal(Main.PREFIX + "§cScript '$scriptName' is not loaded or not found") }, false)
+            source.sendSystemMessage(Component.literal(Main.PREFIX + "§cScript '$scriptName' is not loaded or not found"))
         }
     }
 
@@ -298,7 +298,7 @@ object LuaCommand {
         val scriptsDir = getScriptsDirectory()
 
         if (!scriptsDir.exists() || scriptsDir.listFiles()?.isEmpty() != false) {
-            source.sendSuccess({ Component.literal(Main.PREFIX + "§7No scripts available. Create files in: ${scriptsDir.path}") }, false)
+            source.sendSystemMessage(Component.literal(Main.PREFIX + "§7No scripts available. Create files in: ${scriptsDir.path}"))
             return
         }
 
@@ -307,14 +307,14 @@ object LuaCommand {
         }?.sortedBy { it.name }
 
         if (scriptFiles.isNullOrEmpty()) {
-            source.sendSuccess({ Component.literal(Main.PREFIX + "§7No .lua or .luac files in scripts directory") }, false)
+            source.sendSystemMessage(Component.literal(Main.PREFIX + "§7No .lua or .luac files in scripts directory"))
             return
         }
 
-        source.sendSuccess({ Component.literal(Main.PREFIX + "§6Available scripts:") }, false)
+        source.sendSystemMessage(Component.literal(Main.PREFIX + "§6Available scripts:"))
         scriptFiles.forEach { file ->
             val fileType = if (file.name.endsWith(".luac")) "§9[compiled]§7" else "§a[source]§7"
-            source.sendSuccess({ Component.literal("  §7- §e${file.nameWithoutExtension} §7(${file.length()} bytes) $fileType") }, false)
+            source.sendSystemMessage(Component.literal("  §7- §e${file.nameWithoutExtension} §7(${file.length()} bytes) $fileType"))
         }
     }
 
@@ -323,7 +323,7 @@ object LuaCommand {
         val loadedScripts = luaManager?.getLoadedScripts() ?: emptyList()
 
         if (loadedScripts.isEmpty()) {
-            source.sendSuccess({ Component.literal("${Main.PREFIX}§7No scripts currently loaded") }, false)
+            source.sendSystemMessage(Component.literal("${Main.PREFIX}§7No scripts currently loaded"))
             return
         }
 
@@ -331,20 +331,20 @@ object LuaCommand {
             val scriptsToDisplay = loadedScripts.filter { it.scriptName.equals(targetName, ignoreCase = true) }
 
             if (scriptsToDisplay.isEmpty()) {
-                source.sendSuccess({ Component.literal("${Main.PREFIX}§cScript '$targetName' is not loaded.") }, false)
+                source.sendSystemMessage(Component.literal("${Main.PREFIX}§cScript '$targetName' is not loaded."))
                 return
             }
 
-            source.sendSuccess({ Component.literal("${Main.PREFIX}§6Dependency tree for §a$targetName§6:") }, false)
-            source.sendSuccess({ Component.literal("") }, false)
+            source.sendSystemMessage(Component.literal("${Main.PREFIX}§6Dependency tree for §a$targetName§6:"))
+            source.sendSystemMessage(Component.literal(""))
 
             scriptsToDisplay.forEach { script ->
                 val depCount = countUniqueDependencies(script.localDependencyGraph)
                 val depInfo = if (depCount > 0) " §8(§7$depCount modules§8)" else ""
-                source.sendSuccess({ Component.literal("  §6▶ §a§l${script.scriptName}$depInfo") }, false)
+                source.sendSystemMessage(Component.literal("  §6▶ §a§l${script.scriptName}$depInfo"))
 
                 if (script.localDependencyGraph.isEmpty()) {
-                    source.sendSuccess({ Component.literal("  §8  §7No dependencies") }, false)
+                    source.sendSystemMessage(Component.literal("  §8  §7No dependencies"))
                 } else {
                     renderBeautifulTree(source, script.scriptName, "  §8  ", script.localDependencyGraph, mutableSetOf(), 0)
                 }
@@ -352,12 +352,12 @@ object LuaCommand {
             return
         }
 
-        source.sendSuccess({ Component.literal("${Main.PREFIX}§6Loaded scripts §7(${loadedScripts.size}):") }, false)
+        source.sendSystemMessage(Component.literal("${Main.PREFIX}§6Loaded scripts §7(${loadedScripts.size}):"))
         loadedScripts.forEach { script ->
             val depCount = countUniqueDependencies(script.localDependencyGraph)
-            source.sendSuccess({ Component.literal("  §7- §a${script.scriptName} §8(§7$depCount modules§8) §8[ID: ${script.hashCode().toString(16).take(4)}]") }, false)
+            source.sendSystemMessage(Component.literal("  §7- §a${script.scriptName} §8(§7$depCount modules§8) §8[ID: ${script.hashCode().toString(16).take(4)}]"))
         }
-        source.sendSuccess({ Component.literal("§7Tip: Use §e/lua loaded <name> §7to see dependencies") }, false)
+        source.sendSystemMessage(Component.literal("§7Tip: Use §e/lua loaded <name> §7to see dependencies"))
     }
 
     private fun countUniqueDependencies(graph: Map<String, Set<String>>): Int {
@@ -376,7 +376,7 @@ object LuaCommand {
         val scriptsDir = getScriptsDirectory()
 
         if (!scriptsDir.exists()) {
-            source.sendSuccess({ Component.literal("${Main.PREFIX}§cScripts directory does not exist.") }, false)
+            source.sendSystemMessage(Component.literal("${Main.PREFIX}§cScripts directory does not exist."))
             return
         }
 
@@ -384,7 +384,7 @@ object LuaCommand {
         else File(scriptsDir, "$name.lua")
 
         if (!sourceFile.exists()) {
-            source.sendSuccess({ Component.literal("${Main.PREFIX}§cSource file §e${sourceFile.name} §cnot found.") }, false)
+            source.sendSystemMessage(Component.literal("${Main.PREFIX}§cSource file §e${sourceFile.name} §cnot found."))
             return
         }
 
@@ -399,9 +399,9 @@ object LuaCommand {
             DumpState.dump(proto, outputStream, false)
             outputStream.close()
 
-            source.sendSuccess({ Component.literal("${Main.PREFIX}§aCompiled §e${sourceFile.name} §a→ §e${outputFile.name} §7(${outputFile.length()} bytes)") }, false)
+            source.sendSystemMessage(Component.literal("${Main.PREFIX}§aCompiled §e${sourceFile.name} §a→ §e${outputFile.name} §7(${outputFile.length()} bytes)"))
         } catch (e: Exception) {
-            source.sendSuccess({ Component.literal("${Main.PREFIX}§cCompilation error: ${e.message}") }, false)
+            source.sendSystemMessage(Component.literal("${Main.PREFIX}§cCompilation error: ${e.message}"))
             e.printStackTrace()
         }
     }
@@ -421,11 +421,11 @@ object LuaCommand {
             val branchSymbol = if (isLast) "┗━" else "┣━"
             val nameColor = if (depth == 0) "§e" else "§7"
 
-            source.sendSuccess({ Component.literal("$prefix$branchSymbol $nameColor$depName") }, false)
+            source.sendSystemMessage(Component.literal("$prefix$branchSymbol $nameColor$depName"))
 
             if (depName in visited) {
                 val circularPrefix = prefix + (if (isLast) "     " else "┃    ")
-                source.sendSuccess({ Component.literal("$circularPrefix§c┗━ [Circular]") }, false)
+                source.sendSystemMessage(Component.literal("$circularPrefix§c┗━ [Circular]"))
                 return@forEachIndexed
             }
 
