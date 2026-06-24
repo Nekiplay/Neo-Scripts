@@ -213,9 +213,17 @@ object LuaEvents : ClientModule() {
                     packet.change.position.z
                 }
 
-                val activeYaw = player?.yRot ?: 0f
+                val activeYaw = if (RotationManager.getCurrentYaw().isNaN()) {
+                    player?.yRot ?: 0f
+                } else {
+                    RotationManager.getCurrentYaw()
+                }
 
-                val activePitch = player?.xRot ?: 0f
+                val activePitch = if (RotationManager.getCurrentPitch().isNaN()) {
+                    player?.xRot ?: 0f
+                } else {
+                    RotationManager.getCurrentPitch()
+                }
 
                 // Проверяем наличие фактических изменений
                 val rotationChanged = player == null || targetYaw != activeYaw || targetPitch != activePitch
