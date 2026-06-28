@@ -616,7 +616,7 @@ class PlayerObject : LuaValue() {
                     pitch = pitch.coerceIn(-90f, 90f)
 
                     player.yRot = MathUtil.applyGCD(yaw, yaw)
-                    player.xRot = MathUtil.applyGCD(yaw, yaw)
+                    player.xRot = MathUtil.applyGCD(pitch, pitch)
                     return TRUE
                 }
                 return FALSE
