@@ -171,6 +171,8 @@ class WorldObject : LuaValue() {
             "getCollisionBoxes" -> GetCollisionBoxesFunction()
             "getOutlineBoxes" -> GetOutlineBoxesFunction()
 
+            "getBlocksInBox" -> GetBlocksInBoxFunction()
+
             "raycast" -> RaycastFunction()
             "raycastFromRotation" -> RaycastFromRotationFunction()
             "raycastToBlocksFromId" -> RaycastToBlocksFunction()
@@ -179,6 +181,76 @@ class WorldObject : LuaValue() {
             "playSound" -> PlaySoundFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetBlocksInBoxFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val level = mc.level ?: return NIL
+
+            val minPos: BlockPos
+            val maxPos: BlockPos
+
+            val arg1 = args.arg(1)
+
+            // Вариант 1: world.getBlocksInBox(luaBox)
+            if (arg1.isuserdata() && (arg1.touserdata() is LuaBox || arg1.touserdata() is AABB)) {
+                val aabb = if (arg1.touserdata() is LuaBox) {
+                    (arg1.touserdata() as LuaBox).box
+                } else {
+                    arg1.touserdata() as AABB
+                }
+                minPos = BlockPos(
+                    Math.floor(aabb.minX).toInt(),
+                    Math.floor(aabb.minY).toInt(),
+                    Math.floor(aabb.minZ).toInt()
+                )
+                maxPos = BlockPos(
+                    Math.floor(aabb.maxX).toInt(),
+                    Math.floor(aabb.maxY).toInt(),
+                    Math.floor(aabb.maxZ).toInt()
+                )
+            }
+            // Вариант 2: world.getBlocksInBox(pos1, pos2)
+            else {
+                val p1 = parseBlockPos(args.arg(1), null, null)
+                val p2 = parseBlockPos(args.arg(2), null, null)
+
+                if (p1 == null || p2 == null) {
+                    return error("Invalid arguments: expected (LuaBox) or (BlockPos, BlockPos)")
+                }
+
+                minPos = BlockPos(minOf(p1.x, p2.x), minOf(p1.y, p2.y), minOf(p1.z, p2.z))
+                maxPos = BlockPos(maxOf(p1.x, p2.x), maxOf(p1.y, p2.y), maxOf(p1.z, p2.z))
+            }
+
+            // Защита от слишком больших областей (например, более 500к блоков)
+            val sizeX = (maxPos.x - minPos.x + 1).toLong()
+            val sizeY = (maxPos.y - minPos.y + 1).toLong()
+            val sizeZ = (maxPos.z - minPos.z + 1).toLong()
+
+            val resultTable = tableOf()
+            var index = 1
+
+            // Итерируемся по области
+            for (pos in BlockPos.betweenClosed(minPos, maxPos)) {
+                // Важно: проверяем, загружен ли чанк
+                if (level.hasChunkAt(pos)) {
+                    val state = level.getBlockState(pos)
+
+                    // Пропускаем воздух для экономии памяти в Lua
+                    if (!state.isAir) {
+                        val entry = tableOf()
+                        // Создаем копию позиции, так как итератор переиспользует объект pos
+                        entry.set("pos", LuaBlockPos(pos.immutable()))
+                        entry.set("state", LuaBlockState(state))
+
+                        resultTable.set(index++, entry)
+                    }
+                }
+            }
+
+            return resultTable
+        }
     }
 
     private inner class GetDimension : ZeroArgFunction() {
@@ -200,7 +272,7 @@ class WorldObject : LuaValue() {
 
     private inner class GetBreakingBlocksInfo : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val accessed = mc.levelRenderer as LevelRendererAccessor
+            val accessed = mc?.levelRenderer as LevelRendererAccessor
             var index = 1
             val list = tableOf()
             accessed.`neoscripts$getBlockBreakingInfos`().forEach { (i, progress) ->
@@ -218,7 +290,7 @@ class WorldObject : LuaValue() {
 
     private inner class GetOutlineBoxesFunction : FourArgFunction() {
         override fun invoke(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?, arg4: LuaValue?): LuaValue {
-            val level: ClientLevel = mc.level ?: return error("No world loaded")
+            val level: ClientLevel = mc?.level ?: return error("No world loaded")
 
             val (blockPos, blockState) = parseBlockPosWithBlockState(arg1, arg2, arg3, arg4)
                 ?: return error("Invalid arguments: expected BlockPos + BlockState or x, y, z + BlockState")
@@ -246,7 +318,7 @@ class WorldObject : LuaValue() {
 
     private inner class GetCollisionBoxesFunction : FourArgFunction() {
         override fun invoke(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?, arg4: LuaValue?): LuaValue {
-            val level: ClientLevel = mc.level ?: return error("No world loaded")
+            val level: ClientLevel = mc?.level ?: return error("No world loaded")
 
             val (blockPos, blockState) = parseBlockPosWithBlockState(arg1, arg2, arg3, arg4)
                 ?: return error("Invalid arguments: expected BlockPos + BlockState or x, y, z + BlockState")
@@ -344,7 +416,7 @@ class WorldObject : LuaValue() {
                 val startVec = Vec3(startX, startY, startZ)
                 val endVec = Vec3(endX, endY, endZ)
 
-                val player = mc.player;
+                val player = mc?.player;
 
                 if (player != null) {
 
@@ -369,15 +441,15 @@ class WorldObject : LuaValue() {
                     var hitResult: HitResult? = null
 
                     hitResult = if (!include_entity) {
-                        mc.level?.clip(context)
+                        mc?.level?.clip(context)
                     } else {
-                        RaycastUtils.fastRayTrace(mc.player, startVec, endVec, ArrayList())
+                        RaycastUtils.fastRayTrace(mc?.player!!, startVec, endVec, ArrayList())
                     }
 
                     if (include_entity) {
                         val sub = endVec.subtract(startVec)
                         val distance = sub.x * sub.x * sub.y * sub.y * sub.z * sub.z
-                        return LuaRaycast(RaycastUtils.findCrosshairTarget(mc.player, startVec, endVec, distance, distance))
+                        return LuaRaycast(RaycastUtils.findCrosshairTarget(mc?.player!!, startVec, endVec, distance, distance))
                     }
 
                     return if (hitResult != null) {
@@ -461,7 +533,7 @@ class WorldObject : LuaValue() {
                     val len = blocksTable.length() // или lua_len(arg2)
                     for (i in 1..len) {
                         val value = blocksTable.get(i)
-                        if (value.isstring()) {
+                        if (value.isint()) {
                             val id = value.tojstring()
                             val state = BuiltInRegistries.BLOCK.get(Identifier.parse(id))
 
@@ -539,24 +611,24 @@ class WorldObject : LuaValue() {
                 val blockId = arg4.toint()
                 val blockState = Block.stateById(blockId)
 
-                mc.level?.setBlockAndUpdate(blockPos, blockState)
-                mc.level?.updateNeighborsAt(blockPos, blockState.block)
+                mc?.level?.setBlockAndUpdate(blockPos, blockState)
+                mc?.level?.updateNeighborsAt(blockPos, blockState.block)
                 return TRUE
             }
             else if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isuserdata() == true && arg4.touserdata() is LuaBlockState) {
                 val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
                 val blockState = arg4.touserdata() as LuaBlockState
 
-                mc.level?.setBlockAndUpdate(blockPos, blockState.blockState)
-                mc.level?.updateNeighborsAt(blockPos, blockState.blockState.block)
+                mc?.level?.setBlockAndUpdate(blockPos, blockState.blockState)
+                mc?.level?.updateNeighborsAt(blockPos, blockState.blockState.block)
                 return TRUE
             }
             else if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isuserdata() == true && arg4.touserdata() is BlockState) {
                 val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
                 val blockState = arg4.touserdata() as BlockState
 
-                mc.level?.setBlockAndUpdate(blockPos, blockState)
-                mc.level?.updateNeighborsAt(blockPos, blockState.block)
+                mc?.level?.setBlockAndUpdate(blockPos, blockState)
+                mc?.level?.updateNeighborsAt(blockPos, blockState.block)
                 return TRUE
             }
             else if (arg1?.istable() ?: false) {
@@ -568,35 +640,35 @@ class WorldObject : LuaValue() {
                 val blockPos = BlockPos(x, y, z)
                 val blockState = Block.stateById(id)
 
-                mc.level?.setBlockAndUpdate(blockPos, blockState)
-                mc.level?.updateNeighborsAt(blockPos, blockState.block)
+                mc?.level?.setBlockAndUpdate(blockPos, blockState)
+                mc?.level?.updateNeighborsAt(blockPos, blockState.block)
                 return TRUE
             }
             else if (arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos) {
                 val pos = arg1.touserdata() as LuaBlockPos
                 val blockId = arg2?.optint(1) ?: 1
                 val blockState = Block.stateById(blockId)
-                mc.level?.setBlockAndUpdate(pos.pos, blockState)
-                mc.level?.updateNeighborsAt(pos.pos, blockState.block)
+                mc?.level?.setBlockAndUpdate(pos.pos, blockState)
+                mc?.level?.updateNeighborsAt(pos.pos, blockState.block)
             }
             else if (arg1?.isuserdata() == true && arg1.touserdata() is BlockPos) {
                 val pos = arg1.touserdata() as BlockPos
                 val blockId = arg2?.optint(1) ?: 1
                 val blockState = Block.stateById(blockId)
-                mc.level?.setBlockAndUpdate(pos, blockState)
-                mc.level?.updateNeighborsAt(pos, blockState.block)
+                mc?.level?.setBlockAndUpdate(pos, blockState)
+                mc?.level?.updateNeighborsAt(pos, blockState.block)
             }
             else if (arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos && arg2?.isuserdata() == true && arg2.touserdata() is LuaBlockState) {
                 val pos = arg1.touserdata() as LuaBlockPos
                 val state = arg2.touserdata() as LuaBlockState
-                mc.level?.setBlockAndUpdate(pos.pos, state.blockState)
-                mc.level?.updateNeighborsAt(pos.pos, state.blockState.block)
+                mc?.level?.setBlockAndUpdate(pos.pos, state.blockState)
+                mc?.level?.updateNeighborsAt(pos.pos, state.blockState.block)
             }
             else if (arg1?.isuserdata() == true && arg1.touserdata() is BlockPos && arg2?.isuserdata() == true && arg2.touserdata() is BlockState) {
                 val pos = arg1.touserdata() as BlockPos
                 val state = arg2.touserdata() as BlockState
-                mc.level?.setBlockAndUpdate(pos, state)
-                mc.level?.updateNeighborsAt(pos, state.block)
+                mc?.level?.setBlockAndUpdate(pos, state)
+                mc?.level?.updateNeighborsAt(pos, state.block)
             }
             return NIL
         }
@@ -610,7 +682,7 @@ class WorldObject : LuaValue() {
         ): LuaValue? {
             val blockPos = parseBlockPos(arg1, arg2, arg3)
             if (blockPos != null) {
-                val state = mc.level?.getBlockState(blockPos)
+                val state = mc?.level?.getBlockState(blockPos)
                 if (state != null) {
                     return LuaBlockState(state);
                 }
@@ -627,7 +699,7 @@ class WorldObject : LuaValue() {
         ): LuaValue? {
             val blockPos = parseBlockPos(arg1, arg2, arg3)
             if (blockPos != null) {
-                val lighth = mc.level?.getBrightness(LightLayer.BLOCK, blockPos)
+                val lighth = mc?.level?.getBrightness(LightLayer.BLOCK, blockPos)
                 if (lighth != null) {
                     return valueOf(lighth)
                 }
@@ -644,7 +716,7 @@ class WorldObject : LuaValue() {
         ): LuaValue? {
             val blockPos = parseBlockPos(arg1, arg2, arg3)
             if (blockPos != null) {
-                val lighth = mc.level?.getBrightness(LightLayer.SKY, blockPos)
+                val lighth = mc?.level?.getBrightness(LightLayer.SKY, blockPos)
                 if (lighth != null) {
                     return valueOf(lighth)
                 }
@@ -661,7 +733,7 @@ class WorldObject : LuaValue() {
         ): LuaValue? {
             val blockPos = parseBlockPos(arg1, arg2, arg3)
             if (blockPos != null) {
-                return valueOf(mc.level?.isLoaded(blockPos) ?: false);
+                return valueOf(mc?.level?.isLoaded(blockPos) ?: false);
             }
             return NIL
         }
@@ -671,7 +743,7 @@ class WorldObject : LuaValue() {
         override fun call(): LuaValue {
             val entitiesTable = tableOf()
 
-            mc.level?.entitiesForRendering()?.forEachIndexed { index, entity ->
+            mc?.level?.entitiesForRendering()?.forEachIndexed { index, entity ->
                 entitiesTable.set(index + 1, LuaEntity(entity))
             }
 
@@ -690,7 +762,7 @@ class WorldObject : LuaValue() {
             val entitiesTable = tableOf()
             if (box != null) {
                 var index = 0
-                mc.level?.getEntitiesOfClass(ArmorStand::class.java, box)?.forEach { entity ->
+                mc?.level?.getEntitiesOfClass(ArmorStand::class.java, box)?.forEach { entity ->
                     entitiesTable.set(index + 1, LuaEntity(entity))
                     index++
                 }
@@ -712,7 +784,7 @@ class WorldObject : LuaValue() {
             if (box != null) {
 
                 var index = 1
-                mc.level?.getEntitiesOfClass(Entity::class.java, box)?.forEach { entity ->
+                mc?.level?.getEntitiesOfClass(Entity::class.java, box)?.forEach { entity ->
                     entitiesTable.set(index, LuaEntity(entity))
                     index++
                 }
@@ -727,7 +799,7 @@ class WorldObject : LuaValue() {
             val entitiesTable = tableOf()
 
             var index = 1
-            mc.level?.entitiesForRendering()?.forEach { entity ->
+            mc?.level?.entitiesForRendering()?.forEach { entity ->
                 if (entity is ArmorStand) {
                     entitiesTable.set(index, LuaEntity(entity))
                     index++
@@ -743,7 +815,7 @@ class WorldObject : LuaValue() {
             val entitiesTable = tableOf()
 
             var index = 1
-            mc.level?.entitiesForRendering()?.forEach { entity ->
+            mc?.level?.entitiesForRendering()?.forEach { entity ->
                 if (entity is LivingEntity) {
                     entitiesTable.set(index, LuaEntity(entity))
                     index++
@@ -758,7 +830,7 @@ class WorldObject : LuaValue() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
                 val entityId = arg.toint()
-                val entity = mc.level?.getEntity(entityId)
+                val entity = mc?.level?.getEntity(entityId)
                 if (entity != null) {
                     LuaEntity(entity)
                 }
@@ -780,7 +852,7 @@ class WorldObject : LuaValue() {
 
     private inner class PlaySoundFunction : VarArgFunction() {
         override fun invoke(args: Varargs?): Varargs? {
-            val level = mc.level ?: return NIL
+            val level = mc?.level ?: return NIL
 
             // Получаем первые 3 аргумента для попытки парсинга вектора
             val a1 = args?.arg(1)
@@ -809,10 +881,10 @@ class WorldObject : LuaValue() {
                 return NIL
             }
 
-            val player = mc.player ?: return NIL
+            val player = mc?.player ?: return NIL
 
             val field = try {
-                mc.javaClass.getDeclaredField("field_44867")
+                mc?.javaClass?.getDeclaredField("field_44867")
             } catch (e: Exception) {
                 null
             }

@@ -171,6 +171,8 @@ class WorldObject : LuaValue() {
             "getCollisionBoxes" -> GetCollisionBoxesFunction()
             "getOutlineBoxes" -> GetOutlineBoxesFunction()
 
+            "getBlocksInBox" -> GetBlocksInBoxFunction()
+
             "raycast" -> RaycastFunction()
             "raycastFromRotation" -> RaycastFromRotationFunction()
             "raycastToBlocksFromId" -> RaycastToBlocksFunction()
@@ -179,6 +181,76 @@ class WorldObject : LuaValue() {
             "playSound" -> PlaySoundFunction()
             else -> NIL
         } as LuaValue
+    }
+
+    private inner class GetBlocksInBoxFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val level = mc.level ?: return NIL
+
+            val minPos: BlockPos
+            val maxPos: BlockPos
+
+            val arg1 = args.arg(1)
+
+            // Вариант 1: world.getBlocksInBox(luaBox)
+            if (arg1.isuserdata() && (arg1.touserdata() is LuaBox || arg1.touserdata() is AABB)) {
+                val aabb = if (arg1.touserdata() is LuaBox) {
+                    (arg1.touserdata() as LuaBox).box
+                } else {
+                    arg1.touserdata() as AABB
+                }
+                minPos = BlockPos(
+                    Math.floor(aabb.minX).toInt(),
+                    Math.floor(aabb.minY).toInt(),
+                    Math.floor(aabb.minZ).toInt()
+                )
+                maxPos = BlockPos(
+                    Math.floor(aabb.maxX).toInt(),
+                    Math.floor(aabb.maxY).toInt(),
+                    Math.floor(aabb.maxZ).toInt()
+                )
+            }
+            // Вариант 2: world.getBlocksInBox(pos1, pos2)
+            else {
+                val p1 = parseBlockPos(args.arg(1), null, null)
+                val p2 = parseBlockPos(args.arg(2), null, null)
+
+                if (p1 == null || p2 == null) {
+                    return error("Invalid arguments: expected (LuaBox) or (BlockPos, BlockPos)")
+                }
+
+                minPos = BlockPos(minOf(p1.x, p2.x), minOf(p1.y, p2.y), minOf(p1.z, p2.z))
+                maxPos = BlockPos(maxOf(p1.x, p2.x), maxOf(p1.y, p2.y), maxOf(p1.z, p2.z))
+            }
+
+            // Защита от слишком больших областей (например, более 500к блоков)
+            val sizeX = (maxPos.x - minPos.x + 1).toLong()
+            val sizeY = (maxPos.y - minPos.y + 1).toLong()
+            val sizeZ = (maxPos.z - minPos.z + 1).toLong()
+
+            val resultTable = tableOf()
+            var index = 1
+
+            // Итерируемся по области
+            for (pos in BlockPos.betweenClosed(minPos, maxPos)) {
+                // Важно: проверяем, загружен ли чанк
+                if (level.hasChunkAt(pos)) {
+                    val state = level.getBlockState(pos)
+
+                    // Пропускаем воздух для экономии памяти в Lua
+                    if (!state.isAir) {
+                        val entry = tableOf()
+                        // Создаем копию позиции, так как итератор переиспользует объект pos
+                        entry.set("pos", LuaBlockPos(pos.immutable()))
+                        entry.set("state", LuaBlockState(state))
+
+                        resultTable.set(index++, entry)
+                    }
+                }
+            }
+
+            return resultTable
+        }
     }
 
     private inner class GetDimension : ZeroArgFunction() {
