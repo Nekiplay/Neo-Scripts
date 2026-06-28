@@ -16,37 +16,51 @@ class BlockScannerObject() : LuaValue() {
 
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
-            "new_iterator" -> NewIteratorFunc()
+                "new_iterator" -> NewIteratorFunc()
             else -> super.get(key)
         }
     }
 
-    // Функция создания итератора: scanner.new_iterator(x, y, z, radius)
     inner class NewIteratorFunc : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            return BlockIteratorObject(
-                args.checkint(1),
-                args.checkint(2),
-                args.checkint(3),
-                args.checkint(4)
-            )
+            val x = args.checkint(1)
+            val y = args.checkint(2)
+            val z = args.checkint(3)
+            val hRadius = args.checkint(4)
+
+            val hUp = args.optint(5, hRadius)
+            val hDown = args.optint(6, hRadius)
+
+            return BlockIteratorObject(x, y, z, hRadius, hUp, hDown)
         }
     }
 }
 
-// Объект Итератора
 class BlockIteratorObject(
     val centerX: Int, val centerY: Int, val centerZ: Int,
-    private val radius: Int
+    private val hRadius: Int,
+    private val heightUp: Int,
+    private val heightDown: Int
 ) : LuaValue() {
 
-    private var currX = centerX - radius
-    private var currZ = centerZ - radius
-    private var currY = mc.level?.minY ?: -60
+    // Границы мира для безопасности
+    private val worldMinY = mc.level?.minY ?: -64
+    private val worldMaxY = mc.level?.maxY ?: 320
 
-    private val maxX = centerX + radius
-    private val maxZ = centerZ + radius
-    private val maxY = mc.level?.maxY ?: 320
+    // Вычисляем фактические границы сканирования
+    private val startY = (centerY - heightDown).coerceAtLeast(worldMinY)
+    private val endY = (centerY + heightUp).coerceAtMost(worldMaxY)
+
+    private val startX = centerX - hRadius
+    private val endX = centerX + hRadius
+
+    private val startZ = centerZ - hRadius
+    private val endZ = centerZ + hRadius
+
+    // Текущие координаты (начинаем с самого низа)
+    private var currX = startX
+    private var currZ = startZ
+    private var currY = startY
 
     private val mutablePos = BlockPos.MutableBlockPos()
 
@@ -56,48 +70,57 @@ class BlockIteratorObject(
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "next_batch" -> NextBatchFunc()
-            "progress" -> valueOf(currY.toDouble() / maxY.toDouble())
+            "progress" -> {
+                val totalHeight = (endY - startY).toDouble().coerceAtLeast(1.0)
+                val currentProgress = (currY - startY).toDouble()
+                valueOf(currentProgress / totalHeight)
+            }
             else -> super.get(key)
         }
     }
 
-    // Главная функция для предотвращения лагов: берем блоки пачкой
     inner class NextBatchFunc : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val limit = args.optint(1, 1000)
             val result = LuaTable()
             var count = 0
 
-            while (count < limit && currY <= maxY) {
+            val level = mc.level ?: return varargsOf(result, FALSE)
+
+            while (count < limit && currY <= endY) {
                 mutablePos.set(currX, currY, currZ)
-                val state = mc.level?.getBlockState(mutablePos)
 
-                // Пропускаем воздух в батче для экономии памяти и CPU
-                if (state != null && !state.isAir) {
-                    val entry = LuaTable()
-                    entry.set(1, valueOf(currX))
-                    entry.set(2, valueOf(currY))
-                    entry.set(3, valueOf(currZ))
-                    entry.set(4, LuaBlockState(state))
+                // Проверка, загружен ли чанк (чтобы избежать подвисаний)
+                if (level.hasChunkAt(mutablePos)) {
+                    val state = level.getBlockState(mutablePos)
 
-                    count++
-                    result.set(count, entry)
+                    if (!state.isAir) {
+                        val entry = LuaTable()
+                        entry.set(1, valueOf(currX))
+                        entry.set(2, valueOf(currY))
+                        entry.set(3, valueOf(currZ))
+                        entry.set(4, LuaBlockState(state))
+
+                        count++
+                        result.set(count, entry)
+                    }
                 }
 
-                // Логика перемещения по координатам
+                // Итерация по осям (сначала X, потом Z, потом Y)
                 currX++
-                if (currX > maxX) {
-                    currX = (centerX - radius)
+                if (currX > endX) {
+                    currX = startX
                     currZ++
-                    if (currZ > maxZ) {
-                        currZ = (centerZ - radius)
+                    if (currZ > endZ) {
+                        currZ = startZ
                         currY++
                     }
                 }
             }
 
-            // Возвращаем (таблица_блоков, есть_ли_еще_блоки)
-            return varargsOf(result, valueOf(currY <= maxY))
+            // Возвращаем таблицу найденных блоков и флаг "есть ли продолжение"
+            val hasMore = currY <= endY
+            return varargsOf(result, valueOf(hasMore))
         }
     }
 }
