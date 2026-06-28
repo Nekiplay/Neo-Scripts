@@ -223,11 +223,6 @@ class WorldObject : LuaValue() {
                 maxPos = BlockPos(maxOf(p1.x, p2.x), maxOf(p1.y, p2.y), maxOf(p1.z, p2.z))
             }
 
-            // Защита от слишком больших областей (например, более 500к блоков)
-            val sizeX = (maxPos.x - minPos.x + 1).toLong()
-            val sizeY = (maxPos.y - minPos.y + 1).toLong()
-            val sizeZ = (maxPos.z - minPos.z + 1).toLong()
-
             val resultTable = tableOf()
             var index = 1
 
