@@ -41,14 +41,19 @@ class LuaVector3d(val location: Vec3): LuaUserdata(location) {
 
 
     override fun eq(other: LuaValue?): LuaValue {
-        return when (other) {
-            is LuaVector3d if location == other.location -> {
-                LuaValue.TRUE
-            }
-            else -> {
-                LuaValue.FALSE
+        val user = other?.touserdata()
+        if (other is LuaVector3d) {
+            if (other.location == location) {
+                return TRUE
             }
         }
+        if (user is Vec3) {
+            if (user == location) {
+                return TRUE
+            }
+            return TRUE
+        }
+        return FALSE
     }
 
     override fun equals(other: Any?): Boolean {

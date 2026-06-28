@@ -6,13 +6,16 @@ import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.VarArgFunction
+import org.luaj.vm2.lib.ZeroArgFunction
 
-class LuaBlockPos(val pos: BlockPos): LuaUserdata(pos) {
+class LuaMutableBlockPos(val pos: BlockPos.MutableBlockPos): LuaUserdata(pos) {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "x" -> valueOf(pos.x)
             "y" -> valueOf(pos.y)
             "z" -> valueOf(pos.z)
+
+            "set" -> set()
 
             "bottomCenter" -> LuaVector3d(pos.bottomCenter)
             "center" -> LuaVector3d(pos.center)
@@ -26,24 +29,38 @@ class LuaBlockPos(val pos: BlockPos): LuaUserdata(pos) {
 
             "distSqr", "distanceSqr" -> distSqr()
             "distToCenterSqr", "distanceToCenterSqr" -> distToCenterSqr()
+
+            "toImmutable" -> object : ZeroArgFunction() {
+                override fun call(): LuaValue = LuaBlockPos(pos.immutable())
+            }
+
             else -> NIL
-        }
+        } as LuaValue
     }
 
     override fun eq(other: LuaValue?): LuaValue {
         val user = other?.touserdata()
-        if (other is LuaBlockPos) {
+        if (other is LuaMutableBlockPos) {
             if (other.pos == pos) {
                 return TRUE
             }
         }
-        if (user is BlockPos) {
+        if (user is BlockPos.MutableBlockPos) {
             if (user == pos) {
                 return TRUE
             }
             return TRUE
         }
         return FALSE
+    }
+
+    private inner class set : VarArgFunction() {
+        override fun invoke(args: Varargs?): Varargs? {
+            if (args?.arg(1)?.isint() == true && args.arg(2)?.isint() == true && args.arg(3)?.isint() == true) {
+                pos.set(arg(1).toint(), arg(2).toint(), arg(3).toint())
+            }
+            return NIL
+        }
     }
 
     private inner class distSqr : VarArgFunction() {

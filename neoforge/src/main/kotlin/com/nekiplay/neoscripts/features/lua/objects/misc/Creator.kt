@@ -5,6 +5,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
+import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaMutableBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
@@ -30,44 +31,20 @@ class Creator : LuaValue() {
             "createAABB", "createBox" -> CreateBox()
             "createDirection" -> CreateDirection()
             "createBlockPos" -> CreateBlockPos()
+            "createMutableBlockPos" -> CreateMutableBlockPos()
             "createBlockState" -> CreateBlockState()
             "createVector3", "createVector3d" -> CreateVector3()
-            "createItemStackFromIdentifier" -> CreateStackFromIdentifier()
-            "createItemStackFromId" -> CreateStackFromId()
             else -> super.get(key)
         }
     }
 
-    inner class CreateStackFromId : VarArgFunction() {
+    inner class CreateMutableBlockPos : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            if (!args.arg(1).isnumber()) {
-                error("create item expects a number as 1st argument")
+            if (args.arg(1).isint() && args.arg(2).isint() && args.arg(3).isint()) {
+                return LuaMutableBlockPos(BlockPos.MutableBlockPos(args.arg(1).toint(), args.arg(2).toint(), args.arg(3).toint()))
             }
-            val id = args.arg(1).checkint()
-
-            val stack = BuiltInRegistries.ITEM.get(id)
-            return if (stack.isPresent) {
-                LuaItemStack(stack.get().value().defaultInstance)
-            } else {
-                NIL
-            }
-        }
-    }
-
-    inner class CreateStackFromIdentifier : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            if (!args.arg(1).isstring()) {
-                error("create item expects a string as 1st argument (minecraft:stone)")
-            }
-            val idString = args.arg(1).checkjstring()
-
-            val identifier = Identifier.parse(idString)
-
-            val stack = BuiltInRegistries.ITEM.get(identifier)
-            return if (stack.isPresent) {
-                LuaItemStack(stack.get().value().defaultInstance)
-            } else {
-                NIL
+            else {
+                return LuaMutableBlockPos(BlockPos.MutableBlockPos())
             }
         }
     }

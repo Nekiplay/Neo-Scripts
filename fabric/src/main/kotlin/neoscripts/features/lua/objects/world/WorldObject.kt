@@ -7,6 +7,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
+import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaMutableBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaRaycast
 import com.nekiplay.neoscripts.mixins.minecraft.LevelRendererAccessor
@@ -44,8 +45,14 @@ class WorldObject : LuaValue() {
 
     private fun parseBlockPos(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): BlockPos? {
         return when {
-            arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
-                (arg1.touserdata() as LuaBlockPos).pos
+            arg1 is LuaMutableBlockPos -> {
+                arg1.pos
+            }
+            arg1 is LuaBlockPos -> {
+                arg1.pos
+            }
+            arg1?.isuserdata() == true && arg1.touserdata() is BlockPos.MutableBlockPos -> {
+                arg1.touserdata() as BlockPos.MutableBlockPos
             }
             arg1?.isuserdata() == true && arg1.touserdata() is BlockPos -> {
                 arg1.touserdata() as BlockPos
@@ -107,6 +114,11 @@ class WorldObject : LuaValue() {
         return when {
             arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
                 val pos = (arg1.touserdata() as LuaBlockPos).pos
+                val state = parseBlockState(arg2)
+                if (state != null) pos to state else null
+            }
+            arg1?.isuserdata() == true && arg1.touserdata() is BlockPos.MutableBlockPos -> {
+                val pos = arg1.touserdata() as BlockPos.MutableBlockPos
                 val state = parseBlockState(arg2)
                 if (state != null) pos to state else null
             }

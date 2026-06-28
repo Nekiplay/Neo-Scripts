@@ -1,7 +1,9 @@
 package com.nekiplay.neoscripts.features.lua.objects.datatypes
 
+import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.sugar.getFormattedString
+import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.level.block.Block
@@ -142,26 +144,19 @@ class LuaBlockState(var blockState: BlockState) : LuaUserdata(blockState) {
     }
 
     override fun eq(other: LuaValue?): LuaValue {
-        return when (other) {
-            is LuaBlockState if blockState == other.blockState -> {
-                LuaValue.TRUE
-            }
-            is LuaInteger if Block.getId(blockState) == other.toint() -> {
-                LuaValue.TRUE
-            }
-            is LuaNumber if Block.getId(blockState) == other.toint() -> {
-                LuaValue.TRUE
-            }
-            is LuaLong if Block.getId(blockState) == other.toint() -> {
-                LuaValue.TRUE
-            }
-            is LuaDouble if Block.getId(blockState) == other.toint() -> {
-                LuaValue.TRUE
-            }
-            else -> {
-                LuaValue.FALSE
+        val user = other?.touserdata()
+        if (other is LuaBlockState) {
+            if (other.blockState == blockState) {
+                return TRUE
             }
         }
+        if (user is BlockState) {
+            if (user == blockState) {
+                return TRUE
+            }
+            return TRUE
+        }
+        return FALSE
     }
 
     override fun set(key: LuaValue, value: LuaValue) {
