@@ -3,7 +3,6 @@
 	<a href="https://modrinth.com/mod/hypixel-cry"><img src="https://img.shields.io/modrinth/game-versions/s423R7PC" alt="Versions"/></a>
 	<a href="https://GitHub.com/Nekiplay/Hypixel-Cry/issues/"><img src="https://img.shields.io/github/issues/Nekiplay/Hypixel-Cry" alt="GitHub issues"/></a>
 	<a href="https://github.com/Nekiplay/Hypixel-Cry/stargazers"><img src="https://badgen.net/github/stars/Nekiplay/Hypixel-Cry" alt="GitHub stars"/></a><br/>
-	<a href="https://discord.gg/zSefVGvKsW"><img src="https://img.shields.io/discord/1418100297615802439?logo=discord" alt="Discord server"/></a><br/>
 </div>
 
 # Features
