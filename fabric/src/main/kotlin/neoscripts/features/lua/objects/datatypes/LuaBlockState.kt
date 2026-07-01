@@ -132,11 +132,7 @@ class LuaBlockState(var blockState: BlockState) : LuaUserdata(blockState) {
                 }
             }
             "is_still" -> {
-                if (blockState.fluidState != null) {
-                    valueOf(blockState.fluidState.isSource)
-                } else {
-                    NIL
-                }
+                valueOf(blockState.fluidState.isSource)
             }
 
             else -> super.get(key)
