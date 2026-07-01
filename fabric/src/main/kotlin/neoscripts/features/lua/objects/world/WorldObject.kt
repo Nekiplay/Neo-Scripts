@@ -44,22 +44,17 @@ class WorldObject : LuaValue() {
     }
 
     private fun parseBlockPos(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): BlockPos? {
+        // Fast path: numbers first (most common)
+        if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
+            return BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
+        }
         return when {
-            arg1 is LuaMutableBlockPos -> {
-                arg1.pos
-            }
-            arg1 is LuaBlockPos -> {
-                arg1.pos
-            }
-            arg1?.isuserdata() == true && arg1.touserdata() is BlockPos.MutableBlockPos -> {
+            arg1 is LuaMutableBlockPos -> arg1.pos
+            arg1 is LuaBlockPos -> arg1.pos
+            arg1?.isuserdata() == true && arg1.touserdata() is BlockPos.MutableBlockPos ->
                 arg1.touserdata() as BlockPos.MutableBlockPos
-            }
-            arg1?.isuserdata() == true && arg1.touserdata() is BlockPos -> {
+            arg1?.isuserdata() == true && arg1.touserdata() is BlockPos ->
                 arg1.touserdata() as BlockPos
-            }
-            arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
-                BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
-            }
             arg1?.istable() == true -> {
                 val x = arg1.get("x").toint()
                 val y = arg1.get("y").toint()
