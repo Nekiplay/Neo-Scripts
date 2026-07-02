@@ -4,6 +4,7 @@ import com.nekiplay.neoscripts.Main;
 import com.nekiplay.neoscripts.features.lua.LuaScript;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.neoforged.neoforge.client.ClientCommandHandler;
 import org.luaj.vm2.LuaValue;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -19,7 +20,9 @@ public class ClientPacketListenerMixin {
         boolean allow = true;
 
         if (cmdName.equalsIgnoreCase("lua")) {
-            ci.cancel();
+            if (ClientCommandHandler.runCommand(command)) {
+                ci.cancel();
+            }
             return;
         }
 
