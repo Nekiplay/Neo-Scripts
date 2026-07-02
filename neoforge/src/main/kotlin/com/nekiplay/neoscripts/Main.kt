@@ -25,8 +25,6 @@ import java.util.logging.Level
 
 /**
  * Main mod class.
- *
- * An example for blocks is in the `blocks` package of this mod.
  */
 @Mod(Main.ID)
 object Main {

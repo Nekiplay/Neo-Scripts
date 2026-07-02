@@ -22,7 +22,7 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.concurrent.CompletableFuture
 
-@EventBusSubscriber(modid = Main.ID, value = [Dist.CLIENT])
+@EventBusSubscriber(modid = Main.ID, bus = EventBusSubscriber.Bus.GAME, value = [Dist.CLIENT])
 object LuaCommand {
 
     private val SCRIPT_SUGGESTION_PROVIDER = SuggestionProvider<CommandSourceStack> { _, builder ->
@@ -42,7 +42,7 @@ object LuaCommand {
         val dispatcher = event.dispatcher
         val luaCommand = Commands.literal("lua")
             .then(Commands.literal("load")
-                .then(Commands.argument("filename", StringArgumentType.word())
+                .then(Commands.argument("filename", StringArgumentType.string())
                     .suggests(SCRIPT_SUGGESTION_PROVIDER)
                     .executes { context ->
                         val filename = StringArgumentType.getString(context, "filename")
@@ -52,7 +52,7 @@ object LuaCommand {
                 )
             )
             .then(Commands.literal("unload")
-                .then(Commands.argument("filename", StringArgumentType.word())
+                .then(Commands.argument("filename", StringArgumentType.string())
                     .suggests(LOADED_SCRIPT_SUGGESTION_PROVIDER)
                     .executes { context ->
                         val filename = StringArgumentType.getString(context, "filename")
@@ -78,7 +78,7 @@ object LuaCommand {
                     listLoadedScripts(context.source, null)
                     1
                 }
-                .then(Commands.argument("scriptName", StringArgumentType.word())
+                .then(Commands.argument("scriptName", StringArgumentType.string())
                     .suggests(LOADED_SCRIPT_SUGGESTION_PROVIDER)
                     .executes { context ->
                         val name = StringArgumentType.getString(context, "scriptName")
@@ -88,7 +88,7 @@ object LuaCommand {
                 )
             )
             .then(Commands.literal("toggle")
-                .then(Commands.argument("scriptName", StringArgumentType.word())
+                .then(Commands.argument("scriptName", StringArgumentType.string())
                     .suggests(SCRIPT_SUGGESTION_PROVIDER)
                     .executes { context ->
                         val name = StringArgumentType.getString(context, "scriptName")
@@ -104,7 +104,7 @@ object LuaCommand {
                 }
             )
             .then(Commands.literal("compile")
-                .then(Commands.argument("name", StringArgumentType.word())
+                .then(Commands.argument("name", StringArgumentType.string())
                     .suggests(SOURCE_SCRIPT_SUGGESTION_PROVIDER)
                     .executes { context ->
                         val name = StringArgumentType.getString(context, "name")
