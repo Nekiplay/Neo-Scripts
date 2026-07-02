@@ -10,9 +10,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.network.chat.Component
-import net.neoforged.api.distmarker.Dist
 import net.neoforged.bus.api.SubscribeEvent
-import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.fml.loading.FMLPaths
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent
 import org.luaj.vm2.compiler.DumpState
@@ -22,7 +20,7 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.concurrent.CompletableFuture
 
-@EventBusSubscriber(modid = Main.ID, bus = EventBusSubscriber.Bus.GAME, value = [Dist.CLIENT])
+// Регистрируется вручную в Main.kt через NeoForge.EVENT_BUS.register(LuaCommand)
 object LuaCommand {
 
     private val SCRIPT_SUGGESTION_PROVIDER = SuggestionProvider<CommandSourceStack> { _, builder ->

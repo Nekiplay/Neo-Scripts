@@ -3,6 +3,7 @@ package com.nekiplay.neoscripts
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.nekiplay.neoscripts.events.main.EventBus
+import com.nekiplay.neoscripts.features.commands.impl.LuaCommand
 import com.nekiplay.neoscripts.features.lua.LuaManager
 import com.nekiplay.neoscripts.features.modules.impl.misc.LuaEvents
 import io.github.classgraph.ClassGraph
@@ -94,6 +95,7 @@ object Main {
 
         LOGGER.info("Initializing client...")
         NeoForge.EVENT_BUS.register(LuaEvents)
+        NeoForge.EVENT_BUS.register(LuaCommand)
     }
 
     fun saveConfig(){
