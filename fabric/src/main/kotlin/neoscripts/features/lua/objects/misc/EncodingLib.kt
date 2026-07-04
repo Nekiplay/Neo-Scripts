@@ -216,12 +216,12 @@ class EncodingLib : LuaValue() {
         }
     }
 
-    inner class HexDecode : OneArgFunction() {
-        override fun call(arg: LuaValue): LuaValue {
+    inner class HexDecode : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
             return try {
-                val hexString = arg.checkjstring()
+                val hexString = args.arg(1).checkjstring()
                 if (hexString.length % 2 != 0) {
-                    return varargsOf(arrayOf(NIL, valueOf("Hex string must have even length"))) as LuaValue
+                    return varargsOf(arrayOf(NIL, valueOf("Hex string must have even length")))
                 }
 
                 val bytes = hexString.chunked(2)
@@ -232,7 +232,7 @@ class EncodingLib : LuaValue() {
                 varargsOf(arrayOf(valueOf(result), NIL))
             } catch (e: Exception) {
                 varargsOf(arrayOf(NIL, valueOf(e.message ?: "Hex decode failed")))
-            } as LuaValue
+            }
         }
     }
 
@@ -249,16 +249,16 @@ class EncodingLib : LuaValue() {
         }
     }
 
-    inner class Base64Decode : OneArgFunction() {
-        override fun call(arg: LuaValue): LuaValue {
+    inner class Base64Decode : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
             return try {
-                val base64String = arg.checkjstring()
+                val base64String = args.arg(1).checkjstring()
                 val bytes = Base64.getDecoder().decode(base64String)
                 val result = String(bytes)
                 varargsOf(arrayOf(valueOf(result), NIL))
             } catch (e: Exception) {
                 varargsOf(arrayOf(NIL, valueOf(e.message ?: "Base64 decode failed")))
-            } as LuaValue
+            }
         }
     }
 
