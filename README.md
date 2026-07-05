@@ -10,5 +10,5 @@
 - /lua - Lua API control
 
 ### Misc:
-- [Lua API](https://skillshop.gitbook.io/hypixelcry/), [Forum](http://130.255.41.75/), [Discord](https://discord.gg/zSefVGvKsW)
+- [Lua API](https://skillshop.gitbook.io/hypixelcry/), [Forum](http://130.255.41.75/), [Discord](https://discord.gg/GHXSpYAEgh)
 
