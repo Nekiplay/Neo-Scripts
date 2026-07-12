@@ -3,17 +3,19 @@ package com.nekiplay.neoscripts.features.lua.objects.player
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.neoscripts.mixins.gui.AbstractSignEditScreenAccessor
+import com.nekiplay.neoscripts.mixins.gui.AnvilScreenAccessor
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.utils.InventoryUtils
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
-import net.minecraft.client.gui.screens.inventory.ContainerScreen
+import net.minecraft.client.gui.screens.inventory.AnvilScreen
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.minecraft.client.gui.screens.inventory.SignEditScreen
 import net.minecraft.client.multiplayer.ClientPacketListener
+import net.minecraft.network.protocol.game.ServerboundRenameItemPacket
 import net.minecraft.network.protocol.game.ServerboundSignUpdatePacket
 import net.minecraft.world.inventory.AbstractContainerMenu
-import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.item.ItemStack
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
@@ -30,8 +32,9 @@ class InventoryObject: LuaValue() {
         return when (key.tojstring()) {
             "isSignOpened" -> IsSignOpenedFunction()
             "isAnyScreenOpened" -> IsAnyScreenOpened()
-            "isContainerScreenOpened", "isContainerOpened"  -> IsContainerScreenOpened()
+            "isContainerScreenOpened", "isContainerOpened" -> IsContainerScreenOpened()
             "isChatOpened" -> IsChatOpened()
+            "isAnvilOpened" -> IsAnvilOpened()
             "getContainerSlots" -> GetContainerSlotsFunction()
             "getChestTitle", "getContainerTitle" -> GetChestTitleFunction()
 
@@ -43,6 +46,9 @@ class InventoryObject: LuaValue() {
             "getSignText" -> GetSignTextFunction()
             "setSignText" -> SetSignTextFunction()
             "doneSign", "confirmSign" -> DoneSignFunction()
+
+            "getAnvilText" -> GetAnvilText()
+            "doneAnvil", "confirmAnvil" -> DoneAnvilFunction()
 
             "carriedItem", "carriedItemStack" -> {
                 val carriedStack = mc.player?.containerMenu?.carried
@@ -69,6 +75,41 @@ class InventoryObject: LuaValue() {
         } as LuaValue
     }
 
+    private inner class GetAnvilText : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val screen = mc.screen
+            if (screen is AnvilScreen) {
+                val accessed = screen as AnvilScreenAccessor
+                return valueOf(accessed.name.value)
+            } else {
+                return NIL
+            }
+        }
+    }
+
+    private inner class DoneAnvilFunction : OneArgFunction() {
+        override fun call(arg1: LuaValue): LuaValue {
+            val screen = mc.screen
+            if (screen is AnvilScreen && arg1.isstring()) {
+                mc.player?.connection?.send(ServerboundRenameItemPacket(arg1.tojstring()));
+                return TRUE
+            } else {
+                return FALSE
+            }
+        }
+    }
+
+    private inner class IsAnvilOpened : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val screen = mc?.screen
+            return if (screen is AnvilScreen) {
+                TRUE
+            } else {
+                FALSE
+            }
+        }
+    }
+
     private inner class IsChatOpened : ZeroArgFunction() {
         override fun call(): LuaValue {
             val screen = mc?.screen
@@ -93,9 +134,9 @@ class InventoryObject: LuaValue() {
 
     private inner class OpenInventoryFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val player = mc?.player
+            val player = mc.player
             if (player != null) {
-                mc?.setScreen(InventoryScreen(player))
+                mc.setScreen(InventoryScreen(player))
                 player.sendOpenInventory()
                 return TRUE
             }
@@ -107,18 +148,18 @@ class InventoryObject: LuaValue() {
 
     private inner class IsAnyScreenOpened : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc?.screen
+            val screen = mc.screen
             return valueOf(screen != null)
         }
     }
 
     private inner class DoneSignFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc?.screen
+            val screen = mc.screen
             if (screen is SignEditScreen) {
                 val sign = screen as AbstractSignEditScreenAccessor
 
-                val clientPacketListener: ClientPacketListener? = mc?.connection
+                val clientPacketListener: ClientPacketListener? = mc.connection
                 clientPacketListener?.send(
                     ServerboundSignUpdatePacket(
                         sign.sign.blockPos,
@@ -139,7 +180,7 @@ class InventoryObject: LuaValue() {
     private inner class SetSignTextFunction : TwoArgFunction() {
         override fun call(arg: LuaValue, arg2: LuaValue): LuaValue {
             if (arg.isnumber() && arg2.isstring()) {
-                val screen = mc?.screen
+                val screen = mc.screen
                 if (screen is SignEditScreen) {
                     val sign = screen as AbstractSignEditScreenAccessor
                     sign.messages[arg.toint()] = arg2.tojstring()
@@ -155,7 +196,7 @@ class InventoryObject: LuaValue() {
     private inner class GetSignTextFunction : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             if (arg.isnumber()) {
-                val screen = mc?.screen
+                val screen = mc.screen
                 if (screen is SignEditScreen) {
                     val sign = screen as AbstractSignEditScreenAccessor
                     return valueOf(sign.messages[arg.toint()])
@@ -169,14 +210,14 @@ class InventoryObject: LuaValue() {
 
     private inner class CloseScreenFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            mc?.player?.closeContainer()
+            mc.player?.closeContainer()
             return TRUE
         }
     }
 
     private inner class IsSignOpenedFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc?.screen
+            val screen = mc.screen
             return if (screen is SignEditScreen) {
                 TRUE
             } else {
@@ -275,7 +316,7 @@ class InventoryObject: LuaValue() {
 
     private inner class GetContainerSlotsFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc?.player?.containerMenu
+            val screen = mc.player?.containerMenu
             if (screen is AbstractContainerMenu) {
                 val slots = screen.slots.size
                 return valueOf(slots)
@@ -292,7 +333,7 @@ class InventoryObject: LuaValue() {
 
             val slot = arg.toint()
 
-            val player = mc?.player ?: return NIL
+            val player = mc.player ?: return NIL
             val inv = player.inventory ?: return NIL
 
             val stack = inv.getItem(slot)
@@ -314,7 +355,7 @@ class InventoryObject: LuaValue() {
             if (itemStack != null) {
                 val slot = arg.toint()
 
-                val player = mc?.player ?: return NIL
+                val player = mc.player ?: return NIL
                 val inv = player.inventory ?: return NIL
 
                 player.inventory.setItem(slot, itemStack)
@@ -334,8 +375,8 @@ class InventoryObject: LuaValue() {
                 else -> null
             }
 
-            if (mc?.player != null && mc?.player?.containerMenu != null && itemStack != null) {
-                val screen = mc?.player!!.containerMenu
+            if (mc.player != null && mc.player?.containerMenu != null && itemStack != null) {
+                val screen = mc.player!!.containerMenu
                 if (screen is AbstractContainerMenu) {
                     val slot = arg.toint()
 
@@ -350,8 +391,8 @@ class InventoryObject: LuaValue() {
     private inner class GetStackFromContainerFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
-                if (mc?.player != null && mc?.player?.containerMenu != null) {
-                    val screen = mc?.player!!.containerMenu
+                if (mc.player != null && mc.player?.containerMenu != null) {
+                    val screen = mc.player!!.containerMenu
                     if (screen is AbstractContainerMenu) {
                         val stack = screen.getSlot(arg.toint()).item
                         if (stack == null || stack.isEmpty) return NIL

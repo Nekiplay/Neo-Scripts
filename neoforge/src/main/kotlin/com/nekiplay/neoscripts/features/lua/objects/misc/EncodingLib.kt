@@ -62,7 +62,7 @@ class EncodingLib : LuaValue() {
             return try {
                 val charset = getCharset(encoding)
                 val bytes = text.toByteArray(charset)
-                
+
                 val bytesTable = tableOf()
                 for (i in bytes.indices) {
                     bytesTable.set(i + 1, valueOf(bytes[i].toInt() and 0xFF))
@@ -86,11 +86,11 @@ class EncodingLib : LuaValue() {
                 val charset = getCharset(encoding)
                 val tableLength = bytesTable.length()
                 val actualLength = if (length == -1) tableLength - startIndex + 1 else length
-                
+
                 if (startIndex !in 1..tableLength) {
                     return varargsOf(arrayOf(NIL, valueOf("Start index out of range")))
                 }
-                
+
                 if (actualLength < 0 || startIndex + actualLength - 1 > tableLength) {
                     return varargsOf(arrayOf(NIL, valueOf("Length out of range")))
                 }
@@ -132,27 +132,27 @@ class EncodingLib : LuaValue() {
     inner class DetectEncoding : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             if (!arg.isstring()) return NIL
-            
+
             val text = arg.tojstring()
             return try {
                 // Простая эвристика для определения кодировки
                 val bytes = text.toByteArray()
-                
+
                 // Проверяем UTF-8
                 if (isUTF8(bytes)) {
                     return valueOf("UTF-8")
                 }
-                
+
                 // Проверяем ASCII
                 if (isASCII(bytes)) {
                     return valueOf("ASCII")
                 }
-                
+
                 // Проверяем CP1251 (часто используется для русского текста)
                 if (isCP1251(text.toByteArray(StandardCharsets.UTF_8))) {
                     return valueOf("CP1251")
                 }
-                
+
                 // По умолчанию UTF-8
                 valueOf("UTF-8")
             } catch (e: Exception) {
@@ -192,7 +192,7 @@ class EncodingLib : LuaValue() {
             return try {
                 val fromCharset = getCharset(fromEncoding)
                 val toCharset = getCharset(toEncoding)
-                
+
                 val bytes = text.toByteArray(fromCharset)
                 val result = String(bytes, toCharset)
 
@@ -216,12 +216,12 @@ class EncodingLib : LuaValue() {
         }
     }
 
-    inner class HexDecode : OneArgFunction() {
-        override fun call(arg: LuaValue): LuaValue {
+    inner class HexDecode : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
             return try {
-                val hexString = arg.checkjstring()
+                val hexString = args.arg(1).checkjstring()
                 if (hexString.length % 2 != 0) {
-                    return varargsOf(arrayOf(NIL, valueOf("Hex string must have even length"))) as LuaValue
+                    return varargsOf(arrayOf(NIL, valueOf("Hex string must have even length")))
                 }
 
                 val bytes = hexString.chunked(2)
@@ -232,7 +232,7 @@ class EncodingLib : LuaValue() {
                 varargsOf(arrayOf(valueOf(result), NIL))
             } catch (e: Exception) {
                 varargsOf(arrayOf(NIL, valueOf(e.message ?: "Hex decode failed")))
-            } as LuaValue
+            }
         }
     }
 
@@ -249,16 +249,16 @@ class EncodingLib : LuaValue() {
         }
     }
 
-    inner class Base64Decode : OneArgFunction() {
-        override fun call(arg: LuaValue): LuaValue {
+    inner class Base64Decode : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
             return try {
-                val base64String = arg.checkjstring()
+                val base64String = args.arg(1).checkjstring()
                 val bytes = Base64.getDecoder().decode(base64String)
                 val result = String(bytes)
                 varargsOf(arrayOf(valueOf(result), NIL))
             } catch (e: Exception) {
                 varargsOf(arrayOf(NIL, valueOf(e.message ?: "Base64 decode failed")))
-            } as LuaValue
+            }
         }
     }
 

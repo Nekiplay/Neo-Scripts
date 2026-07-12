@@ -3,14 +3,17 @@
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.neoscripts.mixins.gui.AbstractSignEditScreenAccessor
+import com.nekiplay.neoscripts.mixins.gui.AnvilScreenAccessor
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.utils.InventoryUtils
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
+import net.minecraft.client.gui.screens.inventory.AnvilScreen
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.minecraft.client.gui.screens.inventory.SignEditScreen
 import net.minecraft.client.multiplayer.ClientPacketListener
+import net.minecraft.network.protocol.game.ServerboundRenameItemPacket
 import net.minecraft.network.protocol.game.ServerboundSignUpdatePacket
 import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.item.ItemStack
@@ -31,6 +34,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
             "isAnyScreenOpened" -> IsAnyScreenOpened()
             "isContainerScreenOpened", "isContainerOpened" -> IsContainerScreenOpened()
             "isChatOpened" -> IsChatOpened()
+            "isAnvilOpened" -> IsAnvilOpened()
             "getContainerSlots" -> GetContainerSlotsFunction()
             "getChestTitle", "getContainerTitle" -> GetChestTitleFunction()
 
@@ -42,6 +46,9 @@ import org.luaj.vm2.lib.ZeroArgFunction
             "getSignText" -> GetSignTextFunction()
             "setSignText" -> SetSignTextFunction()
             "doneSign", "confirmSign" -> DoneSignFunction()
+
+            "getAnvilText" -> GetAnvilText()
+            "doneAnvil", "confirmAnvil" -> DoneAnvilFunction()
 
             "carriedItem", "carriedItemStack" -> {
                 val carriedStack = mc.player?.containerMenu?.carried
@@ -67,6 +74,41 @@ import org.luaj.vm2.lib.ZeroArgFunction
             else -> NIL
         } as LuaValue
     }
+
+     private inner class GetAnvilText : ZeroArgFunction() {
+         override fun call(): LuaValue {
+             val screen = mc.screen
+             if (screen is AnvilScreen) {
+                 val accessed = screen as AnvilScreenAccessor
+                 return valueOf(accessed.name.value)
+             } else {
+                 return NIL
+             }
+         }
+     }
+
+     private inner class DoneAnvilFunction : OneArgFunction() {
+         override fun call(arg1: LuaValue): LuaValue {
+             val screen = mc.screen
+             if (screen is AnvilScreen && arg1.isstring()) {
+                 mc.player?.connection?.send(ServerboundRenameItemPacket(arg1.tojstring()));
+                 return TRUE
+             } else {
+                 return FALSE
+             }
+         }
+     }
+
+     private inner class IsAnvilOpened : ZeroArgFunction() {
+         override fun call(): LuaValue {
+             val screen = mc?.screen
+             return if (screen is AnvilScreen) {
+                 TRUE
+             } else {
+                 FALSE
+             }
+         }
+     }
 
     private inner class IsChatOpened : ZeroArgFunction() {
         override fun call(): LuaValue {

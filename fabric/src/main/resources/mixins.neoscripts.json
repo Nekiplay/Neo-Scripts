@@ -20,6 +20,7 @@
     "entity.MixinLivingEntityRenderer",
     "entity.MixinLocalPlayer",
     "entity.MixinPlayer",
+    "gui.AnvilScreenAccessor",
     "gui.GuiAccessor",
     "minecraft.ClientConnectionMixin",
     "minecraft.GamemodeAccessor",
@@ -30,7 +31,7 @@
     "minecraft.item.MixinItem",
     "packets.ClientPacketListenerMixin",
     "packets.ServerboundMovePlayerPacketAccessor",
-    "renderer.BlockEntityRenderStateAccessor",
+    "renderer.BlockEntityRenderStateAccessor"
   ],
   "client": [
     "FrustumInvoker",
