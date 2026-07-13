@@ -3,10 +3,8 @@ package com.nekiplay.neoscripts.mixins;
 import com.mojang.blaze3d.platform.FramerateLimitTracker;
 import net.minecraft.client.Minecraft;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(FramerateLimitTracker.class)
 public class FramerateLimitTrackerMixin {
@@ -14,30 +12,40 @@ public class FramerateLimitTrackerMixin {
     @Shadow
     private int framerateLimit;
 
-    @Inject(
-            method = "getFramerateLimit",
-            at = @At("HEAD"),
-            cancellable = true
-    )
-    private void onGetFramerateLimit(CallbackInfoReturnable<Integer> cir) {
-        FramerateLimitTracker.FramerateThrottleReason reason =
-                ((FramerateLimitTracker)(Object)this).getThrottleReason();
+    @Shadow
+    private Minecraft minecraft;
 
-        if (reason == FramerateLimitTracker.FramerateThrottleReason.WINDOW_ICONIFIED
-                || reason == FramerateLimitTracker.FramerateThrottleReason.SHORT_AFK
-                || reason == FramerateLimitTracker.FramerateThrottleReason.LONG_AFK) {
+    @Shadow
+    private long latestInputTime;
 
-            cir.setReturnValue(this.framerateLimit);
-        }
+    /**
+     * @author nekiplay
+     * @reason Полностью отключаем троттлинг FPS при AFK и свёрнутом окне
+     */
+    @Overwrite
+    public int getFramerateLimit() {
+        return this.framerateLimit;
     }
 
-    @Inject(
-            method = "isHeavilyThrottled",
-            at = @At("HEAD"),
-            cancellable = true
-    )
-    private void onIsHeavilyThrottled(CallbackInfoReturnable<Boolean> cir) {
-        // Всегда возвращаем false, чтобы Minecraft не снижал FPS принудительно
-        cir.setReturnValue(false);
+    /**
+     * @author nekiplay
+     * @reason Всегда возвращаем NONE, игнорируя AFK и свёрнутое окно
+     */
+    @Overwrite
+    public FramerateLimitTracker.FramerateThrottleReason getThrottleReason() {
+        // Проверяем только OUT_OF_LEVEL_MENU (меню паузы/главное меню)
+        if (this.minecraft.level == null || this.minecraft.screen != null) {
+            return FramerateLimitTracker.FramerateThrottleReason.OUT_OF_LEVEL_MENU;
+        }
+        return FramerateLimitTracker.FramerateThrottleReason.NONE;
+    }
+
+    /**
+     * @author nekiplay
+     * @reason Отключаем флаг "тяжёлого" троттлинга
+     */
+    @Overwrite
+    public boolean isHeavilyThrottled() {
+        return false;
     }
 }

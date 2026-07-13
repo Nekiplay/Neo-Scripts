@@ -55,9 +55,4 @@ public class WindowMixin {
         }
         loadStartupScripts(scriptsDir);
     }
-
-    @Inject(at = @At("RETURN"),method = "<init>")
-    private void onGlfwReturn(GameConfig args, CallbackInfo ci){
-        //ImguiLoader.onGlfwInit();
-    }
 }
