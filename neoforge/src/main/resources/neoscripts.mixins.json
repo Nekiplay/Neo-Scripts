@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ClientPlayerInteractionManagerAccessor",
+    "FramerateLimitTrackerMixin",
     "FrustumInvoker",
     "GlConstMixin",
     "KeyboardMixin",
