@@ -14,9 +14,6 @@ public class FramerateLimitTrackerMixin {
     @Shadow
     private int framerateLimit;
 
-    @Shadow
-    private Minecraft minecraft;
-
     @Inject(
             method = "getFramerateLimit",
             at = @At("HEAD"),
@@ -26,13 +23,21 @@ public class FramerateLimitTrackerMixin {
         FramerateLimitTracker.FramerateThrottleReason reason =
                 ((FramerateLimitTracker)(Object)this).getThrottleReason();
 
-        // If the throttling is due to being AFK or having the window minimized, we ignore it
         if (reason == FramerateLimitTracker.FramerateThrottleReason.WINDOW_ICONIFIED
                 || reason == FramerateLimitTracker.FramerateThrottleReason.SHORT_AFK
                 || reason == FramerateLimitTracker.FramerateThrottleReason.LONG_AFK) {
 
             cir.setReturnValue(this.framerateLimit);
         }
-        // OUT_OF_LEVEL_MENU stays at 60 FPS
+    }
+
+    @Inject(
+            method = "isHeavilyThrottled",
+            at = @At("HEAD"),
+            cancellable = true
+    )
+    private void onIsHeavilyThrottled(CallbackInfoReturnable<Boolean> cir) {
+        // Всегда возвращаем false, чтобы Minecraft не снижал FPS принудительно
+        cir.setReturnValue(false);
     }
 }
