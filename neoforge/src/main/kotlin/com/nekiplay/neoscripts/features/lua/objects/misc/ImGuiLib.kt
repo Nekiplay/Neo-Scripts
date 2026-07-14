@@ -1485,12 +1485,8 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
         override fun invoke(args: Varargs): Varargs {
             val idx = args.checkint(1)
             val x = args.checkdouble(2).toFloat()
-            if (args.narg() > 2){
-                ImGui.pushStyleVar(idx, x)                
-            } else {
-                val y = args.checkdouble(3).toFloat()
-                ImGui.pushStyleVar(idx, x, y)
-            }
+            val y = if (args.narg() > 2) args.checkdouble(3).toFloat() else 0.0f
+            ImGui.pushStyleVar(idx, x, y)
             return NIL
         }
     }
