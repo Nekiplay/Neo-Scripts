@@ -21,6 +21,15 @@ public class RenderHelper {
     private static PrimitiveCollectorImpl collector;
 
     private static void startExtraction(RenderLevelStageEvent.AfterSky context) {
+        var camState = context.getLevelRenderState().cameraRenderState;
+        var window = Minecraft.getInstance().getWindow();
+        CameraState.capture(
+            camState.viewRotationMatrix,
+            camState.projectionMatrix,
+            camState.pos,
+            window.getWidth(),
+            window.getHeight()
+        );
         ProfilerFiller profiler = Profiler.get();
         profiler.push("skyblockerPrimitiveCollection");
         collector = new PrimitiveCollectorImpl(context.getLevelRenderState(), context.getLevelRenderState().cameraRenderState.cullFrustum);

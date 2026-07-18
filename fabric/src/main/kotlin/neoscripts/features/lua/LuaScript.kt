@@ -32,6 +32,7 @@ import com.nekiplay.neoscripts.features.lua.objects.player.PlayerObject
 import com.nekiplay.neoscripts.features.lua.objects.player.WindowObject
 import com.nekiplay.neoscripts.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
+import com.nekiplay.neoscripts.features.lua.objects.camera.CameraLib
 import com.nekiplay.neoscripts.features.lua.objects.world.BlockScannerObject
 import com.nekiplay.neoscripts.features.lua.objects.world.WorldObject
 import com.nekiplay.neoscripts.utils.Location
@@ -1422,6 +1423,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
             "text_builder", "textbuilder", "component_builder", "componentbuilder" -> {
                 LuaComponentBuilder.createLibrary()
+            }
+            "camera" -> {
+                CameraLib()
             }
             "xaero", "xaero-minimap", "xaerominimap", "xaeros-minimap", "xaerosminimap", "xaero's-minimap", "xaero'sminimap" -> {
                 if (FabricLoader.getInstance().isModLoaded("xaerominimap")) {
