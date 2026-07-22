@@ -11,7 +11,7 @@
     "MixinClientLoginNetworkHandlerMixin",
     "MouseMixin",
     "PlayerListHudAccessor",
-    "TailRenderMixin",
+    "GameRendererMixin",
     "WindowMixin",
     "entity.MixinEntity",
     "entity.MixinFireworkRocketEntity",

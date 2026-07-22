@@ -1,26 +1,47 @@
 package com.nekiplay.neoscripts.features.lua.objects.misc
 
+import cn.enaium.fabric.imgui.blaze3d.ImGuiImplBlaze3D
+import cn.enaium.fabric.imgui.mixin.GlDeviceMixin
+import cn.enaium.fabric.imgui.mixin.GpuDeviceMixin
+import com.mojang.blaze3d.opengl.FrameBufferAttachment
+import com.mojang.blaze3d.opengl.GlStateManager
+import com.mojang.blaze3d.opengl.GlTexture
+import com.mojang.blaze3d.systems.RenderSystem
 import com.nekiplay.neoscripts.Main
 import com.nekiplay.neoscripts.features.lua.LuaScript
-import com.nekiplay.neoscripts.features.lua.objects.misc.imgui.*
+import com.nekiplay.neoscripts.features.lua.objects.misc.imgui.ImDrawCommandQueue
+import com.nekiplay.neoscripts.features.lua.objects.misc.imgui.ImGuiFont
+import com.nekiplay.neoscripts.features.lua.objects.misc.imgui.ImGuiTexture
 import imgui.ImFont
 import imgui.ImFontConfig
 import imgui.ImFontGlyphRangesBuilder
 import imgui.ImGui
 import imgui.flag.*
-import imgui.flag.ImDrawFlags
 import imgui.gl3.ImGuiImplGl3
 import imgui.glfw.ImGuiImplGlfw
 import imgui.type.*
+import net.minecraft.client.Minecraft
+import net.minecraft.client.PreferredGraphicsApi
 import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
+import org.lwjgl.glfw.GLFW
+import org.lwjgl.opengl.GL11C
+import org.lwjgl.opengl.GL30
+import org.lwjgl.opengl.GL30C
+import java.util.Optional
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.function.Supplier
+
 
 class ImGuiLib(val script: LuaScript) : LuaValue() {
     public val queue: ImDrawCommandQueue = ImDrawCommandQueue()
+
+    val imGuiImplGlfw: ImGuiImplGlfw = ImGuiImplGlfw()
+    var imGuiImplGl3: ImGuiImplGl3? = null
+    var imGuiImplBlaze3D: ImGuiImplBlaze3D? = null
 
     override fun typename(): String = "imgui"
     override fun tojstring(): String = "ImGuiObject"
@@ -33,6 +54,12 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
     val dl = LuaTable()
 
     init {
+        if (Minecraft.getInstance().options.preferredGraphicsBackend().get() != PreferredGraphicsApi.VULKAN) {
+            imGuiImplGl3 = ImGuiImplGl3()
+        } else {
+            imGuiImplBlaze3D = ImGuiImplBlaze3D()
+        }
+
         constants.set("WindowFlags_None", ImGuiWindowFlags.None.toInt())
         constants.set("WindowFlags_NoTitleBar", ImGuiWindowFlags.NoTitleBar.toInt())
         constants.set("WindowFlags_NoResize", ImGuiWindowFlags.NoResize.toInt())
@@ -553,35 +580,78 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
 
     fun onGlfwInit() {
         if (windowHandle == -1L) {
-            ImGui.createContext()
-            val io = ImGui.getIO()
-            io.setIniFilename(null)
-            io.setConfigFlags(ImGuiConfigFlags.NavEnableKeyboard)
-            io.addConfigFlags(ImGuiConfigFlags.DockingEnable)
-            io.setBackendFlags(ImGuiBackendFlags.HasMouseCursors)
-            script.onImGuiInitEvent()
-            imGuiGlfw.init(Main.mc.getWindow().handle(), true)
-            imGuiGl3.init()
             windowHandle = Main.mc.getWindow().handle()
+            imGuiImplGlfw.init(windowHandle, true);
+            imGuiImplGl3?.init()
         }
     }
 
     fun onFrameRender() {
-        if (windowHandle != -1L) {
-            imGuiGlfw.newFrame()
-            imGuiGl3.newFrame()
+        val framebuffer = Minecraft.getInstance().gameRenderer.mainRenderTarget()
+
+        if (imGuiImplGl3 != null) {
+            // OpenGL path: bind FBO, render ImGui, unbind FBO
+            val backend = (RenderSystem.getDevice() as GpuDeviceMixin).getBackend()
+            val directStateAccess = (backend as GlDeviceMixin).getDirectStateAccess()
+            val frameBufferCache = (backend as GlDeviceMixin).getFrameBufferCache()
+            val colorTextures = mutableListOf<FrameBufferAttachment?>(framebuffer.getColorTexture() as GlTexture?)
+            GlStateManager._glBindFramebuffer(
+                GL30C.GL_FRAMEBUFFER,
+                frameBufferCache.getFbo(directStateAccess, colorTextures, null)
+            )
+            GL11C.glViewport(0, 0, framebuffer.width, framebuffer.height)
+
+            imGuiImplGl3!!.newFrame()
+            imGuiImplGlfw.newFrame()
             ImGui.newFrame()
 
             script.onImGuiRenderEvent()
-                //queue.executeAndClear()
+
             ImGui.render()
-            imGuiGl3.renderDrawData(ImGui.getDrawData())
+            imGuiImplGl3!!.renderDrawData(ImGui.getDrawData())
+
+            GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0)
+        } else if (imGuiImplBlaze3D != null) {
+            // Blaze3D path: use CommandEncoder and RenderPass for GPU-agnostic rendering
+            imGuiImplBlaze3D!!.newFrame()
+            imGuiImplGlfw.newFrame()
+            ImGui.newFrame()
+
+            script.onImGuiRenderEvent()
+
+            ImGui.render()
+
+            val drawData = ImGui.getDrawData()
+            val device = RenderSystem.getDevice()
+            val encoder = device.createCommandEncoder()
+
+            // Upload vertex, index, and uniform data before creating the render pass
+            imGuiImplBlaze3D!!.uploadDrawData(drawData, encoder)
+
+            encoder.createRenderPass(
+                Supplier { "ImGui" },
+                framebuffer.getColorTextureView(),
+                Optional.empty()
+            ).use { renderPass ->
+                imGuiImplBlaze3D!!.renderDrawData(drawData, renderPass)
+            }
+            encoder.submit()
+        }
+
+        if (ImGui.getIO().hasConfigFlags(ImGuiConfigFlags.ViewportsEnable)) {
+            val pointer = GLFW.glfwGetCurrentContext()
+            ImGui.updatePlatformWindows()
+            ImGui.renderPlatformWindowsDefault()
+
+            GLFW.glfwMakeContextCurrent(pointer)
         }
     }
 
     fun cleanup() {
         if (windowHandle != -1L) {
-            ImGui.getIO().fonts.clear()
+            imGuiImplGl3?.shutdown()
+            imGuiImplBlaze3D?.dispose()
+            imGuiImplGlfw.shutdown();
         }
     }
 

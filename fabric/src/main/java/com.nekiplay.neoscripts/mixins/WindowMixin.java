@@ -58,8 +58,12 @@ public class WindowMixin {
         loadStartupScripts(scriptsDir);
     }
 
-    @Inject(at = @At("RETURN"),method = "<init>")
-    private void onGlfwReturn(GameConfig args, CallbackInfo ci){
-        //ImguiLoader.onGlfwInit();
+    @Inject(method = "<init>", at = @At("RETURN"))
+    public void initImGui(GameConfig gameConfig, CallbackInfo ci) {
+        Main.LUA_MANAGER.getScripts().forEach((name, script) -> {
+            if (script.getImguiLib() != null) {
+                script.getImguiLib().onGlfwInit();
+            }
+        });
     }
 }
