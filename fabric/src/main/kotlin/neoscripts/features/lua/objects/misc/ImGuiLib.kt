@@ -573,9 +573,6 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
         }
     }
 
-    private val imGuiGlfw: ImGuiImplGlfw = ImGuiImplGlfw()
-    private val imGuiGl3: ImGuiImplGl3 = ImGuiImplGl3()
-
     var windowHandle: Long = -1
 
     fun onGlfwInit() {
@@ -583,6 +580,7 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             windowHandle = Main.mc.getWindow().handle()
             imGuiImplGlfw.init(windowHandle, true);
             imGuiImplGl3?.init()
+            script.onImGuiInitEvent()
         }
     }
 
@@ -603,21 +601,21 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
                     )
                     GL11C.glViewport(0, 0, framebuffer.width, framebuffer.height)
 
-                    imGuiImplGl3!!.newFrame()
+                    imGuiImplGl3?.newFrame()
                     imGuiImplGlfw.newFrame()
                     ImGui.newFrame()
 
                     script.onImGuiRenderEvent()
 
                     ImGui.render()
-                    imGuiImplGl3!!.renderDrawData(ImGui.getDrawData())
+                    imGuiImplGl3?.renderDrawData(ImGui.getDrawData())
 
                     GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0)
                 } else if (imGuiImplBlaze3D != null) {
                     val textureView = framebuffer.getColorTextureView()
                     if (textureView != null) {
                         // Blaze3D path: use CommandEncoder and RenderPass for GPU-agnostic rendering
-                        imGuiImplBlaze3D!!.newFrame()
+                        imGuiImplBlaze3D?.newFrame()
                         imGuiImplGlfw.newFrame()
                         ImGui.newFrame()
 
@@ -630,14 +628,14 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
                         val encoder = device.createCommandEncoder()
 
                         // Upload vertex, index, and uniform data before creating the render pass
-                        imGuiImplBlaze3D!!.uploadDrawData(drawData, encoder)
+                        imGuiImplBlaze3D?.uploadDrawData(drawData, encoder)
 
                         encoder.createRenderPass(
                             Supplier { "ImGui" },
                             textureView,
                             Optional.empty()
                         ).use { renderPass ->
-                            imGuiImplBlaze3D!!.renderDrawData(drawData, renderPass)
+                            imGuiImplBlaze3D?.renderDrawData(drawData, renderPass)
                         }
                         encoder.submit()
                     }
