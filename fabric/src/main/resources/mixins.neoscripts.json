@@ -20,7 +20,7 @@
     "entity.MixinLocalPlayer",
     "entity.MixinPlayer",
     "gui.AnvilScreenAccessor",
-    "gui.GuiAccessor",
+    "gui.HudAccessor",
     "minecraft.ClientConnectionMixin",
     "minecraft.GamemodeAccessor",
     "minecraft.LevelRenderStateAccessor",

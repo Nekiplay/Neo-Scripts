@@ -6,7 +6,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaRaycast
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.text.LuaComponent
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.text.LuaComponentBuilder
-import com.nekiplay.neoscripts.mixins.gui.GuiAccessor
+import com.nekiplay.neoscripts.mixins.gui.HudAccessor
 import com.nekiplay.neoscripts.sugar.getFormattedString
 import com.nekiplay.neoscripts.sugar.getScorebordLines
 import com.nekiplay.neoscripts.sugar.getTab
@@ -104,21 +104,21 @@ class PlayerObject : LuaValue() {
 
     private class GetTitleFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            val accessed = mc.gui as GuiAccessor
+            val accessed = mc.gui as HudAccessor
             return valueOf(accessed.title?.getFormattedString())
         }
     }
 
     private class GetSubTitleFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            val accessed = mc.gui as GuiAccessor
+            val accessed = mc.gui as HudAccessor
             return valueOf(accessed.subtitle?.getFormattedString())
         }
     }
 
     private class GetActionBarFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            val accessed = mc.gui as GuiAccessor
+            val accessed = mc.gui as HudAccessor
             return valueOf(accessed.actionBar?.getFormattedString())
         }
     }
