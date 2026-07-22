@@ -12,6 +12,7 @@ subprojects {
         mavenCentral()
         mavenLocal()
 
+        maven("https://jitpack.io")
 		maven("https://maven.fabricmc.net/")
         maven("https://maven.notenoughupdates.org/releases/")
         maven("https://repo.codemc.io/repository/maven-public/")

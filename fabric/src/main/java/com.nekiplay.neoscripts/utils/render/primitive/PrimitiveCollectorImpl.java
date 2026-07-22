@@ -344,22 +344,14 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
         }
 
         if (this.filledBoxStates != null) {
-            if (this.isVulkan) {
-                FilledBoxInstancedRenderer.INSTANCE.submitPrimitives(this.filledBoxStates, cameraState);
-            } else {
-                for (FilledBoxRenderState state : this.filledBoxStates) {
-                    FilledBoxRenderer.INSTANCE.submitPrimitives(state, cameraState);
-                }
+            for (FilledBoxRenderState state : this.filledBoxStates) {
+                FilledBoxRenderer.INSTANCE.submitPrimitives(state, cameraState);
             }
         }
 
         if (this.outlinedBoxStates != null) {
-            if (this.isVulkan) {
-                OutlinedBoxInstancedRenderer.INSTANCE.submitPrimitives(this.outlinedBoxStates, cameraState);
-            } else {
-                for (OutlinedBoxRenderState state : this.outlinedBoxStates) {
-                    OutlinedBoxRenderer.INSTANCE.submitPrimitives(state, cameraState);
-                }
+            for (OutlinedBoxRenderState state : this.outlinedBoxStates) {
+                OutlinedBoxRenderer.INSTANCE.submitPrimitives(state, cameraState);
             }
         }
 

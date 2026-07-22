@@ -48,6 +48,7 @@ dependencies {
     include("io.github.spair:imgui-java-natives-windows:$imguiVersion")
     include("io.github.spair:imgui-java-natives-linux:$imguiVersion")
     include("io.github.spair:imgui-java-natives-macos:$imguiVersion")
+    implementation("maven.modrinth:M78HuV3L:4pDF3wVK")
 
     // Catboost
     val catboostDep = "ai.catboost:catboost-prediction:${property("catboost_version")}"
