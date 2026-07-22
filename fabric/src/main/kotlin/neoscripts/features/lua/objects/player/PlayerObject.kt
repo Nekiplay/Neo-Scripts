@@ -1,7 +1,6 @@
 package com.nekiplay.neoscripts.features.lua.objects.player
 
 import com.nekiplay.neoscripts.Main.mc
-import com.nekiplay.neoscripts.features.lua.customArgs.FourArgFunction
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaRaycast
@@ -15,10 +14,7 @@ import com.nekiplay.neoscripts.utils.MathUtil
 import com.nekiplay.neoscripts.utils.PlayerUtils
 import com.nekiplay.neoscripts.utils.RaycastUtils
 import com.nekiplay.neoscripts.utils.RotationUtils
-import com.nekiplay.neoscripts.utils.Utils
 import com.nekiplay.neoscripts.utils.aiming.RotationManager
-import com.nekiplay.neoscripts.utils.trackers.ColdTracker
-import com.nekiplay.neoscripts.utils.trackers.StatusBarTracker
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.components.LerpingBossEvent
 import net.minecraft.client.gui.components.toasts.SystemToast
