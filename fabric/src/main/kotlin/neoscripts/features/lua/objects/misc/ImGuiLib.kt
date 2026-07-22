@@ -586,69 +586,72 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
 
     fun onFrameRender() {
         if (windowHandle != -1L) {
-            val framebuffer = Minecraft.getInstance().gameRenderer.mainRenderTarget()
-            if (framebuffer != null) {
-                if (imGuiImplGl3 != null) {
-                    // OpenGL path: bind FBO, render ImGui, unbind FBO
-                    val backend = (RenderSystem.getDevice() as GpuDeviceMixin).getBackend()
-                    val directStateAccess = (backend as GlDeviceMixin).getDirectStateAccess()
-                    val frameBufferCache = (backend as GlDeviceMixin).getFrameBufferCache()
-                    val colorTextures =
-                        mutableListOf<FrameBufferAttachment?>(framebuffer.getColorTexture() as GlTexture?)
-                    GlStateManager._glBindFramebuffer(
-                        GL30C.GL_FRAMEBUFFER,
-                        frameBufferCache.getFbo(directStateAccess, colorTextures, null)
-                    )
-                    GL11C.glViewport(0, 0, framebuffer.width, framebuffer.height)
+            try {
+                val framebuffer = Minecraft.getInstance().gameRenderer.mainRenderTarget()
+                if (framebuffer != null) {
+                    if (imGuiImplGl3 != null) {
+                        // OpenGL path: bind FBO, render ImGui, unbind FBO
+                        val backend = (RenderSystem.getDevice() as GpuDeviceMixin).backend
+                        val directStateAccess = (backend as GlDeviceMixin).directStateAccess
+                        val frameBufferCache = (backend as GlDeviceMixin).frameBufferCache
+                        val colorTextures =
+                            mutableListOf<FrameBufferAttachment?>(framebuffer.getColorTexture() as GlTexture?)
+                        GlStateManager._glBindFramebuffer(
+                            GL30C.GL_FRAMEBUFFER,
+                            frameBufferCache.getFbo(directStateAccess, colorTextures, null)
+                        )
+                        GL11C.glViewport(0, 0, framebuffer.width, framebuffer.height)
 
-                    imGuiImplGl3?.newFrame()
-                    imGuiImplGlfw.newFrame()
-                    ImGui.newFrame()
-
-                    script.onImGuiRenderEvent()
-
-                    ImGui.render()
-                    imGuiImplGl3?.renderDrawData(ImGui.getDrawData())
-
-                    GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0)
-                } else if (imGuiImplBlaze3D != null) {
-                    val textureView = framebuffer.getColorTextureView()
-                    if (textureView != null) {
-                        // Blaze3D path: use CommandEncoder and RenderPass for GPU-agnostic rendering
-                        imGuiImplBlaze3D?.newFrame()
+                        imGuiImplGl3?.newFrame()
                         imGuiImplGlfw.newFrame()
                         ImGui.newFrame()
 
                         script.onImGuiRenderEvent()
 
                         ImGui.render()
+                        imGuiImplGl3?.renderDrawData(ImGui.getDrawData())
 
-                        val drawData = ImGui.getDrawData()
-                        val device = RenderSystem.getDevice()
-                        val encoder = device.createCommandEncoder()
+                        GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0)
+                    } else if (imGuiImplBlaze3D != null) {
+                        val textureView = framebuffer.getColorTextureView()
+                        if (textureView != null) {
+                            // Blaze3D path: use CommandEncoder and RenderPass for GPU-agnostic rendering
+                            imGuiImplBlaze3D?.newFrame()
+                            imGuiImplGlfw.newFrame()
+                            ImGui.newFrame()
 
-                        // Upload vertex, index, and uniform data before creating the render pass
-                        imGuiImplBlaze3D?.uploadDrawData(drawData, encoder)
+                            script.onImGuiRenderEvent()
 
-                        encoder.createRenderPass(
-                            Supplier { "ImGui" },
-                            textureView,
-                            Optional.empty()
-                        ).use { renderPass ->
-                            imGuiImplBlaze3D?.renderDrawData(drawData, renderPass)
+                            ImGui.render()
+
+                            val drawData = ImGui.getDrawData()
+                            val device = RenderSystem.getDevice()
+                            val encoder = device.createCommandEncoder()
+
+                            // Upload vertex, index, and uniform data before creating the render pass
+                            imGuiImplBlaze3D?.uploadDrawData(drawData, encoder)
+
+                            encoder.createRenderPass(
+                                Supplier { "ImGui" },
+                                textureView,
+                                Optional.empty()
+                            ).use { renderPass ->
+                                imGuiImplBlaze3D?.renderDrawData(drawData, renderPass)
+                            }
+                            encoder.submit()
                         }
-                        encoder.submit()
+                    }
+
+                    if (ImGui.getIO().hasConfigFlags(ImGuiConfigFlags.ViewportsEnable)) {
+                        val pointer = GLFW.glfwGetCurrentContext()
+                        ImGui.updatePlatformWindows()
+                        ImGui.renderPlatformWindowsDefault()
+
+                        GLFW.glfwMakeContextCurrent(pointer)
                     }
                 }
-
-                if (ImGui.getIO().hasConfigFlags(ImGuiConfigFlags.ViewportsEnable)) {
-                    val pointer = GLFW.glfwGetCurrentContext()
-                    ImGui.updatePlatformWindows()
-                    ImGui.renderPlatformWindowsDefault()
-
-                    GLFW.glfwMakeContextCurrent(pointer)
-                }
             }
+            catch (_: Exception) {}
         }
     }
 
