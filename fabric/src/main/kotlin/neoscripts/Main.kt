@@ -11,8 +11,6 @@ import com.nekiplay.neoscripts.sugar.MiningHandler
 import com.nekiplay.neoscripts.utils.Utils
 import com.nekiplay.neoscripts.utils.render.RenderHelper
 import com.nekiplay.neoscripts.utils.scheduler.Scheduler
-import com.nekiplay.neoscripts.utils.trackers.ColdTracker
-import com.nekiplay.neoscripts.utils.trackers.StatusBarTracker
 import io.github.classgraph.ClassGraph
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback

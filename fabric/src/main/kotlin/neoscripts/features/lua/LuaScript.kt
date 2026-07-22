@@ -82,7 +82,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val onSendCommandEventCallbacks = ArrayList<LuaValue>()
     private val useBlockCallbacks = ArrayList<LuaValue>()
     private val attackBlockCallbacks = ArrayList<LuaValue>()
-    private val locationChangeCallbacks = ArrayList<LuaValue>()
     private val imguiRenderCallbacks = ArrayList<LuaValue>()
     private val imguiInitCallbacks = ArrayList<LuaValue>()
     private val inventoryItemChangeCallbacks = ArrayList<LuaValue>()
@@ -304,16 +303,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 if (!callback.isfunction()) return FALSE
                 synchronized(callbacksLock) {
                     return valueOf(onSendCommandEventCallbacks.add(callback))
-                }
-            }
-        })
-
-        scriptGlobals.set("registerLocationChangeEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                if (!callback.isfunction()) return FALSE
-                synchronized(callbacksLock) {
-                    return valueOf(locationChangeCallbacks.add(callback))
                 }
             }
         })
@@ -581,15 +570,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 val callback = args.arg(1)
                 synchronized(callbacksLock) {
                     return valueOf(onSendCommandEventCallbacks.remove(callback))
-                }
-            }
-        })
-
-        scriptGlobals.set("unregisterLocationChangeEvent", object : VarArgFunction() {
-            override fun invoke(args: Varargs): Varargs {
-                val callback = args.arg(1)
-                synchronized(callbacksLock) {
-                    return valueOf(locationChangeCallbacks.remove(callback))
                 }
             }
         })
@@ -1262,21 +1242,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         return allow
     }
 
-    fun onLocationChangeEvent(location: Location): Boolean {
-        val callbacks = synchronized(callbacksLock) {
-            locationChangeCallbacks.toTypedArray()
-        }
-
-        for (callback in callbacks) {
-            try {
-                callback.call(LuaValue.valueOf(location.toString()))
-            } catch (e: Exception) {
-                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in location change callback in ${scriptName}: ${e.message}")
-            }
-        }
-        return true
-    }
-
     fun onImGuiRenderEvent(): Boolean {
         val callbacks = synchronized(callbacksLock) {
             imguiRenderCallbacks.toTypedArray()
@@ -1542,7 +1507,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             messageEventCallbacks.clear()
             onSendMessageEventCallbacks.clear()
             onSendCommandEventCallbacks.clear()
-            locationChangeCallbacks.clear()
             imguiRenderCallbacks.clear()
             serverSideRotationCallbacks.clear()
             serverSideTeleportCallbacks.clear()
