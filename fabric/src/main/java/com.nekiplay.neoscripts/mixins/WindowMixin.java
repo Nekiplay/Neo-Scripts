@@ -48,7 +48,7 @@ public class WindowMixin {
         }
     }
 
-    @Inject(at = @At("HEAD"),method = "createTitle")
+    @Inject(at = @At("<init>>"), method = "createTitle")
     private void onGlfwInit(CallbackInfoReturnable<String> cir){
         File scriptsDir = new File(neuDir, "scripts");
         if (!scriptsDir.exists()) {
