@@ -23,7 +23,7 @@ class CameraLib : LuaValue() {
         return when (key.tojstring()) {
             "getViewMatrix" -> GetViewMatrixFunction()
             "getProjectionMatrix" -> GetProjectionMatrixFunction()
-            "world2screen" -> World2ScreenFunction()
+            "world2screen", "worldToScreen", "world2Screen", "worldToscreen" -> World2ScreenFunction()
             else -> NIL
         }
     }
