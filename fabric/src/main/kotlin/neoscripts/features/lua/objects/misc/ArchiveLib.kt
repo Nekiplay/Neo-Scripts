@@ -27,42 +27,37 @@ class ArchiveLib : LuaValue() {
         }
     }
 
-    /**
-     * Рекурсивное добавление файлов и папок в ZIP поток.
-     * @param source Файл или папка на диске.
-     * @param entryPath Путь, который будет записан внутри архива.
-     * @param zos Поток архива.
-     */
-    private fun addToZipRecursive(source: File, entryPath: String, zos: ZipArchiveOutputStream) {
-        val name = entryPath.replace('\\', '/').removePrefix("/")
-        
-        if (source.isDirectory) {
-            val dirName = if (name.endsWith("/")) name else "$name/"
-            // Создаем запись для самой папки (важно для пустых папок)
-            if (dirName.isNotEmpty()) {
-                val entry = ZipArchiveEntry(source, dirName)
+    companion object {
+        private fun addToZipRecursive(source: File, entryPath: String, zos: ZipArchiveOutputStream) {
+            val name = entryPath.replace('\\', '/').removePrefix("/")
+
+            if (source.isDirectory) {
+                val dirName = if (name.endsWith("/")) name else "$name/"
+                // Создаем запись для самой папки (важно для пустых папок)
+                if (dirName.isNotEmpty()) {
+                    val entry = ZipArchiveEntry(source, dirName)
+                    zos.putArchiveEntry(entry)
+                    zos.closeArchiveEntry()
+                }
+
+                source.listFiles()?.forEach { child ->
+                    addToZipRecursive(child, "$dirName${child.name}", zos)
+                }
+            } else {
+                val entry = ZipArchiveEntry(source, name)
                 zos.putArchiveEntry(entry)
+                FileInputStream(source).use { fis ->
+                    IOUtils.copy(fis, zos)
+                }
                 zos.closeArchiveEntry()
             }
-            
-            source.listFiles()?.forEach { child ->
-                addToZipRecursive(child, "$dirName${child.name}", zos)
-            }
-        } else {
-            val entry = ZipArchiveEntry(source, name)
-            zos.putArchiveEntry(entry)
-            FileInputStream(source).use { fis ->
-                IOUtils.copy(fis, zos)
-            }
-            zos.closeArchiveEntry()
         }
     }
-
     /**
      * Создание нового архива.
      * archive:zip("папка_или_файл", "имя_архива.zip")
      */
-    inner class Zip : VarArgFunction() {
+    class Zip : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val sourcePath = args.arg(1).checkjstring()
             val zipPath = args.arg(2).checkjstring()
@@ -86,7 +81,7 @@ class ArchiveLib : LuaValue() {
      * Полная распаковка архива.
      * archive:unzip("архив.zip", "куда_распаковать")
      */
-    inner class Unzip : VarArgFunction() {
+    class Unzip : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val zipPath = args.arg(1).checkjstring()
             val destPath = args.arg(2).checkjstring()
@@ -119,7 +114,7 @@ class ArchiveLib : LuaValue() {
      * Извлечение конкретного файла или папки из архива.
      * archive:extractEntry("архив.zip", "путь/в/архиве", "путь/на/диске")
      */
-    inner class ExtractEntry : VarArgFunction() {
+    class ExtractEntry : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val zipPath = args.arg(1).checkjstring()
             val targetEntry = args.arg(2).checkjstring().replace('\\', '/').removeSuffix("/")
@@ -167,7 +162,7 @@ class ArchiveLib : LuaValue() {
      * Добавление или обновление файла/папки в архиве.
      * archive:add("архив.zip", "что_добавить", "куда_в_архиве")
      */
-    inner class AddToArchive : VarArgFunction() {
+    class AddToArchive : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val archiveFile = File(args.arg(1).checkjstring())
             val sourceFile = File(args.arg(2).checkjstring())
@@ -214,7 +209,7 @@ class ArchiveLib : LuaValue() {
      * Получение списка всех файлов в архиве.
      * local list = archive:listEntries("архив.zip")
      */
-    inner class ListEntries : OneArgFunction() {
+    class ListEntries : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val archivePath = arg.checkjstring()
             val archiveFile = File(archivePath)

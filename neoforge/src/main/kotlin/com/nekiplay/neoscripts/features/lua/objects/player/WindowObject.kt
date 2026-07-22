@@ -29,7 +29,7 @@ class WindowObject: LuaValue() {
         }
     }
 
-    private inner class SetTitleFunction : OneArgFunction() {
+    private class SetTitleFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
             return if (arg != null && arg.isstring()) {
                 mc?.window?.setTitle(arg.tojstring())

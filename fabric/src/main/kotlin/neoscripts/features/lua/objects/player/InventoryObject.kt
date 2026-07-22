@@ -75,7 +75,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         } as LuaValue
     }
 
-     private inner class GetAnvilText : ZeroArgFunction() {
+     private class GetAnvilText : ZeroArgFunction() {
          override fun call(): LuaValue {
              val screen = mc.screen
              if (screen is AnvilScreen) {
@@ -87,7 +87,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
          }
      }
 
-     private inner class DoneAnvilFunction : OneArgFunction() {
+     private class DoneAnvilFunction : OneArgFunction() {
          override fun call(arg1: LuaValue): LuaValue {
              val screen = mc.screen
              if (screen is AnvilScreen && arg1.isstring()) {
@@ -99,7 +99,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
          }
      }
 
-     private inner class IsAnvilOpened : ZeroArgFunction() {
+     private class IsAnvilOpened : ZeroArgFunction() {
          override fun call(): LuaValue {
              val screen = mc?.screen
              return if (screen is AnvilScreen) {
@@ -110,7 +110,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
          }
      }
 
-    private inner class IsChatOpened : ZeroArgFunction() {
+    private class IsChatOpened : ZeroArgFunction() {
         override fun call(): LuaValue {
             val screen = mc?.screen
             return if (screen is ChatScreen) {
@@ -121,7 +121,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class IsContainerScreenOpened : ZeroArgFunction() {
+    private class IsContainerScreenOpened : ZeroArgFunction() {
         override fun call(): LuaValue {
             val screen = mc?.screen
             return if (screen is AbstractContainerScreen<*>) {
@@ -132,7 +132,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class OpenInventoryFunction : ZeroArgFunction() {
+    private class OpenInventoryFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val player = mc.player
             if (player != null) {
@@ -146,14 +146,14 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class IsAnyScreenOpened : ZeroArgFunction() {
+    private class IsAnyScreenOpened : ZeroArgFunction() {
         override fun call(): LuaValue {
             val screen = mc.screen
             return valueOf(screen != null)
         }
     }
 
-    private inner class DoneSignFunction : ZeroArgFunction() {
+    private class DoneSignFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val screen = mc.screen
             if (screen is SignEditScreen) {
@@ -177,7 +177,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class SetSignTextFunction : TwoArgFunction() {
+    private class SetSignTextFunction : TwoArgFunction() {
         override fun call(arg: LuaValue, arg2: LuaValue): LuaValue {
             if (arg.isnumber() && arg2.isstring()) {
                 val screen = mc.screen
@@ -193,7 +193,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class GetSignTextFunction : OneArgFunction() {
+    private class GetSignTextFunction : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             if (arg.isnumber()) {
                 val screen = mc.screen
@@ -208,14 +208,14 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class CloseScreenFunction : ZeroArgFunction() {
+    private class CloseScreenFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             mc.player?.closeContainer()
             return TRUE
         }
     }
 
-    private inner class IsSignOpenedFunction : ZeroArgFunction() {
+    private class IsSignOpenedFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val screen = mc.screen
             return if (screen is SignEditScreen) {
@@ -226,7 +226,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class GetChestTitleFunction : ZeroArgFunction() {
+    private class GetChestTitleFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val screen = mc.screen
             return if (screen is AbstractContainerScreen<*>) {
@@ -237,7 +237,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class MiddleClickFunction : OneArgFunction() {
+    private class MiddleClickFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
                 InventoryUtils.middleClickSlot(arg.toint())
@@ -248,7 +248,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class ShiftLeftClickFunction : OneArgFunction() {
+    private class ShiftLeftClickFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
                 InventoryUtils.shiftLeftClickSlot(arg.toint())
@@ -259,7 +259,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class ShiftRightClickFunction : OneArgFunction() {
+    private class ShiftRightClickFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
                 InventoryUtils.shiftRightClickSlot(arg.toint())
@@ -270,7 +270,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class LeftClickFunction : OneArgFunction() {
+    private class LeftClickFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
                 InventoryUtils.leftClickSlot(arg.toint())
@@ -281,7 +281,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class RightClickFunction : OneArgFunction() {
+    private class RightClickFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
                 InventoryUtils.rightClickSlot(arg.toint())
@@ -292,7 +292,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class DropFunction : OneArgFunction() {
+    private class DropFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
                 InventoryUtils.dropSlot(arg.toint())
@@ -303,7 +303,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class DropAllFunction : OneArgFunction() {
+    private class DropAllFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
                 InventoryUtils.dropAllFromSlot(arg.toint())
@@ -314,7 +314,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class GetContainerSlotsFunction : ZeroArgFunction() {
+    private class GetContainerSlotsFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val screen = mc.player?.containerMenu
             if (screen is AbstractContainerMenu) {
@@ -327,7 +327,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class GetStackFunction : OneArgFunction() {
+    private class GetStackFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             if (arg == null || !arg.isnumber()) return NIL
 
@@ -342,7 +342,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class SetStackFunction : TwoArgFunction() {
+    private class SetStackFunction : TwoArgFunction() {
         override fun call(arg: LuaValue?, arg2: LuaValue?): LuaValue {
             if (arg == null || !arg.isnumber()) return NIL
 
@@ -365,7 +365,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class SetStackInContainerFunction : TwoArgFunction() {
+    private class SetStackInContainerFunction : TwoArgFunction() {
         override fun call(arg: LuaValue?, arg2: LuaValue?): LuaValue {
             if (arg == null || !arg.isnumber()) return NIL
 
@@ -388,7 +388,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         }
     }
 
-    private inner class GetStackFromContainerFunction : OneArgFunction() {
+    private class GetStackFromContainerFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
                 if (mc.player != null && mc.player?.containerMenu != null) {

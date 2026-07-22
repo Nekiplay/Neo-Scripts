@@ -33,28 +33,30 @@ class XaeroMinimap : LuaValue() {
         }
     }
 
-    fun getMinimapWorld(dim: ResourceKey<Level>): MinimapWorld? {
-        val minimapSession = BuiltInHudModules.MINIMAP.getCurrentSession() ?: return null
-        val currentWorld = minimapSession.getWorldManager().currentWorld ?: return null
-        if (currentWorld.dimId === dim) {
-            return currentWorld
-        }
-        val rootContainer = minimapSession.getWorldManager().currentRootContainer
-        for (world in rootContainer.getWorlds()) {
-            if (world.dimId === dim) {
-                return world
+    companion object {
+        fun getMinimapWorld(dim: ResourceKey<Level>): MinimapWorld? {
+            val minimapSession = BuiltInHudModules.MINIMAP.getCurrentSession() ?: return null
+            val currentWorld = minimapSession.getWorldManager().currentWorld ?: return null
+            if (currentWorld.dimId === dim) {
+                return currentWorld
             }
+            val rootContainer = minimapSession.getWorldManager().currentRootContainer
+            for (world in rootContainer.getWorlds()) {
+                if (world.dimId === dim) {
+                    return world
+                }
+            }
+            val dimensionDirectoryName = minimapSession.dimensionHelper.getDimensionDirectoryName(dim)
+            val worldNode = minimapSession.worldStateUpdater.getPotentialWorldNode(dim, true)
+            val containerPath = minimapSession.worldState
+                .autoRootContainerPath
+                .resolve(dimensionDirectoryName)
+                .resolve(worldNode)
+            return minimapSession.getWorldManager().getWorld(containerPath)
         }
-        val dimensionDirectoryName = minimapSession.dimensionHelper.getDimensionDirectoryName(dim)
-        val worldNode = minimapSession.worldStateUpdater.getPotentialWorldNode(dim, true)
-        val containerPath = minimapSession.worldState
-            .autoRootContainerPath
-            .resolve(dimensionDirectoryName)
-            .resolve(worldNode)
-        return minimapSession.getWorldManager().getWorld(containerPath)
     }
 
-    inner class CreateWaypoint : VarArgFunction() {
+    class CreateWaypoint : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val world = args.arg(1).optjstring("minecraft:overworld")
             val dim = ResourceKey.create(Registries.DIMENSION, Identifier.parse(world));
@@ -72,7 +74,7 @@ class XaeroMinimap : LuaValue() {
             return NIL
         }
     }
-    inner class RemoveWaypoint : VarArgFunction() {
+    class RemoveWaypoint : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val world = args.arg(1).optjstring("minecraft:overworld")
             val dim = ResourceKey.create(Registries.DIMENSION, Identifier.parse(world));
@@ -84,7 +86,7 @@ class XaeroMinimap : LuaValue() {
             return NIL
         }
     }
-    inner class GetWaypoints : VarArgFunction() {
+    class GetWaypoints : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val world = args.arg(1).optjstring("minecraft:overworld")
             val dim = ResourceKey.create(Registries.DIMENSION, Identifier.parse(world));

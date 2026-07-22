@@ -38,7 +38,7 @@ class Creator : LuaValue() {
         }
     }
 
-    inner class CreateMutableBlockPos : VarArgFunction() {
+    class CreateMutableBlockPos : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (args.arg(1).isint() && args.arg(2).isint() && args.arg(3).isint()) {
                 return LuaMutableBlockPos(BlockPos.MutableBlockPos(args.arg(1).toint(), args.arg(2).toint(), args.arg(3).toint()))
@@ -49,7 +49,7 @@ class Creator : LuaValue() {
         }
     }
 
-    inner class CreateVector3 : VarArgFunction() {
+    class CreateVector3 : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (args.arg(1).isnumber() && args.arg(2).isnumber() && args.arg(3).isnumber()) {
                 return LuaVector3d(Vec3(args.arg(1).todouble(), args.arg(2).todouble(), args.arg(3).todouble()))
@@ -58,7 +58,7 @@ class Creator : LuaValue() {
         }
     }
 
-    inner class CreateBlockState : VarArgFunction() {
+    class CreateBlockState : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (args.arg(1).isint()) {
                 return LuaBlockState(Block.stateById(args.arg(1).toint()))
@@ -67,7 +67,7 @@ class Creator : LuaValue() {
         }
     }
 
-    inner class CreateBlockPos : VarArgFunction() {
+    class CreateBlockPos : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (args.arg(1).isint() && args.arg(2).isint() && args.arg(3).isint()) {
                 return LuaBlockPos(BlockPos(args.arg(1).toint(), args.arg(2).toint(), args.arg(3).toint()))
@@ -76,7 +76,7 @@ class Creator : LuaValue() {
         }
     }
 
-    inner class CreateDirection : VarArgFunction() {
+    class CreateDirection : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (args.arg(1).isstring()) {
                 return LuaDirection(Direction.valueOf(args.arg1().tojstring().uppercase()))
@@ -85,7 +85,7 @@ class Creator : LuaValue() {
         }
     }
 
-    inner class CreateBox : VarArgFunction() {
+    class CreateBox : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (args.arg(1).isnumber() && args.arg(2).isnumber() && args.arg(3).isnumber() && args.arg(4).isnumber() && args.arg(5).isnumber() && args.arg(6).isnumber()) {
                 return LuaBox(AABB(args.arg(1).todouble(), args.arg(2).todouble(), args.arg(3).todouble(), args.arg(4).todouble(), args.arg(5).todouble(), args.arg(6).todouble()))

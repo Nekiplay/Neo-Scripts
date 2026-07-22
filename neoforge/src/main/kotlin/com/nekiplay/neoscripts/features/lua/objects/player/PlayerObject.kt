@@ -103,28 +103,28 @@ class PlayerObject : LuaValue() {
         } as LuaValue
     }
 
-    private inner class GetTitleFunction : ZeroArgFunction() {
+    private class GetTitleFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val accessed = mc.gui as GuiAccessor
             return valueOf(accessed.title?.getFormattedString())
         }
     }
 
-    private inner class GetSubTitleFunction : ZeroArgFunction() {
+    private class GetSubTitleFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val accessed = mc.gui as GuiAccessor
             return valueOf(accessed.subtitle?.getFormattedString())
         }
     }
 
-    private inner class GetActionBarFunction : ZeroArgFunction() {
+    private class GetActionBarFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val accessed = mc.gui as GuiAccessor
             return valueOf(accessed.actionBar?.getFormattedString())
         }
     }
 
-    private inner class GetScoreboardLinesFunction : ZeroArgFunction() {
+    private class GetScoreboardLinesFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val table = tableOf()
             mc.player?.getScorebordLines()?.forEachIndexed { index, line ->
@@ -134,7 +134,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class IsHasLineOfSight : OneArgFunction() {
+    private class IsHasLineOfSight : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue? {
             if (arg is LuaEntity) {
                 if (mc?.player?.hasLineOfSight(arg.entity) == true) {
@@ -150,7 +150,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class GetBossBarFunction : ZeroArgFunction() {
+    private class GetBossBarFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
             val bossOverlay = mc?.gui?.bossOverlay ?: return NIL
             val accessed = bossOverlay as BossHealthOverlayAccessor
@@ -177,7 +177,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class AddToastFunction : ThreeArgFunction() {
+    private class AddToastFunction : ThreeArgFunction() {
         override fun call(arg: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue? {
             if (arg?.isstring() == true && arg2?.isstring() == true && arg3?.isnumber() == true) {
                 val type = SystemToast.SystemToastId(arg3.tonumber().tolong())
@@ -193,7 +193,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class SwingHandFunction : OneArgFunction() {
+    private class SwingHandFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
             if (arg?.isboolean() == true) {
                 if (arg.toboolean()) {
@@ -210,7 +210,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class GetTabFunction : ZeroArgFunction() {
+    private class GetTabFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val tab = mc?.player?.getTab()
             val table = tableOf()
@@ -233,7 +233,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class GetDirectionFromYawPitch : TwoArgFunction() {
+    private class GetDirectionFromYawPitch : TwoArgFunction() {
         override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue? {
             if (arg1.isnumber() && arg2.isnumber()) {
                 val table = tableOf()
@@ -245,7 +245,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class RayCastToBlocksFunction : TwoArgFunction() {
+    private class RayCastToBlocksFunction : TwoArgFunction() {
         override fun call(
             arg1: LuaValue?,
             arg2: LuaValue
@@ -300,7 +300,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class RayCastToBlocksFromIdentifierFunction : TwoArgFunction() {
+    private class RayCastToBlocksFromIdentifierFunction : TwoArgFunction() {
         override fun call(
             arg1: LuaValue?,
             arg2: LuaValue
@@ -355,7 +355,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class RayCastFunction : OneArgFunction() {
+    private class RayCastFunction : OneArgFunction() {
         override fun call(
             arg1: LuaValue?
         ): LuaValue? {
@@ -390,7 +390,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class RayCastToEntityFunction : OneArgFunction() {
+    private class RayCastToEntityFunction : OneArgFunction() {
         override fun call(
             arg1: LuaValue?
         ): LuaValue? {
@@ -423,7 +423,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class AddChatMessageFunction : OneArgFunction() {
+    private class AddChatMessageFunction : OneArgFunction() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
                 mc?.execute {
@@ -447,7 +447,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class SendCommandFunction : OneArgFunction() {
+    private class SendCommandFunction : OneArgFunction() {
         override fun call(message: LuaValue): LuaValue {
             val msg = message.tojstring()
             if (msg.isEmpty()) return FALSE
@@ -471,7 +471,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class SendChatMessageFunction : OneArgFunction() {
+    private class SendChatMessageFunction : OneArgFunction() {
         override fun call(message: LuaValue): LuaValue {
             if (message.isstring()) {
                 mc?.execute {
@@ -483,7 +483,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class SetPlayerSilentRotationFunction : VarArgFunction() {
+    private class SetPlayerSilentRotationFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (args.isnumber(1) && args.isnumber(2)) {
                 val player = mc.player
@@ -516,7 +516,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class SetPlayerRotationFunction : TwoArgFunction() {
+    private class SetPlayerRotationFunction : TwoArgFunction() {
         override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
             if (arg1.isnumber() && arg2.isnumber()) {
                 val player = mc.player
@@ -541,7 +541,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class GetPlayerSilentRotationFunction : ZeroArgFunction() {
+    private class GetPlayerSilentRotationFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val player = mc?.player;
             return if (player != null) {
@@ -562,7 +562,7 @@ class PlayerObject : LuaValue() {
     }
 
 
-    private inner class GetPlayerRotationFunction : ZeroArgFunction() {
+    private class GetPlayerRotationFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val player = mc?.player;
             return if (player != null) {
@@ -576,7 +576,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class GetPlayerPosFunction : ZeroArgFunction() {
+    private class GetPlayerPosFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val player = mc?.player
             return if (player != null) {
@@ -587,31 +587,31 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class GetPlayerNameFunction : ZeroArgFunction() {
+    private class GetPlayerNameFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             return valueOf(mc?.player?.name?.string ?: "Unknown")
         }
     }
 
-    private inner class IsPlayerSneakingFunction : ZeroArgFunction() {
+    private class IsPlayerSneakingFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             return valueOf(mc?.player?.isShiftKeyDown ?: false)
         }
     }
 
-    private inner class IsPlayerSprintingFunction : ZeroArgFunction() {
+    private class IsPlayerSprintingFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             return valueOf(mc?.player?.isSprinting ?: false)
         }
     }
 
-    private inner class IsPlayerOnGroundFunction : ZeroArgFunction() {
+    private class IsPlayerOnGroundFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             return valueOf(mc?.player?.onGround() ?: false)
         }
     }
 
-    private inner class GetEyePositionFunction : ZeroArgFunction() {
+    private class GetEyePositionFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val eyePos = PlayerUtils.getEyePosition()
             val table = tableOf()
@@ -622,7 +622,7 @@ class PlayerObject : LuaValue() {
         }
     }
 
-    private inner class GetLookEndPosFunction : TwoArgFunction() {
+    private class GetLookEndPosFunction : TwoArgFunction() {
         override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
             return if (arg1?.istable() == true && arg2?.isnumber() == true) {
                 // Если передан target и distance

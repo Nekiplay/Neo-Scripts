@@ -26,7 +26,7 @@ class JsonLib : LuaValue() {
     }
 
 
-    inner class SimpleParseFunction : OneArgFunction() {
+    class SimpleParseFunction : OneArgFunction() {
         override fun call(jsonString: LuaValue): LuaValue {
             return try {
                 when (val result: Any? = Main.GSON_COMPACT.fromJson(jsonString.tojstring(), Any::class.java)) {
@@ -86,7 +86,7 @@ class JsonLib : LuaValue() {
         }
     }
 
-    inner class StringifyFunction : VarArgFunction() {
+    class StringifyFunction : VarArgFunction() {
         override fun invoke(args: Varargs): LuaValue {
             return try {
                 val luaValue = args.arg(1)

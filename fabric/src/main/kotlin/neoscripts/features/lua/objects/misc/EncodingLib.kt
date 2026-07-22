@@ -10,22 +10,28 @@ import java.nio.charset.StandardCharsets
 import java.util.*
 
 class EncodingLib : LuaValue() {
-    private val supportedCharsets = mapOf(
-        "UTF-8" to StandardCharsets.UTF_8,
-        "UTF-16" to StandardCharsets.UTF_16,
-        "UTF-16BE" to StandardCharsets.UTF_16BE,
-        "UTF-16LE" to StandardCharsets.UTF_16LE,
-        "UTF-32" to Charset.forName("UTF-32"),
-        "UTF-32BE" to Charset.forName("UTF-32BE"),
-        "UTF-32LE" to Charset.forName("UTF-32LE"),
-        "ASCII" to StandardCharsets.US_ASCII,
-        "ISO-8859-1" to StandardCharsets.ISO_8859_1,
-        "CP1251" to Charset.forName("CP1251"),
-        "CP1252" to Charset.forName("CP1252"),
-        "KOI8-R" to Charset.forName("KOI8-R"),
-        "KOI8-U" to Charset.forName("KOI8-U"),
-        "WINDOWS-1251" to Charset.forName("WINDOWS-1251")
-    )
+    companion object {
+        private val supportedCharsets = mapOf(
+            "UTF-8" to StandardCharsets.UTF_8,
+            "UTF-16" to StandardCharsets.UTF_16,
+            "UTF-16BE" to StandardCharsets.UTF_16BE,
+            "UTF-16LE" to StandardCharsets.UTF_16LE,
+            "UTF-32" to Charset.forName("UTF-32"),
+            "UTF-32BE" to Charset.forName("UTF-32BE"),
+            "UTF-32LE" to Charset.forName("UTF-32LE"),
+            "ASCII" to StandardCharsets.US_ASCII,
+            "ISO-8859-1" to StandardCharsets.ISO_8859_1,
+            "CP1251" to Charset.forName("CP1251"),
+            "CP1252" to Charset.forName("CP1252"),
+            "KOI8-R" to Charset.forName("KOI8-R"),
+            "KOI8-U" to Charset.forName("KOI8-U"),
+            "WINDOWS-1251" to Charset.forName("WINDOWS-1251")
+        )
+
+        private fun getCharset(encoding: String): Charset {
+            return supportedCharsets[encoding] ?: throw IllegalArgumentException("Unsupported encoding: $encoding")
+        }
+    }
 
     override fun call(): LuaValue {
         return this
@@ -54,7 +60,7 @@ class EncodingLib : LuaValue() {
         }
     }
 
-    inner class StringToBytes : VarArgFunction() {
+    class StringToBytes : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val text = args.arg(1).checkjstring()
             val encoding = if (args.narg() > 1) args.arg(2).checkjstring() else "UTF-8"
@@ -75,7 +81,7 @@ class EncodingLib : LuaValue() {
         }
     }
 
-    inner class BytesToString : VarArgFunction() {
+    class BytesToString : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val bytesTable = args.arg(1).checktable()
             val encoding = if (args.narg() > 1) args.arg(2).checkjstring() else "UTF-8"
@@ -112,7 +118,7 @@ class EncodingLib : LuaValue() {
         }
     }
 
-    inner class GetSupportedEncodings : ZeroArgFunction() {
+    class GetSupportedEncodings : ZeroArgFunction() {
         override fun call(): LuaValue {
             val encodingsTable = tableOf()
             supportedCharsets.keys.sorted().forEachIndexed { index, encoding ->
@@ -122,14 +128,14 @@ class EncodingLib : LuaValue() {
         }
     }
 
-    inner class IsValidEncoding : OneArgFunction() {
+    class IsValidEncoding : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val encoding = arg.checkjstring()
             return valueOf(supportedCharsets.containsKey(encoding))
         }
     }
 
-    inner class DetectEncoding : OneArgFunction() {
+    class DetectEncoding : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             if (!arg.isstring()) return NIL
             
@@ -183,7 +189,7 @@ class EncodingLib : LuaValue() {
         }
     }
 
-    inner class ConvertEncoding : VarArgFunction() {
+    class ConvertEncoding : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val text = args.arg(1).checkjstring()
             val fromEncoding = args.arg(2).checkjstring()
@@ -203,7 +209,7 @@ class EncodingLib : LuaValue() {
         }
     }
 
-    inner class HexEncode : OneArgFunction() {
+    class HexEncode : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             return try {
                 val text = arg.checkjstring()
@@ -216,7 +222,7 @@ class EncodingLib : LuaValue() {
         }
     }
 
-    inner class HexDecode : VarArgFunction() {
+    class HexDecode : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             return try {
                 val hexString = args.arg(1).checkjstring()
@@ -236,7 +242,7 @@ class EncodingLib : LuaValue() {
         }
     }
 
-    inner class Base64Encode : OneArgFunction() {
+    class Base64Encode : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             return try {
                 val text = arg.checkjstring()
@@ -249,7 +255,7 @@ class EncodingLib : LuaValue() {
         }
     }
 
-    inner class Base64Decode : VarArgFunction() {
+    class Base64Decode : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             return try {
                 val base64String = args.arg(1).checkjstring()
@@ -260,9 +266,5 @@ class EncodingLib : LuaValue() {
                 varargsOf(arrayOf(NIL, valueOf(e.message ?: "Base64 decode failed")))
             }
         }
-    }
-
-    private fun getCharset(encoding: String): Charset {
-        return supportedCharsets[encoding] ?: throw IllegalArgumentException("Unsupported encoding: $encoding")
     }
 }

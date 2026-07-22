@@ -23,7 +23,7 @@ class Entities : LuaValue() {
         }
     }
 
-    inner class GetEntities : OneArgFunction() {
+    class GetEntities : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val entitiesList = LuaValue.tableOf()
             var index = 1

@@ -30,7 +30,7 @@ class Items : LuaValue() {
         }
     }
 
-    inner class GetFromIdentifier : VarArgFunction() {
+    class GetFromIdentifier : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (args.arg(1).isstring()) {
                 val optional = BuiltInRegistries.ITEM.get(Identifier.parse(args.arg(1).tojstring()))
@@ -42,7 +42,7 @@ class Items : LuaValue() {
         }
     }
 
-    inner class GetFromId : VarArgFunction() {
+    class GetFromId : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (args.arg(1).isint()) {
                 val optional = BuiltInRegistries.ITEM.get(args.arg(1).toint())
@@ -54,7 +54,7 @@ class Items : LuaValue() {
         }
     }
 
-    inner class GetItems : OneArgFunction() {
+    class GetItems : OneArgFunction() {
         override fun call(jsonString: LuaValue): LuaValue {
             val itemsTable = LuaValue.tableOf()
             var index = 1

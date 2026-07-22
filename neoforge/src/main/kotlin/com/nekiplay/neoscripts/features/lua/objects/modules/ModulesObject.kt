@@ -75,13 +75,13 @@ class ModulesObject: LuaValue() {
             return NIL
         }
     }
-    private inner class GetHWID : ZeroArgFunction() {
+    private class GetHWID : ZeroArgFunction() {
         override fun call(): LuaValue {
             return valueOf(Utils.getHWID8())
         }
     }
 
-    private inner class GetLoadedMods : ZeroArgFunction() {
+    private class GetLoadedMods : ZeroArgFunction() {
         override fun call(): LuaValue {
             val table = LuaTable()
             val modList = ModList.get()
@@ -125,25 +125,25 @@ class ModulesObject: LuaValue() {
         }
     }
 
-    private inner class GetModLoader : ZeroArgFunction() {
+    private class GetModLoader : ZeroArgFunction() {
         override fun call(): LuaValue {
             return valueOf("NeoForge")
         }
     }
 
-    private inner class IsModLoaded : OneArgFunction() {
+    private class IsModLoaded : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             return valueOf(ModList.get().isLoaded(arg.tojstring())) ?: FALSE
         }
     }
 
-    private inner class UnLoadScript : OneArgFunction() {
+    private class UnLoadScript : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             return valueOf(Main.LUA_MANAGER?.unloadScript(arg.tojstring()) ?: false)
         }
     }
 
-    private inner class LoadScript : OneArgFunction() {
+    private class LoadScript : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val file = File(arg.tojstring())
             if (file.exists()) {
@@ -155,7 +155,7 @@ class ModulesObject: LuaValue() {
         }
     }
 
-    private inner class GetScriptRequirements : OneArgFunction() {
+    private class GetScriptRequirements : OneArgFunction() {
         override fun call(stringName: LuaValue): LuaValue {
             val name = stringName.checkjstring()
 
@@ -194,7 +194,7 @@ class ModulesObject: LuaValue() {
         }
     }
 
-    private inner class GetLoadedScriptsFunction : ZeroArgFunction() {
+    private class GetLoadedScriptsFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val table = tableOf()
             var index = 1

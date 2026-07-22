@@ -25,27 +25,6 @@ class NetworkObject : LuaValue() {
         return this
     }
 
-    private fun parseDirection(arg: LuaValue?): Direction? {
-        return when {
-            arg?.isuserdata() == true && arg.touserdata() is LuaDirection -> {
-                (arg.touserdata() as LuaDirection).direction
-            }
-            arg?.isuserdata() == true && arg.touserdata() is Direction -> {
-                arg.touserdata() as Direction
-            }
-            arg?.isstring() == true -> {
-                val dirStr = arg.tojstring()?.uppercase()
-                try {
-                    dirStr?.let { Direction.valueOf(it) }
-                } catch (e: IllegalArgumentException) {
-                    println("Lua warning: Invalid direction '$dirStr'. Valid values: ${Direction.values().joinToString { it.name }}")
-                    null
-                }
-            }
-            else -> null
-        }
-    }
-
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             "getPlayersList" -> GetPlayerList()
@@ -60,7 +39,7 @@ class NetworkObject : LuaValue() {
         } as LuaValue
     }
 
-    private inner class getCurrentServer : ZeroArgFunction() {
+    private class getCurrentServer : ZeroArgFunction() {
         override fun call(): LuaValue {
             val mc = Minecraft.getInstance()
             val server = mc.currentServer
@@ -82,28 +61,50 @@ class NetworkObject : LuaValue() {
             return NIL
         }
     }
+    companion object {
+        fun disconnectFromServer(reason: String) {
+            val minecraft = Minecraft.getInstance()
 
-    fun disconnectFromServer(reason: String) {
-        val minecraft = Minecraft.getInstance()
+            if (minecraft.connection != null) {
+                val disconnectReason: Component = Component.literal(reason)
 
-        if (minecraft.connection != null) {
-            val disconnectReason: Component = Component.literal(reason)
+                val disconnectPacket =
+                    ClientboundDisconnectPacket(disconnectReason)
 
-            val disconnectPacket =
-                ClientboundDisconnectPacket(disconnectReason)
+                minecraft.connection?.handleDisconnect(disconnectPacket)
+            }
+        }
 
-            minecraft.connection?.handleDisconnect(disconnectPacket)
+        fun parseDirection(arg: LuaValue?): Direction? {
+            return when {
+                arg?.isuserdata() == true && arg.touserdata() is LuaDirection -> {
+                    (arg.touserdata() as LuaDirection).direction
+                }
+                arg?.isuserdata() == true && arg.touserdata() is Direction -> {
+                    arg.touserdata() as Direction
+                }
+                arg?.isstring() == true -> {
+                    val dirStr = arg.tojstring()?.uppercase()
+                    try {
+                        dirStr?.let { Direction.valueOf(it) }
+                    } catch (e: IllegalArgumentException) {
+                        println("Lua warning: Invalid direction '$dirStr'. Valid values: ${Direction.values().joinToString { it.name }}")
+                        null
+                    }
+                }
+                else -> null
+            }
         }
     }
 
-    private inner class DisconnectFromServer : OneArgFunction() {
+    private class DisconnectFromServer : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             disconnectFromServer(arg.tojstring())
             return TRUE
         }
     }
 
-    private inner class ConnectToServer : TwoArgFunction() {
+    private class ConnectToServer : TwoArgFunction() {
         override fun call(host: LuaValue, port: LuaValue): LuaValue {
             val minecraft = Minecraft.getInstance()
 
@@ -127,7 +128,7 @@ class NetworkObject : LuaValue() {
         }
     }
 
-    private inner class GetPlayerList : ZeroArgFunction() {
+    private class GetPlayerList : ZeroArgFunction() {
         override fun call(): LuaValue {
             val playerList = mc?.connection?.listedOnlinePlayers ?: return NIL
 
@@ -164,7 +165,7 @@ class NetworkObject : LuaValue() {
         }
     }
 
-    private inner class SendStartDestroyBlockPacket : FourArgFunction() {
+    private class SendStartDestroyBlockPacket : FourArgFunction() {
         override fun invoke(
             arg1: LuaValue?,
             arg2: LuaValue?,
@@ -192,7 +193,7 @@ class NetworkObject : LuaValue() {
                 else -> return FALSE
             }
 
-            if (blockPos == null || direction == null || gamemode == null) {
+            if (direction == null || gamemode == null) {
                 return FALSE
             }
 
@@ -209,7 +210,7 @@ class NetworkObject : LuaValue() {
         }
     }
 
-    private inner class SendStopDestroyBlockPacket : FourArgFunction() {
+    private class SendStopDestroyBlockPacket : FourArgFunction() {
         override fun invoke(
             arg1: LuaValue?,
             arg2: LuaValue?,
@@ -254,7 +255,7 @@ class NetworkObject : LuaValue() {
         }
     }
 
-    private inner class SendAbortDestroyBlockPacket : FourArgFunction() {
+    private class SendAbortDestroyBlockPacket : FourArgFunction() {
         override fun invoke(
             arg1: LuaValue?,
             arg2: LuaValue?,

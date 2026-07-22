@@ -31,7 +31,7 @@ class Blocks : LuaValue() {
         }
     }
 
-    inner class GetFromIdentifier : VarArgFunction() {
+    class GetFromIdentifier : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (args.arg(1).isstring()) {
                 val optional = BuiltInRegistries.BLOCK.get(Identifier.parse(args.arg(1).tojstring()))
@@ -43,7 +43,7 @@ class Blocks : LuaValue() {
         }
     }
 
-    inner class GetFromId : VarArgFunction() {
+    class GetFromId : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (args.arg(1).isint()) {
                 return LuaBlockState(Block.stateById(args.arg(1).toint()))
@@ -52,7 +52,7 @@ class Blocks : LuaValue() {
         }
     }
 
-    inner class GetBlocks : OneArgFunction() {
+    class GetBlocks : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val blocksList = LuaValue.tableOf()
             var index = 1

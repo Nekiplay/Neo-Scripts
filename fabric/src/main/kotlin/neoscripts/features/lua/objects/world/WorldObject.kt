@@ -43,103 +43,93 @@ class WorldObject : LuaValue() {
         return this
     }
 
-    private fun parseBlockPos(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): BlockPos? {
-        // Fast path: numbers first (most common)
-        if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
-            return BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
-        }
-        return when {
-            arg1 is LuaMutableBlockPos -> arg1.pos
-            arg1 is LuaBlockPos -> arg1.pos
-            arg1?.isuserdata() == true && arg1.touserdata() is BlockPos.MutableBlockPos ->
-                arg1.touserdata() as BlockPos.MutableBlockPos
-            arg1?.isuserdata() == true && arg1.touserdata() is BlockPos ->
-                arg1.touserdata() as BlockPos
-            arg1?.istable() == true -> {
-                val x = arg1.get("x").toint()
-                val y = arg1.get("y").toint()
-                val z = arg1.get("z").toint()
-                BlockPos(x, y, z)
-            }
-            else -> null
-        }
-    }
+    companion object {
+        // --- Статические хелперы парсинга ---
 
-    private fun parseVec3(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): Pair<Vec3?, Int> {
-        return when {
-            // Вариант 1: Один аргумент - userdata (LuaVector3d)
-            arg1?.isuserdata() == true && arg1.touserdata() is LuaVector3d -> {
-                val vec = (arg1.touserdata() as LuaVector3d).location
-                Pair(vec, 1) // Потреблен 1 аргумент
+        private fun parseBlockPos(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): BlockPos? {
+            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
+                return BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
             }
-            // Вариант 2: Один аргумент - userdata (Vec3)
-            arg1?.isuserdata() == true && arg1.touserdata() is Vec3 -> {
-                val vec = arg1.touserdata() as Vec3
-                Pair(vec, 1) // Потреблен 1 аргумент
-            }
-            // Вариант 3: Три числа (x, y, z)
-            arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
-                val vec = Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble())
-                Pair(vec, 3) // Потреблено 3 аргумента
-            }
-            // Вариант 4: Таблица с полями x, y, z
-            arg1?.istable() == true -> {
-                // Проверка на наличие полей, чтобы избежать ошибок, если таблица пустая
-                val xVal = arg1.get("x")
-                val yVal = arg1.get("y")
-                val zVal = arg1.get("z")
-
-                if (xVal.isnumber() && yVal.isnumber() && zVal.isnumber()) {
-                    val vec = Vec3(xVal.todouble(), yVal.todouble(), zVal.todouble())
-                    Pair(vec, 1) // Потреблен 1 аргумент (таблица)
-                } else {
-                    Pair(null, 0) // Неверный формат таблицы
+            return when {
+                arg1 is LuaMutableBlockPos -> arg1.pos
+                arg1 is LuaBlockPos -> arg1.pos
+                arg1?.isuserdata() == true && arg1.touserdata() is BlockPos.MutableBlockPos ->
+                    arg1.touserdata() as BlockPos.MutableBlockPos
+                arg1?.isuserdata() == true && arg1.touserdata() is BlockPos ->
+                    arg1.touserdata() as BlockPos
+                arg1?.istable() == true -> {
+                    val x = arg1.get("x").toint()
+                    val y = arg1.get("y").toint()
+                    val z = arg1.get("z").toint()
+                    BlockPos(x, y, z)
                 }
+                else -> null
             }
-            else -> Pair(null, 0) // Ничего не подошло
         }
-    }
 
-    private fun parseBlockPosWithBlockState(
-        arg1: LuaValue?,
-        arg2: LuaValue?,
-        arg3: LuaValue?,
-        arg4: LuaValue?
-    ): Pair<BlockPos, BlockState>? {
-        return when {
-            arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
-                val pos = (arg1.touserdata() as LuaBlockPos).pos
-                val state = parseBlockState(arg2)
-                if (state != null) pos to state else null
+        private fun parseVec3(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): Pair<Vec3?, Int> {
+            return when {
+                arg1?.isuserdata() == true && arg1.touserdata() is LuaVector3d -> {
+                    Pair((arg1.touserdata() as LuaVector3d).location, 1)
+                }
+                arg1?.isuserdata() == true && arg1.touserdata() is Vec3 -> {
+                    Pair(arg1.touserdata() as Vec3, 1)
+                }
+                arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
+                    Pair(Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble()), 3)
+                }
+                arg1?.istable() == true -> {
+                    val xVal = arg1.get("x")
+                    val yVal = arg1.get("y")
+                    val zVal = arg1.get("z")
+                    if (xVal.isnumber() && yVal.isnumber() && zVal.isnumber()) {
+                        Pair(Vec3(xVal.todouble(), yVal.todouble(), zVal.todouble()), 1)
+                    } else {
+                        Pair(null, 0)
+                    }
+                }
+                else -> Pair(null, 0)
             }
-            arg1?.isuserdata() == true && arg1.touserdata() is BlockPos.MutableBlockPos -> {
-                val pos = arg1.touserdata() as BlockPos.MutableBlockPos
-                val state = parseBlockState(arg2)
-                if (state != null) pos to state else null
-            }
-            arg1?.isuserdata() == true && arg1.touserdata() is BlockPos -> {
-                val pos = arg1.touserdata() as BlockPos
-                val state = parseBlockState(arg2)
-                if (state != null) pos to state else null
-            }
-            arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
-                val pos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
-                val state = parseBlockState(arg4)
-                if (state != null) pos to state else null
-            }
-            else -> null
         }
-    }
 
-    private fun parseBlockState(arg: LuaValue?): BlockState? {
-        return when {
-            arg?.isuserdata(LuaBlockState::class.java) == true -> {
-                (arg.touserdata() as? LuaBlockState)?.blockState
+        private fun parseBlockPosWithBlockState(
+            arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?, arg4: LuaValue?
+        ): Pair<BlockPos, BlockState>? {
+            return when {
+                arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
+                    val pos = (arg1.touserdata() as LuaBlockPos).pos
+                    val state = parseBlockState(arg2)
+                    if (state != null) pos to state else null
+                }
+                arg1?.isuserdata() == true && arg1.touserdata() is BlockPos.MutableBlockPos -> {
+                    val pos = arg1.touserdata() as BlockPos.MutableBlockPos
+                    val state = parseBlockState(arg2)
+                    if (state != null) pos to state else null
+                }
+                arg1?.isuserdata() == true && arg1.touserdata() is BlockPos -> {
+                    val pos = arg1.touserdata() as BlockPos
+                    val state = parseBlockState(arg2)
+                    if (state != null) pos to state else null
+                }
+                arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
+                    val pos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
+                    val state = parseBlockState(arg4)
+                    if (state != null) pos to state else null
+                }
+                else -> null
             }
-            arg?.isuserdata(BlockState::class.java) == true -> {
-                arg.touserdata() as? BlockState
+        }
+
+        private fun parseBlockState(arg: LuaValue?): BlockState? {
+            return when {
+                arg?.isuserdata(LuaBlockState::class.java) == true -> {
+                    (arg.touserdata() as? LuaBlockState)?.blockState
+                }
+                arg?.isuserdata(BlockState::class.java) == true -> {
+                    arg.touserdata() as? BlockState
+                }
+                else -> null
             }
-            else -> null
         }
     }
 
@@ -179,7 +169,7 @@ class WorldObject : LuaValue() {
         } as LuaValue
     }
 
-    private inner class GetBlocksInBoxFunction : VarArgFunction() {
+    private class GetBlocksInBoxFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val level = mc.level ?: return NIL
 
@@ -240,7 +230,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetBlocksFromListFunction : OneArgFunction() {
+    private class GetBlocksFromListFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             val level = mc.level ?: return NIL
             if (arg?.istable() != true) return NIL
@@ -281,7 +271,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetDimension : ZeroArgFunction() {
+    private class GetDimension : ZeroArgFunction() {
         override fun call(): LuaValue {
             val level = mc.level;
 
@@ -298,7 +288,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetBreakingBlocksInfo : ZeroArgFunction() {
+    private class GetBreakingBlocksInfo : ZeroArgFunction() {
         override fun call(): LuaValue {
             val accessed = mc.levelRenderer as LevelRendererAccessor
             var index = 1
@@ -316,7 +306,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetOutlineBoxesFunction : FourArgFunction() {
+    private class GetOutlineBoxesFunction : FourArgFunction() {
         override fun invoke(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?, arg4: LuaValue?): LuaValue {
             val level: ClientLevel = mc.level ?: return error("No world loaded")
 
@@ -344,7 +334,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetCollisionBoxesFunction : FourArgFunction() {
+    private class GetCollisionBoxesFunction : FourArgFunction() {
         override fun invoke(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?, arg4: LuaValue?): LuaValue {
             val level: ClientLevel = mc.level ?: return error("No world loaded")
 
@@ -375,7 +365,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class RaycastFromRotationFunction : OneArgFunction() {
+    private class RaycastFromRotationFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             if (arg == null || !arg.istable()) return NIL
 
@@ -428,7 +418,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class RaycastFunction : OneArgFunction() {
+    private class RaycastFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.istable() == true) {
                 val startX = arg.get("startX").optdouble(0.0)
@@ -495,7 +485,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class RaycastToBlocksFunction : OneArgFunction() {
+    private class RaycastToBlocksFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.istable() == true) {
                 val startX = arg.get("startX").optdouble(0.0)
@@ -541,7 +531,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class RaycastToBlocksFromIdentifierFunction : OneArgFunction() {
+    private class RaycastToBlocksFromIdentifierFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.istable() == true) {
                 val startX = arg.get("startX").optdouble(0.0)
@@ -587,7 +577,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetRotationFunction : ThreeArgFunction() {
+    private class GetRotationFunction : ThreeArgFunction() {
         override fun call(
             arg1: LuaValue?,
             arg2: LuaValue?,
@@ -627,7 +617,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class SetBlockFunction : FourArgFunction() {
+    private class SetBlockFunction : FourArgFunction() {
         override fun invoke(
             arg1: LuaValue?,
             arg2: LuaValue?,
@@ -702,7 +692,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetBlockFunction : ThreeArgFunction() {
+    private class GetBlockFunction : ThreeArgFunction() {
         override fun call(
             arg1: LuaValue?,
             arg2: LuaValue?,
@@ -719,7 +709,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetLightFunction : ThreeArgFunction() {
+    private class GetLightFunction : ThreeArgFunction() {
         override fun call(
             arg1: LuaValue?,
             arg2: LuaValue?,
@@ -736,7 +726,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetLightSkyFunction : ThreeArgFunction() {
+    private class GetLightSkyFunction : ThreeArgFunction() {
         override fun call(
             arg1: LuaValue?,
             arg2: LuaValue?,
@@ -753,7 +743,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class IsBlockLoadedFunction : ThreeArgFunction() {
+    private class IsBlockLoadedFunction : ThreeArgFunction() {
         override fun call(
             arg1: LuaValue?,
             arg2: LuaValue?,
@@ -767,7 +757,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetEntitiesFunction : ZeroArgFunction() {
+    private class GetEntitiesFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val entitiesTable = tableOf()
 
@@ -779,7 +769,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetArmorStandEntitiesInBoxFunction() : OneArgFunction() {
+    private class GetArmorStandEntitiesInBoxFunction() : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val box = when {
                 arg.isuserdata() && arg.touserdata() is LuaBox -> (arg.touserdata() as LuaBox).box
@@ -800,7 +790,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetEntitiesInBoxFunction() : OneArgFunction() {
+    private class GetEntitiesInBoxFunction() : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             val box = when {
                 arg.isuserdata() && arg.touserdata() is LuaBox -> (arg.touserdata() as LuaBox).box
@@ -822,7 +812,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetArmorStandEntitiesFunction : ZeroArgFunction() {
+    private class GetArmorStandEntitiesFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val entitiesTable = tableOf()
 
@@ -838,7 +828,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetLivingEntitiesFunction : ZeroArgFunction() {
+    private class GetLivingEntitiesFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             val entitiesTable = tableOf()
 
@@ -854,7 +844,7 @@ class WorldObject : LuaValue() {
         }
     }
 
-    private inner class GetEntityByIdFunction : OneArgFunction() {
+    private class GetEntityByIdFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue {
             return if (arg?.isnumber() == true) {
                 val entityId = arg.toint()
@@ -878,7 +868,7 @@ class WorldObject : LuaValue() {
         return TUSERDATA
     }
 
-    private inner class PlaySoundFunction : VarArgFunction() {
+    private class PlaySoundFunction : VarArgFunction() {
         override fun invoke(args: Varargs?): Varargs? {
             val level = mc?.level ?: return NIL
 
