@@ -45,8 +45,8 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
     public val queue: ImDrawCommandQueue = ImDrawCommandQueue()
 
     var imGuiImplGlfw: ImGuiImplGlfw = ImGuiImplGlfw()
-    var imGuiImplGl3: ImGuiImplGl3? = null
-    var imGuiImplBlaze3D: ImGuiImplBlaze3D? = null
+    var imGuiImplGl3: ImGuiImplGl3 = ImGuiImplGl3()
+    var imGuiImplBlaze3D: ImGuiImplBlaze3D = ImGuiImplBlaze3D()
 
     override fun typename(): String = "imgui"
     override fun tojstring(): String = "ImGuiObject"
@@ -574,19 +574,9 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
 
     var windowHandle: Long = -1
 
-    private var mcKeyCallback: GLFWKeyCallbackI? = null
-    private var mcCharCallback: GLFWCharCallbackI? = null
-    private var mcMouseButtonCallback: GLFWMouseButtonCallbackI? = null
-    private var mcScrollCallback: GLFWScrollCallbackI? = null
-    private var mcCursorPosCallback: GLFWCursorPosCallbackI? = null
 
     fun onGlfwInit() {
         if (windowHandle == -1L) {
-            if (Minecraft.getInstance().options.preferredGraphicsBackend().get() != PreferredGraphicsApi.VULKAN) {
-                imGuiImplGl3 = ImGuiImplGl3()
-            } else {
-                imGuiImplBlaze3D = ImGuiImplBlaze3D()
-            }
             ImGui.createContext()
             val io = ImGui.getIO()
             io.iniFilename = null
@@ -594,21 +584,6 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             io.addConfigFlags(ImGuiConfigFlags.DockingEnable)
             io.backendFlags = ImGuiBackendFlags.HasMouseCursors
             windowHandle = Main.mc.window.handle()
-
-            mcKeyCallback = GLFW.glfwSetKeyCallback(windowHandle, null)
-            GLFW.glfwSetKeyCallback(windowHandle, mcKeyCallback)
-
-            mcCharCallback = GLFW.glfwSetCharCallback(windowHandle, null)
-            GLFW.glfwSetCharCallback(windowHandle, mcCharCallback)
-
-            mcMouseButtonCallback = GLFW.glfwSetMouseButtonCallback(windowHandle, null)
-            GLFW.glfwSetMouseButtonCallback(windowHandle, mcMouseButtonCallback)
-
-            mcScrollCallback = GLFW.glfwSetScrollCallback(windowHandle, null)
-            GLFW.glfwSetScrollCallback(windowHandle, mcScrollCallback)
-
-            mcCursorPosCallback = GLFW.glfwSetCursorPosCallback(windowHandle, null)
-            GLFW.glfwSetCursorPosCallback(windowHandle, mcCursorPosCallback)
 
             script.onImGuiInitEvent()
             imGuiImplGlfw.init(windowHandle, true);
@@ -620,7 +595,7 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
         if (windowHandle != -1L) {
             val framebuffer = Minecraft.getInstance().gameRenderer.mainRenderTarget()
             if (framebuffer != null) {
-                if (imGuiImplGl3 != null) {
+                if (Minecraft.getInstance().options.preferredGraphicsBackend().get() != PreferredGraphicsApi.VULKAN) {
                     // OpenGL path: bind FBO, render ImGui, unbind FBO
                     val backend = (RenderSystem.getDevice() as GpuDeviceMixin).backend
                     val directStateAccess = (backend as GlDeviceMixin).directStateAccess
@@ -643,7 +618,7 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
                     imGuiImplGl3?.renderDrawData(ImGui.getDrawData())
 
                     GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0)
-                } else if (imGuiImplBlaze3D != null) {
+                } else {
                     val textureView = framebuffer.getColorTextureView()
                     if (textureView != null) {
                         // Blaze3D path: use CommandEncoder and RenderPass for GPU-agnostic rendering
@@ -686,20 +661,7 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
 
     fun cleanup() {
         if (windowHandle != -1L) {
-            GLFW.glfwSetKeyCallback(windowHandle, mcKeyCallback)
-            GLFW.glfwSetCharCallback(windowHandle, mcCharCallback)
-            GLFW.glfwSetMouseButtonCallback(windowHandle, mcMouseButtonCallback)
-            GLFW.glfwSetScrollCallback(windowHandle, mcScrollCallback)
-            GLFW.glfwSetCursorPosCallback(windowHandle, mcCursorPosCallback)
-
-            mcKeyCallback = null
-            mcCharCallback = null
-            mcMouseButtonCallback = null
-            mcScrollCallback = null
-            mcCursorPosCallback = null
-
             ImGui.getIO().fonts.clear()
-            windowHandle = -1L
         }
     }
 
