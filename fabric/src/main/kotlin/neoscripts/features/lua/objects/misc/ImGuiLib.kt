@@ -702,9 +702,6 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             mcCursorPosCallback = null
 
             ImGui.getIO().fonts.clear()
-            imGuiImplBlaze3D?.dispose()
-            imGuiImplGl3?.shutdown()
-            imGuiImplGlfw.shutdown();
             windowHandle = -1L
         }
     }
