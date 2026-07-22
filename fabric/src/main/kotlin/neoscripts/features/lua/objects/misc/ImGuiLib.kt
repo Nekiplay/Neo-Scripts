@@ -39,7 +39,7 @@ import java.util.function.Supplier
 class ImGuiLib(val script: LuaScript) : LuaValue() {
     public val queue: ImDrawCommandQueue = ImDrawCommandQueue()
 
-    val imGuiImplGlfw: ImGuiImplGlfw = ImGuiImplGlfw()
+    var imGuiImplGlfw: ImGuiImplGlfw = ImGuiImplGlfw()
     var imGuiImplGl3: ImGuiImplGl3? = null
     var imGuiImplBlaze3D: ImGuiImplBlaze3D? = null
 
@@ -577,10 +577,11 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
 
     fun onGlfwInit() {
         if (windowHandle == -1L) {
-            windowHandle = Main.mc.getWindow().handle()
+            ImGui.createContext()
+            windowHandle = Main.mc.window.handle()
+            script.onImGuiInitEvent()
             imGuiImplGlfw.init(windowHandle, true);
             imGuiImplGl3?.init()
-            script.onImGuiInitEvent()
         }
     }
 
@@ -658,7 +659,9 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
     fun cleanup() {
         if (windowHandle != -1L) {
             imGuiImplGl3?.shutdown()
+            imGuiImplGl3 = null
             imGuiImplBlaze3D?.dispose()
+            imGuiImplBlaze3D = null
             imGuiImplGlfw.shutdown();
             windowHandle = -1L
         }
