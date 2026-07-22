@@ -54,12 +54,6 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
     val dl = LuaTable()
 
     init {
-        if (Minecraft.getInstance().options.preferredGraphicsBackend().get() != PreferredGraphicsApi.VULKAN) {
-            imGuiImplGl3 = ImGuiImplGl3()
-        } else {
-            imGuiImplBlaze3D = ImGuiImplBlaze3D()
-        }
-
         constants.set("WindowFlags_None", ImGuiWindowFlags.None.toInt())
         constants.set("WindowFlags_NoTitleBar", ImGuiWindowFlags.NoTitleBar.toInt())
         constants.set("WindowFlags_NoResize", ImGuiWindowFlags.NoResize.toInt())
@@ -577,7 +571,18 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
 
     fun onGlfwInit() {
         if (windowHandle == -1L) {
+            if (Minecraft.getInstance().options.preferredGraphicsBackend().get() != PreferredGraphicsApi.VULKAN) {
+                imGuiImplGl3 = ImGuiImplGl3()
+            } else {
+                imGuiImplBlaze3D = ImGuiImplBlaze3D()
+            }
+
             ImGui.createContext()
+            val io = ImGui.getIO()
+            io.iniFilename = null
+            io.configFlags = ImGuiConfigFlags.NavEnableKeyboard
+            io.addConfigFlags(ImGuiConfigFlags.DockingEnable)
+            io.backendFlags = ImGuiBackendFlags.HasMouseCursors
             windowHandle = Main.mc.window.handle()
             script.onImGuiInitEvent()
             imGuiImplGlfw.init(windowHandle, true);
@@ -658,10 +663,9 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
 
     fun cleanup() {
         if (windowHandle != -1L) {
-            imGuiImplGl3?.shutdown()
-            imGuiImplGl3 = null
+            ImGui.getIO().fonts.clear()
             imGuiImplBlaze3D?.dispose()
-            imGuiImplBlaze3D = null
+            imGuiImplGl3?.shutdown()
             imGuiImplGlfw.shutdown();
             windowHandle = -1L
         }
