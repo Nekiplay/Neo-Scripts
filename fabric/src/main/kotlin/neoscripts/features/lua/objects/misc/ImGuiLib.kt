@@ -28,6 +28,7 @@ import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 import org.lwjgl.glfw.GLFW
+import org.lwjgl.glfw.GLFWKeyCallbackI
 import org.lwjgl.opengl.GL11C
 import org.lwjgl.opengl.GL30
 import org.lwjgl.opengl.GL30C
@@ -569,6 +570,8 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
 
     var windowHandle: Long = -1
 
+    private var originalKeyCallback: GLFWKeyCallbackI? = null
+
     fun onGlfwInit() {
         if (windowHandle == -1L) {
             if (Minecraft.getInstance().options.preferredGraphicsBackend().get() != PreferredGraphicsApi.VULKAN) {
@@ -576,7 +579,6 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             } else {
                 imGuiImplBlaze3D = ImGuiImplBlaze3D()
             }
-
             ImGui.createContext()
             val io = ImGui.getIO()
             io.iniFilename = null
@@ -585,6 +587,7 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             io.backendFlags = ImGuiBackendFlags.HasMouseCursors
             windowHandle = Main.mc.window.handle()
             script.onImGuiInitEvent()
+            originalKeyCallback = GLFW.glfwSetKeyCallback(windowHandle, null)
             imGuiImplGlfw.init(windowHandle, true);
             imGuiImplGl3?.init()
         }
@@ -663,13 +666,8 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
 
     fun cleanup() {
         if (windowHandle != -1L) {
-            // Forcefully remove callbacks to avoid NPE after shutdown
-            GLFW.glfwSetKeyCallback(windowHandle, null)
-            GLFW.glfwSetCharCallback(windowHandle, null)
-            GLFW.glfwSetMouseButtonCallback(windowHandle, null)
-            GLFW.glfwSetScrollCallback(windowHandle, null)
-            GLFW.glfwSetCursorPosCallback(windowHandle, null)
-            
+            originalKeyCallback?.let { GLFW.glfwSetKeyCallback(windowHandle, it) }
+
             ImGui.getIO().fonts.clear()
             imGuiImplBlaze3D?.dispose()
             imGuiImplGl3?.shutdown()
