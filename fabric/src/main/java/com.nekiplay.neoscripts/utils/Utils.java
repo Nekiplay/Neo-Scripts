@@ -10,9 +10,6 @@ import com.nekiplay.neoscripts.utils.scheduler.MessageScheduler;
 import com.nekiplay.neoscripts.utils.scheduler.Scheduler;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.azureaaron.hmapi.data.rank.PackageRank;
-import net.azureaaron.hmapi.data.rank.RankType;
-import net.azureaaron.hmapi.data.server.Environment;
 import net.azureaaron.hmapi.events.HypixelPacketEvents;
 import net.azureaaron.hmapi.network.HypixelNetworking;
 import net.azureaaron.hmapi.network.packet.s2c.ErrorS2CPacket;
@@ -68,10 +65,6 @@ public class Utils {
 
     private static boolean isOnHypixel = false;
     private static boolean isOnSkyblock = false;
-
-    @SuppressWarnings("JavadocDeclaration")
-    @NotNull
-    private static Environment environment = Environment.PRODUCTION;
 
     public static boolean copyToClipboard(String text) {
         try {
@@ -205,9 +198,6 @@ public class Utils {
     }
 
     @NotNull
-    private static RankType rank = PackageRank.NONE;
-
-    @NotNull
     private static String server = "";
     @NotNull
     private static String gameType = "";
@@ -239,10 +229,6 @@ public class Utils {
     @NotNull
     public static String getArea() {
         return area;
-    }
-
-    public static RankType getRank() {
-        return rank;
     }
 
     public static String getIslandArea() {
@@ -422,13 +408,6 @@ public class Utils {
 
     private static void onPacket(HypixelS2CPacket packet) {
         switch (packet) {
-            case HelloS2CPacket(Environment environment) -> {
-                Utils.environment = environment;
-
-                //Request the player's rank information
-                HypixelNetworking.sendPlayerInfoC2SPacket(1);
-            }
-
             case LocationUpdateS2CPacket(var serverName, var serverType, var _lobbyName, var mode, var map) -> {
                 Utils.server = serverName;
                 String previousServerType = Utils.gameType;
@@ -457,10 +436,6 @@ public class Utils {
                 location = Location.UNKNOWN;
                 map = "";
                 Main.LOGGER.error("[Skyblocker] Failed to update your current location! Some features of the mod may not work correctly :( - Error: {}", error);
-            }
-
-            case PlayerInfoS2CPacket(var playerRank, var packageRank, var monthlyPackageRank, var _prefix) -> {
-                rank = RankType.getEffectiveRank(playerRank, packageRank, monthlyPackageRank);
             }
 
             default -> {} //Do Nothing

@@ -92,7 +92,6 @@ class PlayerObject : LuaValue() {
             "getCold" -> GetPlayerColdFunction()
             "getAir" -> GetPlayerAirFunction()
             "getMaxAir" -> GetPlayerMaxAirFunction()
-            "getRank" -> GetPlayerRankFunction()
             "isSneaking" -> IsPlayerSneakingFunction()
             "isSprinting" -> IsPlayerSprintingFunction()
             "isOnGround" -> IsPlayerOnGroundFunction()
@@ -217,16 +216,6 @@ class PlayerObject : LuaValue() {
         override fun call(): LuaValue {
             return if (Utils.isOnSkyblock()) {
                 valueOf(StatusBarTracker.getAir().max)
-            } else {
-                valueOf(0)
-            }
-        }
-    }
-
-    private class GetPlayerRankFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(Utils.getRank().toString())
             } else {
                 valueOf(0)
             }
