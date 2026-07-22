@@ -663,6 +663,13 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
 
     fun cleanup() {
         if (windowHandle != -1L) {
+            // Forcefully remove callbacks to avoid NPE after shutdown
+            GLFW.glfwSetKeyCallback(windowHandle, null)
+            GLFW.glfwSetCharCallback(windowHandle, null)
+            GLFW.glfwSetMouseButtonCallback(windowHandle, null)
+            GLFW.glfwSetScrollCallback(windowHandle, null)
+            GLFW.glfwSetCursorPosCallback(windowHandle, null)
+            
             ImGui.getIO().fonts.clear()
             imGuiImplBlaze3D?.dispose()
             imGuiImplGl3?.shutdown()
