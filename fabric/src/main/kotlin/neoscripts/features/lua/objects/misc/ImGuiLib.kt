@@ -28,7 +28,11 @@ import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 import org.lwjgl.glfw.GLFW
+import org.lwjgl.glfw.GLFWCharCallbackI
+import org.lwjgl.glfw.GLFWCursorPosCallbackI
 import org.lwjgl.glfw.GLFWKeyCallbackI
+import org.lwjgl.glfw.GLFWMouseButtonCallbackI
+import org.lwjgl.glfw.GLFWScrollCallbackI
 import org.lwjgl.opengl.GL11C
 import org.lwjgl.opengl.GL30
 import org.lwjgl.opengl.GL30C
@@ -570,7 +574,11 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
 
     var windowHandle: Long = -1
 
-    private var originalKeyCallback: GLFWKeyCallbackI? = null
+    private var mcKeyCallback: GLFWKeyCallbackI? = null
+    private var mcCharCallback: GLFWCharCallbackI? = null
+    private var mcMouseButtonCallback: GLFWMouseButtonCallbackI? = null
+    private var mcScrollCallback: GLFWScrollCallbackI? = null
+    private var mcCursorPosCallback: GLFWCursorPosCallbackI? = null
 
     fun onGlfwInit() {
         if (windowHandle == -1L) {
@@ -586,8 +594,23 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             io.addConfigFlags(ImGuiConfigFlags.DockingEnable)
             io.backendFlags = ImGuiBackendFlags.HasMouseCursors
             windowHandle = Main.mc.window.handle()
+
+            mcKeyCallback = GLFW.glfwSetKeyCallback(windowHandle, null)
+            GLFW.glfwSetKeyCallback(windowHandle, mcKeyCallback)
+
+            mcCharCallback = GLFW.glfwSetCharCallback(windowHandle, null)
+            GLFW.glfwSetCharCallback(windowHandle, mcCharCallback)
+
+            mcMouseButtonCallback = GLFW.glfwSetMouseButtonCallback(windowHandle, null)
+            GLFW.glfwSetMouseButtonCallback(windowHandle, mcMouseButtonCallback)
+
+            mcScrollCallback = GLFW.glfwSetScrollCallback(windowHandle, null)
+            GLFW.glfwSetScrollCallback(windowHandle, mcScrollCallback)
+
+            mcCursorPosCallback = GLFW.glfwSetCursorPosCallback(windowHandle, null)
+            GLFW.glfwSetCursorPosCallback(windowHandle, mcCursorPosCallback)
+
             script.onImGuiInitEvent()
-            originalKeyCallback = GLFW.glfwSetKeyCallback(windowHandle, null)
             imGuiImplGlfw.init(windowHandle, true);
             imGuiImplGl3?.init()
         }
@@ -666,7 +689,17 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
 
     fun cleanup() {
         if (windowHandle != -1L) {
-            originalKeyCallback?.let { GLFW.glfwSetKeyCallback(windowHandle, it) }
+            GLFW.glfwSetKeyCallback(windowHandle, mcKeyCallback)
+            GLFW.glfwSetCharCallback(windowHandle, mcCharCallback)
+            GLFW.glfwSetMouseButtonCallback(windowHandle, mcMouseButtonCallback)
+            GLFW.glfwSetScrollCallback(windowHandle, mcScrollCallback)
+            GLFW.glfwSetCursorPosCallback(windowHandle, mcCursorPosCallback)
+
+            mcKeyCallback = null
+            mcCharCallback = null
+            mcMouseButtonCallback = null
+            mcScrollCallback = null
+            mcCursorPosCallback = null
 
             ImGui.getIO().fonts.clear()
             imGuiImplBlaze3D?.dispose()
