@@ -104,21 +104,21 @@ class PlayerObject : LuaValue() {
 
     private class GetTitleFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            val accessed = mc.gui as HudAccessor
+            val accessed = mc.gui.hud as HudAccessor
             return valueOf(accessed.title?.getFormattedString())
         }
     }
 
     private class GetSubTitleFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            val accessed = mc.gui as HudAccessor
+            val accessed = mc.gui.hud as HudAccessor
             return valueOf(accessed.subtitle?.getFormattedString())
         }
     }
 
     private class GetActionBarFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            val accessed = mc.gui as HudAccessor
+            val accessed = mc.gui.hud as HudAccessor
             return valueOf(accessed.actionBar?.getFormattedString())
         }
     }
