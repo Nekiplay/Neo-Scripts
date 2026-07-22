@@ -93,8 +93,6 @@ object Main : ClientModInitializer {
             LuaCommand.register(dispatcher, registryAccess)
         }
         // Load events
-        ColdTracker.init()
-        StatusBarTracker.init()
         RenderHelper.init()
         registerInbuilt()
         Utils.init()
