@@ -7,12 +7,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(value = GpuSurface.class, remap = false)   // цель – класс поверхности
+@Mixin(value = GpuSurface.class, remap = false)
 public class TailRenderMixin {
 
     @Inject(
-            method = "present",                    // метод, выполняющий смену буферов
-            at = @At("RETURN")                     // после выполнения
+            method = "present",
+            at = @At("RETURN")
     )
     private void runTickTail(CallbackInfo ci) {
         assert Main.LUA_MANAGER != null;
