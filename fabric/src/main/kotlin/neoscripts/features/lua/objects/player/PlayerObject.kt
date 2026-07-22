@@ -76,26 +76,9 @@ class PlayerObject : LuaValue() {
             "setRotation" -> SetPlayerRotationFunction()
             "setSilentRotation", "setServerRotation" -> SetPlayerSilentRotationFunction()
             "getName" -> GetPlayerNameFunction()
-            "getArea" -> GetPlayerAreaFunction()
-            "getRawLocation" -> GetPlayerRawLocationFunction()
-            "getLocation" -> GetPlayerLocationFunction()
-            "getProfile" -> GetPlayerProfileFunction()
-            "getProfileId" -> GetPlayerProfileIdFunction()
-            "getBits" -> GetPlayerBitsFunction()
-            "getPurse" -> GetPlayerPurseFunction()
-            "getHealth" -> GetPlayerHealthFunction()
-            "getMaxHealth" -> GetPlayerMaxHealthFunction()
-            "getMana" -> GetPlayerManaFunction()
-            "getMaxMana" -> GetPlayerMaxManaFunction()
-            "getDefence" -> GetPlayerDefenceFunction()
-            "getSpeed" -> GetPlayerSpeedFunction()
-            "getCold" -> GetPlayerColdFunction()
-            "getAir" -> GetPlayerAirFunction()
-            "getMaxAir" -> GetPlayerMaxAirFunction()
             "isSneaking" -> IsPlayerSneakingFunction()
             "isSprinting" -> IsPlayerSprintingFunction()
             "isOnGround" -> IsPlayerOnGroundFunction()
-            "isOnSkyBlock" -> IsPlayerOnSkyBlockFunction()
             "isHasLineOfSight" -> IsHasLineOfSight()
 
             "swingHand" -> SwingHandFunction()
@@ -199,26 +182,6 @@ class PlayerObject : LuaValue() {
                 return TRUE
             }
             return FALSE
-        }
-    }
-
-    private class GetPlayerAirFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getAir().value)
-            } else {
-                valueOf(0)
-            }
-        }
-    }
-
-    private class GetPlayerMaxAirFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getAir().max)
-            } else {
-                valueOf(0)
-            }
         }
     }
 
@@ -631,135 +594,6 @@ class PlayerObject : LuaValue() {
             return valueOf(mc.player?.name?.string ?: "Unknown")
         }
     }
-
-    private class GetPlayerAreaFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(Utils.getArea())
-        }
-    }
-
-    private class GetPlayerRawLocationFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(Utils.getRawLocation())
-        }
-    }
-
-    private class GetPlayerLocationFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(Utils.getLocation().name)
-        }
-    }
-
-    private class GetPlayerProfileFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(Utils.getProfile())
-            } else {
-                NIL
-            }
-        }
-    }
-
-    private class GetPlayerProfileIdFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(Utils.getProfileId())
-            } else {
-                NIL
-            }
-        }
-    }
-
-    private class GetPlayerBitsFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(Utils.getBits())
-            } else {
-                valueOf(0.0)
-            }
-        }
-    }
-
-    private class GetPlayerPurseFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(Utils.getPurse())
-            } else {
-                valueOf(0.0)
-            }
-        }
-    }
-
-    private class GetPlayerMaxHealthFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getHealth().max())
-            } else {
-                valueOf((mc.player?.health)?.toDouble() ?: 0.0)
-            }
-        }
-    }
-
-    private class GetPlayerHealthFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getHealth().value())
-            } else {
-                valueOf((mc.player?.health)?.toDouble() ?: 0.0)
-            }
-        }
-    }
-
-    private class GetPlayerDefenceFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getDefense())
-            } else {
-                valueOf(0)
-            }
-        }
-    }
-
-    private class GetPlayerSpeedFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getSpeed().value())
-            } else {
-                valueOf(0)
-            }
-        }
-    }
-
-    private class GetPlayerMaxManaFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getMana().max())
-            } else {
-                valueOf(0)
-            }
-        }
-    }
-
-    private class GetPlayerManaFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(StatusBarTracker.getMana().value())
-            } else {
-                valueOf(0)
-            }
-        }
-    }
-
-    private class GetPlayerColdFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                valueOf(ColdTracker.getCold())
-            } else {
-                valueOf(0)
-            }
-        }
-    }
-
     private class IsPlayerSneakingFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             return valueOf(mc.player?.isShiftKeyDown ?: false)
@@ -775,12 +609,6 @@ class PlayerObject : LuaValue() {
     private class IsPlayerOnGroundFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
             return valueOf(mc.player?.onGround() ?: false)
-        }
-    }
-
-    private class IsPlayerOnSkyBlockFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return valueOf(Utils.isOnSkyblock())
         }
     }
 

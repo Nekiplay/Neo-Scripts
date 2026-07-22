@@ -34,13 +34,6 @@ dependencies {
     implementation("net.fabricmc.fabric-api:fabric-api:${rootProject.properties["fabric_api_version"]}")
     implementation("net.fabricmc:fabric-language-kotlin:${rootProject.properties["fabric_kotlin_version"]}")
 
-    // HM-API (https://github.com/AzureAaron/hm-api/releases)
-    val hmAPi = "local:hm-api:1.0.3+26.1"
-    implementation(hmAPi)
-    include(hmAPi)
-
-    compileOnly(files("../libs/firmament.jar"))
-
     include(implementation("io.github.classgraph:classgraph:4.8.184")!!)
 
     // ImGUI
@@ -76,7 +69,7 @@ dependencies {
     // HWID System
     include(implementation("com.github.oshi:oshi-core:6.9.0")!!)
 
-    implementation(files("../libs/xaerominimap-fabric-26.1.2-25.3.14.jar"))
+    implementation(files("../libs/xaerominimap-fabric-26.2-26.4.2.jar"))
 }
 
 tasks {
