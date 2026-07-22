@@ -23,6 +23,7 @@
     "gui.GuiAccessor",
     "minecraft.ClientConnectionMixin",
     "minecraft.GamemodeAccessor",
+    "minecraft.LevelRenderStateAccessor",
     "minecraft.MixinKeyboardInput",
     "minecraft.MixinServerboundUseItemPacket",
     "minecraft.MouseHandlerMixin",

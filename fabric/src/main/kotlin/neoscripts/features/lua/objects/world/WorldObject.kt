@@ -10,6 +10,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaMutableBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaRaycast
+import com.nekiplay.neoscripts.mixins.minecraft.LevelRenderStateAccessor
 import com.nekiplay.neoscripts.mixins.minecraft.LevelRendererAccessor
 import com.nekiplay.neoscripts.utils.RaycastUtils
 import com.nekiplay.neoscripts.utils.RotationUtils
@@ -293,12 +294,11 @@ class WorldObject : LuaValue() {
             val accessed = mc.levelRenderer as LevelRendererAccessor
             var index = 1
             val list = tableOf()
-            accessed.`neoscripts$getBlockBreakingInfos`().forEach { (i, progress) ->
+            val renderState = accessed.`neoscripts$getLevelRenderState`() as LevelRenderStateAccessor
+            renderState.`neoscripts$getBlockBreakingRenderStates`().forEach {
                 val tableInfo = tableOf()
-                tableInfo.set("progress", valueOf(progress.progress))
-                tableInfo.set("blockpos", LuaBlockPos(progress.pos))
-                tableInfo.set("id", valueOf(progress.id))
-                tableInfo.set("updatedRenderTick", valueOf(progress.updatedRenderTick))
+                tableInfo.set("progress", valueOf(it.progress))
+                tableInfo.set("blockpos", LuaBlockPos(it.blockPos))
                 list.set(index, tableInfo)
                 index++
             }

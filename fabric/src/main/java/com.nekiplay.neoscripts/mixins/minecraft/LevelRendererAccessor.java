@@ -1,13 +1,12 @@
 package com.nekiplay.neoscripts.mixins.minecraft;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.server.level.BlockDestructionProgress;
+import net.minecraft.client.renderer.state.level.LevelRenderState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
 @Mixin(LevelRenderer.class)
 public interface LevelRendererAccessor {
-    @Accessor("destroyingBlocks")
-    Int2ObjectMap<BlockDestructionProgress> neoscripts$getBlockBreakingInfos();
+    @Accessor("levelRenderState")
+    LevelRenderState neoscripts$getLevelRenderState();
 }
