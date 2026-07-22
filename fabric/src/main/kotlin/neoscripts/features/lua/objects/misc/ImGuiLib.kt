@@ -612,30 +612,33 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
 
                 GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0)
             } else if (imGuiImplBlaze3D != null) {
-                // Blaze3D path: use CommandEncoder and RenderPass for GPU-agnostic rendering
-                imGuiImplBlaze3D!!.newFrame()
-                imGuiImplGlfw.newFrame()
-                ImGui.newFrame()
+                val textureView = framebuffer.getColorTextureView()
+                if (textureView != null) {
+                    // Blaze3D path: use CommandEncoder and RenderPass for GPU-agnostic rendering
+                    imGuiImplBlaze3D!!.newFrame()
+                    imGuiImplGlfw.newFrame()
+                    ImGui.newFrame()
 
-                script.onImGuiRenderEvent()
+                    script.onImGuiRenderEvent()
 
-                ImGui.render()
+                    ImGui.render()
 
-                val drawData = ImGui.getDrawData()
-                val device = RenderSystem.getDevice()
-                val encoder = device.createCommandEncoder()
+                    val drawData = ImGui.getDrawData()
+                    val device = RenderSystem.getDevice()
+                    val encoder = device.createCommandEncoder()
 
-                // Upload vertex, index, and uniform data before creating the render pass
-                imGuiImplBlaze3D!!.uploadDrawData(drawData, encoder)
+                    // Upload vertex, index, and uniform data before creating the render pass
+                    imGuiImplBlaze3D!!.uploadDrawData(drawData, encoder)
 
-                encoder.createRenderPass(
-                    Supplier { "ImGui" },
-                    framebuffer.getColorTextureView(),
-                    Optional.empty()
-                ).use { renderPass ->
-                    imGuiImplBlaze3D!!.renderDrawData(drawData, renderPass)
+                    encoder.createRenderPass(
+                        Supplier { "ImGui" },
+                        textureView,
+                        Optional.empty()
+                    ).use { renderPass ->
+                        imGuiImplBlaze3D!!.renderDrawData(drawData, renderPass)
+                    }
+                    encoder.submit()
                 }
-                encoder.submit()
             }
 
             if (ImGui.getIO().hasConfigFlags(ImGuiConfigFlags.ViewportsEnable)) {
