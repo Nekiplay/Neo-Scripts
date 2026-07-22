@@ -1,7 +1,6 @@
 package com.nekiplay.neoscripts.utils;
 
 import com.nekiplay.neoscripts.annotations.Init;
-import com.nekiplay.neoscripts.utils.purse.PurseChangeCause;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
