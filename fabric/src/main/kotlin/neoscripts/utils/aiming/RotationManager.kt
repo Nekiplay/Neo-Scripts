@@ -66,7 +66,7 @@ object RotationManager {
         Rotations.moveFixSilent = silentCorrection
 
 
-        if (Rotations.pauseInInventory && mc.screen != null) return
+        if (Rotations.pauseInInventory && mc.gui.screen() != null) return
 
         if (priority >= currentPriority) {
             if (yaw.isNaN() && pitch.isNaN()) resetRotate(priority)
@@ -184,7 +184,7 @@ object RotationManager {
                 player.xRot = originalSyncPitch
                 originalSyncPitch = Float.NaN
             }
-            val shouldReset = !(Rotations.pauseInInventory && mc.screen != null)
+            val shouldReset = !(Rotations.pauseInInventory && mc.gui.screen() != null)
             if (shouldReset) {
                 if (rotationSet) {
                     rotationSet = false

@@ -7,7 +7,6 @@
     "ClientPlayerInteractionManagerAccessor",
     "FramerateLimitTrackerMixin",
     "FrustumInvoker",
-    "GlConstMixin",
     "KeyboardMixin",
     "MinecraftClientAccessor",
     "PlayerListHudAccessor",
@@ -33,7 +32,6 @@
     "minecraft.packets.ClientPacketListenerMixin",
     "minecraft.packets.ServerboundUseItemPacketAccessor",
     "render.BlockEntityRenderStateAccessor",
-    "render.TextureFormatMixin"
   ],
   "client": [
     "NativeImageAccessor",

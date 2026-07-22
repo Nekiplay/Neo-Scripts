@@ -2,7 +2,6 @@ package com.nekiplay.neoscripts.utils.render;
 
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.shaders.UniformType;
-import com.mojang.blaze3d.textures.TextureFormat;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.nekiplay.neoscripts.Main;

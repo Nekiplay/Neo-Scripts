@@ -1,6 +1,6 @@
 package com.nekiplay.neoscripts.utils.render.primitive;
 
-import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.nekiplay.neoscripts.utils.render.Renderer;
 import com.nekiplay.neoscripts.utils.render.SkyblockerRenderPipelines;
 import com.nekiplay.neoscripts.utils.render.state.CursorLineRenderState;
@@ -10,29 +10,29 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 public final class CursorLineRenderer implements PrimitiveRenderer<CursorLineRenderState> {
-    static final CursorLineRenderer INSTANCE = new CursorLineRenderer();
+    protected static final CursorLineRenderer INSTANCE = new CursorLineRenderer();
 
     private CursorLineRenderer() {}
 
     @Override
     public void submitPrimitives(CursorLineRenderState state, CameraRenderState cameraState) {
-        BufferBuilder buffer = Renderer.getBuffer(SkyblockerRenderPipelines.LINES_THROUGH_WALLS);
+        VertexConsumer buffer = Renderer.getBuffer(SkyblockerRenderPipelines.LINES_THROUGH_WALLS);
         Matrix4f positionMatrix = new Matrix4f()
                 .translate((float) -cameraState.pos.x, (float) -cameraState.pos.y, (float) -cameraState.pos.z);
 
         // Start drawing the line from a point slightly in front of the camera
-        Vec3 point = state.point;
+        Vec3 point = state.point();
         Vec3 cameraPoint = cameraState.pos.add(new Vec3(cameraState.orientation.transform(new Vector3f(0, 0, -1))));
         Vector3f normal = point.toVector3f().sub((float) cameraPoint.x, (float) cameraPoint.y, (float) cameraPoint.z).normalize();
 
         buffer.addVertex(positionMatrix, (float) cameraPoint.x, (float) cameraPoint.y, (float) cameraPoint.z)
-                .setColor(state.colourComponents[0], state.colourComponents[1], state.colourComponents[2], state.alpha)
+                .setColor(state.colourComponents()[0], state.colourComponents()[1], state.colourComponents()[2], state.alpha())
                 .setNormal(normal.x(), normal.y(), normal.z())
-                .setLineWidth(state.lineWidth);
+                .setLineWidth(state.lineWidth());
 
         buffer.addVertex(positionMatrix, (float) point.x(), (float) point.y(), (float) point.z())
-                .setColor(state.colourComponents[0], state.colourComponents[1], state.colourComponents[2], state.alpha)
+                .setColor(state.colourComponents()[0], state.colourComponents()[1], state.colourComponents()[2], state.alpha())
                 .setNormal(normal.x(), normal.y(), normal.z())
-                .setLineWidth(state.lineWidth);
+                .setLineWidth(state.lineWidth());
     }
 }

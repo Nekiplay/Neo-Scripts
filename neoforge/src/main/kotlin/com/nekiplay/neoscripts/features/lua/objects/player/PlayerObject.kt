@@ -152,7 +152,7 @@ class PlayerObject : LuaValue() {
 
     private class GetBossBarFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            val bossOverlay = mc?.gui?.bossOverlay ?: return NIL
+            val bossOverlay = mc?.gui?.hud?.bossOverlay ?: return NIL
             val accessed = bossOverlay as BossHealthOverlayAccessor
             val eventsMap = accessed.events
             val table = tableOf()
@@ -182,7 +182,7 @@ class PlayerObject : LuaValue() {
             if (arg?.isstring() == true && arg2?.isstring() == true && arg3?.isnumber() == true) {
                 val type = SystemToast.SystemToastId(arg3.tonumber().tolong())
                 SystemToast.add(
-                    mc?.toastManager!!,
+                    mc.gui.toastManager(),
                     type,
                     Component.literal(arg.tojstring()),
                     Component.literal(arg2.tojstring())
@@ -520,7 +520,7 @@ class PlayerObject : LuaValue() {
         override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
             if (arg1.isnumber() && arg2.isnumber()) {
                 val player = mc.player
-                if (player != null && mc.screen == null) {
+                if (player != null && mc.gui.screen() == null) {
                     // Ограничиваем yaw в диапазоне -180° до 180°
                     var yaw = arg1.tofloat()
                     yaw %= 360f

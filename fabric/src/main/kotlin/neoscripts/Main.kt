@@ -8,12 +8,10 @@ import com.nekiplay.neoscripts.features.lua.LuaManager
 import com.nekiplay.neoscripts.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.neoscripts.features.modules.ModuleManager.registerInbuilt
 import com.nekiplay.neoscripts.sugar.MiningHandler
-import com.nekiplay.neoscripts.utils.NEURepoManager
 import com.nekiplay.neoscripts.utils.Utils
 import com.nekiplay.neoscripts.utils.render.RenderHelper
 import com.nekiplay.neoscripts.utils.scheduler.Scheduler
 import com.nekiplay.neoscripts.utils.trackers.ColdTracker
-import com.nekiplay.neoscripts.utils.trackers.PetCache
 import com.nekiplay.neoscripts.utils.trackers.StatusBarTracker
 import io.github.classgraph.ClassGraph
 import net.fabricmc.api.ClientModInitializer
@@ -96,12 +94,10 @@ object Main : ClientModInitializer {
         }
         // Load events
         ColdTracker.init()
-        PetCache.init()
         StatusBarTracker.init()
         RenderHelper.init()
         registerInbuilt()
         Utils.init()
-        NEURepoManager.init()
         MiningHandler.init()
 
         Scheduler.INSTANCE.scheduleCyclic(Runnable { Utils.update() }, 20)

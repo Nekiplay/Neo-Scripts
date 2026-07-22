@@ -2,6 +2,7 @@ package com.nekiplay.neoscripts.utils;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.nekiplay.neoscripts.Main;
 import com.nekiplay.neoscripts.annotations.Init;
 import com.nekiplay.neoscripts.events.SkyblockEvents;
 import com.nekiplay.neoscripts.utils.purse.PurseChangeCause;
@@ -52,8 +53,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.CRC32;
-
-import static com.nekiplay.neoscripts.utils.itemlist.recipes.SkyblockRecipe.LOGGER;
 
 public class Utils {
     public static final ObjectArrayList<String> STRING_SCOREBOARD = new ObjectArrayList<>();
@@ -254,7 +253,7 @@ public class Utils {
                 }
             }
         } catch (IndexOutOfBoundsException e) {
-            LOGGER.error("[Neo Scripts] Failed to get location from sidebar", e);
+            Main.LOGGER.error("[Neo Scripts] Failed to get location from sidebar", e);
         }
         return "Unknown";
     }
@@ -361,7 +360,7 @@ public class Utils {
                     SkyblockEvents.PURSE_CHANGE.invoker().onPurseChange(changeSinceLast, PurseChangeCause.getCause(changeSinceLast));
                     Utils.purse = newPurse;
                 } catch (NumberFormatException e) {
-                    LOGGER.error("[Skyblocker] Failed to parse purse string. Input: '{}'", purseString, e);
+                    Main.LOGGER.error("[Skyblocker] Failed to parse purse string. Input: '{}'", purseString, e);
                 }
             }
         });
@@ -400,7 +399,7 @@ public class Utils {
                 bits = Integer.parseInt(bitsString.replaceAll("[^0-9.]", "").strip());
             }
         } catch (IndexOutOfBoundsException e) {
-            LOGGER.error("[Neo Scripts] Failed to get bits from sidebar", e);
+            Main.LOGGER.error("[Neo Scripts] Failed to get bits from sidebar", e);
         }
         return bits;
     }
@@ -457,9 +456,7 @@ public class Utils {
                 locationRaw = "";
                 location = Location.UNKNOWN;
                 map = "";
-
-                LocalPlayer player = Minecraft.getInstance().player;
-                LOGGER.error("[Skyblocker] Failed to update your current location! Some features of the mod may not work correctly :( - Error: {}", error);
+                Main.LOGGER.error("[Skyblocker] Failed to update your current location! Some features of the mod may not work correctly :( - Error: {}", error);
             }
 
             case PlayerInfoS2CPacket(var playerRank, var packageRank, var monthlyPackageRank, var _prefix) -> {

@@ -55,7 +55,7 @@ fun MultiPlayerGameMode.attackBlock(): Boolean {
 }
 
 fun MultiPlayerGameMode.attackBlock(hitResult: HitResult): Boolean {
-    if (hitResult.type == HitResult.Type.BLOCK && mc?.screen == null && mc?.player?.isBlocking == false) {
+    if (hitResult.type == HitResult.Type.BLOCK && mc?.gui?.screen() == null && mc?.player?.isBlocking == false) {
         val blockHitResult = hitResult as BlockHitResult
         val blockPos = blockHitResult.blockPos
         mc?.level?.getBlockState(blockPos)?.isAir?.let {
@@ -199,7 +199,7 @@ fun MultiPlayerGameMode.attackEntity(): Boolean {
 
 fun MultiPlayerGameMode.attackEntity(hitResult: HitResult): Boolean {
     val player = mc.player ?: return false
-    if (hitResult.type == HitResult.Type.ENTITY && mc.screen == null && mc.player?.isBlocking == false) {
+    if (hitResult.type == HitResult.Type.ENTITY && mc.gui.screen() == null && mc.player?.isBlocking == false) {
         this.attack(player, (hitResult as EntityHitResult).entity)
         mc.player?.swing(InteractionHand.MAIN_HAND)
         return true
@@ -210,7 +210,7 @@ fun MultiPlayerGameMode.attackEntity(hitResult: HitResult): Boolean {
 fun MultiPlayerGameMode.interactBlock(): Boolean {
     val player = mc?.player ?: return false
     val hitResult = getRotationRaycast()
-    if (hitResult.type == HitResult.Type.BLOCK && mc?.screen == null && mc?.player?.isBlocking == false) {
+    if (hitResult.type == HitResult.Type.BLOCK && mc?.gui?.screen() == null && mc?.player?.isBlocking == false) {
         for (hand in InteractionHand.entries) {
             val wasSneaking: Boolean = mc?.player?.isShiftKeyDown ?: false
             mc?.player?.isShiftKeyDown = false
@@ -232,7 +232,7 @@ fun MultiPlayerGameMode.interactBlock(hitResult: HitResult?): Boolean {
     val player = mc?.player ?: return false
     if (hitResult == null) return false
 
-    if (hitResult.type == HitResult.Type.BLOCK && mc?.screen == null && mc?.player?.isBlocking == false) {
+    if (hitResult.type == HitResult.Type.BLOCK && mc?.gui?.screen() == null && mc?.player?.isBlocking == false) {
         for (hand in InteractionHand.entries) {
             val wasSneaking: Boolean = mc?.player?.isShiftKeyDown ?: false
             mc?.player?.isShiftKeyDown = false
@@ -256,7 +256,7 @@ fun MultiPlayerGameMode.interactEntity(): Boolean {
 
 fun MultiPlayerGameMode.interactEntity(hitResult: HitResult): Boolean {
     val player = mc?.player ?: return false
-    if (hitResult.type == HitResult.Type.ENTITY && mc?.screen == null) {
+    if (hitResult.type == HitResult.Type.ENTITY && mc?.gui?.screen() == null) {
         for (hand in InteractionHand.entries) {
             val actionResult2: InteractionResult =
                 this.interact(player, (hitResult as EntityHitResult).entity, hitResult, hand)
@@ -272,7 +272,7 @@ fun MultiPlayerGameMode.interactEntity(hitResult: HitResult): Boolean {
 }
 
 fun MultiPlayerGameMode.useItem(): Boolean {
-    if (mc?.screen == null) {
+    if (mc.gui.screen() == null) {
         val player = Minecraft.getInstance().player ?: return false
         val result = this.useItem(player, InteractionHand.MAIN_HAND)
         if (result is InteractionResult.Success) {

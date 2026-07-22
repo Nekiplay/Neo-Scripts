@@ -6,10 +6,12 @@ import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuSampler;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.nekiplay.neoscripts.utils.render.MatrixHelper;
 import com.nekiplay.neoscripts.utils.render.Renderer;
 import com.nekiplay.neoscripts.utils.render.state.BlockHologramRenderState;
 import net.fabricmc.fabric.api.client.renderer.v1.mesh.QuadEmitter;
+import net.fabricmc.fabric.api.client.renderer.v1.render.AltModelBlockRenderer;
 import net.minecraft.client.gui.render.TextureSetup;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
@@ -17,33 +19,32 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import org.joml.Matrix4f;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderPipelines;
 
 public final class BlockHologramRenderer implements PrimitiveRenderer<BlockHologramRenderState> {
-    protected static final BlockHologramRenderer INSTANCE = new BlockHologramRenderer();
-    @SuppressWarnings("unused")
     private static final Minecraft MINECRAFT = Minecraft.getInstance();
+    private final AltModelBlockRenderer altModelBlockRenderer;
 
-    private BlockHologramRenderer() {}
+    protected BlockHologramRenderer(AltModelBlockRenderer altModelBlockRenderer) {
+        this.altModelBlockRenderer = altModelBlockRenderer;
+    }
 
     @Override
     public void submitPrimitives(BlockHologramRenderState state, CameraRenderState cameraState) {
         Matrix4f positionMatrix = new Matrix4f()
-                .translate((float) (state.pos.getX() - cameraState.pos.x()), (float) (state.pos.getY() - cameraState.pos.y()), (float) (state.pos.getZ() - cameraState.pos.z()));
+                .translate((float) (state.pos().getX() - cameraState.pos.x()), (float) (state.pos().getY() - cameraState.pos.y()), (float) (state.pos().getZ() - cameraState.pos.z()));
         PoseStack pose = MatrixHelper.toStack(positionMatrix);
 
         @SuppressWarnings("deprecation")
         GpuTextureView blocksAtlasTexture = MINECRAFT.getTextureManager().getTexture(TextureAtlas.LOCATION_BLOCKS).getTextureView();
         GpuSampler sampler = RenderSystem.getSamplerCache().getSampler(AddressMode.CLAMP_TO_EDGE, AddressMode.CLAMP_TO_EDGE, FilterMode.LINEAR, FilterMode.NEAREST, true);
-        MultiBufferSource bufferSource = t -> Renderer.getBuffer(RenderPipelines.TRANSLUCENT_BLOCK, TextureSetup.singleTextureWithLightmap(blocksAtlasTexture, sampler), state.alpha);
+        VertexConsumer buffer = Renderer.getBuffer(RenderPipelines.TRANSLUCENT_BLOCK, TextureSetup.singleTextureWithLightmap(blocksAtlasTexture, sampler), state.alpha());
         QuadEmitter quadEmitter = net.fabricmc.fabric.api.client.renderer.v1.Renderer.get().quadEmitter(quad -> {
-            // The render type can be passed as null since it does not matter
-            quad.buffer(OverlayTexture.NO_OVERLAY, pose.last(), bufferSource.getBuffer(null));
+            quad.buffer(OverlayTexture.NO_OVERLAY, pose.last(), buffer);
         });
-        BlockStateModel model = MINECRAFT.getModelManager().getBlockStateModelSet().get(state.state);
-        long blockSeed = state.state.getSeed(state.pos);
+        BlockStateModel model = MINECRAFT.getModelManager().getBlockStateModelSet().get(state.state());
+        long blockSeed = state.state().getSeed(state.pos());
 
-        state.altModelBlockRenderer.tesselateBlock(quadEmitter, 0, 0, 0, MINECRAFT.level, state.pos, state.state, model, blockSeed);
+        this.altModelBlockRenderer.tesselateBlock(quadEmitter, 0, 0, 0, MINECRAFT.level, state.pos(), state.state(), model, blockSeed);
     }
 }

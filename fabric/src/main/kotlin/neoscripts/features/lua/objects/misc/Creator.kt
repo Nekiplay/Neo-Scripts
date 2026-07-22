@@ -2,16 +2,12 @@ package com.nekiplay.neoscripts.features.lua.objects.misc
 
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaBox
-import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaMutableBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
-import com.nekiplay.neoscripts.utils.itemlist.ItemRepository
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
-import net.minecraft.core.registries.BuiltInRegistries
-import net.minecraft.resources.Identifier
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3

@@ -17,9 +17,6 @@ class LuaMutableBlockPos(val pos: BlockPos.MutableBlockPos): LuaUserdata(pos) {
 
             "set" -> set()
 
-            "bottomCenter" -> LuaVector3d(pos.bottomCenter)
-            "center" -> LuaVector3d(pos.center)
-
             "above" -> LuaBlockPos(pos.above())
             "below" -> LuaBlockPos(pos.below())
             "east" -> LuaBlockPos(pos.east())

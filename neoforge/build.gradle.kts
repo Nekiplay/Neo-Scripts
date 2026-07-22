@@ -47,7 +47,7 @@ neoForge {
 }
 
 dependencies {
-    implementation("thedarkcolour:kotlinforforge-neoforge:5.3.0")
+    implementation("thedarkcolour:kotlinforforge-neoforge:5.12.0")
 
     val luaj = "local:luaj-jse:3.0.2"
     implementation(luaj)

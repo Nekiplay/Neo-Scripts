@@ -1,19 +1,19 @@
 package com.nekiplay.neoscripts.utils.render.primitive;
 
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Quaternionf;
 
 public interface PrimitiveCollector {
 
     <S> void submitVanilla(S state, VanillaRenderer<S> renderer);
 
-    void submitBeaconBeam(BlockPos pos, float[] colourComponents);
+    void submitFilledBoxWithBeaconBeam(BlockPos pos, float[] colourComponents, float alpha, boolean throughWalls);
+
+    void submitFilledBoxWithBeaconBeam(AABB box, float[] colourComponents, float alpha, boolean throughWalls);
 
     void submitFilledBox(BlockPos pos, float[] colourComponents, float alpha, boolean throughWalls);
 
@@ -32,7 +32,7 @@ public interface PrimitiveCollector {
      * <p>
      * Tip: To draw lines from the center of a block, offset the X, Y and Z each by 0.5
      * <p>
-     * Note: This is super messed up when drawing long lines. Tried different normals and {@link VertexFormat.Mode#LINES} but nothing worked.
+     * Note: This is super messed up when drawing long lines. Tried different normals and {@link DrawMode#LINES} but nothing worked.
      *
      * @param points    The points from which to draw lines between
      * @param lineWidth The width of the lines
@@ -53,17 +53,15 @@ public interface PrimitiveCollector {
      * @param textureHeight amount of texture rendered height
      * @param renderOffset  offset once it's been placed in the world facing the player
      * @param texture       reference to texture to render
-     * @param shaderColour   colour to apply to the texture (use white if none)
+     * @param shaderColor   colour to apply to the texture (use white if none)
      */
     void submitTexturedQuad(Vec3 pos, float width, float height, float textureWidth, float textureHeight, Vec3 renderOffset, Identifier texture, float[] shaderColour, float alpha, boolean throughWalls);
 
-    void submitBlockHologram(BlockPos pos, BlockState state);
+    void submitBlockHologram(BlockPos pos, BlockState state, float alpha);
 
-    void submitText(Component text, Vec3 pos, boolean throughWalls);
+    void submitText(Component text, Vec3 pos, int color, boolean throughWalls);
 
-    void submitText(Component text, Vec3 pos, float scale, boolean throughWalls);
-
-    void submitText(Component text, Vec3 pos, float scale, float yOffset, boolean throughWalls);
+    void submitText(Component text, Vec3 pos, int color, float scale, boolean throughWalls);
 
     void submitText(Component text, Vec3 pos, int color, float scale, float yOffset, boolean throughWalls);
 

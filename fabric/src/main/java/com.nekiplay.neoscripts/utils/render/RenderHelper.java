@@ -91,7 +91,7 @@ public class RenderHelper {
     }
 
     public static Camera getCamera() {
-        return CLIENT.gameRenderer.getMainCamera();
+        return CLIENT.gameRenderer.mainCamera();
     }
 
     /**

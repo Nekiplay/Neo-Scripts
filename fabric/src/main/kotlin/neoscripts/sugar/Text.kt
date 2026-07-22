@@ -4,12 +4,60 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Style
 import kotlin.jvm.optionals.getOrDefault
+
+// Маппинги для преобразования RGB обратно в имена JSON-цветов (вместо ChatFormatting.getName)
+private val VANILLA_COLORS_JSON = mapOf(
+    0x000000 to "black",
+    0x0000AA to "dark_blue",
+    0x00AA00 to "dark_green",
+    0x00AAAA to "dark_aqua",
+    0xAA0000 to "dark_red",
+    0xAA00AA to "dark_purple",
+    0xFFAA00 to "gold",
+    0xAAAAAA to "gray",
+    0x555555 to "dark_gray",
+    0x5555FF to "blue",
+    0x55FF55 to "green",
+    0x55FFFF to "aqua",
+    0xFF5555 to "red",
+    0xFF55FF to "light_purple",
+    0xFFFF55 to "yellow",
+    0xFFFFFF to "white"
+)
+
+// Маппинги для ванильных цветовых кодов § (вместо ChatFormatting.char)
+private val VANILLA_COLORS_CHAR = mapOf(
+    0x000000 to '0',
+    0x0000AA to '1',
+    0x00AA00 to '2',
+    0x00AAAA to '3',
+    0xAA0000 to '4',
+    0xAA00AA to '5',
+    0xFFAA00 to '6',
+    0xAAAAAA to '7',
+    0x555555 to '8',
+    0x5555FF to '9',
+    0x55FF55 to 'a',
+    0x55FFFF to 'b',
+    0xFF5555 to 'c',
+    0xFF55FF to 'd',
+    0xFFFF55 to 'e',
+    0xFFFFFF to 'f'
+)
+
+// Замена для стилей ChatFormatting (жирный, курсив и т.д.)
+enum class LegacyFormat(val char: Char) {
+    BOLD('l'),
+    ITALIC('o'),
+    UNDERLINE('n'),
+    STRIKETHROUGH('m'),
+    OBFUSCATED('k')
+}
 
 fun Component.getJsonString(): String {
     val flatList = this.toFlatList()
@@ -24,13 +72,13 @@ fun Component.getJsonString(): String {
 
         val style = comp.style
 
-        // Цвет
+        // Цвет: используем наш маппинг вместо ChatFormatting
         style.color?.let { color ->
-            val vanillaColor = ChatFormatting.entries
-                .firstOrNull { it.isColor && it.color != null && it.color == color.value }
+            val colorVal = color.value
+            val vanillaName = VANILLA_COLORS_JSON[colorVal]
             obj.addProperty(
                 "color",
-                vanillaColor?.name?.lowercase() ?: String.format("#%06X", color.value)
+                vanillaName ?: String.format("#%06X", colorVal)
             )
         }
 
@@ -79,7 +127,6 @@ fun Component.getJsonString(): String {
             when (hover) {
                 is HoverEvent.ShowText -> {
                     hoverObj.addProperty("action", "show_text")
-                    // Рекурсивно сериализуем вложенный Component
                     hoverObj.add(
                         "contents",
                         JsonParser.parseString(hover.value.getJsonString())
@@ -116,10 +163,8 @@ fun Component.getJsonString(): String {
         return obj
     }
 
-    // Первый сегмент — корень
     val root = buildSegmentJson(flatList[0])
 
-    // Остальные — в extra
     if (flatList.size > 1) {
         val extra = JsonArray()
         for (i in 1 until flatList.size) {
@@ -135,36 +180,32 @@ fun Component.getFormattedString(): String {
     val sb = StringBuilder()
     val ordered = this.visualOrderText
 
-    var currentColor: ChatFormatting? = null
-    var currentStyles = mutableSetOf<ChatFormatting>()
+    var currentColorChar: Char? = null
+    var currentStyles = mutableSetOf<LegacyFormat>()
 
     ordered.accept { _: Int, style: Style?, codePoint: Int ->
         val char = Character.toChars(codePoint)[0]
 
-        // Определяем новый цвет
-        val newColor = if (style?.getColor() != null) {
-            nearestVanillaColor(style.getColor()!!.value)
-        } else {
-            null
-        }
+        // Определяем новый цвет (через ближайший char)
+        val newColorChar = style?.color?.let { nearestVanillaColorChar(it.value) }
 
         // Определяем новые стили
-        val newStyles = mutableSetOf<ChatFormatting>()
-        if (style?.isBold == true) newStyles.add(ChatFormatting.BOLD)
-        if (style?.isItalic == true) newStyles.add(ChatFormatting.ITALIC)
-        if (style?.isUnderlined == true) newStyles.add(ChatFormatting.UNDERLINE)
-        if (style?.isStrikethrough == true) newStyles.add(ChatFormatting.STRIKETHROUGH)
-        if (style?.isObfuscated == true) newStyles.add(ChatFormatting.OBFUSCATED)
+        val newStyles = mutableSetOf<LegacyFormat>()
+        if (style?.isBold == true) newStyles.add(LegacyFormat.BOLD)
+        if (style?.isItalic == true) newStyles.add(LegacyFormat.ITALIC)
+        if (style?.isUnderlined == true) newStyles.add(LegacyFormat.UNDERLINE)
+        if (style?.isStrikethrough == true) newStyles.add(LegacyFormat.STRIKETHROUGH)
+        if (style?.isObfuscated == true) newStyles.add(LegacyFormat.OBFUSCATED)
 
         // Если цвет изменился или это начало строки
-        if (newColor != currentColor || sb.isEmpty()) {
-            if (newColor != null) {
-                sb.append('§').append(newColor.char)
-            } else if (currentColor != null) {
-                // Сбрасываем цвет, если он был установлен, но теперь null
-                sb.append('§').append(ChatFormatting.RESET.char)
+        if (newColorChar != currentColorChar || sb.isEmpty()) {
+            if (newColorChar != null) {
+                sb.append('§').append(newColorChar)
+            } else if (currentColorChar != null) {
+                // Сбрасываем цвет
+                sb.append('§').append('r')
             }
-            currentColor = newColor
+            currentColorChar = newColorChar
         }
 
         // Добавляем стили, которые появились
@@ -174,15 +215,13 @@ fun Component.getFormattedString(): String {
             }
         }
 
-        // Убираем стили, которые пропали (кроме RESET, который сбрасывает всё)
+        // Убираем стили, которые пропали
         for (styleFlag in currentStyles) {
             if (!newStyles.contains(styleFlag)) {
-                // Вместо удаления отдельных стилей используем RESET и применяем заново
-                // Это проще, чем отслеживать каждый стиль отдельно
-                if (newStyles.isNotEmpty() || newColor != null) {
-                    sb.append('§').append(ChatFormatting.RESET.char)
-                    if (newColor != null) {
-                        sb.append('§').append(newColor.char)
+                if (newStyles.isNotEmpty() || newColorChar != null) {
+                    sb.append('§').append('r')
+                    if (newColorChar != null) {
+                        sb.append('§').append(newColorChar)
                     }
                     for (s in newStyles) {
                         sb.append('§').append(s.char)
@@ -201,21 +240,19 @@ fun Component.getFormattedString(): String {
     return sb.toString()
 }
 
-private fun nearestVanillaColor(rgb: Int): ChatFormatting? {
-    var best: ChatFormatting? = null
+// Поиск ближайшего цвета и возврат его символа ('a', 'b', 'c' и т.д.)
+private fun nearestVanillaColorChar(rgb: Int): Char {
+    var bestChar = 'f'
     var bestDist = Long.MAX_VALUE
-    for (f in ChatFormatting.entries) {
-        if (!f.isColor) continue
-        val frgb: Int = f.color ?: continue
-        if (frgb == -1) continue
+    for ((frgb, char) in VANILLA_COLORS_CHAR) {
         val dr = (((rgb shr 16) and 0xFF) - ((frgb shr 16) and 0xFF)).toLong()
-        val dg = (((rgb shr 8) and 0xFF) - ((frgb shr 8) and 0xFF)).toLong()
-        val db = ((rgb and 0xFF) - (frgb and 0xFF)).toLong()
+        val dg = (((rgb shr 8)  and 0xFF) - ((frgb shr 8)  and 0xFF)).toLong()
+        val db = ((rgb and 0xFF)           - (frgb and 0xFF)          ).toLong()
         val dist = dr * dr + dg * dg + db * db
         if (dist < bestDist) {
             bestDist = dist
-            best = f
+            bestChar = char
         }
     }
-    return best
+    return bestChar
 }

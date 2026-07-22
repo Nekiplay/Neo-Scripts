@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -47,12 +48,17 @@ public class WindowMixin {
         }
     }
 
-    @Inject(at = @At("HEAD"),method = "onGameLoadFinished")
-    private void onGlfwInit(Minecraft.GameLoadCookie gameLoadCookie, CallbackInfo ci){
+    @Inject(at = @At("HEAD"),method = "createTitle")
+    private void onGlfwInit(CallbackInfoReturnable<String> cir){
         File scriptsDir = new File(neuDir, "scripts");
         if (!scriptsDir.exists()) {
             scriptsDir.mkdir();
         }
         loadStartupScripts(scriptsDir);
+    }
+
+    @Inject(at = @At("RETURN"),method = "<init>")
+    private void onGlfwReturn(GameConfig args, CallbackInfo ci){
+        //ImguiLoader.onGlfwInit();
     }
 }

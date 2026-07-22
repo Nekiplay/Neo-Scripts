@@ -5,12 +5,5 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 
-public class TextRenderState {
-    public Font.PreparedText glyphs;
-    public Vec3 pos;
-    public float scale;
-    public float yOffset;
-    public boolean throughWalls;
-    @Nullable
-    public Quaternionf quaternion = null;
+public record TextRenderState(Font.PreparedText glyphs, Vec3 pos, float scale, float yOffset, boolean throughWalls) {
 }

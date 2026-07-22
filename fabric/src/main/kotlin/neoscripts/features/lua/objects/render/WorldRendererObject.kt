@@ -108,7 +108,6 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             "renderLinesFromPoints" -> RenderLinesFromPointsFunction()
             "renderLineFromCursor" -> RenderLineFromCursorFunction()
             "renderImage" -> RenderImageFunction()
-            "renderBeaconBeam" -> RenderBeaconBeamFunction()
             "renderQuad" -> SubmitQuadFunction()
             "renderHologramBlock" -> RenderHologramBlockFunction()
             else -> NIL
@@ -160,7 +159,8 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             val (blockPos, blockState) = parseBlockPosWithBlockState(args.arg(1), args.arg(2), args.arg(3), args.arg(4))
                 ?: return NIL
 
-            context.submitBlockHologram(blockPos, blockState)
+            val alpha = args.arg(5).checkdouble()
+            context.submitBlockHologram(blockPos, blockState, alpha.toFloat())
             return TRUE
         }
     }
@@ -223,26 +223,6 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             val alphaComponent = alpha / 255.0f
 
             context.submitQuad(points, colorComponents, alphaComponent, throughWalls)
-            return TRUE
-        }
-    }
-
-    private inner class RenderBeaconBeamFunction : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            if (context == null) return NIL
-
-            val blockPos = parseBlockPos(args.arg(1), args.arg(2), args.arg(3)) ?: BlockPos(0, 0, 0)
-            val red = args.optint(4, 0)
-            val green = args.optint(5, 0)
-            val blue = args.optint(6, 0)
-
-            val colorComponents = floatArrayOf(
-                red.toFloat() / 255.0f,
-                green.toFloat() / 255.0f,
-                blue.toFloat() / 255.0f
-            )
-
-            context.submitBeaconBeam(blockPos, colorComponents)
             return TRUE
         }
     }

@@ -14,9 +14,6 @@ class LuaBlockPos(val pos: BlockPos): LuaUserdata(pos) {
             "y" -> valueOf(pos.y)
             "z" -> valueOf(pos.z)
 
-            "bottomCenter" -> LuaVector3d(pos.bottomCenter)
-            "center" -> LuaVector3d(pos.center)
-
             "above" -> LuaBlockPos(pos.above())
             "below" -> LuaBlockPos(pos.below())
             "east" -> LuaBlockPos(pos.east())

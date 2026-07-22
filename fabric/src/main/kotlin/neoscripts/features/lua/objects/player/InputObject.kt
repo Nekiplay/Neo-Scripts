@@ -288,7 +288,7 @@ class InputObject: LuaValue() {
             return if (arg != null && arg.isnumber()) {
                 val slot = arg.toint()
                 if (slot in 0..8) {
-                    if (mc.screen == null) {
+                    if (mc.gui.screen() == null) {
                         mc.gameMode?.silentUse(slot)
                         return TRUE
                     }
@@ -308,7 +308,7 @@ class InputObject: LuaValue() {
             return if (arg != null && arg.isnumber()) {
                 val slot = arg.toint()
                 if (slot in 0..8) {
-                    if (mc.screen == null) {
+                    if (mc.gui.screen() == null) {
                         mc.player?.inventory?.selectedSlot = slot
                         return TRUE
                     }
@@ -325,7 +325,7 @@ class InputObject: LuaValue() {
     private class SetPressedSprintingFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
             return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
+                if (mc.gui.screen() == null) {
                     val sprintKey = mc.options.keySprint
                     sprintKey.isDown = arg.toboolean()
                     val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
@@ -346,7 +346,7 @@ class InputObject: LuaValue() {
     private class SetPressedForwardFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
             return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
+                if (mc.gui.screen() == null) {
                     val sprintKey = mc.options.keyUp
                     sprintKey.isDown = arg.toboolean()
                     val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
@@ -367,7 +367,7 @@ class InputObject: LuaValue() {
     private class SetPressedBackFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
             return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
+                if (mc.gui.screen() == null) {
                     val sprintKey = mc.options.keyDown
                     sprintKey.isDown = arg.toboolean()
                     val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
@@ -388,7 +388,7 @@ class InputObject: LuaValue() {
     private class SetPressedLeftFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
             return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
+                if (mc.gui.screen() == null) {
                     val sprintKey = mc.options.keyLeft
                     sprintKey.isDown = arg.toboolean()
                     val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
@@ -409,7 +409,7 @@ class InputObject: LuaValue() {
     private class SetPressedRightFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
             return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
+                if (mc.gui.screen() == null) {
                     val sprintKey = mc.options.keyRight
                     sprintKey.isDown = arg.toboolean()
                     val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
@@ -430,7 +430,7 @@ class InputObject: LuaValue() {
     private class SetPressedJumpFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
             return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
+                if (mc.gui.screen() == null) {
                     val sprintKey = mc.options.keyJump
                     sprintKey.isDown = arg.toboolean()
                     val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
@@ -451,7 +451,7 @@ class InputObject: LuaValue() {
     private class SetPressedSneakFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
             return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
+                if (mc.gui.screen() == null) {
                     val sprintKey = mc.options.keyShift
                     sprintKey.isDown = arg.toboolean()
                     val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
@@ -472,7 +472,7 @@ class InputObject: LuaValue() {
     private class SetPressedAttackFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
             return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
+                if (mc.gui.screen() == null) {
                     val sprintKey = mc.options.keyAttack
                     sprintKey.isDown = arg.toboolean()
                     val key = KeyMappingHelper.getBoundKeyOf(sprintKey)
@@ -493,7 +493,7 @@ class InputObject: LuaValue() {
     private class SetPressedUseFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
             return if (arg != null && arg.isboolean()) {
-                if (mc.screen == null) {
+                if (mc.gui.screen() == null) {
                     val sprintKey = mc.options.keyUse
                     sprintKey.isDown = arg.toboolean()
                     KeyMapping.set(KeyMappingHelper.getBoundKeyOf(sprintKey), arg.toboolean())

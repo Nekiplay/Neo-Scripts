@@ -296,7 +296,7 @@ class InputObject: LuaValue() {
             return if (arg != null && arg.isnumber()) {
                 val slot = arg.toint()
                 if (slot in 0..8) {
-                    if (mc?.screen == null) {
+                    if (mc?.gui?.screen() == null) {
                         mc?.gameMode?.silentUse(slot)
                         return TRUE
                     }
@@ -316,7 +316,7 @@ class InputObject: LuaValue() {
             return if (arg != null && arg.isnumber()) {
                 val slot = arg.toint()
                 if (slot in 0..8) {
-                    if (mc?.screen == null) {
+                    if (mc?.gui?.screen() == null) {
                         mc?.player?.inventory?.selectedSlot = slot
                         return TRUE
                     }
@@ -332,7 +332,7 @@ class InputObject: LuaValue() {
 
     private class SetPressedSprintingFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
-            if (arg == null || !arg.isboolean() || mc?.screen != null) {
+            if (arg == null || !arg.isboolean() || mc?.gui?.screen() != null) {
                 return if (arg != null && arg.isboolean()) FALSE else NIL
             }
 
@@ -351,7 +351,7 @@ class InputObject: LuaValue() {
 
     private class SetPressedForwardFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
-            if (arg == null || !arg.isboolean() || mc?.screen != null) {
+            if (arg == null || !arg.isboolean() || mc?.gui?.screen() != null) {
                 return if (arg != null && arg.isboolean()) FALSE else NIL
             }
 
@@ -370,7 +370,7 @@ class InputObject: LuaValue() {
 
     private class SetPressedBackFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
-            if (arg == null || !arg.isboolean() || mc?.screen != null) {
+            if (arg == null || !arg.isboolean() || mc?.gui?.screen() != null) {
                 return if (arg != null && arg.isboolean()) FALSE else NIL
             }
 
@@ -389,7 +389,7 @@ class InputObject: LuaValue() {
 
     private class SetPressedLeftFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
-            if (arg == null || !arg.isboolean() || mc?.screen != null) {
+            if (arg == null || !arg.isboolean() || mc?.gui?.screen() != null) {
                 return if (arg != null && arg.isboolean()) FALSE else NIL
             }
 
@@ -408,7 +408,7 @@ class InputObject: LuaValue() {
 
     private class SetPressedRightFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
-            if (arg == null || !arg.isboolean() || mc?.screen != null) {
+            if (arg == null || !arg.isboolean() || mc?.gui?.screen() != null) {
                 return if (arg != null && arg.isboolean()) FALSE else NIL
             }
 
@@ -427,7 +427,7 @@ class InputObject: LuaValue() {
 
     private class SetPressedJumpFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
-            if (arg == null || !arg.isboolean() || mc?.screen != null) {
+            if (arg == null || !arg.isboolean() || mc?.gui?.screen() != null) {
                 return if (arg != null && arg.isboolean()) FALSE else NIL
             }
 
@@ -446,7 +446,7 @@ class InputObject: LuaValue() {
 
     private class SetPressedSneakFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
-            if (arg == null || !arg.isboolean() || mc?.screen != null) {
+            if (arg == null || !arg.isboolean() || mc?.gui?.screen() != null) {
                 return if (arg != null && arg.isboolean()) FALSE else NIL
             }
 
@@ -465,7 +465,7 @@ class InputObject: LuaValue() {
 
     private class SetPressedAttackFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
-            if (arg == null || !arg.isboolean() || mc?.screen != null) {
+            if (arg == null || !arg.isboolean() || mc?.gui?.screen() != null) {
                 return if (arg != null && arg.isboolean()) FALSE else NIL
             }
 
@@ -484,7 +484,7 @@ class InputObject: LuaValue() {
 
     private class SetPressedUseFunction : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
-            if (arg == null || !arg.isboolean() || mc?.screen != null) {
+            if (arg == null || !arg.isboolean() || mc?.gui?.screen() != null) {
                 return if (arg != null && arg.isboolean()) FALSE else NIL
             }
 

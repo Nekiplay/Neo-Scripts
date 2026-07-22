@@ -14,11 +14,11 @@ public class InventoryUtils {
     }
 
     public static void clickSlot(int slot, int button, ContainerInput actionType) {
-        if (mc.player != null && mc.screen != null) {
+        if (mc.player != null && mc.gui.screen() != null) {
             if (mc.player.containerMenu instanceof AbstractContainerMenu) {
                 clickSlotWithId(slot, button, actionType, mc.player.containerMenu.containerId);
             }
-            else if (mc.screen instanceof InventoryScreen) {
+            else if (mc.gui.screen() instanceof InventoryScreen) {
                 clickSlotWithId(slot, button, actionType, mc.player.inventoryMenu.containerId);
             }
         }

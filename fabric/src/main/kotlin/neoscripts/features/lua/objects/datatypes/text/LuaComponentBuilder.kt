@@ -38,13 +38,16 @@ class LuaComponentBuilder(private var text: String = "") : LuaUserdata(LuaCompon
         var style = Style.EMPTY
 
         color?.let { c ->
-            val fmt = ChatFormatting.getByName(c)
-            if (fmt != null && fmt.isColor) {
-                style = style.withColor(fmt)
-            } else if (c.startsWith("#")) {
-                try {
-                    style = style.withColor(TextColor.fromRgb(Integer.parseInt(c.removePrefix("#"), 16)))
-                } catch (_: NumberFormatException) {}
+            val fmt = ChatFormatting.getByCode(c.toCharArray().first())
+            if (fmt != null) {
+                if (fmt != null) {
+                    style = style.withColor(fmt)
+                } else if (c.startsWith("#")) {
+                    try {
+                        style = style.withColor(TextColor.fromRgb(Integer.parseInt(c.removePrefix("#"), 16)))
+                    } catch (_: NumberFormatException) {
+                    }
+                }
             }
         }
 

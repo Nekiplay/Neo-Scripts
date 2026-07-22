@@ -20,7 +20,7 @@ data class CurrentTabList(
 )
 
 fun LocalPlayer.getTab(): CurrentTabList {
-    val tab = mc.gui.tabList ?: return CurrentTabList(Optional.empty(), Optional.empty(), listOf())
+    val tab = mc.gui.hud.tabList ?: return CurrentTabList(Optional.empty(), Optional.empty(), listOf())
     val tabAccessor = tab as PlayerListHudAccessor
 
     val entries = tabAccessor.collectPlayerEntries_neoscripts()

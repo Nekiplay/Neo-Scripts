@@ -6,14 +6,12 @@
     "ClientChunkManagerMixin",
     "ClientPlayerInteractionManagerAccessor",
     "FramerateLimitTrackerMixin",
-    "GlConstMixin",
     "KeyboardMixin",
     "MinecraftClientAccessor",
     "MixinClientLoginNetworkHandlerMixin",
     "MouseMixin",
     "PlayerListHudAccessor",
     "TailRenderMixin",
-    "TextureFormatMixin",
     "WindowMixin",
     "entity.MixinEntity",
     "entity.MixinFireworkRocketEntity",
@@ -42,7 +40,8 @@
     "gui.AbstractContainerMenuMixin",
     "gui.AbstractContainerScreenMixin",
     "gui.AbstractSignEditScreenAccessor",
-    "minecraft.LevelRendererAccessor"
+    "minecraft.LevelRendererAccessor",
+    "renderer.GpuDeviceAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

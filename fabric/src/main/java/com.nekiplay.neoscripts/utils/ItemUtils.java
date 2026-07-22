@@ -6,9 +6,6 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.properties.PropertyMap;
 import com.mojang.serialization.JsonOps;
-import com.nekiplay.neoscripts.utils.itemlist.Attribute;
-import com.nekiplay.neoscripts.utils.itemlist.Attributes;
-import com.nekiplay.neoscripts.utils.itemlist.ItemRepository;
 import com.nekiplay.neoscripts.utils.itemlist.PetInfo;
 import net.minecraft.core.component.DataComponentHolder;
 import net.minecraft.core.component.DataComponents;
@@ -257,9 +254,7 @@ public class ItemUtils {
             }
             case "POTION" -> "POTION_" + customData.getStringOr("potion", "").toUpperCase(Locale.ENGLISH) + ";" + customData.getIntOr("potion_level", 0);
             case "ATTRIBUTE_SHARD" -> {
-                Attribute attribute = Attributes.getAttributeFromItemName(stack);
-                if (attribute == null) yield id;
-                yield ItemRepository.getBazaarStocks().getOrDefault(attribute.apiId(), id);
+                yield id;
             }
             case "PARTY_HAT_CRAB", "BALLOON_HAT_2024", "BALLOON_HAT_2025" -> id + "_" + customData.getStringOr("party_hat_color", "").toUpperCase(Locale.ENGLISH);
             case "PARTY_HAT_CRAB_ANIMATED" -> "PARTY_HAT_CRAB_" + customData.getStringOr("party_hat_color", "").toUpperCase(Locale.ENGLISH) + "_ANIMATED";

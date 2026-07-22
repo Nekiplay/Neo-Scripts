@@ -24,7 +24,6 @@ class ModulesObject: LuaValue() {
 
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
-            "screenshot" -> ScreenshotFunction()
             "getLoadedScripts" -> GetLoadedScriptsFunction()
             "getScriptRequirements" -> GetScriptRequirements()
             "loadScript" -> LoadScript()
@@ -37,42 +36,6 @@ class ModulesObject: LuaValue() {
         } as LuaValue
     }
 
-    class ScreenshotFunction : OneArgFunction() {
-        override fun call(arg: LuaValue): LuaValue {
-            val callback = arg.checkfunction() ?: return NIL
-
-            val client = Minecraft.getInstance()
-            val renderTarget = client.mainRenderTarget
-
-            client.execute {
-                try {
-                    Screenshot.takeScreenshot(renderTarget) { nativeImage: NativeImage ->
-                        try {
-                            val baos = ByteArrayOutputStream()
-                            val channel = Channels.newChannel(baos)
-                            (nativeImage as NativeImageAccessor).invokeWriteToChannel(channel)
-                            val bytes = baos.toByteArray()
-                            val bytesTable = tableOf()
-                            for (i in bytes.indices) {
-                                bytesTable.set(i + 1, valueOf(bytes[i].toInt() and 0xFF))
-                            }
-                            client.execute {
-                                callback.call(bytesTable)
-                            }
-                        } catch (ex: Exception) {
-                            ex.printStackTrace()
-                        } finally {
-                            nativeImage.close()
-                        }
-                    }
-                } catch (ex: Exception) {
-                    ex.printStackTrace()
-                }
-            }
-
-            return NIL
-        }
-    }
 
     private class GetHWID : ZeroArgFunction() {
         override fun call(): LuaValue {

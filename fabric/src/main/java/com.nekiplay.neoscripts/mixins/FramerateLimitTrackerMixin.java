@@ -34,7 +34,7 @@ public class FramerateLimitTrackerMixin {
     @Overwrite
     public FramerateLimitTracker.FramerateThrottleReason getThrottleReason() {
         // Проверяем только OUT_OF_LEVEL_MENU (меню паузы/главное меню)
-        if (this.minecraft.level == null || this.minecraft.screen != null) {
+        if (this.minecraft.level == null || this.minecraft.gui.screen() != null) {
             return FramerateLimitTracker.FramerateThrottleReason.OUT_OF_LEVEL_MENU;
         }
         return FramerateLimitTracker.FramerateThrottleReason.NONE;

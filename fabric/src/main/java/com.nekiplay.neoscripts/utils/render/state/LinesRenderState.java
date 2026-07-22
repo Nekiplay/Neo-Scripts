@@ -2,10 +2,5 @@ package com.nekiplay.neoscripts.utils.render.state;
 
 import net.minecraft.world.phys.Vec3;
 
-public class LinesRenderState {
-    public Vec3[] points;
-    public float[] colourComponents;
-    public float alpha;
-    public float lineWidth;
-    public boolean throughWalls;
+public record LinesRenderState(Vec3[] points, float[] colourComponents, float alpha, float lineWidth, boolean walls) {
 }

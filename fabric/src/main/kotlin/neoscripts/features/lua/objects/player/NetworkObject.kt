@@ -116,7 +116,7 @@ class NetworkObject : LuaValue() {
         override fun call(host: LuaValue, port: LuaValue): LuaValue {
             val minecraft = Minecraft.getInstance()
 
-            if (minecraft.screen != null) {
+            if (minecraft.gui.screen() != null) {
                 val serverAddress = ServerAddress(host.tojstring(), port.toint())
 
                 val serverData = ServerData("My Server", host.tojstring() + ":" + port.toint(), ServerData.Type.OTHER)
@@ -124,7 +124,7 @@ class NetworkObject : LuaValue() {
                 disconnectFromServer("Connecting to another server")
 
                 ConnectScreen.startConnecting(
-                    minecraft.screen!!,
+                    minecraft.gui.screen()!!,
                     minecraft,
                     serverAddress,
                     serverData,

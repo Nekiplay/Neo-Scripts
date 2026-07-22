@@ -2,11 +2,5 @@ package com.nekiplay.neoscripts.utils.render.state;
 
 import net.minecraft.world.phys.Vec3;
 
-public class SphereRenderState {
-    public Vec3 centre;
-    public float radius;
-    public int segments;
-    public int rings;
-    public int colour;
-    public boolean throughWalls;
+public record SphereRenderState(Vec3 centre, float radius, int segments, int rings, int colour, boolean walls) {
 }

@@ -865,7 +865,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 callback.call(LuaValue.valueOf(commandName), argsTable, LuaValue.valueOf(Main.mc.player?.name?.string ?: ""))
             } catch (e: Exception) {
                 Main.LOGGER?.error("${Main.LOG_PREFIX}Error executing Lua command: /$commandName", e)
-                Main.mc.gui.chat.addClientSystemMessage(Component.literal("§cError executing command: ${e.message}"))
+                Main.mc.gui.hud.chat.addClientSystemMessage(Component.literal("§cError executing command: ${e.message}"))
             }
         }
     }

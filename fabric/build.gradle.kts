@@ -7,14 +7,6 @@ plugins {
     id("com.gradleup.shadow") version "9.3.0"
 }
 
-configurations.all {
-    resolutionStrategy.eachDependency {
-        if (requested.group == "org.lwjgl") {
-            useVersion(lwjgl_version)
-        }
-    }
-}
-
 repositories {
     flatDir {
         dirs("../libs")
@@ -46,18 +38,6 @@ dependencies {
     val hmAPi = "local:hm-api:1.0.3+26.1"
     implementation(hmAPi)
     include(hmAPi)
-
-    // NEU RepoParser (https://repo.nea.moe/#/releases/moe/nea/neurepoparser)
-    include(implementation("moe.nea:neurepoparser:${rootProject.properties["repoparser_version"]}")!!)
-
-    // Networth Calculator (https://maven.azureaaron.net/#/releases/net/azureaaron/networth-calculator)
-    include(implementation("net.azureaaron:networth-calculator:${rootProject.properties["networth_calculator_version"]}")!!)
-
-    // JGit used pull data from the NEU item repo
-    include(implementation("org.eclipse.jgit:org.eclipse.jgit:${rootProject.properties["jgit_version"]}")!!)
-
-    // Legacy Item DFU (https://maven.azureaaron.net/releases/net/azureaaron/legacy-item-dfu)
-    include(implementation("net.azureaaron:legacy-item-dfu:${rootProject.properties["legacy_item_dfu_version"]}")!!)
 
     compileOnly(files("../libs/firmament.jar"))
 

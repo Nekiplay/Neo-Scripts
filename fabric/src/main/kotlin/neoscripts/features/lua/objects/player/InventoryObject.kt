@@ -77,7 +77,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
 
      private class GetAnvilText : ZeroArgFunction() {
          override fun call(): LuaValue {
-             val screen = mc.screen
+             val screen = mc.gui.screen()
              if (screen is AnvilScreen) {
                  val accessed = screen as AnvilScreenAccessor
                  return valueOf(accessed.name.value)
@@ -89,7 +89,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
 
      private class DoneAnvilFunction : OneArgFunction() {
          override fun call(arg1: LuaValue): LuaValue {
-             val screen = mc.screen
+             val screen = mc.gui.screen()
              if (screen is AnvilScreen && arg1.isstring()) {
                  mc.player?.connection?.send(ServerboundRenameItemPacket(arg1.tojstring()));
                  return TRUE
@@ -101,7 +101,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
 
      private class IsAnvilOpened : ZeroArgFunction() {
          override fun call(): LuaValue {
-             val screen = mc?.screen
+             val screen = mc?.gui?.screen()
              return if (screen is AnvilScreen) {
                  TRUE
              } else {
@@ -112,7 +112,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
 
     private class IsChatOpened : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc?.screen
+            val screen = mc?.gui?.screen()
             return if (screen is ChatScreen) {
                 TRUE
             } else {
@@ -123,7 +123,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
 
     private class IsContainerScreenOpened : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc?.screen
+            val screen = mc?.gui?.screen()
             return if (screen is AbstractContainerScreen<*>) {
                 TRUE
             } else {
@@ -136,7 +136,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         override fun call(): LuaValue {
             val player = mc.player
             if (player != null) {
-                mc.setScreen(InventoryScreen(player))
+                mc.gui.setScreen(InventoryScreen(player))
                 player.sendOpenInventory()
                 return TRUE
             }
@@ -148,14 +148,14 @@ import org.luaj.vm2.lib.ZeroArgFunction
 
     private class IsAnyScreenOpened : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc.screen
+            val screen = mc.gui.screen()
             return valueOf(screen != null)
         }
     }
 
     private class DoneSignFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc.screen
+            val screen = mc.gui.screen()
             if (screen is SignEditScreen) {
                 val sign = screen as AbstractSignEditScreenAccessor
 
@@ -180,7 +180,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
     private class SetSignTextFunction : TwoArgFunction() {
         override fun call(arg: LuaValue, arg2: LuaValue): LuaValue {
             if (arg.isnumber() && arg2.isstring()) {
-                val screen = mc.screen
+                val screen = mc.gui.screen()
                 if (screen is SignEditScreen) {
                     val sign = screen as AbstractSignEditScreenAccessor
                     sign.messages[arg.toint()] = arg2.tojstring()
@@ -196,7 +196,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
     private class GetSignTextFunction : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             if (arg.isnumber()) {
-                val screen = mc.screen
+                val screen = mc.gui.screen()
                 if (screen is SignEditScreen) {
                     val sign = screen as AbstractSignEditScreenAccessor
                     return valueOf(sign.messages[arg.toint()])
@@ -217,7 +217,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
 
     private class IsSignOpenedFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc.screen
+            val screen = mc.gui.screen()
             return if (screen is SignEditScreen) {
                 TRUE
             } else {
@@ -228,7 +228,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
 
     private class GetChestTitleFunction : ZeroArgFunction() {
         override fun call(): LuaValue {
-            val screen = mc.screen
+            val screen = mc.gui.screen()
             return if (screen is AbstractContainerScreen<*>) {
                 valueOf(screen.title.getFormattedString())
             } else {

@@ -18,7 +18,6 @@ import com.nekiplay.neoscripts.utils.RotationUtils
 import com.nekiplay.neoscripts.utils.Utils
 import com.nekiplay.neoscripts.utils.aiming.RotationManager
 import com.nekiplay.neoscripts.utils.trackers.ColdTracker
-import com.nekiplay.neoscripts.utils.trackers.PetCache
 import com.nekiplay.neoscripts.utils.trackers.StatusBarTracker
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.components.LerpingBossEvent
@@ -92,7 +91,6 @@ class PlayerObject : LuaValue() {
             "getSpeed" -> GetPlayerSpeedFunction()
             "getCold" -> GetPlayerColdFunction()
             "getAir" -> GetPlayerAirFunction()
-            "getPet" -> GetPlayerPetFunction()
             "getMaxAir" -> GetPlayerMaxAirFunction()
             "getRank" -> GetPlayerRankFunction()
             "isSneaking" -> IsPlayerSneakingFunction()
@@ -165,7 +163,7 @@ class PlayerObject : LuaValue() {
 
     private class GetBossBarFunction : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            val bossOverlay = mc.gui.bossOverlay ?: return NIL
+            val bossOverlay = mc.gui.hud.bossOverlay ?: return NIL
             val eventsMap = bossOverlay.events
             val table = tableOf()
             if (eventsMap == null || eventsMap.isEmpty()) {
@@ -194,7 +192,7 @@ class PlayerObject : LuaValue() {
             if (arg?.isstring() == true && arg2?.isstring() == true && arg3?.isnumber() == true) {
                 val type = SystemToast.SystemToastId(arg3.tonumber().tolong())
                 SystemToast.add(
-                    mc.toastManager,
+                    mc.gui.toastManager(),
                     type,
                     Component.literal(arg.tojstring()),
                     Component.literal(arg2.tojstring())
@@ -202,38 +200,6 @@ class PlayerObject : LuaValue() {
                 return TRUE
             }
             return FALSE
-        }
-    }
-
-    private class GetPlayerPetFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            return if (Utils.isOnSkyblock()) {
-                val pet = PetCache.getCurrentPet()
-                if (pet != null) {
-                    val table = tableOf()
-                    if (pet.name.isPresent) {
-                        table.set("name", valueOf(pet.name.get()))
-                    }
-                    table.set("type", valueOf(pet.type))
-                    table.set("exp", valueOf(pet.exp))
-                    if (pet.item.isPresent) {
-                        table.set("item", valueOf(pet.item.get()))
-                    }
-                    if (pet.skin.isPresent) {
-                        table.set("skin", valueOf(pet.skin.get()))
-                    }
-                    table.set("tier", valueOf(pet.tier.name))
-                    if (pet.uuid.isPresent) {
-                        table.set("uuid", valueOf(pet.uuid.get()))
-                    }
-                    table
-                }
-                else {
-                    NIL
-                }
-            } else {
-                NIL
-            }
         }
     }
 
@@ -604,7 +570,7 @@ class PlayerObject : LuaValue() {
         override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
             if (arg1.isnumber() && arg2.isnumber()) {
                 val player = mc.player
-                if (player != null && mc.screen == null) {
+                if (player != null && mc.gui.screen() == null) {
                     // Ограничиваем yaw в диапазоне -180° до 180°
                     var yaw = arg1.tofloat()
                     yaw %= 360f
