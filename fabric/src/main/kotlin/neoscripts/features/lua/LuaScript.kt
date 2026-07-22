@@ -35,7 +35,6 @@ import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.neoscripts.features.lua.objects.camera.CameraLib
 import com.nekiplay.neoscripts.features.lua.objects.world.BlockScannerObject
 import com.nekiplay.neoscripts.features.lua.objects.world.WorldObject
-import com.nekiplay.neoscripts.utils.Location
 import com.nekiplay.neoscripts.utils.misc.input.KeyAction
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands
@@ -52,7 +51,6 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaError
-import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction

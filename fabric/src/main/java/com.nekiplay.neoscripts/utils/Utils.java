@@ -1,29 +1,15 @@
 package com.nekiplay.neoscripts.utils;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.nekiplay.neoscripts.Main;
 import com.nekiplay.neoscripts.annotations.Init;
-import com.nekiplay.neoscripts.events.SkyblockEvents;
 import com.nekiplay.neoscripts.utils.purse.PurseChangeCause;
-import com.nekiplay.neoscripts.utils.scheduler.MessageScheduler;
-import com.nekiplay.neoscripts.utils.scheduler.Scheduler;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.multiplayer.PlayerInfo;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.util.Util;
 import net.minecraft.world.scores.*;
-import org.jetbrains.annotations.NotNull;
 import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import oshi.hardware.ComputerSystem;
@@ -39,8 +25,6 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.zip.CRC32;
 
 public class Utils {

@@ -5,7 +5,6 @@ import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.events.KeyEvent
 import com.nekiplay.neoscripts.events.MouseButtonEvent
 import com.nekiplay.neoscripts.events.PacketEvent
-import com.nekiplay.neoscripts.events.SkyblockEvents
 import com.nekiplay.neoscripts.events.main.Callback
 import com.nekiplay.neoscripts.events.player.AddItemInventoryEvent
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaBlockState
@@ -30,7 +29,6 @@ import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket
-import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket
 import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket
 import net.minecraft.network.protocol.game.ClientboundSetTimePacket
@@ -396,15 +394,6 @@ object LuaEvents : ClientModule() {
             allow
         })
 
-        SkyblockEvents.LOCATION_CHANGE.register { location ->
-            LUA_MANAGER?.scripts?.values?.forEach { script ->
-                try {
-                    script.onLocationChangeEvent(location)
-                } catch (e: Exception) {
-                    // Обработка ошибок
-                }
-            }
-        }
         AddItemInventoryEvent.EVENT.register { event ->
             var allow = true
             LUA_MANAGER?.scripts?.values?.forEach { script ->
