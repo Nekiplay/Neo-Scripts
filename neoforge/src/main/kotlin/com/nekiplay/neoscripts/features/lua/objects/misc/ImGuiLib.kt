@@ -561,7 +561,11 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
             io.setBackendFlags(ImGuiBackendFlags.HasMouseCursors)
             script.onImGuiInitEvent()
             imGuiGlfw.init(Main.mc?.getWindow()?.handle() ?: 0, true)
-            imGuiGl3.init()
+            try {
+                imGuiGl3.init()
+            } catch (e: Exception) {
+                Main.logger.warn("Failed to initialize ImGui GL3 backend: ${e.message}")
+            }
             windowHandle = Main.mc?.getWindow()?.handle() ?: 0
         }
     }
