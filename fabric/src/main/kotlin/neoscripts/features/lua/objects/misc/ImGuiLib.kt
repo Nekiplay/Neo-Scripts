@@ -45,8 +45,8 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
     public val queue: ImDrawCommandQueue = ImDrawCommandQueue()
 
     var imGuiImplGlfw: ImGuiImplGlfw = ImGuiImplGlfw()
-    var imGuiImplGl3: ImGuiImplGl3 = ImGuiImplGl3()
-    var imGuiImplBlaze3D: ImGuiImplBlaze3D = ImGuiImplBlaze3D()
+    var imGuiImplGl3: ImGuiImplGl3? = null // зачем ты их оба за раз инициализировал
+    var imGuiImplBlaze3D: ImGuiImplBlaze3D? = null
 
     override fun typename(): String = "imgui"
     override fun tojstring(): String = "ImGuiObject"
@@ -587,7 +587,12 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
 
             script.onImGuiInitEvent()
             imGuiImplGlfw.init(windowHandle, true);
-            imGuiImplGl3?.init()
+            if (Minecraft.getInstance().options.preferredGraphicsBackend().get() != PreferredGraphicsApi.VULKAN) {
+                imGuiImplGl3 = ImGuiImplGl3()
+                imGuiImplGl3?.init()
+            } else {
+                imGuiImplBlaze3D = ImGuiImplBlaze3D()
+            }
         }
     }
 
