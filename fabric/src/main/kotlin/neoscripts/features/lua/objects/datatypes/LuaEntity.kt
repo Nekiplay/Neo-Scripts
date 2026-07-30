@@ -38,6 +38,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "name" -> valueOf(entity.name.string)
             "identifier" -> valueOf(BuiltInRegistries.ENTITY_TYPE.getKey(entity.type).toString())
             "display_name" -> valueOf(entity.displayName?.getFormattedString()) ?: NIL
+            "custom_name" -> valueOf(entity.customName?.getFormattedString()) ?: NIL
             "type" -> valueOf(entity.type.toString())
 
             // Позиция и движение
