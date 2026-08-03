@@ -2,8 +2,6 @@ package com.nekiplay.neoscripts.features.lua
 
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.StringArgumentType
-import com.mojang.brigadier.builder.ArgumentBuilder
-import com.mojang.brigadier.builder.RequiredArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
@@ -65,9 +63,6 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 
 class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
-    companion object {
-        private const val MAX_COMMAND_ARGS = 64
-    }
     // Локальный стек загрузки для этого конкретного экземпляра скрипта
     private val loadingStack = Stack<String>()
     private val systemModuleCache = ConcurrentHashMap<String, LuaValue>()
@@ -761,27 +756,20 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         val suggestionsCallback = commandSuggestionsCallbacks[commandName]
 
         if (suggestionsCallback != null) {
-            // С автодополнением: цепочка отдельных word-аргументов, чтобы префикс-фильтр Бриджира
-            // применялся только к текущему аргументу, а не ко всему вводу
-            var previous: ArgumentBuilder<FabricClientCommandSource, *> = commandBuilder
-            for (i in 1..MAX_COMMAND_ARGS) {
-                val argName = "arg$i"
-                val argNode: RequiredArgumentBuilder<FabricClientCommandSource, String> =
-                    ClientCommands.argument(argName, StringArgumentType.word())
-                        .suggests { context, builder ->
-                            getSuggestionsFromLua(commandName, context, builder, suggestionsCallback, i)
-                        }
-                        .executes { context ->
-                            val args = ArrayList<String>()
-                            for (k in 1..i) {
-                                args.add(context.getArgument("arg$k", String::class.java))
-                            }
-                            executeLuaCommand(commandName, args.toTypedArray(), context.source)
-                            1
-                        }
-                previous.then(argNode)
-                previous = argNode
-            }
+            // С автодополнением: один greedy-узел ловит подсказки на ЛЮБОЙ позиции аргумента,
+            // а смещение (createOffset) заставляет фильтр Бриджира сравнивать только текущее слово,
+            // а не весь ввод (иначе X не начинается с «render » и отбрасывается)
+            commandBuilder.then(
+                ClientCommands.argument("args", StringArgumentType.greedyString())
+                    .suggests { context, builder ->
+                        getSuggestionsFromLua(commandName, context, builder, suggestionsCallback)
+                    }
+                    .executes { context ->
+                        val args = StringArgumentType.getString(context, "args").split(" ").toTypedArray()
+                        executeLuaCommand(commandName, args, context.source)
+                        1
+                    }
+            )
         } else {
             // Без автодополнения
             commandBuilder.then(
@@ -807,32 +795,33 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         commandName: String,
         context: CommandContext<FabricClientCommandSource>,
         builder: SuggestionsBuilder,
-        suggestionsCallback: LuaValue,
-        argIndex: Int
+        suggestionsCallback: LuaValue
     ): CompletableFuture<Suggestions> {
         return try {
-            // Текущий ввод пользователя (в этом word-узле — только текущий аргумент)
-            val input = builder.remaining
-
-            // Получаем весь введенный текст команды
             val fullInput = builder.input
 
-            // Уже заполненные аргументы (до текущего)
-            val completedArgs = ArrayList<String>()
-            for (k in 1 until argIndex) {
-                try {
-                    completedArgs.add(context.getArgument("arg$k", String::class.java))
-                } catch (e: IllegalArgumentException) {
-                    break
-                }
+            val baseStart = builder.start
+            val rem = builder.remaining
+
+            val sliceStart = if (rem.isBlank()) 0
+            else {
+                val lastSpace = rem.lastIndexOf(' ')
+                if (lastSpace == -1) 0 else lastSpace + 1
             }
+            val offset = baseStart + sliceStart
+
+			val prior = if (rem.isBlank()) "" else rem.substring(0, sliceStart)
+            val completedArgs = prior.split(' ').filter { it.isNotBlank() }
+            val argIndex = completedArgs.size + 1
+            val currentArg = if (rem.isBlank() || rem.endsWith(" ")) "" else rem.substring(sliceStart)
+            val sugBuilder = builder.createOffset(offset)
 
             // Создаем таблицу с информацией для Lua
             val infoTable = LuaValue.tableOf()
-            infoTable.set("input", LuaValue.valueOf(input))
+            infoTable.set("input", LuaValue.valueOf(currentArg))
             infoTable.set("fullInput", LuaValue.valueOf(fullInput))
             infoTable.set("argIndex", LuaValue.valueOf(argIndex))
-            infoTable.set("currentArg", LuaValue.valueOf(input))
+            infoTable.set("currentArg", LuaValue.valueOf(currentArg))
             infoTable.set("args", LuaValue.listOf(completedArgs.map { LuaValue.valueOf(it) }.toTypedArray()))
 
             // Вызываем Lua callback
@@ -848,26 +837,26 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
                     // Поддержка как строк, так и таблиц с tooltip
                     if (suggestion.isstring()) {
-                        builder.suggest(suggestion.tojstring())
+                        sugBuilder.suggest(suggestion.tojstring())
                     } else if (suggestion.istable()) {
                         val suggestionTable = suggestion.checktable()
                         val text = suggestionTable.get("text").tojstring()
                         val tooltip = suggestionTable.get("tooltip")
 
                         if (!tooltip.isnil()) {
-                            builder.suggest(text, Component.literal(tooltip.tojstring()))
+                            sugBuilder.suggest(text, Component.literal(tooltip.tojstring()))
                         } else {
-                            builder.suggest(text)
+                            sugBuilder.suggest(text)
                         }
                     }
                     i++
                 }
             } else if (result.isstring()) {
                 // Если вернули строку, добавляем как единственное предложение
-                builder.suggest(result.tojstring())
+                sugBuilder.suggest(result.tojstring())
             }
 
-            CompletableFuture.completedFuture(builder.build())
+            CompletableFuture.completedFuture(sugBuilder.build())
         } catch (e: Exception) {
             Main.LOGGER?.error("${Main.LOG_PREFIX}Error getting suggestions for command /$commandName", e)
             CompletableFuture.completedFuture(builder.build())
