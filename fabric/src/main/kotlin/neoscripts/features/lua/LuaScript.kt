@@ -33,6 +33,7 @@ import com.nekiplay.neoscripts.features.lua.objects.player.WindowObject
 import com.nekiplay.neoscripts.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.neoscripts.features.lua.objects.camera.CameraLib
+import com.nekiplay.neoscripts.features.lua.objects.misc.UDPLib
 import com.nekiplay.neoscripts.features.lua.objects.world.BlockScannerObject
 import com.nekiplay.neoscripts.features.lua.objects.world.WorldObject
 import com.nekiplay.neoscripts.utils.misc.input.KeyAction
@@ -111,6 +112,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
     // Script-specific libraries
     private var tcpLib: TCPLib? = null
+    private var udpLib: UDPLib? = null
     private var threadLib: ThreadLib? = null
     var imguiLib: ImGuiLib? = null
     private var djlLibrary: DJLLuaTrainer? = null
@@ -1351,6 +1353,10 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 if (tcpLib == null) tcpLib = TCPLib()
                 tcpLib!!
             }
+            "udp" -> {
+                if (udpLib == null) udpLib = UDPLib()
+                udpLib!!
+            }
             "threads" -> {
                 if (threadLib == null) threadLib = ThreadLib()
                 threadLib!!
@@ -1501,7 +1507,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         // Очищаем библиотеки
         threadLib?.stopAllThreads()
         tcpLib?.cleanup()
-
+        udpLib?.cleanup()
         for (command in commandCallbacks.keys) {
             val dispatcher = commandDispatchers[command]
             if (dispatcher != null) {
@@ -1536,8 +1542,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             titleCallbacks.clear()
             actionBarCallbacks.clear()
         }
-        imguiLib?.cleanup()
         imguiLib?.queue?.clear()
+        imguiLib?.cleanup()
         djlLibrary?.models?.clear()
         djlLibrary?.predictors?.clear()
         djlLibrary?.inputShapes?.clear()
