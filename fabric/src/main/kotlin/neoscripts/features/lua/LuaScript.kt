@@ -810,67 +810,67 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         suggestionsCallback: LuaValue,
         argIndex: Int
     ): CompletableFuture<Suggestions> {
-        return CompletableFuture.supplyAsync {
-            try {
-                // Текущий ввод пользователя (в этом word-узле — только текущий аргумент)
-                val input = builder.remaining
+        return try {
+            // Текущий ввод пользователя (в этом word-узле — только текущий аргумент)
+            val input = builder.remaining
 
-                // Получаем весь введенный текст команды
-                val fullInput = builder.input
+            // Получаем весь введенный текст команды
+            val fullInput = builder.input
 
-                // Уже заполненные аргументы (до текущего)
-                val completedArgs = ArrayList<String>()
-                for (k in 1 until argIndex) {
-                    try {
-                        completedArgs.add(context.getArgument("arg$k", String::class.java))
-                    } catch (e: IllegalArgumentException) {
-                        break
-                    }
+            // Уже заполненные аргументы (до текущего)
+            val completedArgs = ArrayList<String>()
+            for (k in 1 until argIndex) {
+                try {
+                    completedArgs.add(context.getArgument("arg$k", String::class.java))
+                } catch (e: IllegalArgumentException) {
+                    break
                 }
-
-                // Создаем таблицу с информацией для Lua
-                val infoTable = LuaValue.tableOf()
-                infoTable.set("input", LuaValue.valueOf(input))
-                infoTable.set("fullInput", LuaValue.valueOf(fullInput))
-                infoTable.set("argIndex", LuaValue.valueOf(argIndex))
-                infoTable.set("currentArg", LuaValue.valueOf(input))
-                infoTable.set("args", LuaValue.listOf(completedArgs.map { LuaValue.valueOf(it) }.toTypedArray()))
-
-                // Вызываем Lua callback
-                val result = suggestionsCallback.call(infoTable)
-
-                // Обрабатываем результат
-                if (result.istable()) {
-                    val suggestions = result.checktable()
-                    var i = 1
-                    while (true) {
-                        val suggestion = suggestions.get(i)
-                        if (suggestion.isnil()) break
-
-                        // Поддержка как строк, так и таблиц с tooltip
-                        if (suggestion.isstring()) {
-                            builder.suggest(suggestion.tojstring())
-                        } else if (suggestion.istable()) {
-                            val suggestionTable = suggestion.checktable()
-                            val text = suggestionTable.get("text").tojstring()
-                            val tooltip = suggestionTable.get("tooltip")
-
-                            if (!tooltip.isnil()) {
-                                builder.suggest(text, Component.literal(tooltip.tojstring()))
-                            } else {
-                                builder.suggest(text)
-                            }
-                        }
-                        i++
-                    }
-                } else if (result.isstring()) {
-                    // Если вернули строку, добавляем как единственное предложение
-                    builder.suggest(result.tojstring())
-                }
-            } catch (e: Exception) {
-                Main.LOGGER?.error("${Main.LOG_PREFIX}Error getting suggestions for command /$commandName", e)
             }
-            builder.build()
+
+            // Создаем таблицу с информацией для Lua
+            val infoTable = LuaValue.tableOf()
+            infoTable.set("input", LuaValue.valueOf(input))
+            infoTable.set("fullInput", LuaValue.valueOf(fullInput))
+            infoTable.set("argIndex", LuaValue.valueOf(argIndex))
+            infoTable.set("currentArg", LuaValue.valueOf(input))
+            infoTable.set("args", LuaValue.listOf(completedArgs.map { LuaValue.valueOf(it) }.toTypedArray()))
+
+            // Вызываем Lua callback
+            val result = suggestionsCallback.call(infoTable)
+
+            // Обрабатываем результат
+            if (result.istable()) {
+                val suggestions = result.checktable()
+                var i = 1
+                while (true) {
+                    val suggestion = suggestions.get(i)
+                    if (suggestion.isnil()) break
+
+                    // Поддержка как строк, так и таблиц с tooltip
+                    if (suggestion.isstring()) {
+                        builder.suggest(suggestion.tojstring())
+                    } else if (suggestion.istable()) {
+                        val suggestionTable = suggestion.checktable()
+                        val text = suggestionTable.get("text").tojstring()
+                        val tooltip = suggestionTable.get("tooltip")
+
+                        if (!tooltip.isnil()) {
+                            builder.suggest(text, Component.literal(tooltip.tojstring()))
+                        } else {
+                            builder.suggest(text)
+                        }
+                    }
+                    i++
+                }
+            } else if (result.isstring()) {
+                // Если вернули строку, добавляем как единственное предложение
+                builder.suggest(result.tojstring())
+            }
+
+            CompletableFuture.completedFuture(builder.build())
+        } catch (e: Exception) {
+            Main.LOGGER?.error("${Main.LOG_PREFIX}Error getting suggestions for command /$commandName", e)
+            CompletableFuture.completedFuture(builder.build())
         }
     }
 
