@@ -35,6 +35,12 @@ class HttpClientLib : LuaValue() {
             "get" -> this.function
             "get_with_headers" -> this.withHeadersFunction
             "get_async_with_headers_callback" -> this.asyncWithHeadersCallbackFunction
+
+            // Стриминг (HTTP/2, data-чанки по мере поступления)
+            "get_stream" -> streamGetFunction()
+            "get_stream_with_headers" -> streamGetWithHeadersFunction()
+            "get_stream_with_proxy" -> streamGetWithProxyFunction()
+            "get_stream_with_headers_with_proxy" -> streamGetWithHeadersWithProxyFunction()
             "post" -> postFunction()
             "post_with_headers" -> postWithHeadersFunction()
             "post_async_with_headers_callback" -> postAsyncWithHeadersCallbackFunction()
@@ -432,7 +438,109 @@ class HttpClientLib : LuaValue() {
         }
     }
 
-    fun shutdown() {
+    // --- Стриминг (HTTP/2 чанки) ---
+
+    // get_stream(url, chunk_size, callback)  callback(chunkTable, done, total)
+    // get_stream_with_headers(url, headers, chunk_size, callback)
+    // get_stream_with_proxy(url, host, port, user, pass, chunk_size, callback)
+    // get_stream_with_headers_with_proxy(url, headers, host, port, user, pass, chunk_size, callback)
+
+    private fun executeStreamRequest(
+        url: String,
+        headers: MutableMap<String?, String?>,
+        chunkSize: Int,
+        pHost: String?, pPort: Int, pUser: String?, pPass: String?,
+        callback: LuaValue
+    ) {
+        val size = if (chunkSize > 0) chunkSize else 64 * 1024
+        val requestBuilder = HttpRequest.newBuilder()
+            .uri(URI(url))
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+
+        headers.forEach { (name, value) -> if (name != null && value != null) requestBuilder.header(name, value) }
+
+        val client = getClient(pHost, pPort, pUser, pPass)
+        client.sendAsync(requestBuilder.build(), HttpResponse.BodyHandlers.ofInputStream())
+            .thenApply { response ->
+                val body = response.body()
+                val buffer = ByteArray(size.coerceAtLeast(1))
+
+                var total = 0L
+                try {
+                    while (!Thread.currentThread().isInterrupted) {
+                        val read = body.read(buffer)
+                        if (read < 0) break
+                        total += read
+                        val chunk = ByteArray(read)
+                        System.arraycopy(buffer, 0, chunk, 0, read)
+                        callback.call(toLuaTable(chunk), FALSE, valueOf(total))
+                    }
+                    callback.call(NIL, TRUE, valueOf(total))
+                } catch (e: Exception) {
+                    callback.call(NIL, TRUE, valueOf("Error: ${e.message}"))
+                } finally {
+                    try { body.close() } catch (_: Exception) {}
+                }
+                null
+            }
+            .exceptionally { e ->
+                callback.call(NIL, TRUE, valueOf("Error: ${e.message}"))
+                null
+            }
+    }
+
+    private fun streamGetFunction() = object : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val url = args.arg1().checkjstring()
+            val chunkSize = if (args.arg(2).isnil()) 0 else args.arg(2).toint()
+            val callback = args.arg(3).checkfunction()
+            executeStreamRequest(url, mutableMapOf(), chunkSize, null, 0, null, null, callback)
+            return TRUE
+        }
+    }
+
+    private fun streamGetWithHeadersFunction() = object : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val url = args.arg1().checkjstring()
+            val headers = parseHeaders(args.arg(2))
+            val chunkSize = if (args.arg(3).isnil()) 0 else args.arg(3).toint()
+            val callback = args.arg(4).checkfunction()
+            executeStreamRequest(url, headers, chunkSize, null, 0, null, null, callback)
+            return TRUE
+        }
+    }
+
+    private fun streamGetWithProxyFunction() = object : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val url = args.arg1().checkjstring()
+            val host = args.arg(2).checkjstring()
+            val port = args.arg(3).checkint()
+            val user = if (args.arg(4).isnil()) null else args.arg(4).tojstring()
+            val pass = if (args.arg(5).isnil()) null else args.arg(5).tojstring()
+            val chunkSize = if (args.arg(6).isnil()) 0 else args.arg(6).toint()
+            val callback = args.arg(7).checkfunction()
+            executeStreamRequest(url, mutableMapOf(), chunkSize, host, port, user, pass, callback)
+            return TRUE
+        }
+    }
+
+    private fun streamGetWithHeadersWithProxyFunction() = object : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val url = args.arg1().checkjstring()
+            val headers = parseHeaders(args.arg(2))
+            val host = args.arg(3).checkjstring()
+            val port = args.arg(4).checkint()
+            val user = if (args.arg(5).isnil()) null else args.arg(5).tojstring()
+            val pass = if (args.arg(6).isnil()) null else args.arg(6).tojstring()
+            val chunkSize = if (args.arg(7).isnil()) 0 else args.arg(7).toint()
+            val callback = args.arg(8).checkfunction()
+            executeStreamRequest(url, headers, chunkSize, host, port, user, pass, callback)
+            return TRUE
+        }
+    }
+
+    private fun shutdown() {
         asyncExecutor.shutdown()
     }
 
