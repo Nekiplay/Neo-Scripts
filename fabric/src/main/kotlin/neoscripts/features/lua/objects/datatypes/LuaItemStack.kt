@@ -19,7 +19,15 @@ import net.minecraft.client.multiplayer.resolver.ServerAddress
 import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.component.DataComponents
+import net.minecraft.nbt.ByteArrayTag
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.IntArrayTag
+import net.minecraft.nbt.ListTag
+import net.minecraft.nbt.LongArrayTag
 import net.minecraft.nbt.NbtOps
+import net.minecraft.nbt.NumericTag
+import net.minecraft.nbt.StringTag
+import net.minecraft.nbt.Tag
 import net.minecraft.network.chat.Component
 import net.minecraft.tags.ItemTags
 import net.minecraft.world.item.BlockItem
@@ -186,8 +194,53 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                     valueOf("")
                 }
             }
-            else -> super.get(key)
+            else -> getUnknownData(field, key)
         }
+    }
+
+    private fun getUnknownData(field: String, key: LuaValue): LuaValue {
+        return try {
+            val tag = ItemUtils.getCustomData(stack)
+            val value = tag.get(field) ?: return super.get(key)
+            nbtTagToLua(value)
+        } catch (e: Exception) {
+            super.get(key)
+        }
+    }
+
+    private fun nbtTagToLua(tag: Tag): LuaValue = when (tag) {
+        is CompoundTag -> {
+            val table = tableOf()
+            tag.keySet().forEach { tagKey ->
+                tag.get(tagKey)?.let { table.set(valueOf(tagKey), nbtTagToLua(it)) }
+            }
+            table
+        }
+        is ListTag -> {
+            val table = tableOf()
+            for (i in 0 until tag.size) {
+                table.set(i + 1, nbtTagToLua(tag[i]))
+            }
+            table
+        }
+        is ByteArrayTag -> {
+            val table = tableOf()
+            tag.asByteArray.forEachIndexed { i, v -> table.set(i + 1, valueOf(v.toInt())) }
+            table
+        }
+        is IntArrayTag -> {
+            val table = tableOf()
+            tag.asIntArray.forEachIndexed { i, v -> table.set(i + 1, valueOf(v)) }
+            table
+        }
+        is LongArrayTag -> {
+            val table = tableOf()
+            tag.asLongArray.forEachIndexed { i, v -> table.set(i + 1, valueOf(v)) }
+            table
+        }
+        is StringTag -> valueOf(tag.asString().orElse(""))
+        is NumericTag -> valueOf(tag.doubleValue())
+        else -> NIL
     }
 
     override fun eq(other: LuaValue?): LuaValue {

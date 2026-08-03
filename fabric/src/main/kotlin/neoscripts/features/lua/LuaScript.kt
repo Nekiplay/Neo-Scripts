@@ -803,10 +803,16 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 // Получаем весь введенный текст команды
                 val fullInput = builder.input
 
+                // Разбираем ввод на аргументы, чтобы понять, какой именно сейчас заполняется
+                val (completedArgs, argIndex, currentArg) = parseArgState(input)
+
                 // Создаем таблицу с информацией для Lua
                 val infoTable = LuaValue.tableOf()
                 infoTable.set("input", LuaValue.valueOf(input))
                 infoTable.set("fullInput", LuaValue.valueOf(fullInput))
+                infoTable.set("argIndex", LuaValue.valueOf(argIndex))
+                infoTable.set("currentArg", LuaValue.valueOf(currentArg))
+                infoTable.set("args", LuaValue.listOf(completedArgs.map { LuaValue.valueOf(it) }.toTypedArray()))
 
                 // Вызываем Lua callback
                 val result = suggestionsCallback.call(infoTable)
@@ -844,6 +850,16 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
             builder.build()
         }
+    }
+
+    private fun parseArgState(input: String): Triple<List<String>, Int, String> {
+        if (input.isBlank()) return Triple(emptyList(), 1, "")
+        val parts = input.split(" ")
+        val typing = !input.endsWith(" ")
+        val completedArgs = if (typing) parts.dropLast(1) else parts
+        val currentArg = if (typing) parts.last() else ""
+        val argIndex = completedArgs.size + 1
+        return Triple(completedArgs, argIndex, currentArg)
     }
 
     private fun unregisterCommandInternal(dispatcher: CommandDispatcher<FabricClientCommandSource>, commandName: String) {
