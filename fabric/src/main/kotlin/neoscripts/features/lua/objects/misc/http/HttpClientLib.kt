@@ -167,6 +167,7 @@ class HttpClientLib : LuaValue() {
 
         return try {
             val builder = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_2)
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .proxy(ProxySelector.of(InetSocketAddress(host, port)))
@@ -437,6 +438,7 @@ class HttpClientLib : LuaValue() {
 
     companion object {
         private val HTTP_CLIENT: HttpClient = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_2)
             .connectTimeout(Duration.ofSeconds(10))
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build()
