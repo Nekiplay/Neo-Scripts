@@ -2,6 +2,7 @@ package com.nekiplay.neoscripts.features.lua
 
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.StringArgumentType
+import com.mojang.brigadier.builder.CommandBuilder
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
@@ -63,6 +64,9 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 
 class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
+    companion object {
+        private const val MAX_COMMAND_ARGS = 64
+    }
     // Локальный стек загрузки для этого конкретного экземпляра скрипта
     private val loadingStack = Stack<String>()
     private val systemModuleCache = ConcurrentHashMap<String, LuaValue>()
@@ -756,18 +760,26 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         val suggestionsCallback = commandSuggestionsCallbacks[commandName]
 
         if (suggestionsCallback != null) {
-            // С автодополнением
-            commandBuilder.then(
-                ClientCommands.argument("args", StringArgumentType.greedyString())
+            // С автодополнением: цепочка отдельных word-аргументов, чтобы префикс-фильтр Бриджира
+            // применялся только к текущему аргументу, а не ко всему вводу
+            var previous: CommandBuilder<FabricClientCommandSource, *> = commandBuilder
+            for (i in 1..MAX_COMMAND_ARGS) {
+                val argName = "arg$i"
+                val argNode = ClientCommands.argument(argName, StringArgumentType.word())
                     .suggests { context, builder ->
-                        getSuggestionsFromLua(commandName, context, builder, suggestionsCallback)
+                        getSuggestionsFromLua(commandName, context, builder, suggestionsCallback, i)
                     }
                     .executes { context ->
-                        val args = StringArgumentType.getString(context, "args").split(" ").toTypedArray()
-                        executeLuaCommand(commandName, args, context.source)
+                        val args = ArrayList<String>()
+                        for (k in 1..i) {
+                            args.add(context.getArgument<String>("arg$k"))
+                        }
+                        executeLuaCommand(commandName, args.toTypedArray(), context.source)
                         1
                     }
-            )
+                previous.then(argNode)
+                previous = argNode
+            }
         } else {
             // Без автодополнения
             commandBuilder.then(
@@ -793,25 +805,33 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         commandName: String,
         context: CommandContext<FabricClientCommandSource>,
         builder: SuggestionsBuilder,
-        suggestionsCallback: LuaValue
+        suggestionsCallback: LuaValue,
+        argIndex: Int
     ): CompletableFuture<Suggestions> {
         return CompletableFuture.supplyAsync {
             try {
-                // Получаем текущий ввод пользователя
+                // Текущий ввод пользователя (в этом word-узле — только текущий аргумент)
                 val input = builder.remaining
 
                 // Получаем весь введенный текст команды
                 val fullInput = builder.input
 
-                // Разбираем ввод на аргументы, чтобы понять, какой именно сейчас заполняется
-                val (completedArgs, argIndex, currentArg) = parseArgState(input)
+                // Уже заполненные аргументы (до текущего)
+                val completedArgs = ArrayList<String>()
+                for (k in 1 until argIndex) {
+                    try {
+                        completedArgs.add(context.getArgument<String>("arg$k"))
+                    } catch (e: IllegalArgumentException) {
+                        break
+                    }
+                }
 
                 // Создаем таблицу с информацией для Lua
                 val infoTable = LuaValue.tableOf()
                 infoTable.set("input", LuaValue.valueOf(input))
                 infoTable.set("fullInput", LuaValue.valueOf(fullInput))
                 infoTable.set("argIndex", LuaValue.valueOf(argIndex))
-                infoTable.set("currentArg", LuaValue.valueOf(currentArg))
+                infoTable.set("currentArg", LuaValue.valueOf(input))
                 infoTable.set("args", LuaValue.listOf(completedArgs.map { LuaValue.valueOf(it) }.toTypedArray()))
 
                 // Вызываем Lua callback
@@ -850,16 +870,6 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
             builder.build()
         }
-    }
-
-    private fun parseArgState(input: String): Triple<List<String>, Int, String> {
-        if (input.isBlank()) return Triple(emptyList(), 1, "")
-        val parts = input.split(" ")
-        val typing = !input.endsWith(" ")
-        val completedArgs = if (typing) parts.dropLast(1) else parts
-        val currentArg = if (typing) parts.last() else ""
-        val argIndex = completedArgs.size + 1
-        return Triple(completedArgs, argIndex, currentArg)
     }
 
     private fun unregisterCommandInternal(dispatcher: CommandDispatcher<FabricClientCommandSource>, commandName: String) {
