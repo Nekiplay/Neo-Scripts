@@ -33,73 +33,17 @@ class Baritone : LuaValue() {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring().lowercase(getDefault())) {
             "settings" -> BaritoneSettings()
-            "goal" -> Goal()
-            "goto" -> Goto()
-            "mine" -> Mine()
-            "elytra" -> Elytra()
-            "pause" -> Pause()
-            "resume" -> Resume()
-            "stop" -> Stop()
+            "execute", "executeCommand" -> Execute()
             "pathingbehavior", "pathing_behavior" -> PathingBehavior()
             "miningbehavior", "mining_behavior" -> MiningBehavior()
             else -> super.get(key)
         }
     }
 
-    inner class Mine : VarArgFunction() {
+    inner class Execute : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val ore = args.arg(1).optstring(valueOf("diamond_ore"))
-            BaritoneAPI.getProvider().primaryBaritone.commandManager.execute("mine " + ore.tojstring());
-            return TRUE
-        }
-    }
-
-    inner class Goal : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val x = args.arg(1).optint(0)
-            val y = args.arg(2).optint(0)
-            val z = args.arg(3).optint(0)
-            BaritoneAPI.getProvider().primaryBaritone.commandManager.execute("goal " + x.toDouble() + " " + y.toDouble() + " " + z.toDouble());
-            return TRUE
-        }
-    }
-
-    inner class Goto : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val x = args.arg(1).optint(0)
-            val y = args.arg(2).optint(0)
-            val z = args.arg(3).optint(0)
-            BaritoneAPI.getProvider().primaryBaritone.commandManager.execute("goto " + x.toDouble() + " " + y.toDouble() + " " + z.toDouble());
-            return TRUE
-        }
-    }
-
-    inner class Pause : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            BaritoneAPI.getProvider().primaryBaritone.commandManager.execute("pause");
-            return TRUE
-        }
-    }
-
-    inner class Resume : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            BaritoneAPI.getProvider().primaryBaritone.commandManager.execute("resume");
-            return TRUE
-        }
-    }
-
-    inner class Elytra : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            BaritoneAPI.getProvider().primaryBaritone.commandManager.execute("elytra");
-            return TRUE
-        }
-    }
-
-    inner class Stop : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            BaritoneAPI.getProvider().primaryBaritone.commandManager.execute("stop");
-
-            BaritoneAPI.getProvider().primaryBaritone.pathingBehavior.isPathing
+            val command = args.arg(1).optstring(valueOf("stop"))
+            BaritoneAPI.getProvider().primaryBaritone.commandManager.execute(command.tojstring());
             return TRUE
         }
     }

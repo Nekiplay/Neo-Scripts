@@ -67,6 +67,26 @@ class BaritoneSettings : LuaValue() {
                     BaritoneAPI.getSettings().assumeExternalAutoTool.value = value.toboolean();
                 }
             }
+            "freeLook" -> {
+                if (value?.isboolean() == true) {
+                    BaritoneAPI.getSettings().freeLook.value = value.toboolean();
+                }
+            }
+            "blockFreeLook" -> {
+                if (value?.isboolean() == true) {
+                    BaritoneAPI.getSettings().blockFreeLook.value = value.toboolean();
+                }
+            }
+            "allowParkour" -> {
+                if (value?.isboolean() == true) {
+                    BaritoneAPI.getSettings().allowParkour.value = value.toboolean();
+                }
+            }
+            "allowParkourPlace" -> {
+                if (value?.isboolean() == true) {
+                    BaritoneAPI.getSettings().allowParkourPlace.value = value.toboolean();
+                }
+            }
             else -> super.get(key)
         }
         super.set(key, value)
@@ -82,6 +102,10 @@ class BaritoneSettings : LuaValue() {
             "pauseMiningForFallingBlocks" -> valueOf(BaritoneAPI.getSettings().pauseMiningForFallingBlocks.value)
             "autoTool" -> valueOf(BaritoneAPI.getSettings().autoTool.value)
             "assumeExternalAutoTool" -> valueOf(BaritoneAPI.getSettings().assumeExternalAutoTool.value)
+            "freeLook" -> valueOf(BaritoneAPI.getSettings().freeLook.value)
+            "blockFreeLook" -> valueOf(BaritoneAPI.getSettings().blockFreeLook.value)
+            "allowParkour" -> valueOf(BaritoneAPI.getSettings().allowParkour.value)
+            "allowParkourPlace" -> valueOf(BaritoneAPI.getSettings().allowParkourPlace.value)
             else -> super.get(key)
         }
     }
