@@ -33,6 +33,7 @@ import com.nekiplay.neoscripts.features.lua.objects.player.WindowObject
 import com.nekiplay.neoscripts.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.neoscripts.features.lua.objects.camera.CameraLib
+import com.nekiplay.neoscripts.features.lua.objects.misc.Baritone
 import com.nekiplay.neoscripts.features.lua.objects.misc.UDPLib
 import com.nekiplay.neoscripts.features.lua.objects.world.BlockScannerObject
 import com.nekiplay.neoscripts.features.lua.objects.world.WorldObject
@@ -1419,6 +1420,14 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 }
                 else {
                     error("Xaero's minimap not found")
+                }
+            }
+            "baritone", "baritone-api" -> {
+                if (FabricLoader.getInstance().isModLoaded("baritone-meteor") || FabricLoader.getInstance().isModLoaded("baritone")) {
+                    Baritone()
+                }
+                else {
+                    error("Baritone not found")
                 }
             }
             else -> return null

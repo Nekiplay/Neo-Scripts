@@ -71,6 +71,8 @@ dependencies {
     include(implementation("com.github.oshi:oshi-core:6.9.0")!!)
 
     implementation(files("../libs/xaerominimap-fabric-26.2-26.4.2.jar"))
+
+    implementation(files("../libs/baritone-api-fabric-1.11.1-17-g57758940.jar"))
 }
 
 tasks {
