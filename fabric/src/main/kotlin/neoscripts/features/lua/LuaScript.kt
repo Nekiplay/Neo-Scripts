@@ -2,7 +2,8 @@ package com.nekiplay.neoscripts.features.lua
 
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.StringArgumentType
-import com.mojang.brigadier.builder.CommandBuilder
+import com.mojang.brigadier.builder.ArgumentBuilder
+import com.mojang.brigadier.builder.RequiredArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
@@ -762,21 +763,22 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         if (suggestionsCallback != null) {
             // С автодополнением: цепочка отдельных word-аргументов, чтобы префикс-фильтр Бриджира
             // применялся только к текущему аргументу, а не ко всему вводу
-            var previous: CommandBuilder<FabricClientCommandSource, *> = commandBuilder
+            var previous: ArgumentBuilder<FabricClientCommandSource, *> = commandBuilder
             for (i in 1..MAX_COMMAND_ARGS) {
                 val argName = "arg$i"
-                val argNode = ClientCommands.argument(argName, StringArgumentType.word())
-                    .suggests { context, builder ->
-                        getSuggestionsFromLua(commandName, context, builder, suggestionsCallback, i)
-                    }
-                    .executes { context ->
-                        val args = ArrayList<String>()
-                        for (k in 1..i) {
-                            args.add(context.getArgument<String>("arg$k"))
+                val argNode: RequiredArgumentBuilder<FabricClientCommandSource, String> =
+                    ClientCommands.argument(argName, StringArgumentType.word())
+                        .suggests { context, builder ->
+                            getSuggestionsFromLua(commandName, context, builder, suggestionsCallback, i)
                         }
-                        executeLuaCommand(commandName, args.toTypedArray(), context.source)
-                        1
-                    }
+                        .executes { context ->
+                            val args = ArrayList<String>()
+                            for (k in 1..i) {
+                                args.add(context.getArgument("arg$k", String::class.java))
+                            }
+                            executeLuaCommand(commandName, args.toTypedArray(), context.source)
+                            1
+                        }
                 previous.then(argNode)
                 previous = argNode
             }
@@ -820,7 +822,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 val completedArgs = ArrayList<String>()
                 for (k in 1 until argIndex) {
                     try {
-                        completedArgs.add(context.getArgument<String>("arg$k"))
+                        completedArgs.add(context.getArgument("arg$k", String::class.java))
                     } catch (e: IllegalArgumentException) {
                         break
                     }
