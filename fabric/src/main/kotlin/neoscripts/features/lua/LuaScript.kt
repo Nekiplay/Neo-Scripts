@@ -58,7 +58,6 @@ import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.jse.JsePlatform
-import org.luaj.vm2.lib.jse.LuajavaLib
 import java.util.Collections
 import java.util.Stack
 import java.util.concurrent.CompletableFuture
@@ -128,7 +127,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
 
     init {
         // Register standard libraries
-        scriptGlobals.load(LuajavaLib())
+        scriptGlobals.load(MinecraftLuajavaLib())
 
         registerCustomFunctions()
     }
