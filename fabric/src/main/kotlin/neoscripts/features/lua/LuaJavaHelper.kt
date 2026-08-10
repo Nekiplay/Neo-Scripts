@@ -1,12 +1,12 @@
 package com.nekiplay.neoscripts.features.lua
 
 import net.fabricmc.loader.api.FabricLoader
-import org.luaj.vm2.lib.jse.LuajavaLib
 import java.util.LinkedHashSet
 
-class MinecraftLuajavaLib : LuajavaLib() {
+object LuaJavaHelper {
 
-    override fun classForName(name: String): Class<*> {
+    @JvmStatic
+    fun getJavaClass(name: String): Class<*>? {
         val candidates = classCandidates(name)
         val loaders = candidateClassLoaders()
         for (loader in loaders) {
@@ -17,7 +17,7 @@ class MinecraftLuajavaLib : LuajavaLib() {
                 }
             }
         }
-        throw ClassNotFoundException(name)
+        return null
     }
 
     private fun classCandidates(name: String): List<String> {
@@ -27,8 +27,8 @@ class MinecraftLuajavaLib : LuajavaLib() {
             val resolver = FabricLoader.getInstance().mappingResolver
             if (resolver != null) {
                 val runtime = resolver.currentRuntimeNamespace
-                val available = resolver.getNamespaces().toSet()
-                for (source in MAPPING_NAMESPACES) {
+                val available = resolver.namespaces.toSet()
+                for (source in listOf("official", "named", "intermediary")) {
                     if (source == runtime || source !in available) continue
                     try {
                         val mapped = resolver.mapClassName(source, name)
@@ -46,13 +46,8 @@ class MinecraftLuajavaLib : LuajavaLib() {
         val loaders = LinkedHashSet<ClassLoader?>()
         loaders.add(Thread.currentThread().contextClassLoader)
         loaders.add(javaClass.classLoader)
-        loaders.add(FabricLoader::class.java.classLoader)
-        loaders.add(LuajavaLib::class.java.classLoader)
+        loaders.add(FabricLoader::class.java.classLoader) // загрузчик модов
         loaders.add(ClassLoader.getSystemClassLoader())
         return loaders.toList() + listOf<ClassLoader?>(null)
-    }
-
-    companion object {
-        private val MAPPING_NAMESPACES = listOf("official", "named", "intermediary")
     }
 }
