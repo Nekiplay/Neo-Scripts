@@ -25,6 +25,7 @@ import org.luaj.vm2.LuaDouble
 import org.luaj.vm2.LuaInteger
 import org.luaj.vm2.LuaLong
 import org.luaj.vm2.LuaNumber
+import org.luaj.vm2.LuaTable
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 
@@ -133,6 +134,13 @@ class LuaBlockState(var blockState: BlockState) : LuaUserdata(blockState) {
             }
             "is_still" -> {
                 valueOf(blockState.fluidState.isSource)
+            }
+            "properties" -> {
+                val table = LuaTable()
+                blockState.getValues().forEach { entry ->
+                    table.set(entry.property().name, valueOf(entry.valueName()))
+                }
+                table
             }
 
             else -> super.get(key)
