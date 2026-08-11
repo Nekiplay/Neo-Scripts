@@ -9,6 +9,9 @@ import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.ZeroArgFunction
 
 class LuaBlockProperties(private val state: LuaBlockState) : LuaUserdata(state.blockState) {
+    private val properties: Map<String, Property<*>> =
+        state.blockState.getProperties().associateBy { it.name }
+
     private val blockState: BlockState
         get() = state.blockState
 
@@ -31,8 +34,7 @@ class LuaBlockProperties(private val state: LuaBlockState) : LuaUserdata(state.b
         setValue(property, value)
     }
 
-    private fun findProperty(name: String): Property<*>? =
-        blockState.getProperties().find { it.name == name }
+    private fun findProperty(name: String): Property<*>? = properties[name]
 
     @Suppress("UNCHECKED_CAST")
     private fun getValue(property: Property<*>): LuaValue {
@@ -64,7 +66,7 @@ class LuaBlockProperties(private val state: LuaBlockState) : LuaUserdata(state.b
 
     private fun getAll(): LuaTable {
         val table = LuaTable()
-        for (property in blockState.getProperties()) {
+        for (property in properties.values) {
             if (property.name == "getAll") continue
             table.set(property.name, getValue(property))
         }
