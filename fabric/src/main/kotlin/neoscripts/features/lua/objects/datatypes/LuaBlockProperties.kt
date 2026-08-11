@@ -8,7 +8,7 @@ import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.ZeroArgFunction
 
-class LuaBlockProperties(private val state: LuaBlockState) : LuaUserdata() {
+class LuaBlockProperties(private val state: LuaBlockState) : LuaUserdata(state.blockState) {
     private val blockState: BlockState
         get() = state.blockState
 
@@ -54,7 +54,7 @@ class LuaBlockProperties(private val state: LuaBlockState) : LuaUserdata() {
         val prop = property as Property<Comparable<Any>>
         val parsed = when {
             value.isboolean() -> if (value.toboolean()) "true" else "false"
-            value.isnumber() -> if (value.isinteger()) value.toint().toString() else value.tojstring()
+            value.isnumber() -> if (value.isint() || value.islong()) value.tolong().toString() else value.tojstring()
             value.isstring() -> value.tojstring()
             else -> return
         }
