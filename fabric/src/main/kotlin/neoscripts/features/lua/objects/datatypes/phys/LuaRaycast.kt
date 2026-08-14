@@ -10,11 +10,13 @@ import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.HitResult
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
+import org.luaj.vm2.lib.jse.JavaInstance
 
 class LuaRaycast(val hitResult: HitResult): LuaUserdata(hitResult) {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             // --- Fields (Getters) ---
+            "javaClass", "class" -> JavaInstance(hitResult);
             "type" -> {
                 when (hitResult.type) {
                     HitResult.Type.ENTITY -> {

@@ -6,6 +6,7 @@ import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
+import org.luaj.vm2.lib.jse.JavaInstance
 import kotlin.jvm.optionals.getOrNull
 
 class LuaMapData(val mapData: MapItemSavedData) : LuaUserdata(mapData) {
@@ -28,6 +29,7 @@ class LuaMapData(val mapData: MapItemSavedData) : LuaUserdata(mapData) {
             "colors" -> getColorsArray()
             "getColor" -> GetColor()
             "updateColor" -> UpdateColor()
+            "javaClass", "class" -> JavaInstance(mapData);
             else -> super.get(key)
         }
     }

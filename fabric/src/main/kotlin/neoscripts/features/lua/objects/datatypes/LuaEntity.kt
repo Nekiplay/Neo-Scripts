@@ -28,11 +28,13 @@ import org.luaj.vm2.LuaLong
 import org.luaj.vm2.LuaNumber
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
+import org.luaj.vm2.lib.jse.JavaInstance
 
 class LuaEntity(val entity: Entity): LuaUserdata(entity) {
     override fun get(key: LuaValue): LuaValue {
         return when (val field = key.tojstring()) {
             // Основная информация о сущности
+            "javaClass", "class" -> JavaInstance(entity);
             "id" -> valueOf(entity.id)
             "uuid" -> valueOf(entity.stringUUID)
             "name" -> valueOf(entity.name.string)

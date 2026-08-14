@@ -10,10 +10,12 @@ import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
+import org.luaj.vm2.lib.jse.JavaInstance
 
 class LuaBox(val box: AABB) : LuaUserdata(box) {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
+            "javaClass", "class" -> JavaInstance(box);
             // --- Fields (Getters) ---
             "minX" -> valueOf(box.minX)
             "minY" -> valueOf(box.minY)

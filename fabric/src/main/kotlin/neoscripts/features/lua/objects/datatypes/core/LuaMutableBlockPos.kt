@@ -7,10 +7,12 @@ import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
+import org.luaj.vm2.lib.jse.JavaInstance
 
 class LuaMutableBlockPos(val pos: BlockPos.MutableBlockPos): LuaUserdata(pos) {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
+            "javaClass", "class" -> JavaInstance(pos)
             "x" -> valueOf(pos.x)
             "y" -> valueOf(pos.y)
             "z" -> valueOf(pos.z)
@@ -31,7 +33,7 @@ class LuaMutableBlockPos(val pos: BlockPos.MutableBlockPos): LuaUserdata(pos) {
                 override fun call(): LuaValue = LuaBlockPos(pos.immutable())
             }
 
-            else -> NIL
+            else -> super.get(key)
         } as LuaValue
     }
 

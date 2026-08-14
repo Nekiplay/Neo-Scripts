@@ -18,6 +18,8 @@ import com.nekiplay.neoscripts.utils.render.LevelRenderExtractionCallback
 import com.nekiplay.neoscripts.utils.render.primitive.PrimitiveCollector
 import com.nekiplay.neoscripts.utils.scheduler.MessageScheduler
 import com.nekiplay.neoscripts.utils.scheduler.Scheduler
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLevelEvents
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
@@ -407,6 +409,46 @@ object LuaEvents : ClientModule() {
             }
 
             if (allow) InteractionResult.PASS else InteractionResult.FAIL
+        }
+
+        ClientChunkEvents.CHUNK_LOAD.register { level, chunk ->
+            var allow = true
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
+                try {
+                    if (!script.onChunkLoadEvent(chunk)) {
+                        allow = false
+                    }
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
+
+            if (allow) InteractionResult.PASS else InteractionResult.FAIL
+        }
+
+        ClientChunkEvents.CHUNK_UNLOAD.register { level, chunk ->
+            var allow = true
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
+                try {
+                    if (!script.onChunkUnLoadEvent(chunk)) {
+                        allow = false
+                    }
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
+
+            if (allow) InteractionResult.PASS else InteractionResult.FAIL
+        }
+
+        ClientLevelEvents.AFTER_CLIENT_LEVEL_CHANGE.register { client, level ->
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
+                try {
+                    script.onLevelChangeEvent()
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
         }
     }
 

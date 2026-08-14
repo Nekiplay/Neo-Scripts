@@ -6,10 +6,12 @@ import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.VarArgFunction
+import org.luaj.vm2.lib.jse.JavaInstance
 
 class LuaBlockPos(val pos: BlockPos): LuaUserdata(pos) {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
+            "javaClass", "class" -> JavaInstance(pos)
             "x" -> valueOf(pos.x)
             "y" -> valueOf(pos.y)
             "z" -> valueOf(pos.z)
@@ -23,7 +25,7 @@ class LuaBlockPos(val pos: BlockPos): LuaUserdata(pos) {
 
             "distSqr", "distanceSqr" -> distSqr()
             "distToCenterSqr", "distanceToCenterSqr" -> distToCenterSqr()
-            else -> NIL
+            else -> super.get(key)
         }
     }
 

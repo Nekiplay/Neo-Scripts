@@ -38,6 +38,8 @@ import com.nekiplay.neoscripts.features.lua.objects.misc.UDPLib
 import com.nekiplay.neoscripts.features.lua.objects.world.BlockScannerObject
 import com.nekiplay.neoscripts.features.lua.objects.world.WorldObject
 import com.nekiplay.neoscripts.utils.misc.input.KeyAction
+import neoscripts.features.lua.objects.datatypes.core.LuaChunkPos
+import neoscripts.features.lua.objects.datatypes.core.LuaLevelChunk
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
@@ -50,6 +52,8 @@ import net.minecraft.network.chat.Component
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.ChunkPos
+import net.minecraft.world.level.chunk.LevelChunk
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaError
@@ -91,6 +95,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val slotClicksCallbacks = ArrayList<LuaValue>()
     private val titleCallbacks = ArrayList<LuaValue>()
     private val actionBarCallbacks = ArrayList<LuaValue>()
+    private val chunkLoadCallbacks = ArrayList<LuaValue>()
+    private val chunkUnLoadCallbacks = ArrayList<LuaValue>()
+    private val levelChangeCallbacks = ArrayList<LuaValue>()
 
     // Packet events
     private val serverSideRotationCallbacks = ArrayList<LuaValue>()
@@ -397,6 +404,36 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 }
             }
         })
+
+        scriptGlobals.set("registerChunkLoadEvent", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(chunkLoadCallbacks.add(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("registerChunkUnLoadEvent", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(chunkLoadCallbacks.add(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("registerLevelChangeEvent", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(levelChangeCallbacks.add(callback))
+                }
+            }
+        })
     }
 
     private fun registerEventUnregistrationFunctions() {
@@ -619,6 +656,36 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 if (!callback.isfunction()) return FALSE
                 synchronized(callbacksLock) {
                     return valueOf(serverSideSetTimeCallbacks.remove(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("unregisterChunkLoadEvent", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(chunkLoadCallbacks.remove(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("unregisterChunkUnLoadEvent", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(chunkLoadCallbacks.remove(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("unregisterLevelChangeEvent", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(levelChangeCallbacks.remove(callback))
                 }
             }
         })
@@ -1487,6 +1554,64 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         return allow
     }
 
+    fun onChunkLoadEvent(chunk: LevelChunk): Boolean {
+        var allow = true
+        val callbacks = synchronized(callbacksLock) {
+           chunkLoadCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(LuaLevelChunk(chunk))
+                if (res.isboolean()) {
+                    if (!res.toboolean()) {
+                        allow = false
+                    }
+                }
+            } catch (e: Exception) {
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in chunk load callback in ${scriptName}: ${e.message}")
+            }
+        }
+        return allow
+    }
+
+    fun onChunkUnLoadEvent(chunk: LevelChunk): Boolean {
+        var allow = true
+        val callbacks = synchronized(callbacksLock) {
+            chunkUnLoadCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(LuaLevelChunk(chunk))
+                if (res.isboolean()) {
+                    if (!res.toboolean()) {
+                        allow = false
+                    }
+                }
+            } catch (e: Exception) {
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in chunk unload callback in ${scriptName}: ${e.message}")
+            }
+        }
+        return allow
+    }
+
+    fun onLevelChangeEvent(): Boolean {
+        var allow = true
+        val callbacks = synchronized(callbacksLock) {
+            levelChangeCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                val res = callback.call()
+            } catch (e: Exception) {
+                Main.LOGGER?.error("${Main.LOG_PREFIX}Error in level change callback in ${scriptName}: ${e.message}")
+            }
+        }
+        return allow
+    }
+
     fun onImGuiInitEvent() {
         val callbacks = synchronized(callbacksLock) {
             imguiInitCallbacks.toTypedArray()
@@ -1549,6 +1674,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             clientSidePlayerSetPositionCallbacks.clear()
             titleCallbacks.clear()
             actionBarCallbacks.clear()
+            chunkLoadCallbacks.clear()
+            chunkUnLoadCallbacks.clear()
         }
         imguiLib?.queue?.clear()
         imguiLib?.cleanup()

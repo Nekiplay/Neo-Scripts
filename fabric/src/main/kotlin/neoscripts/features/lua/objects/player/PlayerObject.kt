@@ -31,6 +31,7 @@ import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
+import org.luaj.vm2.lib.jse.JavaInstance
 
 class PlayerObject : LuaValue() {
     override fun call(): LuaValue {
@@ -40,6 +41,7 @@ class PlayerObject : LuaValue() {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             // Objects
+            "javaClass", "class" -> JavaInstance(mc.player)
             "input" -> InputObject()
             "inventory" -> InventoryObject()
             "network" -> NetworkObject()

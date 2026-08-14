@@ -50,6 +50,7 @@ import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
+import org.luaj.vm2.lib.jse.JavaInstance
 
 class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
 
@@ -57,6 +58,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
         if (stack.isEmpty) return NIL
 
         return when (val field = key.tojstring()) {
+            "javaClass", "class" -> JavaInstance(stack);
             "count" -> valueOf(stack.count.toDouble())
             "max_count" -> valueOf(stack.maxStackSize.toDouble())
             "name" -> valueOf(stack.item.getName(stack).getFormattedString())

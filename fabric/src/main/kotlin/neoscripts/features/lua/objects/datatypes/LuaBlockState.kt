@@ -27,10 +27,12 @@ import org.luaj.vm2.LuaLong
 import org.luaj.vm2.LuaNumber
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
+import org.luaj.vm2.lib.jse.JavaInstance
 
 class LuaBlockState(var blockState: BlockState) : LuaUserdata(blockState) {
     override fun get(key: LuaValue): LuaValue {
         return when (val field = key.tojstring()) {
+            "javaClass", "class" -> JavaInstance(blockState);
             "id" -> valueOf(Block.getId(blockState))
             "identifier" -> valueOf(BuiltInRegistries.BLOCK.wrapAsHolder(blockState.block).registeredName)
             "translation_id" -> valueOf(blockState.block.descriptionId)

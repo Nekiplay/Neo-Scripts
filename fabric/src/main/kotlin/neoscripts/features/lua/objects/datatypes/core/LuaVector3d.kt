@@ -6,10 +6,12 @@ import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.VarArgFunction
+import org.luaj.vm2.lib.jse.JavaInstance
 
 class LuaVector3d(val location: Vec3): LuaUserdata(location) {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
+            "javaClass", "class" -> JavaInstance(location)
             "x" -> valueOf(location.x)
             "y" -> valueOf(location.y)
             "z" -> valueOf(location.z)
@@ -34,7 +36,7 @@ class LuaVector3d(val location: Vec3): LuaUserdata(location) {
             "yRot" -> YRot()
             "xRot" -> XRot()
 
-            else -> NIL
+            else -> super.get(key)
         }
     }
 

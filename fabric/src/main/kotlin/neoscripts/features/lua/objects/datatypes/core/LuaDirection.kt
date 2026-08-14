@@ -4,6 +4,7 @@ import net.minecraft.core.Direction
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
+import org.luaj.vm2.lib.jse.JavaInstance
 
 class LuaDirection(val direction: Direction): LuaUserdata(direction) {
     override fun eq(other: LuaValue?): LuaValue {
@@ -20,6 +21,7 @@ class LuaDirection(val direction: Direction): LuaUserdata(direction) {
 
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
+            "javaClass", "class" -> JavaInstance(direction)
             "opposite" -> LuaDirection(direction.opposite)
             "name" -> valueOf(direction.name.lowercase())
             "axisDirection" -> LuaAxisDirection(direction.axisDirection)
@@ -32,7 +34,7 @@ class LuaDirection(val direction: Direction): LuaUserdata(direction) {
                 t.set("z", valueOf(direction.stepZ))
                 t
             }
-            else -> NIL
+            else -> super.get(key)
         }
     }
 

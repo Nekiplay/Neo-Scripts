@@ -36,6 +36,7 @@ import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
 import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
+import org.luaj.vm2.lib.jse.JavaInstance
 import java.util.ArrayList
 import kotlin.collections.forEachIndexed
 
@@ -137,6 +138,7 @@ class WorldObject : LuaValue() {
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
             // Functions
+            "javaClass", "class" -> JavaInstance(mc.level)
             "getRotation" -> GetRotationFunction()
             "getBlock", "getBlockState" -> GetBlockFunction()
             "getLight", "getBrightness" -> GetLightFunction()
