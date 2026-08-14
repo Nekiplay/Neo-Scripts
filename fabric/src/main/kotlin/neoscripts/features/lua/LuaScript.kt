@@ -1676,6 +1676,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             actionBarCallbacks.clear()
             chunkLoadCallbacks.clear()
             chunkUnLoadCallbacks.clear()
+            levelChangeCallbacks.clear()
         }
         imguiLib?.queue?.clear()
         imguiLib?.cleanup()
