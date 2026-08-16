@@ -12,3 +12,8 @@
 ### Misc:
 - [Lua API](https://skillshop.gitbook.io/hypixelcry/), [Forum](http://130.255.41.75/), [Discord](https://discord.gg/GHXSpYAEgh)
 
+### Uses:
+- [Custom LuaJ](https://github.com/Nekiplay/luaj)
+- [ImGUI Java](https://github.com/SpaiR/imgui-java)
+- [Deep Java Librariry](https://djl.ai/)
+- [CatBoost](https://catboost.ai/)
