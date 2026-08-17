@@ -38,70 +38,71 @@ class PlayerObject : LuaValue() {
         return this
     }
 
-    override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            // Objects
-            "javaClass", "class" -> JavaInstance(mc.player)
-            "input" -> InputObject()
-            "inventory" -> InventoryObject()
-            "network" -> NetworkObject()
+    // Precomputed dynamic keys
+    private val javaClassKey = LuaValue.valueOf("javaClass")
+    private val classKey = LuaValue.valueOf("class")
+    private val entityKey = LuaValue.valueOf("entity")
+    private val fishHookKey = LuaValue.valueOf("fishHook")
 
-            // Variables
-            "entity" -> {
+    override fun get(key: LuaValue): LuaValue {
+        return when {
+            key == javaClassKey || key == classKey -> JavaInstance(mc.player)
+            key == entityKey -> {
                 if (mc.player != null) {
                     LuaEntity(mc.player!!)
-                }
-                else {
+                } else {
                     NIL
                 }
             }
-            "fishHook" -> {
+            key == fishHookKey -> {
                 if (mc.player != null && mc.player?.fishing != null) {
                     LuaEntity(mc.player!!.fishing!!)
-                }
-                else {
+                } else {
                     NIL
                 }
             }
-
-            // Functions
-            "addMessage" -> AddChatMessageFunction()
-            "sendMessage" -> SendChatMessageFunction()
-            "sendCommand" -> SendCommandFunction()
-            "getPos", "getPosition" -> GetPlayerPosFunction()
-            "getRotation" -> GetPlayerRotationFunction()
-            "getSilentRotation", "getServerRotation" -> GetPlayerSilentRotationFunction()
-            "setRotation" -> SetPlayerRotationFunction()
-            "setSilentRotation", "setServerRotation" -> SetPlayerSilentRotationFunction()
-            "getName" -> GetPlayerNameFunction()
-            "isSneaking" -> IsPlayerSneakingFunction()
-            "isSprinting" -> IsPlayerSprintingFunction()
-            "isOnGround" -> IsPlayerOnGroundFunction()
-            "isHasLineOfSight" -> IsHasLineOfSight()
-
-            "swingHand" -> SwingHandFunction()
-
-            "getEyePosition" -> GetEyePositionFunction()
-            "getLookEndPos" -> GetLookEndPosFunction()
-            "getDirectionFromYawPitch" -> GetDirectionFromYawPitch()
-
-            "getScoreBoardLines" -> GetScoreboardLinesFunction()
-            "getTab" -> GetTabFunction()
-
-            "addToast" -> AddToastFunction()
-
-            "getBossBar" -> GetBossBarFunction()
-
-            "raycast" -> RayCastFunction()
-            "raycastToEntity" -> RayCastToEntityFunction()
-            "raycastToBlocksFromId" -> RayCastToBlocksFunction()
-            "raycastToBlocksFromIdentifier" -> RayCastToBlocksFromIdentifierFunction()
-
-            "getTitle" -> GetTitleFunction()
-            "getSubTitle" -> GetSubTitleFunction()
-            "getActionBar" -> GetActionBarFunction()
+            key.type() == LuaValue.TSTRING -> functions[key] ?: NIL
             else -> NIL
-        } as LuaValue
+        }
+    }
+
+    private val functions: Map<LuaValue, LuaValue> by lazy {
+        buildMap {
+            put(LuaValue.valueOf("input"), InputObject())
+            put(LuaValue.valueOf("inventory"), InventoryObject())
+            put(LuaValue.valueOf("network"), NetworkObject())
+            put(LuaValue.valueOf("addMessage"), AddChatMessageFunction())
+            put(LuaValue.valueOf("sendMessage"), SendChatMessageFunction())
+            put(LuaValue.valueOf("sendCommand"), SendCommandFunction())
+            put(LuaValue.valueOf("getPos"), GetPlayerPosFunction())
+            put(LuaValue.valueOf("getPosition"), GetPlayerPosFunction())
+            put(LuaValue.valueOf("getRotation"), GetPlayerRotationFunction())
+            put(LuaValue.valueOf("getSilentRotation"), GetPlayerSilentRotationFunction())
+            put(LuaValue.valueOf("getServerRotation"), GetPlayerSilentRotationFunction())
+            put(LuaValue.valueOf("setRotation"), SetPlayerRotationFunction())
+            put(LuaValue.valueOf("setSilentRotation"), SetPlayerSilentRotationFunction())
+            put(LuaValue.valueOf("setServerRotation"), SetPlayerSilentRotationFunction())
+            put(LuaValue.valueOf("getName"), GetPlayerNameFunction())
+            put(LuaValue.valueOf("isSneaking"), IsPlayerSneakingFunction())
+            put(LuaValue.valueOf("isSprinting"), IsPlayerSprintingFunction())
+            put(LuaValue.valueOf("isOnGround"), IsPlayerOnGroundFunction())
+            put(LuaValue.valueOf("isHasLineOfSight"), IsHasLineOfSight())
+            put(LuaValue.valueOf("swingHand"), SwingHandFunction())
+            put(LuaValue.valueOf("getEyePosition"), GetEyePositionFunction())
+            put(LuaValue.valueOf("getLookEndPos"), GetLookEndPosFunction())
+            put(LuaValue.valueOf("getDirectionFromYawPitch"), GetDirectionFromYawPitch())
+            put(LuaValue.valueOf("getScoreBoardLines"), GetScoreboardLinesFunction())
+            put(LuaValue.valueOf("getTab"), GetTabFunction())
+            put(LuaValue.valueOf("addToast"), AddToastFunction())
+            put(LuaValue.valueOf("getBossBar"), GetBossBarFunction())
+            put(LuaValue.valueOf("raycast"), RayCastFunction())
+            put(LuaValue.valueOf("raycastToEntity"), RayCastToEntityFunction())
+            put(LuaValue.valueOf("raycastToBlocksFromId"), RayCastToBlocksFunction())
+            put(LuaValue.valueOf("raycastToBlocksFromIdentifier"), RayCastToBlocksFromIdentifierFunction())
+            put(LuaValue.valueOf("getTitle"), GetTitleFunction())
+            put(LuaValue.valueOf("getSubTitle"), GetSubTitleFunction())
+            put(LuaValue.valueOf("getActionBar"), GetActionBarFunction())
+        }
     }
 
     private class GetTitleFunction : ZeroArgFunction() {

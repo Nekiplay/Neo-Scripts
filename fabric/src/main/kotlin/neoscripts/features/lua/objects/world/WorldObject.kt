@@ -48,6 +48,10 @@ class WorldObject : LuaValue() {
     companion object {
         // --- Статические хелперы парсинга ---
 
+        // Precomputed dynamic keys
+        private val javaClassKey = LuaValue.valueOf("javaClass")
+        private val classKey = LuaValue.valueOf("class")
+
         private fun parseBlockPos(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): BlockPos? {
             if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true) {
                 return BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
@@ -136,40 +140,42 @@ class WorldObject : LuaValue() {
     }
 
     override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            // Functions
-            "javaClass", "class" -> JavaInstance(mc.level)
-            "getRotation" -> GetRotationFunction()
-            "getBlock", "getBlockState" -> GetBlockFunction()
-            "getLight", "getBrightness" -> GetLightFunction()
-            "getLightSky", "getBrightnessSky" -> GetLightSkyFunction()
-            "getDimension" -> GetDimension()
-            "setBlock" -> SetBlockFunction()
-            "isBlockLoaded" -> IsBlockLoadedFunction()
-
-            "getEntities" -> GetEntitiesFunction()
-            "getLivingEntities" -> GetLivingEntitiesFunction()
-            "getArmorStandEntities" -> GetArmorStandEntitiesFunction()
-
-            "getEntitiesInBox" -> GetEntitiesInBoxFunction()
-            "getArmorStandEntitiesInBox" -> GetArmorStandEntitiesInBoxFunction()
-
-            "getEntityById" -> GetEntityByIdFunction()
-
-            "getCollisionBoxes" -> GetCollisionBoxesFunction()
-            "getOutlineBoxes" -> GetOutlineBoxesFunction()
-
-            "getBlocksInBox" -> GetBlocksInBoxFunction()
-            "getBlocksFromList" -> GetBlocksFromListFunction()
-
-            "raycast" -> RaycastFunction()
-            "raycastFromRotation" -> RaycastFromRotationFunction()
-            "raycastToBlocksFromId" -> RaycastToBlocksFunction()
-            "raycastToBlocksFromIdentifier" -> RaycastToBlocksFromIdentifierFunction()
-            "getBreakingBlocksInfo" -> GetBreakingBlocksInfo()
-            "playSound" -> PlaySoundFunction()
+        return when {
+            key == javaClassKey || key == classKey -> JavaInstance(mc.level)
+            key.type() == LuaValue.TSTRING -> functions[key] ?: NIL
             else -> NIL
-        } as LuaValue
+        }
+    }
+
+    private val functions: Map<LuaValue, LuaValue> by lazy {
+        buildMap {
+            put(LuaValue.valueOf("getRotation"), GetRotationFunction())
+            put(LuaValue.valueOf("getBlock"), GetBlockFunction())
+            put(LuaValue.valueOf("getBlockState"), GetBlockFunction())
+            put(LuaValue.valueOf("getLight"), GetLightFunction())
+            put(LuaValue.valueOf("getBrightness"), GetLightFunction())
+            put(LuaValue.valueOf("getLightSky"), GetLightSkyFunction())
+            put(LuaValue.valueOf("getBrightnessSky"), GetLightSkyFunction())
+            put(LuaValue.valueOf("getDimension"), GetDimension())
+            put(LuaValue.valueOf("setBlock"), SetBlockFunction())
+            put(LuaValue.valueOf("isBlockLoaded"), IsBlockLoadedFunction())
+            put(LuaValue.valueOf("getEntities"), GetEntitiesFunction())
+            put(LuaValue.valueOf("getLivingEntities"), GetLivingEntitiesFunction())
+            put(LuaValue.valueOf("getArmorStandEntities"), GetArmorStandEntitiesFunction())
+            put(LuaValue.valueOf("getEntitiesInBox"), GetEntitiesInBoxFunction())
+            put(LuaValue.valueOf("getArmorStandEntitiesInBox"), GetArmorStandEntitiesInBoxFunction())
+            put(LuaValue.valueOf("getEntityById"), GetEntityByIdFunction())
+            put(LuaValue.valueOf("getCollisionBoxes"), GetCollisionBoxesFunction())
+            put(LuaValue.valueOf("getOutlineBoxes"), GetOutlineBoxesFunction())
+            put(LuaValue.valueOf("getBlocksInBox"), GetBlocksInBoxFunction())
+            put(LuaValue.valueOf("getBlocksFromList"), GetBlocksFromListFunction())
+            put(LuaValue.valueOf("raycast"), RaycastFunction())
+            put(LuaValue.valueOf("raycastFromRotation"), RaycastFromRotationFunction())
+            put(LuaValue.valueOf("raycastToBlocksFromId"), RaycastToBlocksFunction())
+            put(LuaValue.valueOf("raycastToBlocksFromIdentifier"), RaycastToBlocksFromIdentifierFunction())
+            put(LuaValue.valueOf("getBreakingBlocksInfo"), GetBreakingBlocksInfo())
+            put(LuaValue.valueOf("playSound"), PlaySoundFunction())
+        }
     }
 
     private class GetBlocksInBoxFunction : VarArgFunction() {

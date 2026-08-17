@@ -28,51 +28,64 @@ import org.luaj.vm2.lib.ZeroArgFunction
         return this
     }
 
+    // Precomputed dynamic keys
+    private val carriedItemKey = LuaValue.valueOf("carriedItem")
+    private val carriedItemStackKey = LuaValue.valueOf("carriedItemStack")
+
     override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            "isSignOpened" -> IsSignOpenedFunction()
-            "isAnyScreenOpened" -> IsAnyScreenOpened()
-            "isContainerScreenOpened", "isContainerOpened" -> IsContainerScreenOpened()
-            "isChatOpened" -> IsChatOpened()
-            "isAnvilOpened" -> IsAnvilOpened()
-            "getContainerSlots" -> GetContainerSlotsFunction()
-            "getChestTitle", "getContainerTitle" -> GetChestTitleFunction()
-
-            "setStackInContainer", "setItemInContainer" -> SetStackInContainerFunction()
-            "setStack", "setItem", "setItemStack" -> SetStackFunction()
-
-            "getStackFromContainer", "getItemFromContainer", "getItemStackFromContainer" -> GetStackFromContainerFunction()
-            "getStack", "getItem", "getItemStack" -> GetStackFunction()
-            "getSignText" -> GetSignTextFunction()
-            "setSignText" -> SetSignTextFunction()
-            "doneSign", "confirmSign" -> DoneSignFunction()
-
-            "getAnvilText" -> GetAnvilText()
-            "doneAnvil", "confirmAnvil" -> DoneAnvilFunction()
-
-            "carriedItem", "carriedItemStack" -> {
+        return when {
+            key == carriedItemKey || key == carriedItemStackKey -> {
                 val carriedStack = mc.player?.containerMenu?.carried
-                return if (carriedStack != null) {
+                if (carriedStack != null) {
                     LuaItemStack(carriedStack)
                 } else {
                     NIL
                 }
             }
-
-            "leftClick" -> LeftClickFunction()
-            "rightClick" -> RightClickFunction()
-
-            "shiftLeftClick" -> ShiftLeftClickFunction()
-            "shiftRightClick" -> ShiftRightClickFunction()
-
-            "middleClick" -> MiddleClickFunction()
-            "drop" -> DropFunction()
-            "dropAll" -> DropAllFunction()
-
-            "closeScreen" -> CloseScreenFunction()
-            "openInventory" -> OpenInventoryFunction()
+            key.type() == LuaValue.TSTRING -> functions[key] ?: NIL
             else -> NIL
-        } as LuaValue
+        }
+    }
+
+    private val functions: Map<LuaValue, LuaValue> by lazy {
+        buildMap {
+            put(LuaValue.valueOf("isSignOpened"), IsSignOpenedFunction())
+            put(LuaValue.valueOf("isAnyScreenOpened"), IsAnyScreenOpened())
+            put(LuaValue.valueOf("isContainerScreenOpened"), IsContainerScreenOpened())
+            put(LuaValue.valueOf("isContainerOpened"), IsContainerScreenOpened())
+            put(LuaValue.valueOf("isChatOpened"), IsChatOpened())
+            put(LuaValue.valueOf("isAnvilOpened"), IsAnvilOpened())
+            put(LuaValue.valueOf("getContainerSlots"), GetContainerSlotsFunction())
+            put(LuaValue.valueOf("getChestTitle"), GetChestTitleFunction())
+            put(LuaValue.valueOf("getContainerTitle"), GetChestTitleFunction())
+            put(LuaValue.valueOf("setStackInContainer"), SetStackInContainerFunction())
+            put(LuaValue.valueOf("setItemInContainer"), SetStackInContainerFunction())
+            put(LuaValue.valueOf("setStack"), SetStackFunction())
+            put(LuaValue.valueOf("setItem"), SetStackFunction())
+            put(LuaValue.valueOf("setItemStack"), SetStackFunction())
+            put(LuaValue.valueOf("getStackFromContainer"), GetStackFromContainerFunction())
+            put(LuaValue.valueOf("getItemFromContainer"), GetStackFromContainerFunction())
+            put(LuaValue.valueOf("getItemStackFromContainer"), GetStackFromContainerFunction())
+            put(LuaValue.valueOf("getStack"), GetStackFunction())
+            put(LuaValue.valueOf("getItem"), GetStackFunction())
+            put(LuaValue.valueOf("getItemStack"), GetStackFunction())
+            put(LuaValue.valueOf("getSignText"), GetSignTextFunction())
+            put(LuaValue.valueOf("setSignText"), SetSignTextFunction())
+            put(LuaValue.valueOf("doneSign"), DoneSignFunction())
+            put(LuaValue.valueOf("confirmSign"), DoneSignFunction())
+            put(LuaValue.valueOf("getAnvilText"), GetAnvilText())
+            put(LuaValue.valueOf("doneAnvil"), DoneAnvilFunction())
+            put(LuaValue.valueOf("confirmAnvil"), DoneAnvilFunction())
+            put(LuaValue.valueOf("leftClick"), LeftClickFunction())
+            put(LuaValue.valueOf("rightClick"), RightClickFunction())
+            put(LuaValue.valueOf("shiftLeftClick"), ShiftLeftClickFunction())
+            put(LuaValue.valueOf("shiftRightClick"), ShiftRightClickFunction())
+            put(LuaValue.valueOf("middleClick"), MiddleClickFunction())
+            put(LuaValue.valueOf("drop"), DropFunction())
+            put(LuaValue.valueOf("dropAll"), DropAllFunction())
+            put(LuaValue.valueOf("closeScreen"), CloseScreenFunction())
+            put(LuaValue.valueOf("openInventory"), OpenInventoryFunction())
+        }
     }
 
      private class GetAnvilText : ZeroArgFunction() {

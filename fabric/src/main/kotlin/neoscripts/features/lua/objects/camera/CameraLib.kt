@@ -20,11 +20,17 @@ class CameraLib : LuaValue() {
     override fun call() = this
 
     override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            "getViewMatrix" -> GetViewMatrixFunction()
-            "getProjectionMatrix" -> GetProjectionMatrixFunction()
-            "world2screen", "worldToScreen", "world2Screen", "worldToscreen" -> World2ScreenFunction()
-            else -> NIL
+        return if (key.type() == LuaValue.TSTRING) functions[key] ?: NIL else NIL
+    }
+
+    private val functions: Map<LuaValue, LuaValue> by lazy {
+        buildMap {
+            put(LuaValue.valueOf("getViewMatrix"), GetViewMatrixFunction())
+            put(LuaValue.valueOf("getProjectionMatrix"), GetProjectionMatrixFunction())
+            put(LuaValue.valueOf("world2screen"), World2ScreenFunction())
+            put(LuaValue.valueOf("worldToScreen"), World2ScreenFunction())
+            put(LuaValue.valueOf("world2Screen"), World2ScreenFunction())
+            put(LuaValue.valueOf("worldToscreen"), World2ScreenFunction())
         }
     }
 

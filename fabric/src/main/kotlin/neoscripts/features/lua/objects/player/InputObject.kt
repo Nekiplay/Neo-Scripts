@@ -24,62 +24,45 @@ class InputObject: LuaValue() {
     }
 
     override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            "useItem" -> UseFunction()
-            "silentUse" -> SilentUseFunction()
-            "syncSelectedSlot" -> SyncSelectedSlotFunction()
+        return if (key.type() == LuaValue.TSTRING) functions[key] ?: NIL else NIL
+    }
 
-            "attackBlock" -> AttackBlockFunction()
-            "mineBlock" -> MineBlockFunction()
-            "attackEntity" -> AttackEntityFunction()
-
-            "interactBlock" -> InteractBlockFunction()
-            "interactEntity" -> InteractEntityFunction()
-
-            "leftClick" -> LeftClickFunction()
-            "rightClick" -> RightClickFunction()
-            // Setters
-            "setSelectedSlot" -> SetSelectedSlotFunction()
-
-            // KeyBoard
-            "setPressedSprinting" -> SetPressedSprintingFunction()
-            "setPressedJump" -> SetPressedJumpFunction()
-            "setPressedSneak" -> SetPressedSneakFunction()
-
-            "setPressedForward" -> SetPressedForwardFunction()
-            "setPressedBack" -> SetPressedBackFunction()
-            "setPressedLeft" -> SetPressedLeftFunction()
-            "setPressedRight" -> SetPressedRightFunction()
-
-            // Mouse
-            "setPressedAttack" -> SetPressedAttackFunction()
-            "setPressedUse" -> SetPressedUseFunction()
-
-            // Getters
-            "getSelectedSlot" -> GetSelectedSlotFunction()
-
-            // KeyBoard
-            "isPressedSprinting" -> IsPressedSprintingFunction()
-            "isPressedJump" -> IsPressedJumpFunction()
-            "isPressedSneak" -> IsPressedSneakFunction()
-
-            "isPressedForward" -> IsPressedForwardFunction()
-            "isPressedBack" -> IsPressedBackFunction()
-            "isPressedLeft" -> IsPressedLeftFunction()
-            "isPressedRight" -> IsPressedRightFunction()
-
-            // Mouse
-            "isPressedAttack" -> IsPressedAttackFunction()
-            "isPressedUse" -> IsPressedUseFunction()
-
-            // Breaking progress
-            "getBreakingProgress" -> GetBreakingProgress()
-            "setBreakingProgress" -> SetBreakingProgress()
-
-            // Elytra
-            "startElytraFly" -> StartElytraFly()
-            else -> NIL
-        } as LuaValue
+    private val functions: Map<LuaValue, LuaValue> by lazy {
+        buildMap {
+            put(LuaValue.valueOf("useItem"), UseFunction())
+            put(LuaValue.valueOf("silentUse"), SilentUseFunction())
+            put(LuaValue.valueOf("syncSelectedSlot"), SyncSelectedSlotFunction())
+            put(LuaValue.valueOf("attackBlock"), AttackBlockFunction())
+            put(LuaValue.valueOf("mineBlock"), MineBlockFunction())
+            put(LuaValue.valueOf("attackEntity"), AttackEntityFunction())
+            put(LuaValue.valueOf("interactBlock"), InteractBlockFunction())
+            put(LuaValue.valueOf("interactEntity"), InteractEntityFunction())
+            put(LuaValue.valueOf("leftClick"), LeftClickFunction())
+            put(LuaValue.valueOf("rightClick"), RightClickFunction())
+            put(LuaValue.valueOf("setSelectedSlot"), SetSelectedSlotFunction())
+            put(LuaValue.valueOf("setPressedSprinting"), SetPressedSprintingFunction())
+            put(LuaValue.valueOf("setPressedJump"), SetPressedJumpFunction())
+            put(LuaValue.valueOf("setPressedSneak"), SetPressedSneakFunction())
+            put(LuaValue.valueOf("setPressedForward"), SetPressedForwardFunction())
+            put(LuaValue.valueOf("setPressedBack"), SetPressedBackFunction())
+            put(LuaValue.valueOf("setPressedLeft"), SetPressedLeftFunction())
+            put(LuaValue.valueOf("setPressedRight"), SetPressedRightFunction())
+            put(LuaValue.valueOf("setPressedAttack"), SetPressedAttackFunction())
+            put(LuaValue.valueOf("setPressedUse"), SetPressedUseFunction())
+            put(LuaValue.valueOf("getSelectedSlot"), GetSelectedSlotFunction())
+            put(LuaValue.valueOf("isPressedSprinting"), IsPressedSprintingFunction())
+            put(LuaValue.valueOf("isPressedJump"), IsPressedJumpFunction())
+            put(LuaValue.valueOf("isPressedSneak"), IsPressedSneakFunction())
+            put(LuaValue.valueOf("isPressedForward"), IsPressedForwardFunction())
+            put(LuaValue.valueOf("isPressedBack"), IsPressedBackFunction())
+            put(LuaValue.valueOf("isPressedLeft"), IsPressedLeftFunction())
+            put(LuaValue.valueOf("isPressedRight"), IsPressedRightFunction())
+            put(LuaValue.valueOf("isPressedAttack"), IsPressedAttackFunction())
+            put(LuaValue.valueOf("isPressedUse"), IsPressedUseFunction())
+            put(LuaValue.valueOf("getBreakingProgress"), GetBreakingProgress())
+            put(LuaValue.valueOf("setBreakingProgress"), SetBreakingProgress())
+            put(LuaValue.valueOf("startElytraFly"), StartElytraFly())
+        }
     }
 
     private class StartElytraFly : ZeroArgFunction() {
