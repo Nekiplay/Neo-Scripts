@@ -335,241 +335,178 @@ class ImGuiLib(val script: LuaScript) : LuaValue() {
     }
 
     override fun get(key: LuaValue): LuaValue {
-        return when (val field = key.tojstring()) {
-            // Window management
-            "begin" -> begin()
-            "endBegin" -> endFunc()
-            "newFrame" -> newFrame()
-            "render" -> render()
-
-            // Text
-            "text" -> text()
-            "textColored" -> textColored()
-            "textDisabled" -> textDisabled()
-            "bulletText" -> bulletText()
-            "calcTextSize" -> calcTextSize()
-
-            // Images
-            "createImageObject" -> createImageObject()
-            "image" -> image()
-
-            // Buttons
-            "button" -> button()
-            "smallButton" -> smallButton()
-            "arrowButton" -> arrowButton()
-            "checkbox" -> checkbox()
-
-            // Input
-            "inputText" -> inputText()
-            "inputTextMultiline" -> inputTextMultiline()
-            "inputInt" -> inputInt()
-            "inputFloat" -> inputFloat()
-            "inputDouble" -> inputDouble()
-
-            // Layout
-            "sameLine" -> sameLine()
-            "newLine" -> newLine()
-            "spacing" -> spacing()
-            "separator" -> separator()
-
-            // Groups
-            "beginGroup" -> beginGroup()
-            "endGroup" -> endGroup()
-
-            // Indentation
-            "indent" -> indent()
-            "unindent" -> unindent()
-
-            // Indentation
-            "setCursorPos" -> setCursorPos()
-            "getCursorPos" -> getCursorPos()
-            "getCursorScreenPos" -> getCursorScreenPos()
-
-            // Indentation
-            "treeNode" -> treeNode()
-            "treeNodeEx" -> treeNodeEx()
-            "treePop" -> treePop()
-            "collapsingHeader" -> collapsingHeader()
-
-            // Selectables
-            "selectable" -> selectable()
-
-            // Lists
-            "listBox" -> listBox()
-
-            // Tooltips
-            "setTooltip" -> setTooltip()
-            "beginTooltip" -> beginTooltip()
-            "endTooltip" -> endTooltip()
-
-            // Popups
-            "beginPopup" -> beginPopup()
-            "beginPopupModal" -> beginPopupModal()
-            "openPopup" -> openPopup()
-            "endPopup" -> endPopup()
-            "closeCurrentPopup" -> closeCurrentPopup()
-
-            // Menus
-            "beginMenuBar" -> beginMenuBar()
-            "endMenuBar" -> endMenuBar()
-            "beginMainMenuBar" -> beginMainMenuBar()
-            "endMainMenuBar" -> endMainMenuBar()
-            "beginMenu" -> beginMenu()
-            "endMenu" -> endMenu()
-            "menuItem" -> menuItem()
-
-            // Tabs
-            "beginTabBar" -> beginTabBar()
-            "endTabBar" -> endTabBar()
-            "beginTabItem" -> beginTabItem()
-            "endTabItem" -> endTabItem()
-
-            // Child windows
-            "beginChild" -> beginChild()
-            "endChild" -> endChild()
-
-            // Style
-            "pushStyleColor" -> pushStyleColor()
-            "popStyleColor" -> popStyleColor()
-            "pushStyleVar" -> pushStyleVar()
-            "popStyleVar" -> popStyleVar()
-
-            // Font
-            "createFontObject" -> LoadFont()
-            "pushFont" -> pushFont()
-            "popFont" -> popFont()
-
-            // ID stack
-            "pushID" -> pushID()
-            "popID" -> popID()
-
-            // Utilities
-            "setNextItemWidth" -> setNextItemWidth()
-            "isItemHovered" -> isItemHovered()
-            "isItemClicked" -> isItemClicked()
-            "isItemActive" -> isItemActive()
-            "isWindowAppearing" -> isWindowAppearing()
-            "isWindowCollapsed" -> isWindowCollapsed()
-            "isWindowFocused" -> isWindowFocused()
-            "isWindowHovered" -> isWindowHovered()
-
-            // Window manipulation
-            "setNextWindowSize" -> setNextWindowSize()
-            "setNextWindowPos" -> setNextWindowPos()
-            "setNextWindowCollapsed" -> setNextWindowCollapsed()
-            "setNextWindowFocus" -> setNextWindowFocus()
-
-            // State queries
-            "getWindowSize" -> getWindowSize()
-            "getWindowPos" -> getWindowPos()
-            "getWindowWidth" -> getWindowWidth()
-            "getWindowHeight" -> getWindowHeight()
-
-            // Table
-            "beginTable" -> beginTable()
-            "tableSetupColumn" -> tableSetupColumn()
-            "tableHeadersRow" -> tableHeadersRow()
-            "tableNextRow" -> tableNextRow()
-            "tableSetColumnIndex" -> tableSetColumnIndex()
-            "endTable" -> endTable()
-
-            // Sliders
-            "sliderFloat" -> sliderFloat()
-            "sliderInt" -> sliderInt()
-            "sliderAngle" -> sliderAngle()
-            "vSliderFloat" -> vSliderFloat()
-            "vSliderInt" -> vSliderInt()
-
-            "dragFloat" -> dragFloat()
-            "dragInt" -> dragInt()
-
-            "colorEdit3" -> colorEdit3()
-            "colorEdit4" -> colorEdit4()
-            "colorPicker3" -> colorPicker3()
-            "colorPicker4" -> colorPicker4()
-            "colorButton" -> colorButton()
-
-            "combo" -> combo()
-            "beginCombo" -> beginCombo()
-            "endCombo" -> endCombo()
-
-            "radioButton" -> radioButton()
-            "progressBar" -> progressBar()
-
-            "textWrapped" -> textWrapped()
-            "labelText" -> labelText()
-            "separatorText" -> separatorText()
-
-            "plotLines" -> plotLines()
-            "plotHistogram" -> plotHistogram()
-
-            "setScrollHereY" -> setScrollHereY()
-            "setScrollHereX" -> setScrollHereX()
-            "getScrollY" -> getScrollY()
-            "getScrollX" -> getScrollX()
-            "getScrollMaxY" -> getScrollMaxY()
-            "getScrollMaxX" -> getScrollMaxX()
-            "setScrollY" -> setScrollY()
-            "setScrollX" -> setScrollX()
-
-            "isKeyDown" -> isKeyDown()
-            "isKeyPressed" -> isKeyPressed()
-            "isKeyReleased" -> isKeyReleased()
-            "isMouseDown" -> isMouseDown()
-            "isMouseClicked" -> isMouseClicked()
-            "isMouseReleased" -> isMouseReleased()
-            "isMouseDoubleClicked" -> isMouseDoubleClicked()
-            "isMouseDragging" -> isMouseDragging()
-            "getMousePos" -> getMousePos()
-            "getMouseDragDelta" -> getMouseDragDelta()
-            "isAnyMouseDown" -> isAnyMouseDown()
-
-            "isItemVisible" -> isItemVisible()
-            "isItemEdited" -> isItemEdited()
-            "isItemDeactivated" -> isItemDeactivated()
-            "isItemDeactivatedAfterEdit" -> isItemDeactivatedAfterEdit()
-            "isItemFocused" -> isItemFocused()
-            "getItemRectMin" -> getItemRectMin()
-            "getItemRectMax" -> getItemRectMax()
-            "getItemRectSize" -> getItemRectSize()
-
-            "dummy" -> dummy()
-            "alignTextToFramePadding" -> alignTextToFramePadding()
-            "getContentRegionAvail" -> getContentRegionAvail()
-            "getDisplaySize" -> getDisplaySize()
-            "getFrameCount" -> getFrameCount()
-            "getTime" -> getTime()
-            "getFontSize" -> getFontSize()
-            "getTextLineHeight" -> getTextLineHeight()
-            "getTextLineHeightWithSpacing" -> getTextLineHeightWithSpacing()
-            "getFrameHeight" -> getFrameHeight()
-            "getFrameHeightWithSpacing" -> getFrameHeightWithSpacing()
-
-            "setNextWindowBgAlpha" -> setNextWindowBgAlpha()
-            "setNextWindowContentSize" -> setNextWindowContentSize()
-            "setWindowFocus" -> setWindowFocus()
-            "setWindowSize" -> setWindowSize()
-            "setWindowPos" -> setWindowPos()
-            "setWindowCollapsed" -> setWindowCollapsed()
-            "isPopupOpen" -> isPopupOpen()
-            "openPopupOnItemClick" -> openPopupOnItemClick()
-
-            
-            // ну тут прям ниже только через ffi imgui вызивать
-            "pathClear" -> pathClear()
-            "pathLineTo" -> pathLineTo()
-            "pathStroke" -> pathStroke()
-
-            // Constants
-            "constants" -> {
-                constants
-            }
-
-            "dl", "DL" -> {
-                dl
-            }
-            else -> super.get(key)
+        if (key.type() == TSTRING) {
+            functions[key]?.let { return it }
         }
+        return super.get(key)
+    }
+
+    private val functions: Map<LuaValue, LuaValue> by lazy {
+        hashMapOf(
+            LuaValue.valueOf("begin") to begin(),
+            LuaValue.valueOf("endBegin") to endFunc(),
+            LuaValue.valueOf("newFrame") to newFrame(),
+            LuaValue.valueOf("render") to render(),
+            LuaValue.valueOf("text") to text(),
+            LuaValue.valueOf("textColored") to textColored(),
+            LuaValue.valueOf("textDisabled") to textDisabled(),
+            LuaValue.valueOf("bulletText") to bulletText(),
+            LuaValue.valueOf("calcTextSize") to calcTextSize(),
+            LuaValue.valueOf("createImageObject") to createImageObject(),
+            LuaValue.valueOf("image") to image(),
+            LuaValue.valueOf("button") to button(),
+            LuaValue.valueOf("smallButton") to smallButton(),
+            LuaValue.valueOf("arrowButton") to arrowButton(),
+            LuaValue.valueOf("checkbox") to checkbox(),
+            LuaValue.valueOf("inputText") to inputText(),
+            LuaValue.valueOf("inputTextMultiline") to inputTextMultiline(),
+            LuaValue.valueOf("inputInt") to inputInt(),
+            LuaValue.valueOf("inputFloat") to inputFloat(),
+            LuaValue.valueOf("inputDouble") to inputDouble(),
+            LuaValue.valueOf("sameLine") to sameLine(),
+            LuaValue.valueOf("newLine") to newLine(),
+            LuaValue.valueOf("spacing") to spacing(),
+            LuaValue.valueOf("separator") to separator(),
+            LuaValue.valueOf("beginGroup") to beginGroup(),
+            LuaValue.valueOf("endGroup") to endGroup(),
+            LuaValue.valueOf("indent") to indent(),
+            LuaValue.valueOf("unindent") to unindent(),
+            LuaValue.valueOf("setCursorPos") to setCursorPos(),
+            LuaValue.valueOf("getCursorPos") to getCursorPos(),
+            LuaValue.valueOf("getCursorScreenPos") to getCursorScreenPos(),
+            LuaValue.valueOf("treeNode") to treeNode(),
+            LuaValue.valueOf("treeNodeEx") to treeNodeEx(),
+            LuaValue.valueOf("treePop") to treePop(),
+            LuaValue.valueOf("collapsingHeader") to collapsingHeader(),
+            LuaValue.valueOf("selectable") to selectable(),
+            LuaValue.valueOf("listBox") to listBox(),
+            LuaValue.valueOf("setTooltip") to setTooltip(),
+            LuaValue.valueOf("beginTooltip") to beginTooltip(),
+            LuaValue.valueOf("endTooltip") to endTooltip(),
+            LuaValue.valueOf("beginPopup") to beginPopup(),
+            LuaValue.valueOf("beginPopupModal") to beginPopupModal(),
+            LuaValue.valueOf("openPopup") to openPopup(),
+            LuaValue.valueOf("endPopup") to endPopup(),
+            LuaValue.valueOf("closeCurrentPopup") to closeCurrentPopup(),
+            LuaValue.valueOf("beginMenuBar") to beginMenuBar(),
+            LuaValue.valueOf("endMenuBar") to endMenuBar(),
+            LuaValue.valueOf("beginMainMenuBar") to beginMainMenuBar(),
+            LuaValue.valueOf("endMainMenuBar") to endMainMenuBar(),
+            LuaValue.valueOf("beginMenu") to beginMenu(),
+            LuaValue.valueOf("endMenu") to endMenu(),
+            LuaValue.valueOf("menuItem") to menuItem(),
+            LuaValue.valueOf("beginTabBar") to beginTabBar(),
+            LuaValue.valueOf("endTabBar") to endTabBar(),
+            LuaValue.valueOf("beginTabItem") to beginTabItem(),
+            LuaValue.valueOf("endTabItem") to endTabItem(),
+            LuaValue.valueOf("beginChild") to beginChild(),
+            LuaValue.valueOf("endChild") to endChild(),
+            LuaValue.valueOf("pushStyleColor") to pushStyleColor(),
+            LuaValue.valueOf("popStyleColor") to popStyleColor(),
+            LuaValue.valueOf("pushStyleVar") to pushStyleVar(),
+            LuaValue.valueOf("popStyleVar") to popStyleVar(),
+            LuaValue.valueOf("createFontObject") to LoadFont(),
+            LuaValue.valueOf("pushFont") to pushFont(),
+            LuaValue.valueOf("popFont") to popFont(),
+            LuaValue.valueOf("pushID") to pushID(),
+            LuaValue.valueOf("popID") to popID(),
+            LuaValue.valueOf("setNextItemWidth") to setNextItemWidth(),
+            LuaValue.valueOf("isItemHovered") to isItemHovered(),
+            LuaValue.valueOf("isItemClicked") to isItemClicked(),
+            LuaValue.valueOf("isItemActive") to isItemActive(),
+            LuaValue.valueOf("isWindowAppearing") to isWindowAppearing(),
+            LuaValue.valueOf("isWindowCollapsed") to isWindowCollapsed(),
+            LuaValue.valueOf("isWindowFocused") to isWindowFocused(),
+            LuaValue.valueOf("isWindowHovered") to isWindowHovered(),
+            LuaValue.valueOf("setNextWindowSize") to setNextWindowSize(),
+            LuaValue.valueOf("setNextWindowPos") to setNextWindowPos(),
+            LuaValue.valueOf("setNextWindowCollapsed") to setNextWindowCollapsed(),
+            LuaValue.valueOf("setNextWindowFocus") to setNextWindowFocus(),
+            LuaValue.valueOf("getWindowSize") to getWindowSize(),
+            LuaValue.valueOf("getWindowPos") to getWindowPos(),
+            LuaValue.valueOf("getWindowWidth") to getWindowWidth(),
+            LuaValue.valueOf("getWindowHeight") to getWindowHeight(),
+            LuaValue.valueOf("beginTable") to beginTable(),
+            LuaValue.valueOf("tableSetupColumn") to tableSetupColumn(),
+            LuaValue.valueOf("tableHeadersRow") to tableHeadersRow(),
+            LuaValue.valueOf("tableNextRow") to tableNextRow(),
+            LuaValue.valueOf("tableSetColumnIndex") to tableSetColumnIndex(),
+            LuaValue.valueOf("endTable") to endTable(),
+            LuaValue.valueOf("sliderFloat") to sliderFloat(),
+            LuaValue.valueOf("sliderInt") to sliderInt(),
+            LuaValue.valueOf("sliderAngle") to sliderAngle(),
+            LuaValue.valueOf("vSliderFloat") to vSliderFloat(),
+            LuaValue.valueOf("vSliderInt") to vSliderInt(),
+            LuaValue.valueOf("dragFloat") to dragFloat(),
+            LuaValue.valueOf("dragInt") to dragInt(),
+            LuaValue.valueOf("colorEdit3") to colorEdit3(),
+            LuaValue.valueOf("colorEdit4") to colorEdit4(),
+            LuaValue.valueOf("colorPicker3") to colorPicker3(),
+            LuaValue.valueOf("colorPicker4") to colorPicker4(),
+            LuaValue.valueOf("colorButton") to colorButton(),
+            LuaValue.valueOf("combo") to combo(),
+            LuaValue.valueOf("beginCombo") to beginCombo(),
+            LuaValue.valueOf("endCombo") to endCombo(),
+            LuaValue.valueOf("radioButton") to radioButton(),
+            LuaValue.valueOf("progressBar") to progressBar(),
+            LuaValue.valueOf("textWrapped") to textWrapped(),
+            LuaValue.valueOf("labelText") to labelText(),
+            LuaValue.valueOf("separatorText") to separatorText(),
+            LuaValue.valueOf("plotLines") to plotLines(),
+            LuaValue.valueOf("plotHistogram") to plotHistogram(),
+            LuaValue.valueOf("setScrollHereY") to setScrollHereY(),
+            LuaValue.valueOf("setScrollHereX") to setScrollHereX(),
+            LuaValue.valueOf("getScrollY") to getScrollY(),
+            LuaValue.valueOf("getScrollX") to getScrollX(),
+            LuaValue.valueOf("getScrollMaxY") to getScrollMaxY(),
+            LuaValue.valueOf("getScrollMaxX") to getScrollMaxX(),
+            LuaValue.valueOf("setScrollY") to setScrollY(),
+            LuaValue.valueOf("setScrollX") to setScrollX(),
+            LuaValue.valueOf("isKeyDown") to isKeyDown(),
+            LuaValue.valueOf("isKeyPressed") to isKeyPressed(),
+            LuaValue.valueOf("isKeyReleased") to isKeyReleased(),
+            LuaValue.valueOf("isMouseDown") to isMouseDown(),
+            LuaValue.valueOf("isMouseClicked") to isMouseClicked(),
+            LuaValue.valueOf("isMouseReleased") to isMouseReleased(),
+            LuaValue.valueOf("isMouseDoubleClicked") to isMouseDoubleClicked(),
+            LuaValue.valueOf("isMouseDragging") to isMouseDragging(),
+            LuaValue.valueOf("getMousePos") to getMousePos(),
+            LuaValue.valueOf("getMouseDragDelta") to getMouseDragDelta(),
+            LuaValue.valueOf("isAnyMouseDown") to isAnyMouseDown(),
+            LuaValue.valueOf("isItemVisible") to isItemVisible(),
+            LuaValue.valueOf("isItemEdited") to isItemEdited(),
+            LuaValue.valueOf("isItemDeactivated") to isItemDeactivated(),
+            LuaValue.valueOf("isItemDeactivatedAfterEdit") to isItemDeactivatedAfterEdit(),
+            LuaValue.valueOf("isItemFocused") to isItemFocused(),
+            LuaValue.valueOf("getItemRectMin") to getItemRectMin(),
+            LuaValue.valueOf("getItemRectMax") to getItemRectMax(),
+            LuaValue.valueOf("getItemRectSize") to getItemRectSize(),
+            LuaValue.valueOf("dummy") to dummy(),
+            LuaValue.valueOf("alignTextToFramePadding") to alignTextToFramePadding(),
+            LuaValue.valueOf("getContentRegionAvail") to getContentRegionAvail(),
+            LuaValue.valueOf("getDisplaySize") to getDisplaySize(),
+            LuaValue.valueOf("getFrameCount") to getFrameCount(),
+            LuaValue.valueOf("getTime") to getTime(),
+            LuaValue.valueOf("getFontSize") to getFontSize(),
+            LuaValue.valueOf("getTextLineHeight") to getTextLineHeight(),
+            LuaValue.valueOf("getTextLineHeightWithSpacing") to getTextLineHeightWithSpacing(),
+            LuaValue.valueOf("getFrameHeight") to getFrameHeight(),
+            LuaValue.valueOf("getFrameHeightWithSpacing") to getFrameHeightWithSpacing(),
+            LuaValue.valueOf("setNextWindowBgAlpha") to setNextWindowBgAlpha(),
+            LuaValue.valueOf("setNextWindowContentSize") to setNextWindowContentSize(),
+            LuaValue.valueOf("setWindowFocus") to setWindowFocus(),
+            LuaValue.valueOf("setWindowSize") to setWindowSize(),
+            LuaValue.valueOf("setWindowPos") to setWindowPos(),
+            LuaValue.valueOf("setWindowCollapsed") to setWindowCollapsed(),
+            LuaValue.valueOf("isPopupOpen") to isPopupOpen(),
+            LuaValue.valueOf("openPopupOnItemClick") to openPopupOnItemClick(),
+            LuaValue.valueOf("pathClear") to pathClear(),
+            LuaValue.valueOf("pathLineTo") to pathLineTo(),
+            LuaValue.valueOf("pathStroke") to pathStroke(),
+            LuaValue.valueOf("constants") to constants,
+            LuaValue.valueOf("dl") to dl,
+            LuaValue.valueOf("DL") to dl
+        )
     }
 
     var windowHandle: Long = -1
