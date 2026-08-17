@@ -15,5 +15,5 @@
 ### Uses:
 - [Custom LuaJ](https://github.com/Nekiplay/luaj)
 - [ImGUI Java](https://github.com/SpaiR/imgui-java)
-- [Deep Java Librariry](https://djl.ai/)
+- [Deep Java Library](https://djl.ai/)
 - [CatBoost](https://catboost.ai/)
