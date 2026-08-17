@@ -1,5 +1,6 @@
 package com.nekiplay.neoscripts.utils.render.primitive;
 
+import net.minecraft.client.gui.Font;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -64,6 +65,11 @@ public interface PrimitiveCollector {
     void submitText(Component text, Vec3 pos, int color, float scale, boolean throughWalls);
 
     void submitText(Component text, Vec3 pos, int color, float scale, float yOffset, boolean throughWalls);
+
+    /**
+     * Submits pre-shaped text, avoiding repeated glyph preparation for static text.
+     */
+    void submitTextPrepared(Font.PreparedText glyphs, Vec3 pos, float scale, float yOffset, boolean throughWalls);
 
     /**
      * Submits a cylinder without the top or bottom faces.

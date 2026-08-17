@@ -252,13 +252,20 @@ public final class PrimitiveCollectorImpl implements PrimitiveCollector {
     private void submitText(FormattedCharSequence text, Vec3 pos, int color, float scale, float yOffset, boolean throughWalls) {
         ensureNotFrozen();
 
-        if (this.textStates == null) {
-            this.textStates = new ArrayList<>();
-        }
-
         Font textRenderer = MINECRAFT.font;
         float xOffset = -textRenderer.width(text) / 2f;
         Font.PreparedText glyphs = textRenderer.prepareText(text, xOffset, yOffset, color, false, false, 0);
+
+        submitTextPrepared(glyphs, pos, scale, yOffset, throughWalls);
+    }
+
+    @Override
+    public void submitTextPrepared(Font.PreparedText glyphs, Vec3 pos, float scale, float yOffset, boolean throughWalls) {
+        ensureNotFrozen();
+
+        if (this.textStates == null) {
+            this.textStates = new ArrayList<>();
+        }
 
         TextRenderState state = new TextRenderState(glyphs, pos, scale * 0.025f, yOffset, throughWalls);
         this.textStates.add(state);

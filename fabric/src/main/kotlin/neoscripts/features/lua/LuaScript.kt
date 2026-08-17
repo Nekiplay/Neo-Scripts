@@ -80,6 +80,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private val clientPreTickCallbacks = ArrayList<LuaValue>()
     private val blockUpdateCallbacks = ArrayList<LuaValue>()
     private val renderWorldCallbacks = ArrayList<LuaValue>()
+    @Volatile
+    private var renderWorldCallbacksArr: Array<LuaValue> = emptyArray()
     private val render2DCallbacks = ArrayList<LuaValue>()
     private val keyEventCallbacks = ArrayList<LuaValue>()
     private val messageEventCallbacks = ArrayList<LuaValue>()
@@ -261,7 +263,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 val callback = args.arg(1)
                 if (!callback.isfunction()) return FALSE
                 synchronized(callbacksLock) {
-                    return valueOf(renderWorldCallbacks.add(callback))
+                    renderWorldCallbacks.add(callback)
+                    renderWorldCallbacksArr = renderWorldCallbacks.toTypedArray()
+                    return TRUE
                 }
             }
         })
@@ -563,7 +567,9 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             override fun invoke(args: Varargs): Varargs {
                 val callback = args.arg(1)
                 synchronized(callbacksLock) {
-                    return valueOf(renderWorldCallbacks.remove(callback))
+                    val removed = renderWorldCallbacks.remove(callback)
+                    renderWorldCallbacksArr = renderWorldCallbacks.toTypedArray()
+                    return valueOf(removed)
                 }
             }
         })
@@ -1200,9 +1206,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     }
 
     fun onRenderTick(context: WorldRendererObject) {
-        val callbacks = synchronized(callbacksLock) {
-            renderWorldCallbacks.toTypedArray()
-        }
+        val callbacks = renderWorldCallbacksArr
+        if (callbacks.isEmpty()) return
 
         for (callback in callbacks) {
             try {
@@ -1212,6 +1217,8 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             }
         }
     }
+
+    fun hasWorldRenderCallbacks(): Boolean = renderWorldCallbacksArr.isNotEmpty()
 
     fun on2DRenderTick(context: GuiGraphicsExtractor) {
         val callbacks = synchronized(callbacksLock) {

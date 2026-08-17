@@ -7,6 +7,7 @@ import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.utils.render.primitive.PrimitiveCollector
+import net.minecraft.client.gui.Font
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
@@ -22,12 +23,64 @@ import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.VarArgFunction
 import java.io.File
 import java.io.FileInputStream
+import java.util.LinkedHashMap
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Supplier
 
 class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() {
+    companion object {
+        private const val GLYPH_CACHE_MAX = 256
+
+        private val glyphCache = object : LinkedHashMap<String, Font.PreparedText>(GLYPH_CACHE_MAX, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Font.PreparedText>): Boolean {
+                return size > GLYPH_CACHE_MAX
+            }
+        }
+
+        fun clearGlyphCache() {
+            synchronized(glyphCache) {
+                glyphCache.clear()
+            }
+        }
+    }
+
+    private fun getOrPrepareGlyphs(text: String, color: Int): Font.PreparedText {
+        val key = "$text|$color"
+
+        synchronized(glyphCache) {
+            glyphCache[key]?.let { return it }
+        }
+
+        val font = mc.font
+        val formatted = Component.literal(text).getVisualOrderText()
+        val xOffset = -font.width(formatted) / 2f
+        val glyphs = font.prepareText(formatted, xOffset, 0.5f, color, false, false, 0)
+
+        synchronized(glyphCache) {
+            glyphCache[key] = glyphs
+        }
+        return glyphs
+    }
+
     override fun call(): LuaValue {
         return this
+    }
+
+    private val functions: Map<LuaValue, LuaValue> by lazy {
+        hashMapOf(
+            LuaValue.valueOf("renderFilled") to RenderFilledFunction(),
+            LuaValue.valueOf("renderFilledCircle") to RenderFilledCircleFunction(),
+            LuaValue.valueOf("renderOutline") to RenderOutlineFunction(),
+            LuaValue.valueOf("renderOutlineCircle") to RenderOutlineCircleFunction(),
+            LuaValue.valueOf("renderCylinder") to RenderCylinderFunction(),
+            LuaValue.valueOf("renderSphere") to RenderSphereFunction(),
+            LuaValue.valueOf("renderText") to RenderTextFunction(),
+            LuaValue.valueOf("renderLinesFromPoints") to RenderLinesFromPointsFunction(),
+            LuaValue.valueOf("renderLineFromCursor") to RenderLineFromCursorFunction(),
+            LuaValue.valueOf("renderImage") to RenderImageFunction(),
+            LuaValue.valueOf("renderQuad") to SubmitQuadFunction(),
+            LuaValue.valueOf("renderHologramBlock") to RenderHologramBlockFunction()
+        )
     }
 
     private fun parseBlockPos(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): BlockPos? {
@@ -97,21 +150,8 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
     }
 
     override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            "renderFilled" -> RenderFilledFunction()
-            "renderFilledCircle" -> RenderFilledCircleFunction()
-            "renderOutline" -> RenderOutlineFunction()
-            "renderOutlineCircle" -> RenderOutlineCircleFunction()
-            "renderCylinder" -> RenderCylinderFunction()
-            "renderSphere" -> RenderSphereFunction()
-            "renderText" -> RenderTextFunction()
-            "renderLinesFromPoints" -> RenderLinesFromPointsFunction()
-            "renderLineFromCursor" -> RenderLineFromCursorFunction()
-            "renderImage" -> RenderImageFunction()
-            "renderQuad" -> SubmitQuadFunction()
-            "renderHologramBlock" -> RenderHologramBlockFunction()
-            else -> NIL
-        } as LuaValue
+        if (key.type() != TSTRING) return NIL
+        return functions[key] ?: NIL
     }
 
     private inner class RenderSphereFunction : VarArgFunction() {
@@ -352,12 +392,11 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
 
             val throughWalls = args.optboolean(offset + 5, true)
 
-            val component = Component.literal(text)
+            val glyphs = getOrPrepareGlyphs(text, color)
 
-            context.submitText(
-                component,
+            context.submitTextPrepared(
+                glyphs,
                 pos,
-                color,
                 scale,
                 0.5f,
                 throughWalls

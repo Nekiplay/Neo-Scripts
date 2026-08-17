@@ -282,8 +282,11 @@ object LuaEvents : ClientModule() {
         }
 
         LevelRenderExtractionCallback.EVENT.register({ context: PrimitiveCollector? ->
+            val scripts = LUA_MANAGER?.scripts?.values
+            if (scripts == null || !scripts.any { it.hasWorldRenderCallbacks() }) return@register
+
             val renderContext = WorldRendererObject(context)
-            LUA_MANAGER?.scripts?.values?.forEach { script ->
+            scripts.forEach { script ->
                 try {
                     script.onRenderTick(renderContext)
                 } catch (e: Exception) {

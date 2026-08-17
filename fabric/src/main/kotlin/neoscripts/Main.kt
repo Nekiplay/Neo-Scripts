@@ -6,6 +6,7 @@ import com.nekiplay.neoscripts.events.main.EventBus
 import com.nekiplay.neoscripts.features.commands.impl.LuaCommand
 import com.nekiplay.neoscripts.features.lua.LuaManager
 import com.nekiplay.neoscripts.features.lua.objects.render.TwoRenderObject
+import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.neoscripts.features.modules.ModuleManager.registerInbuilt
 import com.nekiplay.neoscripts.sugar.MiningHandler
 import com.nekiplay.neoscripts.utils.Utils
@@ -16,6 +17,7 @@ import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry
+import net.fabricmc.fabric.api.client.rendering.v1.InvalidateRenderStateCallback
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
@@ -90,7 +92,9 @@ object Main : ClientModInitializer {
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, registryAccess ->
             LuaCommand.register(dispatcher, registryAccess)
         }
-        // Load events
+        InvalidateRenderStateCallback.EVENT.register {
+            WorldRendererObject.clearGlyphCache()
+        }        // Load events
         RenderHelper.init()
         registerInbuilt()
         Utils.init()

@@ -59,18 +59,22 @@ class TwoRenderObject(private val gui: GuiGraphicsExtractor, private val scriptI
         return this
     }
 
+    private val functions: Map<LuaValue, LuaValue> by lazy {
+        hashMapOf(
+            LuaValue.valueOf("getWindowScale") to GetWindowScaleFunction(),
+            LuaValue.valueOf("getTextWidth") to GetTextWidthFunction(),
+            LuaValue.valueOf("renderText") to RenderTextFunction(),
+            LuaValue.valueOf("renderImage") to RenderImageFunction(),
+            LuaValue.valueOf("renderRect") to RenderRectFunction(),
+            LuaValue.valueOf("renderLine") to RenderLineFunction(),
+            LuaValue.valueOf("renderPolygon") to RenderPolygonFunction(),
+            LuaValue.valueOf("renderItemStack") to RenderItemStackFunction()
+        )
+    }
+
     override fun get(key: LuaValue): LuaValue {
-        return when (key.tojstring()) {
-            "getWindowScale" -> GetWindowScaleFunction()
-            "getTextWidth" -> GetTextWidthFunction()
-            "renderText" -> RenderTextFunction()
-            "renderImage" -> RenderImageFunction()
-            "renderRect" -> RenderRectFunction()
-            "renderLine" -> RenderLineFunction()
-            "renderPolygon" -> RenderPolygonFunction()
-            "renderItemStack" -> RenderItemStackFunction()
-            else -> NIL
-        } as LuaValue
+        if (key.type() != TSTRING) return NIL
+        return functions[key] ?: NIL
     }
 
     private inner class GetTextWidthFunction : VarArgFunction() {
