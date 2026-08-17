@@ -56,12 +56,14 @@ import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.chunk.LevelChunk
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.Globals
+import org.luaj.vm2.LuaClosure
 import org.luaj.vm2.LuaError
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.jse.JsePlatform
+import org.luaj.vm2.luajc.LuaJC
 import java.util.Collections
 import java.util.Stack
 import java.util.concurrent.CompletableFuture
@@ -137,6 +139,15 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     init {
         // Register standard libraries
         scriptGlobals.load(MinecraftLuajavaLib())
+
+        // Compile scripts to Java bytecode (LuaJC), fall back to interpreter on failure
+        scriptGlobals.loader = Globals.Loader { proto, name, env ->
+            try {
+                LuaJC.instance.load(proto, name, env)
+            } catch (t: Throwable) {
+                LuaClosure(proto, env)
+            }
+        }
 
         registerCustomFunctions()
     }
