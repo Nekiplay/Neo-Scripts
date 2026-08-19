@@ -3,6 +3,7 @@ package com.nekiplay.neoscripts.features.lua.objects.player
 import com.nekiplay.neoscripts.Main.mc
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.core.LuaVector3d
+import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.phys.LuaRaycast
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.text.LuaComponent
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.text.LuaComponentBuilder
@@ -15,6 +16,8 @@ import com.nekiplay.neoscripts.utils.PlayerUtils
 import com.nekiplay.neoscripts.utils.RaycastUtils
 import com.nekiplay.neoscripts.utils.RotationUtils
 import com.nekiplay.neoscripts.utils.aiming.RotationManager
+import com.nekiplay.neoscripts.utils.render.FrustumUtils
+import com.nekiplay.neoscripts.utils.render.RenderHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.components.LerpingBossEvent
 import net.minecraft.client.gui.components.toasts.SystemToast
@@ -23,6 +26,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.level.block.Block
+import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
@@ -102,6 +106,26 @@ class PlayerObject : LuaValue() {
             put(LuaValue.valueOf("getTitle"), GetTitleFunction())
             put(LuaValue.valueOf("getSubTitle"), GetSubTitleFunction())
             put(LuaValue.valueOf("getActionBar"), GetActionBarFunction())
+            put(LuaValue.valueOf("isVisibleBox"), IsVisibleBox())
+
+        }
+    }
+
+    private inner class IsVisibleBox : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val boxArg = args.arg(1)
+            val box = when {
+                boxArg.isuserdata() && boxArg.touserdata() is LuaBox -> (boxArg.touserdata() as LuaBox).box
+                boxArg.istable() && boxArg.touserdata() is LuaBox -> (boxArg.touserdata() as LuaBox).box
+                boxArg.isuserdata() && boxArg.touserdata() is AABB -> boxArg.touserdata() as AABB
+                else -> null
+            }
+            if (box == null) return NIL
+
+            if (RenderHelper.frustum != null) {
+                return valueOf(FrustumUtils.isVisible(RenderHelper.frustum, box))
+            }
+            return FALSE
         }
     }
 

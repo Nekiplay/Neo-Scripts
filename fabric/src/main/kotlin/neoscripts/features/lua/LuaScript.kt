@@ -76,6 +76,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     // Локальный граф зависимостей для этого конкретного экземпляра скрипта
     // Ключ: имя файла, Значение: список имен, которые этот файл запросил через require
     val localDependencyGraph = ConcurrentHashMap<String, MutableSet<String>>()
+    val requireCache = ConcurrentHashMap<String, LuaValue>()
 
     // Events
     private val clientTickCallbacks = ArrayList<LuaValue>()
@@ -712,6 +713,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         scriptGlobals.set("require", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 val moduleName = args.arg(1).checkjstring()
+                val cache = args.arg(2).optboolean(false)
 
                 // 1. Определяем "родителя" (кто вызвал require)
                 val caller = if (loadingStack.isEmpty()) scriptName else loadingStack.peek()
@@ -722,7 +724,15 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
                 }.add(moduleName)
 
                 // 3. Загружаем и выполняем (без кэша)
-                return requireModule(moduleName)
+                if (requireCache.containsKey(moduleName) && cache) {
+                    return requireCache.getOrDefault(moduleName, NIL)
+                }
+
+                val value = requireModule(moduleName)
+                if (cache) {
+                    requireCache[moduleName] = value
+                }
+                return value
             }
         })
     }
