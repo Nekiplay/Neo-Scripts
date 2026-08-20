@@ -106,26 +106,7 @@ class PlayerObject : LuaValue() {
             put(LuaValue.valueOf("getTitle"), GetTitleFunction())
             put(LuaValue.valueOf("getSubTitle"), GetSubTitleFunction())
             put(LuaValue.valueOf("getActionBar"), GetActionBarFunction())
-            put(LuaValue.valueOf("isVisibleBox"), IsVisibleBox())
 
-        }
-    }
-
-    private inner class IsVisibleBox : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            val boxArg = args.arg(1)
-            val box = when {
-                boxArg.isuserdata() && boxArg.touserdata() is LuaBox -> (boxArg.touserdata() as LuaBox).box
-                boxArg.istable() && boxArg.touserdata() is LuaBox -> (boxArg.touserdata() as LuaBox).box
-                boxArg.isuserdata() && boxArg.touserdata() is AABB -> boxArg.touserdata() as AABB
-                else -> null
-            }
-            if (box == null) return NIL
-
-            if (RenderHelper.frustum != null) {
-                return valueOf(FrustumUtils.isVisible(RenderHelper.frustum, box))
-            }
-            return FALSE
         }
     }
 

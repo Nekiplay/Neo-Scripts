@@ -32,8 +32,6 @@ public class RenderHelper {
         LevelRenderEvents.END_MAIN.register(RenderHelper::executeDraws);
     }
 
-    public static Frustum frustum = null;
-
     private static void startExtraction(LevelExtractionContext context) {
         var camState = context.levelState().cameraRenderState;
         var window = Minecraft.getInstance().getWindow();
@@ -46,7 +44,6 @@ public class RenderHelper {
         );
         ProfilerFiller profiler = Profiler.get();
         profiler.push("skyblockerPrimitiveCollection");
-        frustum = context.levelState().cameraRenderState.cullFrustum;
         collector = new PrimitiveCollectorImpl(context.levelState(), context.levelState().cameraRenderState.cullFrustum);
         LevelRenderExtractionCallback.EVENT.invoker().onExtract(collector);
         collector.endCollection();

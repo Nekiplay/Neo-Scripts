@@ -62,6 +62,30 @@ class InputObject: LuaValue() {
             put(LuaValue.valueOf("getBreakingProgress"), GetBreakingProgress())
             put(LuaValue.valueOf("setBreakingProgress"), SetBreakingProgress())
             put(LuaValue.valueOf("startElytraFly"), StartElytraFly())
+            put(LuaValue.valueOf("grabMouse"), GrabMouse())
+            put(LuaValue.valueOf("ungrabMouse"), UnGrabMouse())
+            put(LuaValue.valueOf("UngrabMouse"), UnGrabMouse())
+            put(LuaValue.valueOf("releaseMouse"), UnGrabMouse())
+        }
+    }
+
+    private class UnGrabMouse : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            if (mc.mouseHandler != null) {
+                mc.mouseHandler.releaseMouse()
+                return TRUE
+            }
+            return FALSE
+        }
+    }
+
+    private class GrabMouse : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            if (mc.mouseHandler != null) {
+                mc.mouseHandler.grabMouse()
+                return TRUE
+            }
+            return FALSE
         }
     }
 
