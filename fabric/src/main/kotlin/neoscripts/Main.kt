@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder
 import com.nekiplay.neoscripts.events.main.EventBus
 import com.nekiplay.neoscripts.features.commands.impl.LuaCommand
 import com.nekiplay.neoscripts.features.lua.LuaManager
+import com.nekiplay.neoscripts.features.lua.objects.misc.Textures
 import com.nekiplay.neoscripts.features.lua.objects.render.TwoRenderObject
 import com.nekiplay.neoscripts.features.lua.objects.render.WorldRendererObject
 import com.nekiplay.neoscripts.features.modules.ModuleManager.registerInbuilt
@@ -128,6 +129,12 @@ object Main : ClientModInitializer {
         HudElementRegistry.addLast(
             Identifier.fromNamespaceAndPath("neoscripts", "lua_hud_layer"),
             HudElement { graphics, deltaTracker ->
+                // 0. Отрисовка иконок предметов для захвата текстур (textures lib)
+                try {
+                    Textures.onGuiExtract(graphics)
+                } catch (_: Exception) {
+                }
+
                 // 1. Обновляем контекст в TwoRenderObject перед отрисовкой
                 TwoRenderObject.extractBeforeMiscOverlay(graphics, deltaTracker)
 

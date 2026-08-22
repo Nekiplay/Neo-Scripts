@@ -22,6 +22,7 @@ import com.nekiplay.neoscripts.features.lua.objects.misc.Entities
 import com.nekiplay.neoscripts.features.lua.objects.misc.FFILib
 import com.nekiplay.neoscripts.features.lua.objects.misc.ImGuiLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.Items
+import com.nekiplay.neoscripts.features.lua.objects.misc.Textures
 import com.nekiplay.neoscripts.features.lua.objects.misc.JsonLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.TCPLib
 import com.nekiplay.neoscripts.features.lua.objects.misc.ThreadLib
@@ -127,6 +128,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
     private var udpLib: UDPLib? = null
     private var threadLib: ThreadLib? = null
     var imguiLib: ImGuiLib? = null
+    var texturesLib: Textures? = null
     private var djlLibrary: DJLLuaTrainer? = null
     private var ffi: FFILib? = null
     private var http: HttpClientLib? = null
@@ -1496,6 +1498,10 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
             "items" -> {
                 Items()
             }
+            "textures", "item_textures", "itemtextures" -> {
+                if (texturesLib == null) texturesLib = Textures(this)
+                texturesLib!!
+            }
             "blocks" -> {
                 Blocks()
             }
@@ -1708,6 +1714,7 @@ class LuaScript(val scriptName: String, private val luaManager: LuaManager) {
         }
         imguiLib?.queue?.clear()
         imguiLib?.cleanup()
+        texturesLib?.cleanup()
         djlLibrary?.models?.clear()
         djlLibrary?.predictors?.clear()
         djlLibrary?.inputShapes?.clear()
