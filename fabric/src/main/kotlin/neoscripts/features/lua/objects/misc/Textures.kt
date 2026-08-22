@@ -4,12 +4,18 @@ import com.mojang.blaze3d.opengl.GlTextureView
 import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.neoscripts.features.lua.LuaScript
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaBlockState
+import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.neoscripts.mixins.SpriteContentsAccessor
 import com.nekiplay.neoscripts.mixins.renderer.ItemStackRenderStateAccessor
 import net.minecraft.client.Minecraft
 import net.minecraft.client.Screenshot
 import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.model.EntityModel
+import net.minecraft.client.player.AbstractClientPlayer
+import net.minecraft.client.renderer.entity.LivingEntityRenderer
+import net.minecraft.client.renderer.entity.state.EntityRenderState
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState
 import net.minecraft.client.renderer.item.ItemStackRenderState
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.client.renderer.texture.TextureAtlasSprite
@@ -18,6 +24,7 @@ import net.minecraft.resources.Identifier
 import net.minecraft.util.RandomSource
 import net.minecraft.world.item.ItemDisplayContext
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.level.block.Block
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
@@ -49,6 +56,7 @@ class Textures(private val script: LuaScript? = null) : LuaValue() {
         return when (key.tojstring()) {
             "getFromItem", "getItemTexture", "item" -> GetFromItem()
             "getFromBlock", "getBlockTexture", "block" -> GetFromBlock()
+            "getFromEntity", "getSkin", "entity" -> GetFromEntity()
             "clear", "clearCache", "cleanup" -> ClearCache()
             else -> super.get(key)
         }
@@ -85,6 +93,21 @@ class Textures(private val script: LuaScript? = null) : LuaValue() {
         }
     }
 
+    private inner class GetFromEntity : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            val entity = arg.toEntity() ?: return NIL
+            val texId = resolveEntityTexture(entity) ?: return NIL
+            val key = "skin|" + texId.toString()
+            cache[key]?.let { return it }
+
+            val handle = ItemTexture(this@Textures, key, owns = false)
+            handle.identifier = texId
+            cache[key] = handle
+            handle.gpuId()
+            return handle
+        }
+    }
+
     private inner class ClearCache : ZeroArgFunction() {
         override fun call(): LuaValue {
             cleanup()
@@ -94,7 +117,8 @@ class Textures(private val script: LuaScript? = null) : LuaValue() {
 
     class ItemTexture internal constructor(
         private val owner: Textures,
-        private val cacheKey: String?
+        private val cacheKey: String?,
+        private val owns: Boolean = true
     ) : LuaUserdata(AtomicInteger(0)) {
 
         internal var identifier: Identifier? = null
@@ -126,12 +150,28 @@ class Textures(private val script: LuaScript? = null) : LuaValue() {
             }
         }
 
-        fun gpuId(): Int = (m_instance as AtomicInteger).get()
+        fun gpuId(): Int {
+            val current = (m_instance as AtomicInteger).get()
+            if (current != 0 || owns || released) return current
+
+            // Non-owning handle: texture may appear later (e.g. skin still downloading).
+            val id = identifier ?: return 0
+            return try {
+                val view = Minecraft.getInstance().textureManager.getTexture(id)?.getTextureView() as? GlTextureView
+                val glId = view?.texture()?.glId() ?: 0
+                if (glId != 0) (m_instance as AtomicInteger).set(glId)
+                glId
+            } catch (e: Exception) {
+                0
+            }
+        }
 
         fun releaseTexture() {
             try {
-                identifier?.let { id ->
-                    Minecraft.getInstance().textureManager.release(id)
+                if (owns) {
+                    identifier?.let { id ->
+                        Minecraft.getInstance().textureManager.release(id)
+                    }
                 }
             } catch (e: Exception) {
                 println("Error releasing item texture: ${e.message}")
@@ -146,9 +186,26 @@ class Textures(private val script: LuaScript? = null) : LuaValue() {
         override fun typename(): String = "texture"
     }
 
+    /** Resolves the skin texture identifier of an entity (player skins or living-entity textures). */
+    private fun resolveEntityTexture(entity: Entity): Identifier? {
+        return try {
+            if (entity is AbstractClientPlayer) {
+                return entity.skin.body().texturePath()
+            }
+            val mc = Minecraft.getInstance()
+            val state = mc.entityRenderDispatcher.extractEntity(entity, 0f) as? LivingEntityRenderState
+                ?: return null
+            @Suppress("UNCHECKED_CAST")
+            val renderer = mc.entityRenderDispatcher.getRenderer(state)
+                as? LivingEntityRenderer<Entity, LivingEntityRenderState, EntityModel<in LivingEntityRenderState>>
+            renderer?.getTextureLocation(state)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     /** Releases every GPU texture owned by this script instance. Called automatically on script unload. */
-    fun cleanup() {
-        Pipeline.removeJobsOf(this)
+    fun cleanup() {        Pipeline.removeJobsOf(this)
         for (handle in cache.values.toList()) {
             handle.releaseTexture()
         }
@@ -380,10 +437,19 @@ class Textures(private val script: LuaScript? = null) : LuaValue() {
         }
     }
 
+    /**
+     * luaj's touserdata() unwraps LuaUserdata to the raw m_instance, so accept
+     * both the wrapper class and the wrapped vanilla object.
+     */
     private fun LuaValue.toItemStack(): ItemStack? {
         return when {
-            isuserdata() && touserdata() is LuaItemStack ->
-                (touserdata() as LuaItemStack).stack
+            isuserdata() -> {
+                when (val u = touserdata()) {
+                    is LuaItemStack -> u.stack
+                    is ItemStack -> u
+                    else -> null
+                }
+            }
             isstring() -> {
                 val optional = BuiltInRegistries.ITEM.get(Identifier.parse(tojstring()))
                 if (optional.isPresent) ItemStack(optional.get().value()) else null
@@ -399,8 +465,12 @@ class Textures(private val script: LuaScript? = null) : LuaValue() {
     private fun LuaValue.toBlockStack(): ItemStack? {
         toItemStack()?.let { return it }
         return when {
-            isuserdata() && touserdata() is LuaBlockState -> {
-                val block = (touserdata() as LuaBlockState).blockState.block
+            isuserdata() -> {
+                val block = when (val u = touserdata()) {
+                    is LuaBlockState -> u.blockState.block
+                    is net.minecraft.world.level.block.state.BlockState -> u.block
+                    else -> null
+                } ?: return null
                 if (block.asItem() != net.minecraft.world.item.Items.AIR) ItemStack(block.asItem()) else null
             }
             isstring() -> {
@@ -411,6 +481,15 @@ class Textures(private val script: LuaScript? = null) : LuaValue() {
                     if (block.asItem() != net.minecraft.world.item.Items.AIR) ItemStack(block.asItem()) else null
                 } else null
             }
+            else -> null
+        }
+    }
+
+    private fun LuaValue.toEntity(): Entity? {
+        if (!isuserdata()) return null
+        return when (val u = touserdata()) {
+            is LuaEntity -> u.entity
+            is Entity -> u
             else -> null
         }
     }
