@@ -1,7 +1,7 @@
 {
   "required": true,
   "compatibilityLevel": "JAVA_21",
-  "package": "com.nekiplay.neoscripts.mixins",
+  "package": "com.nekiplay.neoscripts.common.mixins",
   "mixins": [
     "ClientChunkManagerMixin",
     "ClientPlayerInteractionManagerAccessor",
@@ -43,8 +43,7 @@
     "gui.AbstractContainerScreenMixin",
     "gui.AbstractSignEditScreenAccessor",
     "minecraft.LevelRendererAccessor",
-    "renderer.GpuDeviceAccessor",
-    "renderer.ItemStackRenderStateAccessor"
+    "renderer.GpuDeviceAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

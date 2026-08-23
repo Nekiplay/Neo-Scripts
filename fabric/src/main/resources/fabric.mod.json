@@ -20,7 +20,13 @@
   "entrypoints": {
     "client": [
       {
-        "value": "com.nekiplay.neoscripts.Main",
+        "value": "com.nekiplay.neoscripts.ClientMain",
+        "adapter": "kotlin"
+      }
+    ],
+    "main": [
+      {
+        "value": "com.nekiplay.neoscripts.ServerMain",
         "adapter": "kotlin"
       }
     ]
