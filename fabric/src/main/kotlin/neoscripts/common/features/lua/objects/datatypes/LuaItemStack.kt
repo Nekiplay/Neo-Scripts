@@ -214,7 +214,8 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                     t.set("name", valueOf(gp.name ?: ""))
                     val propsT = tableOf()
                     var idx = 1
-                    for (prop in gp.properties.entries()) {
+                    for (entry in gp.properties.entries()) {
+                        val prop = entry.value
                         val p = tableOf()
                         p.set("name", valueOf(prop.name()))
                         p.set("value", valueOf(prop.value()))
