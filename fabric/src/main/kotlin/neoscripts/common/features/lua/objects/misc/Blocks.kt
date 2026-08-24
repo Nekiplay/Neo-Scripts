@@ -40,11 +40,12 @@ class Blocks : LuaValue() {
                     if (args.narg() >= 2 && args.arg(2).istable()) {
                         val table = args.arg(2).checktable()
                         val properties = state.get(LuaValue.valueOf("properties"))
-                        val keys = table.keys() as LuaTable
-                        val count = keys.length().toint()
-                        for (i in 1..count) {
-                            val key = keys.get(i)
-                            properties.set(key, table.get(key))
+                        var key: LuaValue = LuaValue.NIL
+                        while (true) {
+                            val n = table.next(key)
+                            if (n.arg(1).isnil()) break
+                            key = n.arg(1)
+                            properties.set(key, n.arg(2))
                         }
                     }
                     return state
