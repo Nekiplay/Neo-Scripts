@@ -21,6 +21,8 @@ class LuaManager(val configDir: File?) {
         "/",
         "libs/",
         "lib/",
+        "/libs/",
+        "/lib/",
         configDir?.resolve("neoscripts/scripts/libs/").toString() + "/",
         configDir?.resolve("neoscripts/scripts/lib/").toString() + "/",
         configDir?.resolve("neoscripts/scripts/").toString() + "/"

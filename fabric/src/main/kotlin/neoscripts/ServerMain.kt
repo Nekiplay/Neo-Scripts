@@ -46,8 +46,6 @@ object ServerMain : ModInitializer {
         ChatFormatting.GRAY.toString() + "[" + ChatFormatting.GOLD + "Neo Scripts" + ChatFormatting.GRAY + "] " + ChatFormatting.RESET
     const val LOG_PREFIX: String = "[Neo Scripts] "
     @JvmField
-    var scriptsDir: File? = null
-    @JvmField
     val GSON: Gson = GsonBuilder().setPrettyPrinting().create()
     @JvmField
     val GSON_COMPACT: Gson = GsonBuilder().create()
@@ -109,12 +107,10 @@ object ServerMain : ModInitializer {
             val scriptsDir2 = neuDir.resolve("scripts")
             Files.createDirectories(scriptsDir2)
 
-            scriptsDir = scriptsDir2.toFile()
-
             val libsDir = scriptsDir2.resolve("libs")
             Files.createDirectories(libsDir)
 
-            LUA_MANAGER = LuaManager(worldRoot.toFile())
+            LUA_MANAGER = LuaManager(scriptsDir2.toFile())
 
             for (name in startUpScriptNames) {
                 val autoLoadScript: File = File(scriptsDir2.toFile(), name)

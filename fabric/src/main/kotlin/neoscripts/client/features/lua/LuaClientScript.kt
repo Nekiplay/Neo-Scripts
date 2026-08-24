@@ -71,6 +71,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 
 class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) {
+
     // Локальный стек загрузки для этого конкретного экземпляра скрипта
     private val loadingStack = Stack<String>()
     private val systemModuleCache = ConcurrentHashMap<String, LuaValue>()
