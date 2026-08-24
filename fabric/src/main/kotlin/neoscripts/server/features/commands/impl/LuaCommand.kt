@@ -136,7 +136,7 @@ object LuaCommand {
 
             if (scriptFile.exists()) {
                 try {
-                    val script = ClientMain.LUA_MANAGER?.getScript(scriptFile, true, source.server)
+                    val script = luaManager?.getScript(scriptFile, true, source.server)
                     if (script != null) {
                         luaManager?.executeScript(scriptFile, script)
                         reply(source, "${ServerMain.PREFIX}§7Script §a$name §7is now §aloaded§7.")
@@ -239,7 +239,7 @@ object LuaCommand {
             val wasLoaded = luaManager.unloadScript(scriptFile.nameWithoutExtension)
 
             // Затем загружаем скрипт
-            val script = ClientMain.LUA_MANAGER?.getScript(scriptFile, true, source.server)
+            val script = luaManager.getScript(scriptFile, true, source.server)
             if (script != null) {
                 val result = luaManager.executeScript(scriptFile, script)
 
