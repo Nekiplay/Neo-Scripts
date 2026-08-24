@@ -4,6 +4,7 @@ import com.nekiplay.neoscripts.ClientMain.mc
 import com.nekiplay.neoscripts.client.events.PlayerTickEvent
 import com.nekiplay.neoscripts.client.events.main.Callback
 import com.nekiplay.neoscripts.client.events.main.EventBus
+import com.nekiplay.neoscripts.common.mixins.minecraft.MouseHandlerAccessor
 import net.minecraft.client.KeyMapping
 import org.lwjgl.glfw.GLFW
 import java.lang.reflect.Modifier
@@ -66,6 +67,38 @@ object InputUtil {
 
     fun isPressed(key : Int) : Boolean {
         return isPressed(key, mc.window.handle())
+    }
+
+    /**
+     * Захват мыши без закрытия активного экрана: только GLFW-режим курсора и внутренний флаг.
+     */
+    fun grabMouse() : Boolean {
+        val handler = mc.mouseHandler ?: return false
+        val accessor = handler as? MouseHandlerAccessor ?: return false
+        if (accessor.mouseGrabbed) return true
+
+        val window = mc.window.handle()
+        GLFW.glfwSetInputMode(window, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED)
+
+        accessor.mouseGrabbed = true
+        // Пропускаем первый event движения, чтобы не было рывка камеры
+        handler.setIgnoreFirstMove()
+        return true
+    }
+
+    /**
+     * Отпускание мыши: возвращает обычный курсор, не открывая экранов.
+     */
+    fun releaseMouse() : Boolean {
+        val handler = mc.mouseHandler ?: return false
+        val accessor = handler as? MouseHandlerAccessor ?: return false
+        if (!accessor.mouseGrabbed) return true
+
+        val window = mc.window.handle()
+        GLFW.glfwSetInputMode(window, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL)
+
+        accessor.mouseGrabbed = false
+        return true
     }
 
     fun calculateCorrectedKeys(

@@ -43,6 +43,7 @@
     "gui.AbstractContainerScreenMixin",
     "gui.AbstractSignEditScreenAccessor",
     "minecraft.LevelRendererAccessor",
+    "minecraft.MouseHandlerAccessor",
     "renderer.GpuDeviceAccessor"
   ],
   "injectors": {

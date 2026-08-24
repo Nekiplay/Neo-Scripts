@@ -13,11 +13,15 @@ import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaCom
 import com.nekiplay.neoscripts.client.sugar.getFormattedString
 import com.nekiplay.neoscripts.client.sugar.getRotation
 import com.nekiplay.neoscripts.client.utils.Utils
+import net.minecraft.core.Holder
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
+import net.minecraft.resources.Identifier
 import net.minecraft.util.ProblemReporter
 import net.minecraft.world.InteractionHand
+import net.minecraft.world.effect.MobEffect
+import net.minecraft.world.effect.MobEffectInstance
 import net.minecraft.world.entity.AgeableMob
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
@@ -34,7 +38,9 @@ import org.luaj.vm2.LuaLong
 import org.luaj.vm2.LuaNumber
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
+import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.TwoArgFunction
+import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 import org.luaj.vm2.lib.jse.JavaInstance
 
@@ -300,6 +306,9 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 else { NIL }
             }
 
+            "add_effect" -> AddEffectFunction()
+            "remove_effect" -> RemoveEffectFunction()
+
             // Инвентарь игрока (для ServerPlayer изменения синхронизируются сервером с клиентом автоматически)
             "inventory" -> {
                 if (entity is Player) LuaInventory(entity.inventory) else NIL
@@ -329,6 +338,43 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             else -> {
                 LuaValue.FALSE
             }
+        }
+    }
+
+    private fun parseEffect(arg: LuaValue): Holder<MobEffect>? {
+        if (!arg.isstring()) return null
+        val name = arg.tojstring()
+        return try {
+            val id = if (name.indexOf(':') >= 0) name else "minecraft:$name"
+            BuiltInRegistries.MOB_EFFECT.get(Identifier.parse(id)).orElse(null)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    // Выдача эффекта: add_effect("minecraft:speed"[, duration][, amplifier]) -> boolean
+    // duration в тиках, -1 — бесконечно
+    private inner class AddEffectFunction : VarArgFunction() {
+        override fun invoke(args: Varargs?): LuaValue {
+            val living = entity as? LivingEntity ?: return NIL
+            if (args == null || args.narg() < 1) return NIL
+            val holder = parseEffect(args.arg1()) ?: return FALSE
+            val duration = if (args.narg() >= 2 && args.arg(2).isnumber()) args.arg(2).toint() else -1
+            val amplifier = if (args.narg() >= 3 && args.arg(3).isnumber()) args.arg(3).toint() else 0
+            return valueOf(living.addEffect(MobEffectInstance(holder, duration, amplifier)))
+        }
+    }
+
+    // Убирание эффекта: remove_effect(["minecraft:speed"]) -> boolean
+    // Без аргументов снимает все эффекты
+    private inner class RemoveEffectFunction : VarArgFunction() {
+        override fun invoke(args: Varargs?): LuaValue {
+            val living = entity as? LivingEntity ?: return NIL
+            if (args == null || args.narg() == 0 || args.isnil(1)) {
+                return valueOf(living.removeAllEffects())
+            }
+            val holder = parseEffect(args.arg1()) ?: return FALSE
+            return valueOf(living.removeEffect(holder))
         }
     }
 

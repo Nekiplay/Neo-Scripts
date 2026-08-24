@@ -5,6 +5,7 @@ import com.nekiplay.neoscripts.common.mixins.minecraft.GamemodeAccessor
 import com.nekiplay.neoscripts.client.sugar.*
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.phys.LuaRaycast
+import com.nekiplay.neoscripts.client.utils.game.InputUtil
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper
 import net.minecraft.client.KeyMapping
 import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket
@@ -71,21 +72,13 @@ class InputObject: LuaValue() {
 
     private class UnGrabMouse : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            if (mc.mouseHandler != null) {
-                mc.mouseHandler.releaseMouse()
-                return TRUE
-            }
-            return FALSE
+            return valueOf(InputUtil.releaseMouse())
         }
     }
 
     private class GrabMouse : ZeroArgFunction() {
         override fun call(): LuaValue? {
-            if (mc.mouseHandler != null) {
-                mc.mouseHandler.grabMouse()
-                return TRUE
-            }
-            return FALSE
+            return valueOf(InputUtil.grabMouse())
         }
     }
 
