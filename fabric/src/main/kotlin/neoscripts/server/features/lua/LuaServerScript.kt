@@ -72,6 +72,7 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
     private val serverPreTickCallbacks = ArrayList<LuaValue>()
     private val serverWorldTickCallbacks = ArrayList<LuaValue>()
     private val serverWorldPreTickCallbacks = ArrayList<LuaValue>()
+    private val serverStoppingCallbacks = ArrayList<LuaValue>()
 
     // Interaction events
     private val attackBlockCallbacks = ArrayList<LuaValue>()
@@ -196,6 +197,16 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
             }
         })
 
+        scriptGlobals.set("registerServerStoppingCallback", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(serverStoppingCallbacks.add(callback))
+                }
+            }
+        })
+
         registerInteractionEventFunction("registerAttackBlockCallback", attackBlockCallbacks)
         registerInteractionEventFunction("registerUseBlockCallback", useBlockCallbacks)
         registerInteractionEventFunction("registerUseItemOnBlockCallback", useItemOnBlockCallbacks)
@@ -246,6 +257,7 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
     val hasUseItemOnCallbacks: Boolean get() = synchronized(callbacksLock) { useItemOnCallbacks.isNotEmpty() }
     val hasPickItemFromBlockCallbacks: Boolean get() = synchronized(callbacksLock) { pickItemFromBlockCallbacks.isNotEmpty() }
     val hasPickItemFromEntityCallbacks: Boolean get() = synchronized(callbacksLock) { pickItemFromEntityCallbacks.isNotEmpty() }
+    val hasServerStoppingCallbacks: Boolean get() = synchronized(callbacksLock) { serverStoppingCallbacks.isNotEmpty() }
 
     private fun registerEventUnregistrationFunctions() {
         scriptGlobals.set("unregisterUnloadCallback", object : OneArgFunction() {
@@ -313,6 +325,16 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
                 if (!callback.isfunction()) return FALSE
                 synchronized(callbacksLock) {
                     return valueOf(serverWorldPreTickCallbacks.remove(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("unregisterServerStoppingCallback", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(serverStoppingCallbacks.remove(callback))
                 }
             }
         })
@@ -522,6 +544,23 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
                 callback.call(world)
             } catch (e: Exception) {
                 ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in client pre tick callback in ${scriptName}", e)
+            }
+        }
+    }
+
+    /**
+     * Вызывается при остановке сервера/мира, пока уровни ещё загружены.
+     */
+    fun onServerStopping(world: ServerWorldObject) {
+        val callbacks = synchronized(callbacksLock) {
+            serverStoppingCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                callback.call(world)
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in server stopping callback in ${scriptName}", e)
             }
         }
     }

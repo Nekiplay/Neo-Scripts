@@ -23,6 +23,7 @@
     "gui.HudAccessor",
     "minecraft.ClientConnectionMixin",
     "minecraft.ArmorStandAccessor",
+    "minecraft.BlockDisplayAccessor",
     "minecraft.InteractionAccessor",
     "minecraft.ItemDisplayAccessor",
     "minecraft.TextDisplayAccessor",

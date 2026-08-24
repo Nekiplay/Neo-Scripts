@@ -4,6 +4,7 @@ import com.nekiplay.neoscripts.ServerMain
 import com.nekiplay.neoscripts.server.features.lua.LuaServerScript
 import com.nekiplay.neoscripts.server.features.lua.objects.ServerWorldObject
 import com.nekiplay.neoscripts.server.features.modules.ServerModule
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback
@@ -23,6 +24,7 @@ object LuaEvents : ServerModule() {
 
     override fun init() {
         registerTickEvents()
+        registerLifecycleEvents()
         registerInteractionEvents()
     }
 
@@ -55,6 +57,23 @@ object LuaEvents : ServerModule() {
             ServerMain.LUA_MANAGER?.scripts?.values?.forEach { script ->
                 if (script is LuaServerScript) {
                     script.onServerWorldTick(obj)
+                }
+            }
+        }
+    }
+
+    /**
+     * SERVER_STOPPING срабатывает при выключении сервера до выгрузки миров:
+     * все уровни ещё загружены и доступны скриптам.
+     */
+    private fun registerLifecycleEvents() {
+        ServerLifecycleEvents.SERVER_STOPPING.register { server ->
+            for (level in server.allLevels) {
+                val obj = ServerWorldObject(level)
+                ServerMain.LUA_MANAGER?.scripts?.values?.forEach { script ->
+                    if (script is LuaServerScript) {
+                        script.onServerStopping(obj)
+                    }
                 }
             }
         }

@@ -5,6 +5,7 @@ import com.nekiplay.neoscripts.ClientMain
 import com.nekiplay.neoscripts.ClientMain.mc
 import com.nekiplay.neoscripts.client.features.lua.customArgs.FourArgFunction
 import com.nekiplay.neoscripts.common.mixins.minecraft.ArmorStandAccessor
+import com.nekiplay.neoscripts.common.mixins.minecraft.BlockDisplayAccessor
 import com.nekiplay.neoscripts.common.mixins.minecraft.InteractionAccessor
 import com.nekiplay.neoscripts.common.mixins.minecraft.ItemDisplayAccessor
 import com.nekiplay.neoscripts.common.mixins.minecraft.TextDisplayAccessor
@@ -39,6 +40,7 @@ import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.storage.TagValueOutput
+import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaDouble
 import org.luaj.vm2.LuaInteger
@@ -386,6 +388,15 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 if (entity is Display.ItemDisplay) {
                     val stack = (entity as ItemDisplayAccessor).nsGetItemStack()
                     if (!stack.isEmpty) LuaItemStack(stack) else NIL
+                } else {
+                    NIL
+                }
+            }
+
+            // Специфичные для BlockDisplay
+            "display_block", "displayed_block" -> {
+                if (entity is Display.BlockDisplay) {
+                    LuaBlockState((entity as BlockDisplayAccessor).nsGetBlockState())
                 } else {
                     NIL
                 }
@@ -841,6 +852,20 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "display_item", "displayed_item" -> {
                 if (entity is Display.ItemDisplay) {
                     toStack(value)?.let { (entity as ItemDisplayAccessor).nsSetItemStack(it) }
+                }
+            }
+
+            // --- Специфичные для BlockDisplay ---
+            "display_block", "displayed_block" -> {
+                val state = when {
+                    value?.isuserdata(LuaBlockState::class.java) == true ->
+                        (value.touserdata() as LuaBlockState).blockState
+                    value?.isuserdata(BlockState::class.java) == true ->
+                        value.touserdata() as BlockState
+                    else -> null
+                }
+                if (entity is Display.BlockDisplay && state != null) {
+                    (entity as BlockDisplayAccessor).nsSetBlockState(state)
                 }
             }
 
