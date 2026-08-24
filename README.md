@@ -11,7 +11,7 @@
 - /slua - Lua API control on server-side
 
 ### Misc:
-- [Lua API](https://neoscripts.qzz.io/wiki/26.2), [Forum](http://130.255.41.75/), [Discord](https://discord.gg/GHXSpYAEgh)
+- [Lua API](https://neoscripts.qzz.io/wiki/26.2), [Forum](https://neoscripts.qzz.io/), [Discord](https://discord.gg/GHXSpYAEgh)
 
 ### Uses:
 - [Custom LuaJ](https://github.com/Nekiplay/luaj)
