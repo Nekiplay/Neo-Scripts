@@ -51,7 +51,8 @@ object ServerMain : ModInitializer {
     val GSON_COMPACT: Gson = GsonBuilder().create()
     @JvmField
     var SERVER: MinecraftServer? = null
-
+    @JvmField
+    var scriptsDir: File? = null
 
     fun saveConfig(){
         LUA_MANAGER?.getLoadedScripts()?.forEach { script ->
@@ -106,6 +107,7 @@ object ServerMain : ModInitializer {
 
             val scriptsDir2 = neuDir.resolve("scripts")
             Files.createDirectories(scriptsDir2)
+            scriptsDir = scriptsDir2.toFile()
 
             val libsDir = scriptsDir2.resolve("libs")
             Files.createDirectories(libsDir)
