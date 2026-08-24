@@ -322,37 +322,40 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
             }
             "profile" -> {
                 // value: { id = {i1,i2,i3,i4}, properties = { {name=, value=}, ... } }
+                // Если задан id — создаём unresolved-профиль: клиент сам резолвит скин
+                // через sessionserver (подписанные текстуры, без SignatureException).
                 if (value.istable()) {
                     val v = value.checktable()
                     val idT = v.get("id")
-                    val uuid = if (idT.istable()) {
+                    if (idT.istable()) {
                         val i1 = idT.get(1).toint().toLong() and 0xFFFFFFFFL
                         val i2 = idT.get(2).toint().toLong() and 0xFFFFFFFFL
                         val i3 = idT.get(3).toint().toLong() and 0xFFFFFFFFL
                         val i4 = idT.get(4).toint().toLong() and 0xFFFFFFFFL
                         val high = (i1 shl 32) or i2
                         val low = (i3 shl 32) or i4
-                        UUID(high, low)
+                        stack.set(DataComponents.PROFILE, ResolvableProfile.createUnresolved(UUID(high, low)))
                     } else {
-                        UUID.randomUUID()
-                    }
-                    val multimap = LinkedHashMultimap.create<String, Property>()
-                    val propsT = v.get("properties")
-                    if (propsT.istable()) {
-                        var idx = 1
-                        while (true) {
-                            val p = propsT.get(idx)
-                            if (p.isnil()) break
-                            val pname = p.get("name").tojstring()
-                            val pval = p.get("value").tojstring()
-                            if (pname.isNotEmpty() && pval.isNotEmpty()) {
-                                multimap.put(pname, Property(pname, pval, ""))
+                        val multimap = LinkedHashMultimap.create<String, Property>()
+                        val propsT = v.get("properties")
+                        if (propsT.istable()) {
+                            var idx = 1
+                            while (true) {
+                                val p = propsT.get(idx)
+                                if (p.isnil()) break
+                                val pname = p.get("name").tojstring()
+                                val pval = p.get("value").tojstring()
+                                if (pname.isNotEmpty() && pval.isNotEmpty()) {
+                                    multimap.put(pname, Property(pname, pval, ""))
+                                }
+                                idx++
                             }
-                            idx++
                         }
+                        stack.set(
+                            DataComponents.PROFILE,
+                            ResolvableProfile.createResolved(GameProfile(UUID.randomUUID(), "", PropertyMap(multimap)))
+                        )
                     }
-                    val gameProfile = GameProfile(uuid, "", PropertyMap(multimap))
-                    stack.set(DataComponents.PROFILE, ResolvableProfile.createResolved(gameProfile))
                 }
             }
             else -> super.set(key, value)
