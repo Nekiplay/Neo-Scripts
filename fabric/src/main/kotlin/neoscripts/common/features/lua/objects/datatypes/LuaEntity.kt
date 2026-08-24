@@ -384,40 +384,48 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             arg2: LuaValue?,
             arg3: LuaValue?,
             arg4: LuaValue?
-        ): LuaValue? {
-            if (entity != mc.player) return FALSE
-            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isboolean() == true) {
-                val vector = Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble())
-                entity.setPos(vector.x, vector.y, vector.z)
-                val rot = entity.getRotation()
-                mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, arg4.toboolean(), entity.horizontalCollision))
-                return TRUE
-            }
-            else if (arg1?.istable() ?: false) {
-                val x: Double = if (arg1.get("x").isnumber()) arg1.get("x").todouble() else 0.0
-                val y: Double = if (arg1.get("y").isnumber()) arg1.get("y").todouble() else 0.0
-                val z: Double = if (arg1.get("z").isnumber()) arg1.get("z").todouble() else 0.0
-                val on_ground: Boolean = if (arg1.get("on_ground").isnumber()) arg1.get("on_ground").toboolean() else true
+        ): LuaValue {
+            var vector: Vec3? = null
+            var onGround = true
 
-                val vector = Vec3(x, y, z)
-                entity.setPos(vector.x, vector.y, vector.z)
-                val rot = entity.getRotation()
-                mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, on_ground, entity.horizontalCollision))
+            when {
+                arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
+                    vector = Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble())
+                    if (arg4?.isboolean() == true) onGround = arg4.toboolean()
+                }
+                arg1?.istable() == true -> {
+                    val x: Double = if (arg1.get("x").isnumber()) arg1.get("x").todouble() else 0.0
+                    val y: Double = if (arg1.get("y").isnumber()) arg1.get("y").todouble() else 0.0
+                    val z: Double = if (arg1.get("z").isnumber()) arg1.get("z").todouble() else 0.0
+                    if (arg1.get("on_ground").isboolean()) onGround = arg1.get("on_ground").toboolean()
+                    vector = Vec3(x, y, z)
+                }
+                arg1?.isuserdata() == true && arg1.touserdata() is LuaVector3d -> {
+                    vector = (arg1.touserdata() as LuaVector3d).location
+                    if (arg2?.isboolean() == true) onGround = arg2.toboolean()
+                }
+                arg1?.isuserdata() == true && arg1.touserdata() is Vec3 -> {
+                    vector = arg1.touserdata() as Vec3
+                    if (arg2?.isboolean() == true) onGround = arg2.toboolean()
+                }
+            }
+
+            if (vector == null) return FALSE
+
+            // Логический сервер: телепортируем через серверное API.
+            // ServerPlayer переопределяет teleportTo и синхронизирует позицию с клиентом.
+            if (!entity.level().isClientSide) {
+                entity.teleportTo(vector.x, vector.y, vector.z)
                 return TRUE
             }
-            else if (arg1?.isuserdata() == true && arg1.touserdata() is LuaVector3d) {
-                val vector = arg1.touserdata() as LuaVector3d
-                entity.setPos(vector.location.x, vector.location.y, vector.location.z)
-                val rot = entity.getRotation()
-                mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector.location, rot.first, rot.second, arg2?.toboolean() ?: true, entity.horizontalCollision))
-            }
-            else if (arg1?.isuserdata() == true && arg1.touserdata() is Vec3) {
-                val vector = arg1.touserdata() as Vec3
-                entity.setPos(vector.x, vector.y, vector.z)
-                val rot = entity.getRotation()
-                mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, arg2?.toboolean() ?: true, entity.horizontalCollision))
-            }
-            return FALSE
+
+            // Клиентская сторона: пакетный путь доступен только для локального игрока
+            if (entity != mc.player) return FALSE
+
+            entity.setPos(vector.x, vector.y, vector.z)
+            val rot = entity.getRotation()
+            mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, onGround, entity.horizontalCollision))
+            return TRUE
         }
     }
 
@@ -462,30 +470,46 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "x" -> {
                 if (value.isnumber()) {
                     val vector = Vec3(value.todouble(), entity.getPosition(1f).y, entity.getPosition(1f).z)
-                    entity.setPos(vector.x, vector.y, vector.z)
-                    if (isLocalPlayer) {
-                        val rot = entity.getRotation()
-                        mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
+                    // Логический сервер: ServerPlayer переопределяет teleportTo и синхронизирует позицию с клиентом
+                    if (!entity.level().isClientSide) {
+                        entity.teleportTo(vector.x, vector.y, vector.z)
+                    }
+                    else {
+                        entity.setPos(vector.x, vector.y, vector.z)
+                        if (isLocalPlayer) {
+                            val rot = entity.getRotation()
+                            mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
+                        }
                     }
                 }
             }
             "y" -> {
                 if (value.isnumber()) {
                     val vector = Vec3(entity.getPosition(1f).x, value.todouble(), entity.getPosition(1f).z)
-                    entity.setPos(vector.x, vector.y, vector.z)
-                    if (isLocalPlayer) {
-                        val rot = entity.getRotation()
-                        mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
+                    if (!entity.level().isClientSide) {
+                        entity.teleportTo(vector.x, vector.y, vector.z)
+                    }
+                    else {
+                        entity.setPos(vector.x, vector.y, vector.z)
+                        if (isLocalPlayer) {
+                            val rot = entity.getRotation()
+                            mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
+                        }
                     }
                 }
             }
             "z" -> {
                 if (value.isnumber()) {
                     val vector = Vec3(entity.getPosition(1f).x, entity.getPosition(1f).y, value.todouble())
-                    entity.setPos(vector.x, vector.y, vector.z)
-                    if (isLocalPlayer) {
-                        val rot = entity.getRotation()
-                        mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
+                    if (!entity.level().isClientSide) {
+                        entity.teleportTo(vector.x, vector.y, vector.z)
+                    }
+                    else {
+                        entity.setPos(vector.x, vector.y, vector.z)
+                        if (isLocalPlayer) {
+                            val rot = entity.getRotation()
+                            mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
+                        }
                     }
                 }
             }
@@ -497,10 +521,15 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     vector = value.touserdata() as Vec3
                 }
                 if (vector != null) {
-                    entity.setPos(vector.x, vector.y, vector.z)
-                    if (isLocalPlayer) {
-                        val rot = entity.getRotation()
-                        mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
+                    if (!entity.level().isClientSide) {
+                        entity.teleportTo(vector.x, vector.y, vector.z)
+                    }
+                    else {
+                        entity.setPos(vector.x, vector.y, vector.z)
+                        if (isLocalPlayer) {
+                            val rot = entity.getRotation()
+                            mc.connection?.send(ServerboundMovePlayerPacket.PosRot(vector, rot.first, rot.second, entity.onGround(), entity.horizontalCollision))
+                        }
                     }
                 }
             }
