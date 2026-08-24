@@ -23,6 +23,11 @@ class LuaManager(val configDir: File?) {
         "lib/",
         "/libs/",
         "/lib/",
+        configDir?.resolve("libs/").toString() + "/",
+        configDir?.resolve("lib/").toString() + "/",
+        configDir?.resolve("scripts/libs/").toString() + "/",
+        configDir?.resolve("scripts/lib/").toString() + "/",
+        configDir?.resolve("scripts/").toString() + "/",
         configDir?.resolve("neoscripts/scripts/libs/").toString() + "/",
         configDir?.resolve("neoscripts/scripts/lib/").toString() + "/",
         configDir?.resolve("neoscripts/scripts/").toString() + "/"
@@ -43,6 +48,7 @@ class LuaManager(val configDir: File?) {
             // Check direct files
             for (ext in luaExtensions) {
                 val file = File("$path$baseName$ext")
+                println("$path$baseName$ext")
                 if (file.exists() && file.isFile) {
                     return file
                 }
