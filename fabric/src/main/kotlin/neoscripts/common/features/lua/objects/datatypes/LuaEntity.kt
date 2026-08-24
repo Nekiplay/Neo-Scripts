@@ -424,7 +424,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "text_shadow", "has_text_shadow" -> {
                 if (entity is Display.TextDisplay) {
                     val flags = (entity as TextDisplayAccessor).nsGetFlags().toInt()
-                    valueOf(flags and Display.TextDisplay.FLAG_SHADOW != 0)
+                    valueOf(flags and Display.TextDisplay.FLAG_SHADOW.toInt() != 0)
                 } else {
                     NIL
                 }
@@ -432,7 +432,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "see_through" -> {
                 if (entity is Display.TextDisplay) {
                     val flags = (entity as TextDisplayAccessor).nsGetFlags().toInt()
-                    valueOf(flags and Display.TextDisplay.FLAG_SEE_THROUGH != 0)
+                    valueOf(flags and Display.TextDisplay.FLAG_SEE_THROUGH.toInt() != 0)
                 } else {
                     NIL
                 }
@@ -440,7 +440,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "use_default_background", "default_background" -> {
                 if (entity is Display.TextDisplay) {
                     val flags = (entity as TextDisplayAccessor).nsGetFlags().toInt()
-                    valueOf(flags and Display.TextDisplay.FLAG_USE_DEFAULT_BACKGROUND != 0)
+                    valueOf(flags and Display.TextDisplay.FLAG_USE_DEFAULT_BACKGROUND.toInt() != 0)
                 } else {
                     NIL
                 }
@@ -449,8 +449,8 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 if (entity is Display.TextDisplay) {
                     val flags = (entity as TextDisplayAccessor).nsGetFlags().toInt()
                     when {
-                        flags and Display.TextDisplay.FLAG_ALIGN_LEFT != 0 -> valueOf("left")
-                        flags and Display.TextDisplay.FLAG_ALIGN_RIGHT != 0 -> valueOf("right")
+                        flags and Display.TextDisplay.FLAG_ALIGN_LEFT.toInt() != 0 -> valueOf("left")
+                        flags and Display.TextDisplay.FLAG_ALIGN_RIGHT.toInt() != 0 -> valueOf("right")
                         else -> valueOf("center")
                     }
                 } else {
@@ -974,9 +974,9 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 if (entity is Display.TextDisplay && value.isboolean()) {
                     val accessor = entity as TextDisplayAccessor
                     val bit = when (field) {
-                        "see_through" -> Display.TextDisplay.FLAG_SEE_THROUGH
-                        "use_default_background", "default_background" -> Display.TextDisplay.FLAG_USE_DEFAULT_BACKGROUND
-                        else -> Display.TextDisplay.FLAG_SHADOW
+                        "see_through" -> Display.TextDisplay.FLAG_SEE_THROUGH.toInt()
+                        "use_default_background", "default_background" -> Display.TextDisplay.FLAG_USE_DEFAULT_BACKGROUND.toInt()
+                        else -> Display.TextDisplay.FLAG_SHADOW.toInt()
                     }
                     var flags = accessor.nsGetFlags().toInt()
                     flags = if (value.toboolean()) flags or bit else flags and bit.inv()
@@ -987,8 +987,8 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 if (entity is Display.TextDisplay && value.isstring()) {
                     val accessor = entity as TextDisplayAccessor
                     val align = value.tojstring().lowercase()
-                    val leftBit = Display.TextDisplay.FLAG_ALIGN_LEFT
-                    val rightBit = Display.TextDisplay.FLAG_ALIGN_RIGHT
+                    val leftBit = Display.TextDisplay.FLAG_ALIGN_LEFT.toInt()
+                    val rightBit = Display.TextDisplay.FLAG_ALIGN_RIGHT.toInt()
                     var flags = accessor.nsGetFlags().toInt() and (leftBit or rightBit).inv()
                     flags = when (align) {
                         "left" -> flags or leftBit
