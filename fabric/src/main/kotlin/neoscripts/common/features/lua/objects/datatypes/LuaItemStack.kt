@@ -23,7 +23,12 @@ import net.minecraft.nbt.NbtOps
 import net.minecraft.nbt.NumericTag
 import net.minecraft.nbt.StringTag
 import net.minecraft.nbt.Tag
+import net.minecraft.core.component.DataComponents
 import net.minecraft.network.chat.Component
+import net.minecraft.world.item.component.ResolvableProfile
+import com.mojang.authlib.GameProfile
+import com.mojang.authlib.properties.Property
+import java.util.UUID
 import net.minecraft.tags.ItemTags
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.FishingRodItem
@@ -283,6 +288,41 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
             }
             "lore", "lores" -> {
                 setLore(value)
+            }
+            "profile" -> {
+                // value: { id = {i1,i2,i3,i4}, properties = { {name=, value=}, ... } }
+                if (value.istable()) {
+                    val v = value.checktable()
+                    val idT = v.get("id")
+                    val uuid = if (idT.istable()) {
+                        val i1 = idT.get(1).toint().toLong() and 0xFFFFFFFFL
+                        val i2 = idT.get(2).toint().toLong() and 0xFFFFFFFFL
+                        val i3 = idT.get(3).toint().toLong() and 0xFFFFFFFFL
+                        val i4 = idT.get(4).toint().toLong() and 0xFFFFFFFFL
+                        val high = (i1 shl 32) or i2
+                        val low = (i3 shl 32) or i4
+                        UUID(high, low)
+                    } else {
+                        UUID.randomUUID()
+                    }
+                    val gameProfile = GameProfile(uuid, "")
+                    val props = gameProfile.properties
+                    val propsT = v.get("properties")
+                    if (propsT.istable()) {
+                        var idx = 1
+                        while (true) {
+                            val p = propsT.get(idx)
+                            if (p.isnil()) break
+                            val pname = p.get("name").tojstring()
+                            val pval = p.get("value").tojstring()
+                            if (pname.isNotEmpty() && pval.isNotEmpty()) {
+                                props.put(pname, Property(pname, pval, ""))
+                            }
+                            idx++
+                        }
+                    }
+                    stack.set(DataComponents.PROFILE, ResolvableProfile(gameProfile))
+                }
             }
             else -> super.set(key, value)
         }
