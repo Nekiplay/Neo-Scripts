@@ -505,6 +505,8 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 if (entity is Player) LuaInventory(entity.inventory) else NIL
             }
             "teleport" -> TeleportFunction()
+            "add_passenger", "addPassenger" -> AddPassengerFunction()
+            "remove_passenger", "removePassenger" -> RemovePassengerFunction()
             else -> super.get(key)
         }
     }
@@ -566,6 +568,34 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
             val holder = parseEffect(args.arg1()) ?: return FALSE
             return valueOf(living.removeEffect(holder))
+        }
+    }
+
+    private fun parseEntityArg(arg: LuaValue?): Entity? = when {
+        arg?.isuserdata() == true && arg.touserdata() is LuaEntity ->
+            (arg.touserdata() as LuaEntity).entity
+        arg?.isuserdata() == true && arg.touserdata() is Entity ->
+            arg.touserdata() as Entity
+        else -> null
+    }
+
+    // Добавление пассажира: add_passenger(entity) -> boolean
+    private inner class AddPassengerFunction : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            val passenger = parseEntityArg(arg) ?: return NIL
+            if (passenger == entity) return FALSE
+            passenger.stopRiding()
+            return valueOf(passenger.startRiding(entity))
+        }
+    }
+
+    // Снятие пассажира: remove_passenger(entity) -> boolean
+    private inner class RemovePassengerFunction : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            val passenger = parseEntityArg(arg) ?: return NIL
+            if (passenger == entity || !entity.hasPassenger(passenger)) return FALSE
+            passenger.stopRiding()
+            return TRUE
         }
     }
 
@@ -806,6 +836,24 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "glowing" -> {
                 if (value.isboolean()) {
                     entity.setGlowingTag(value.toboolean())
+                }
+            }
+            "passengers" -> {
+                if (value.istable()) {
+                    val resolved = mutableListOf<Entity>()
+                    var index = 1
+                    while (true) {
+                        val entry = value.get(index)
+                        if (entry.isnil()) break
+                        parseEntityArg(entry)?.let { resolved.add(it) }
+                        index++
+                    }
+                    entity.ejectPassengers()
+                    for (passenger in resolved) {
+                        if (passenger == entity) continue
+                        passenger.stopRiding()
+                        passenger.startRiding(entity)
+                    }
                 }
             }
 
