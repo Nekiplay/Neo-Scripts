@@ -23,6 +23,7 @@ class LuaManager(val configDir: File?) {
         "lib/",
         "/libs/",
         "/lib/",
+        configDir?.toString() + "/",
         configDir?.resolve("libs/").toString() + "/",
         configDir?.resolve("lib/").toString() + "/",
         configDir?.resolve("scripts/libs/").toString() + "/",
@@ -37,28 +38,31 @@ class LuaManager(val configDir: File?) {
         addAll(baseModuleSearchPaths)
     }
 
+    fun addSearchPath(path: String) {
+        val normalized = path.replace('\\', '/').let { if (it.endsWith("/")) it else "$it/" }
+        if (!moduleSearchPaths.contains(normalized)) {
+            moduleSearchPaths.add(normalized)
+        }
+    }
+
     fun findModuleFile(moduleName: String): File? {
-        val baseName = if (moduleName.endsWith(".lua") || moduleName.endsWith(".luac")) {
-            moduleName.substringBeforeLast('.').replace(".", "/")
+        val normalizedName = moduleName.replace('\\', '/')
+        val baseName = if (normalizedName.endsWith(".lua") || normalizedName.endsWith(".luac")) {
+            normalizedName.substringBeforeLast('.').replace(".", "/")
         } else {
-            moduleName.replace(".", "/")
+            normalizedName.replace(".", "/")
         }
 
         for (path in moduleSearchPaths) {
             // Check direct files
             for (ext in luaExtensions) {
                 val file = File("$path$baseName$ext")
-                println("$path$baseName$ext")
                 if (file.exists() && file.isFile) {
                     return file
                 }
             }
         }
         return null
-    }
-
-    init {
-        moduleSearchPaths.addAll(baseModuleSearchPaths)
     }
 
     companion object {

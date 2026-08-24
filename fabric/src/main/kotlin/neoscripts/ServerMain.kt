@@ -113,12 +113,14 @@ object ServerMain : ModInitializer {
             Files.createDirectories(libsDir)
 
             LUA_MANAGER = LuaManager(scriptsDir2.toFile())
+            LUA_MANAGER?.addSearchPath(worldRoot.toString())
+            LUA_MANAGER?.addSearchPath(neuDir.toString())
 
             for (name in startUpScriptNames) {
                 val autoLoadScript: File = File(scriptsDir2.toFile(), name)
                 if (autoLoadScript.exists()) {
                     try {
-                        val script = ClientMain.LUA_MANAGER!!.getScript(autoLoadScript, true, server)
+                        val script = LUA_MANAGER!!.getScript(autoLoadScript, true, server)
                         LUA_MANAGER?.executeScript(autoLoadScript, script)
                         println("Autoload script \"" + name + "\" executed successfully")
                     } catch (e: Exception) {
