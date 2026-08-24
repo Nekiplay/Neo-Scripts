@@ -27,6 +27,8 @@ import net.minecraft.network.chat.Component
 import net.minecraft.world.item.component.ResolvableProfile
 import com.mojang.authlib.GameProfile
 import com.mojang.authlib.properties.Property
+import com.mojang.authlib.properties.PropertyMap
+import com.google.common.collect.LinkedHashMultimap
 import java.util.UUID
 import net.minecraft.tags.ItemTags
 import net.minecraft.world.item.BlockItem
@@ -194,6 +196,35 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                     valueOf("")
                 }
             }
+            "profile" -> {
+                val rp = stack.get(DataComponents.PROFILE)
+                if (rp == null) {
+                    NIL
+                } else {
+                    val gp = rp.partialProfile()
+                    val t = tableOf()
+                    val idArr = tableOf()
+                    gp.id?.let {
+                        idArr.set(1, valueOf((it.mostSignificantBits shr 32).toInt()))
+                        idArr.set(2, valueOf(it.mostSignificantBits.toInt()))
+                        idArr.set(3, valueOf((it.leastSignificantBits shr 32).toInt()))
+                        idArr.set(4, valueOf(it.leastSignificantBits.toInt()))
+                    }
+                    t.set("id", idArr)
+                    t.set("name", valueOf(gp.name ?: ""))
+                    val propsT = tableOf()
+                    var idx = 1
+                    for (prop in gp.properties.entries()) {
+                        val p = tableOf()
+                        p.set("name", valueOf(prop.name()))
+                        p.set("value", valueOf(prop.value()))
+                        p.set("signature", valueOf(prop.signature() ?: ""))
+                        propsT.set(idx++, p)
+                    }
+                    t.set("properties", propsT)
+                    t
+                }
+            }
             else -> getUnknownData(field, key)
         }
     }
@@ -304,8 +335,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                     } else {
                         UUID.randomUUID()
                     }
-                    val gameProfile = GameProfile(uuid, "")
-                    val props = gameProfile.properties
+                    val multimap = LinkedHashMultimap.create<String, Property>()
                     val propsT = v.get("properties")
                     if (propsT.istable()) {
                         var idx = 1
@@ -315,11 +345,12 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                             val pname = p.get("name").tojstring()
                             val pval = p.get("value").tojstring()
                             if (pname.isNotEmpty() && pval.isNotEmpty()) {
-                                props.put(pname, Property(pname, pval, ""))
+                                multimap.put(pname, Property(pname, pval, ""))
                             }
                             idx++
                         }
                     }
+                    val gameProfile = GameProfile(uuid, "", PropertyMap(multimap))
                     stack.set(DataComponents.PROFILE, ResolvableProfile.createResolved(gameProfile))
                 }
             }
