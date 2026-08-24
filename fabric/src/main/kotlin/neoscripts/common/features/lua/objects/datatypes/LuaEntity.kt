@@ -5,6 +5,9 @@ import com.nekiplay.neoscripts.ClientMain
 import com.nekiplay.neoscripts.ClientMain.mc
 import com.nekiplay.neoscripts.client.features.lua.customArgs.FourArgFunction
 import com.nekiplay.neoscripts.common.mixins.minecraft.ArmorStandAccessor
+import com.nekiplay.neoscripts.common.mixins.minecraft.InteractionAccessor
+import com.nekiplay.neoscripts.common.mixins.minecraft.ItemDisplayAccessor
+import com.nekiplay.neoscripts.common.mixins.minecraft.TextDisplayAccessor
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaVector3d
@@ -25,7 +28,9 @@ import net.minecraft.world.InteractionHand
 import net.minecraft.world.effect.MobEffect
 import net.minecraft.world.effect.MobEffectInstance
 import net.minecraft.world.entity.AgeableMob
+import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.Interaction
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
@@ -343,6 +348,70 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
             "right_leg_pose" -> {
                 if (entity is ArmorStand) rotationsToTable(entity.rightLegPose) else NIL
+            }
+
+            // Специфичные для TextDisplay
+            "text" -> {
+                if (entity is Display.TextDisplay) {
+                    valueOf((entity as TextDisplayAccessor).neoscripts$getText().getFormattedString())
+                } else {
+                    NIL
+                }
+            }
+            "line_width" -> {
+                if (entity is Display.TextDisplay) {
+                    valueOf((entity as TextDisplayAccessor).neoscripts$getLineWidth())
+                } else {
+                    NIL
+                }
+            }
+            "text_opacity" -> {
+                if (entity is Display.TextDisplay) {
+                    val opacity = (entity as TextDisplayAccessor).neoscripts$getTextOpacity().toInt() and 0xFF
+                    valueOf(opacity)
+                } else {
+                    NIL
+                }
+            }
+            "background_color" -> {
+                if (entity is Display.TextDisplay) {
+                    valueOf((entity as TextDisplayAccessor).neoscripts$getBackgroundColor())
+                } else {
+                    NIL
+                }
+            }
+
+            // Специфичные для ItemDisplay
+            "display_item", "displayed_item" -> {
+                if (entity is Display.ItemDisplay) {
+                    val stack = (entity as ItemDisplayAccessor).neoscripts$getItemStack()
+                    if (!stack.isEmpty) LuaItemStack(stack) else NIL
+                } else {
+                    NIL
+                }
+            }
+
+            // Специфичные для Interaction
+            "interaction_width" -> {
+                if (entity is Interaction) {
+                    valueOf((entity as InteractionAccessor).neoscripts$getWidth().toDouble())
+                } else {
+                    NIL
+                }
+            }
+            "interaction_height" -> {
+                if (entity is Interaction) {
+                    valueOf((entity as InteractionAccessor).neoscripts$getHeight().toDouble())
+                } else {
+                    NIL
+                }
+            }
+            "response" -> {
+                if (entity is Interaction) {
+                    valueOf((entity as InteractionAccessor).neoscripts$getResponse())
+                } else {
+                    NIL
+                }
             }
 
             // Инвентарь игрока (для ServerPlayer изменения синхронизируются сервером с клиентом автоматически)
@@ -739,6 +808,57 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
             "right_leg_pose" -> {
                 if (entity is ArmorStand) parseRotations(value)?.let { entity.setRightLegPose(it) }
+            }
+
+            // --- Специфичные для TextDisplay ---
+            "text" -> {
+                if (entity is Display.TextDisplay) {
+                    when {
+                        value.isstring() -> (entity as TextDisplayAccessor).neoscripts$setText(Component.literal(value.tojstring()))
+                        value is LuaComponentBuilder -> (entity as TextDisplayAccessor).neoscripts$setText(value.buildComponent())
+                        value is LuaComponent -> (entity as TextDisplayAccessor).neoscripts$setText(value.component.copy())
+                    }
+                }
+            }
+            "line_width" -> {
+                if (entity is Display.TextDisplay && value.isnumber()) {
+                    (entity as TextDisplayAccessor).neoscripts$setLineWidth(value.toint())
+                }
+            }
+            "text_opacity" -> {
+                if (entity is Display.TextDisplay && value.isnumber()) {
+                    val opacity = value.toint().coerceIn(0, 255).toByte()
+                    (entity as TextDisplayAccessor).neoscripts$setTextOpacity(opacity)
+                }
+            }
+            "background_color" -> {
+                if (entity is Display.TextDisplay && value.isnumber()) {
+                    (entity as TextDisplayAccessor).neoscripts$setBackgroundColor(value.toint())
+                }
+            }
+
+            // --- Специфичные для ItemDisplay ---
+            "display_item", "displayed_item" -> {
+                if (entity is Display.ItemDisplay) {
+                    toStack(value)?.let { (entity as ItemDisplayAccessor).neoscripts$setItemStack(it) }
+                }
+            }
+
+            // --- Специфичные для Interaction ---
+            "interaction_width" -> {
+                if (entity is Interaction && value.isnumber()) {
+                    (entity as InteractionAccessor).neoscripts$setWidth(value.todouble().toFloat().coerceAtLeast(0f))
+                }
+            }
+            "interaction_height" -> {
+                if (entity is Interaction && value.isnumber()) {
+                    (entity as InteractionAccessor).neoscripts$setHeight(value.todouble().toFloat().coerceAtLeast(0f))
+                }
+            }
+            "response" -> {
+                if (entity is Interaction && value.isboolean()) {
+                    (entity as InteractionAccessor).neoscripts$setResponse(value.toboolean())
+                }
             }
         }
     }
