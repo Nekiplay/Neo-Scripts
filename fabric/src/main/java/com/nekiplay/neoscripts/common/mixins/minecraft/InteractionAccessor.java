@@ -7,20 +7,20 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(Interaction.class)
 public interface InteractionAccessor {
     @Invoker("getWidth")
-    float neoscripts$getWidth();
+    float nsGetWidth();
 
     @Invoker("setWidth")
-    void neoscripts$setWidth(float width);
+    void nsSetWidth(float width);
 
     @Invoker("getHeight")
-    float neoscripts$getHeight();
+    float nsGetHeight();
 
     @Invoker("setHeight")
-    void neoscripts$setHeight(float height);
+    void nsSetHeight(float height);
 
     @Invoker("getResponse")
-    boolean neoscripts$getResponse();
+    boolean nsGetResponse();
 
     @Invoker("setResponse")
-    void neoscripts$setResponse(boolean response);
+    void nsSetResponse(boolean response);
 }

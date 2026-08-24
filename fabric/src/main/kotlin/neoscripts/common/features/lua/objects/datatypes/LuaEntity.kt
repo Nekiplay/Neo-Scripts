@@ -353,21 +353,21 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             // Специфичные для TextDisplay
             "text" -> {
                 if (entity is Display.TextDisplay) {
-                    valueOf((entity as TextDisplayAccessor).neoscripts$getText().getFormattedString())
+                    valueOf((entity as TextDisplayAccessor).nsGetText().getFormattedString())
                 } else {
                     NIL
                 }
             }
             "line_width" -> {
                 if (entity is Display.TextDisplay) {
-                    valueOf((entity as TextDisplayAccessor).neoscripts$getLineWidth())
+                    valueOf((entity as TextDisplayAccessor).nsGetLineWidth())
                 } else {
                     NIL
                 }
             }
             "text_opacity" -> {
                 if (entity is Display.TextDisplay) {
-                    val opacity = (entity as TextDisplayAccessor).neoscripts$getTextOpacity().toInt() and 0xFF
+                    val opacity = (entity as TextDisplayAccessor).nsGetTextOpacity().toInt() and 0xFF
                     valueOf(opacity)
                 } else {
                     NIL
@@ -375,7 +375,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
             "background_color" -> {
                 if (entity is Display.TextDisplay) {
-                    valueOf((entity as TextDisplayAccessor).neoscripts$getBackgroundColor())
+                    valueOf((entity as TextDisplayAccessor).nsGetBackgroundColor())
                 } else {
                     NIL
                 }
@@ -384,7 +384,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             // Специфичные для ItemDisplay
             "display_item", "displayed_item" -> {
                 if (entity is Display.ItemDisplay) {
-                    val stack = (entity as ItemDisplayAccessor).neoscripts$getItemStack()
+                    val stack = (entity as ItemDisplayAccessor).nsGetItemStack()
                     if (!stack.isEmpty) LuaItemStack(stack) else NIL
                 } else {
                     NIL
@@ -394,21 +394,21 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             // Специфичные для Interaction
             "interaction_width" -> {
                 if (entity is Interaction) {
-                    valueOf((entity as InteractionAccessor).neoscripts$getWidth().toDouble())
+                    valueOf((entity as InteractionAccessor).nsGetWidth().toDouble())
                 } else {
                     NIL
                 }
             }
             "interaction_height" -> {
                 if (entity is Interaction) {
-                    valueOf((entity as InteractionAccessor).neoscripts$getHeight().toDouble())
+                    valueOf((entity as InteractionAccessor).nsGetHeight().toDouble())
                 } else {
                     NIL
                 }
             }
             "response" -> {
                 if (entity is Interaction) {
-                    valueOf((entity as InteractionAccessor).neoscripts$getResponse())
+                    valueOf((entity as InteractionAccessor).nsGetResponse())
                 } else {
                     NIL
                 }
@@ -773,12 +773,12 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
             "small" -> {
                 if (entity is ArmorStand && value.isboolean()) {
-                    (entity as ArmorStandAccessor).`neoscripts$setSmall`(value.toboolean())
+                    (entity as ArmorStandAccessor).nsSetSmall(value.toboolean())
                 }
             }
             "marker" -> {
                 if (entity is ArmorStand && value.isboolean()) {
-                    (entity as ArmorStandAccessor).`neoscripts$setMarker`(value.toboolean())
+                    (entity as ArmorStandAccessor).nsSetMarker(value.toboolean())
                 }
             }
             "show_arms" -> {
@@ -814,50 +814,50 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "text" -> {
                 if (entity is Display.TextDisplay) {
                     when {
-                        value.isstring() -> (entity as TextDisplayAccessor).neoscripts$setText(Component.literal(value.tojstring()))
-                        value is LuaComponentBuilder -> (entity as TextDisplayAccessor).neoscripts$setText(value.buildComponent())
-                        value is LuaComponent -> (entity as TextDisplayAccessor).neoscripts$setText(value.component.copy())
+                        value.isstring() -> (entity as TextDisplayAccessor).nsSetText(Component.literal(value.tojstring()))
+                        value is LuaComponentBuilder -> (entity as TextDisplayAccessor).nsSetText(value.buildComponent())
+                        value is LuaComponent -> (entity as TextDisplayAccessor).nsSetText(value.component.copy())
                     }
                 }
             }
             "line_width" -> {
                 if (entity is Display.TextDisplay && value.isnumber()) {
-                    (entity as TextDisplayAccessor).neoscripts$setLineWidth(value.toint())
+                    (entity as TextDisplayAccessor).nsSetLineWidth(value.toint())
                 }
             }
             "text_opacity" -> {
                 if (entity is Display.TextDisplay && value.isnumber()) {
                     val opacity = value.toint().coerceIn(0, 255).toByte()
-                    (entity as TextDisplayAccessor).neoscripts$setTextOpacity(opacity)
+                    (entity as TextDisplayAccessor).nsSetTextOpacity(opacity)
                 }
             }
             "background_color" -> {
                 if (entity is Display.TextDisplay && value.isnumber()) {
-                    (entity as TextDisplayAccessor).neoscripts$setBackgroundColor(value.toint())
+                    (entity as TextDisplayAccessor).nsSetBackgroundColor(value.toint())
                 }
             }
 
             // --- Специфичные для ItemDisplay ---
             "display_item", "displayed_item" -> {
                 if (entity is Display.ItemDisplay) {
-                    toStack(value)?.let { (entity as ItemDisplayAccessor).neoscripts$setItemStack(it) }
+                    toStack(value)?.let { (entity as ItemDisplayAccessor).nsSetItemStack(it) }
                 }
             }
 
             // --- Специфичные для Interaction ---
             "interaction_width" -> {
                 if (entity is Interaction && value.isnumber()) {
-                    (entity as InteractionAccessor).neoscripts$setWidth(value.todouble().toFloat().coerceAtLeast(0f))
+                    (entity as InteractionAccessor).nsSetWidth(value.todouble().toFloat().coerceAtLeast(0f))
                 }
             }
             "interaction_height" -> {
                 if (entity is Interaction && value.isnumber()) {
-                    (entity as InteractionAccessor).neoscripts$setHeight(value.todouble().toFloat().coerceAtLeast(0f))
+                    (entity as InteractionAccessor).nsSetHeight(value.todouble().toFloat().coerceAtLeast(0f))
                 }
             }
             "response" -> {
                 if (entity is Interaction && value.isboolean()) {
-                    (entity as InteractionAccessor).neoscripts$setResponse(value.toboolean())
+                    (entity as InteractionAccessor).nsSetResponse(value.toboolean())
                 }
             }
         }

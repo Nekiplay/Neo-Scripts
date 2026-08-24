@@ -8,8 +8,8 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(Display.ItemDisplay.class)
 public interface ItemDisplayAccessor {
     @Invoker("getItemStack")
-    ItemStack neoscripts$getItemStack();
+    ItemStack nsGetItemStack();
 
     @Invoker("setItemStack")
-    void neoscripts$setItemStack(ItemStack stack);
+    void nsSetItemStack(ItemStack stack);
 }

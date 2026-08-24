@@ -7,8 +7,8 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(ArmorStand.class)
 public interface ArmorStandAccessor {
     @Invoker("setSmall")
-    void neoscripts$setSmall(boolean small);
+    void nsSetSmall(boolean small);
 
     @Invoker("setMarker")
-    void neoscripts$setMarker(boolean marker);
+    void nsSetMarker(boolean marker);
 }

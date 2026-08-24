@@ -8,26 +8,26 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(Display.TextDisplay.class)
 public interface TextDisplayAccessor {
     @Invoker("getText")
-    Component neoscripts$getText();
+    Component nsGetText();
 
     @Invoker("setText")
-    void neoscripts$setText(Component text);
+    void nsSetText(Component text);
 
     @Invoker("getLineWidth")
-    int neoscripts$getLineWidth();
+    int nsGetLineWidth();
 
     @Invoker("setLineWidth")
-    void neoscripts$setLineWidth(int width);
+    void nsSetLineWidth(int width);
 
     @Invoker("getTextOpacity")
-    byte neoscripts$getTextOpacity();
+    byte nsGetTextOpacity();
 
     @Invoker("setTextOpacity")
-    void neoscripts$setTextOpacity(byte opacity);
+    void nsSetTextOpacity(byte opacity);
 
     @Invoker("getBackgroundColor")
-    int neoscripts$getBackgroundColor();
+    int nsGetBackgroundColor();
 
     @Invoker("setBackgroundColor")
-    void neoscripts$setBackgroundColor(int color);
+    void nsSetBackgroundColor(int color);
 }
