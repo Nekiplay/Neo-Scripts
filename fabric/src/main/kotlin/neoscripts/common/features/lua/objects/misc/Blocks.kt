@@ -6,6 +6,7 @@ import net.minecraft.resources.Identifier
 import net.minecraft.world.level.block.Block
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
+import org.luaj.vm2.LuaTable
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.VarArgFunction
 
@@ -35,9 +36,17 @@ class Blocks : LuaValue() {
             if (args.arg(1).isstring()) {
                 val optional = BuiltInRegistries.BLOCK.get(Identifier.parse(args.arg(1).tojstring()))
                 if (optional.isPresent) {
-                    return LuaBlockState(
-                        optional.get().value().defaultBlockState()
-                    )
+                    val state = LuaBlockState(optional.get().value().defaultBlockState())
+                    if (args.narg() >= 2 && args.arg(2).istable()) {
+                        val table = args.arg(2).checktable()
+                        val properties = state.get(LuaValue.valueOf("properties"))
+                        val keys = table.keys()
+                        for (i in 1..keys.narg()) {
+                            val key = keys.arg(i)
+                            properties.set(key, table.get(key))
+                        }
+                    }
+                    return state
                 }
             }
             return NIL
