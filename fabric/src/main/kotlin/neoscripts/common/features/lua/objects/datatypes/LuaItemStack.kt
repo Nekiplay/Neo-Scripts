@@ -25,7 +25,6 @@ import net.minecraft.nbt.StringTag
 import net.minecraft.nbt.Tag
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.component.ResolvableProfile
-import net.minecraft.world.item.component.SkinPatch
 import com.mojang.authlib.GameProfile
 import com.mojang.authlib.properties.Property
 import java.util.UUID
@@ -321,7 +320,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                             idx++
                         }
                     }
-                    stack.set(DataComponents.PROFILE, ResolvableProfile(gameProfile))
+                    stack.set(DataComponents.PROFILE, ResolvableProfile.createResolved(gameProfile))
                 }
             }
             else -> super.set(key, value)
@@ -365,7 +364,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
         }
 
         if (loreLines.isNotEmpty()) {
-            val loreComponent = ItemLore(loreLines, styledLines, SkinPatch.EMPTY)
+            val loreComponent = ItemLore(loreLines, styledLines)
             stack.set(DataComponents.LORE, loreComponent)
         } else {
             stack.remove(DataComponents.LORE)
