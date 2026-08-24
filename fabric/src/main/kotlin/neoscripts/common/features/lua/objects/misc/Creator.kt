@@ -1,6 +1,7 @@
 package com.nekiplay.neoscripts.common.features.lua.objects.misc
 
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaBlockState
+import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaTransform
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaMutableBlockPos
@@ -14,6 +15,7 @@ import net.minecraft.world.entity.EntityType
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import org.joml.Vector3f
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
@@ -45,7 +47,37 @@ class Creator : LuaValue() {
             "createBlockState" -> CreateBlockState()
             "createEntity", "createEntityType" -> CreateEntity()
             "createVector3", "createVector3d" -> CreateVector3()
+            "createTransform", "createTransformation" -> CreateTransform()
             else -> super.get(key)
+        }
+    }
+
+    /**
+     * creator.createTransform([tx, ty, tz], [sx, sy, sz], [rx, ry, rz])
+     * Смещение, масштаб и поворот (в градусах) для display-сущностей.
+     * Все параметры опциональны: без аргументов — единичная трансформация.
+     */
+    class CreateTransform : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val translation = if (args.narg() >= 3 && args.arg(1).isnumber() && args.arg(2).isnumber() && args.arg(3).isnumber()) {
+                Vector3f(args.arg(1).tofloat(), args.arg(2).tofloat(), args.arg(3).tofloat())
+            } else {
+                Vector3f(0f, 0f, 0f)
+            }
+
+            val scale = if (args.narg() >= 6 && args.arg(4).isnumber() && args.arg(5).isnumber() && args.arg(6).isnumber()) {
+                Vector3f(args.arg(4).tofloat(), args.arg(5).tofloat(), args.arg(6).tofloat())
+            } else {
+                Vector3f(1f, 1f, 1f)
+            }
+
+            val rotation = if (args.narg() >= 9 && args.arg(7).isnumber() && args.arg(8).isnumber() && args.arg(9).isnumber()) {
+                Vector3f(args.arg(7).tofloat(), args.arg(8).tofloat(), args.arg(9).tofloat())
+            } else {
+                Vector3f(0f, 0f, 0f)
+            }
+
+            return LuaTransform(translation, scale, rotation)
         }
     }
 

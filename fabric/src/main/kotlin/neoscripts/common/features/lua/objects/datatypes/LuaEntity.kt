@@ -6,6 +6,7 @@ import com.nekiplay.neoscripts.ClientMain.mc
 import com.nekiplay.neoscripts.client.features.lua.customArgs.FourArgFunction
 import com.nekiplay.neoscripts.common.mixins.minecraft.ArmorStandAccessor
 import com.nekiplay.neoscripts.common.mixins.minecraft.BlockDisplayAccessor
+import com.nekiplay.neoscripts.common.mixins.minecraft.DisplayAccessor
 import com.nekiplay.neoscripts.common.mixins.minecraft.InteractionAccessor
 import com.nekiplay.neoscripts.common.mixins.minecraft.ItemDisplayAccessor
 import com.nekiplay.neoscripts.common.mixins.minecraft.TextDisplayAccessor
@@ -24,6 +25,7 @@ import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
 import net.minecraft.resources.Identifier
+import net.minecraft.util.Brightness
 import net.minecraft.util.ProblemReporter
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.effect.MobEffect
@@ -350,6 +352,43 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
             "right_leg_pose" -> {
                 if (entity is ArmorStand) rotationsToTable(entity.rightLegPose) else NIL
+            }
+
+            // Специфичные для Display (text_display, item_display, block_display)
+            "billboard", "billboard_mode" -> {
+                if (entity is Display) {
+                    valueOf((entity as DisplayAccessor).nsGetBillboardConstraints().getSerializedName())
+                } else {
+                    NIL
+                }
+            }
+            "view_range" -> {
+                if (entity is Display) {
+                    valueOf((entity as DisplayAccessor).nsGetViewRange().toDouble())
+                } else {
+                    NIL
+                }
+            }
+            "shadow_radius" -> {
+                if (entity is Display) {
+                    valueOf((entity as DisplayAccessor).nsGetShadowRadius().toDouble())
+                } else {
+                    NIL
+                }
+            }
+            "shadow_strength" -> {
+                if (entity is Display) {
+                    valueOf((entity as DisplayAccessor).nsGetShadowStrength().toDouble())
+                } else {
+                    NIL
+                }
+            }
+            "brightness_override" -> {
+                if (entity is Display) {
+                    valueOf((entity as DisplayAccessor).nsGetPackedBrightnessOverride())
+                } else {
+                    NIL
+                }
             }
 
             // Специфичные для TextDisplay
@@ -819,6 +858,54 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
             "right_leg_pose" -> {
                 if (entity is ArmorStand) parseRotations(value)?.let { entity.setRightLegPose(it) }
+            }
+
+            // --- Специфичные для Display (text_display, item_display, block_display) ---
+            "billboard", "billboard_mode" -> {
+                if (entity is Display && value.isstring()) {
+                    val mode = Display.BillboardConstraints.values().firstOrNull {
+                        it.getSerializedName().equals(value.tojstring(), ignoreCase = true)
+                    }
+                    if (mode != null) {
+                        (entity as DisplayAccessor).nsSetBillboardConstraints(mode)
+                    }
+                }
+            }
+            "view_range" -> {
+                if (entity is Display && value.isnumber()) {
+                    (entity as DisplayAccessor).nsSetViewRange(value.todouble().toFloat().coerceAtLeast(0f))
+                }
+            }
+            "shadow_radius" -> {
+                if (entity is Display && value.isnumber()) {
+                    (entity as DisplayAccessor).nsSetShadowRadius(value.todouble().toFloat().coerceAtLeast(0f))
+                }
+            }
+            "shadow_strength" -> {
+                if (entity is Display && value.isnumber()) {
+                    (entity as DisplayAccessor).nsSetShadowStrength(
+                        value.todouble().toFloat().coerceIn(0f, 1f)
+                    )
+                }
+            }
+            "brightness_override" -> {
+                if (entity is Display && value.isnumber()) {
+                    val packed = value.toint()
+                    val brightness = if (packed < 0) null else Brightness.unpack(packed)
+                    (entity as DisplayAccessor).nsSetBrightnessOverride(brightness)
+                }
+            }
+            "transformation", "transform" -> {
+                val transformation = when {
+                    value?.isuserdata() == true && value.touserdata() is LuaTransform ->
+                        (value.touserdata() as LuaTransform).toTransformation()
+                    value?.isuserdata() == true && value.touserdata() is com.mojang.math.Transformation ->
+                        value.touserdata() as com.mojang.math.Transformation
+                    else -> null
+                }
+                if (entity is Display && transformation != null) {
+                    (entity as DisplayAccessor).nsSetTransformation(transformation)
+                }
             }
 
             // --- Специфичные для TextDisplay ---

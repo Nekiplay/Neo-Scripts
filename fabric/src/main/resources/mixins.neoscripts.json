@@ -24,6 +24,7 @@
     "minecraft.ClientConnectionMixin",
     "minecraft.ArmorStandAccessor",
     "minecraft.BlockDisplayAccessor",
+    "minecraft.DisplayAccessor",
     "minecraft.InteractionAccessor",
     "minecraft.ItemDisplayAccessor",
     "minecraft.TextDisplayAccessor",
