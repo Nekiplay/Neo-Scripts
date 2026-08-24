@@ -301,6 +301,9 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
             put(valueOf("getEntityById"), GetEntityByIdFunction())
             put(valueOf("spawnEntity"), SpawnEntityFunction())
             put(valueOf("spawn"), SpawnEntityFunction())
+            put(valueOf("removeEntity"), RemoveEntityFunction())
+            put(valueOf("despawnEntity"), RemoveEntityFunction())
+            put(valueOf("despawn"), RemoveEntityFunction())
             put(valueOf("getCollisionBoxes"), GetCollisionBoxesFunction())
             put(valueOf("getOutlineBoxes"), GetOutlineBoxesFunction())
             put(valueOf("getBlocksInBox"), GetBlocksInBoxFunction())
@@ -611,6 +614,27 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
             lvl.addFreshEntity(entity)
 
             return LuaEntity(entity)
+        }
+    }
+
+    /**
+     * world.removeEntity(entity|entityId) — удаляет сущность с сервера (без дропа лута).
+     * Принимает LuaEntity, сырой Entity userdata или числовой ID сущности.
+     */
+    private inner class RemoveEntityFunction : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue {
+            val lvl = level ?: return NIL
+            val entity = when {
+                arg?.isnumber() == true -> lvl.getEntity(arg.toint())
+                arg?.isuserdata() == true && arg.touserdata() is LuaEntity ->
+                    (arg.touserdata() as LuaEntity).entity
+                arg?.isuserdata() == true && arg.touserdata() is Entity ->
+                    arg.touserdata() as Entity
+                else -> null
+            } ?: return FALSE
+            if (!entity.isAlive) return FALSE
+            entity.discard()
+            return TRUE
         }
     }
 

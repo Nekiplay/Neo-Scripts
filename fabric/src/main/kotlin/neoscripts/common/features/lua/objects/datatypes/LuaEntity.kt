@@ -4,6 +4,7 @@ import com.mojang.authlib.properties.Property
 import com.nekiplay.neoscripts.ClientMain
 import com.nekiplay.neoscripts.ClientMain.mc
 import com.nekiplay.neoscripts.client.features.lua.customArgs.FourArgFunction
+import com.nekiplay.neoscripts.common.mixins.minecraft.ArmorStandAccessor
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaVector3d
@@ -14,6 +15,7 @@ import com.nekiplay.neoscripts.client.sugar.getFormattedString
 import com.nekiplay.neoscripts.client.sugar.getRotation
 import com.nekiplay.neoscripts.client.utils.Utils
 import net.minecraft.core.Holder
+import net.minecraft.core.Rotations
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
@@ -26,6 +28,7 @@ import net.minecraft.world.entity.AgeableMob
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.decoration.ItemFrame
 import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.entity.player.Player
@@ -309,6 +312,39 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "add_effect" -> AddEffectFunction()
             "remove_effect" -> RemoveEffectFunction()
 
+            // Специфичные для ArmorStand
+            "is_invisible", "invisible" -> valueOf(entity.isInvisible)
+            "small" -> {
+                if (entity is ArmorStand) valueOf(entity.isSmall) else NIL
+            }
+            "marker" -> {
+                if (entity is ArmorStand) valueOf(entity.isMarker) else NIL
+            }
+            "show_arms" -> {
+                if (entity is ArmorStand) valueOf(entity.showArms()) else NIL
+            }
+            "no_base_plate", "no_baseplate" -> {
+                if (entity is ArmorStand) valueOf(!entity.showBasePlate()) else NIL
+            }
+            "head_pose" -> {
+                if (entity is ArmorStand) rotationsToTable(entity.headPose) else NIL
+            }
+            "body_pose" -> {
+                if (entity is ArmorStand) rotationsToTable(entity.bodyPose) else NIL
+            }
+            "left_arm_pose" -> {
+                if (entity is ArmorStand) rotationsToTable(entity.leftArmPose) else NIL
+            }
+            "right_arm_pose" -> {
+                if (entity is ArmorStand) rotationsToTable(entity.rightArmPose) else NIL
+            }
+            "left_leg_pose" -> {
+                if (entity is ArmorStand) rotationsToTable(entity.leftLegPose) else NIL
+            }
+            "right_leg_pose" -> {
+                if (entity is ArmorStand) rotationsToTable(entity.rightLegPose) else NIL
+            }
+
             // Инвентарь игрока (для ServerPlayer изменения синхронизируются сервером с клиентом автоматически)
             "inventory" -> {
                 if (entity is Player) LuaInventory(entity.inventory) else NIL
@@ -376,6 +412,35 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             val holder = parseEffect(args.arg1()) ?: return FALSE
             return valueOf(living.removeEffect(holder))
         }
+    }
+
+    private fun rotationsToTable(rotations: Rotations): LuaValue {
+        val t = tableOf()
+        t.set("x", valueOf(rotations.x().toDouble()))
+        t.set("y", valueOf(rotations.y().toDouble()))
+        t.set("z", valueOf(rotations.z().toDouble()))
+        return t
+    }
+
+    private fun parseRotations(value: LuaValue): Rotations? {
+        if (value.isuserdata() && value.touserdata() is LuaVector3d) {
+            val vector = value.touserdata() as LuaVector3d
+            return Rotations(
+                vector.location.x.toFloat(),
+                vector.location.y.toFloat(),
+                vector.location.z.toFloat()
+            )
+        }
+        if (value.isuserdata() && value.touserdata() is Vec3) {
+            val vector = value.touserdata() as Vec3
+            return Rotations(vector.x.toFloat(), vector.y.toFloat(), vector.z.toFloat())
+        }
+        if (value.istable() != true) return null
+        val x = value.get("x")
+        val y = value.get("y")
+        val z = value.get("z")
+        if (!x.isnumber() || !y.isnumber() || !z.isnumber()) return null
+        return Rotations(x.tofloat(), y.tofloat(), z.tofloat())
     }
 
     private inner class TeleportFunction : FourArgFunction() {
@@ -629,6 +694,51 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 if (entity is AgeableMob && value.isboolean()) {
                     entity.setBaby(value.toboolean())
                 }
+            }
+
+            // --- Специфичные для ArmorStand ---
+            "invisible", "is_invisible" -> {
+                if (value.isboolean()) {
+                    entity.setInvisible(value.toboolean())
+                }
+            }
+            "small" -> {
+                if (entity is ArmorStand && value.isboolean()) {
+                    (entity as ArmorStandAccessor).`neoscripts$setSmall`(value.toboolean())
+                }
+            }
+            "marker" -> {
+                if (entity is ArmorStand && value.isboolean()) {
+                    (entity as ArmorStandAccessor).`neoscripts$setMarker`(value.toboolean())
+                }
+            }
+            "show_arms" -> {
+                if (entity is ArmorStand && value.isboolean()) {
+                    entity.setShowArms(value.toboolean())
+                }
+            }
+            "no_base_plate", "no_baseplate" -> {
+                if (entity is ArmorStand && value.isboolean()) {
+                    entity.setNoBasePlate(value.toboolean())
+                }
+            }
+            "head_pose" -> {
+                if (entity is ArmorStand) parseRotations(value)?.let { entity.setHeadPose(it) }
+            }
+            "body_pose" -> {
+                if (entity is ArmorStand) parseRotations(value)?.let { entity.setBodyPose(it) }
+            }
+            "left_arm_pose" -> {
+                if (entity is ArmorStand) parseRotations(value)?.let { entity.setLeftArmPose(it) }
+            }
+            "right_arm_pose" -> {
+                if (entity is ArmorStand) parseRotations(value)?.let { entity.setRightArmPose(it) }
+            }
+            "left_leg_pose" -> {
+                if (entity is ArmorStand) parseRotations(value)?.let { entity.setLeftLegPose(it) }
+            }
+            "right_leg_pose" -> {
+                if (entity is ArmorStand) parseRotations(value)?.let { entity.setRightLegPose(it) }
             }
         }
     }

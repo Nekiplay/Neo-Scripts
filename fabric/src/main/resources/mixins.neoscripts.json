@@ -22,6 +22,7 @@
     "gui.AnvilScreenAccessor",
     "gui.HudAccessor",
     "minecraft.ClientConnectionMixin",
+    "minecraft.ArmorStandAccessor",
     "minecraft.GamemodeAccessor",
     "minecraft.LevelRenderStateAccessor",
     "minecraft.MixinKeyboardInput",
