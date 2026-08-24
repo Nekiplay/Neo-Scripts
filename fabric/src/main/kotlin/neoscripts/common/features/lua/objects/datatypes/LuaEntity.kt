@@ -421,6 +421,42 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     NIL
                 }
             }
+            "text_shadow", "has_text_shadow" -> {
+                if (entity is Display.TextDisplay) {
+                    val flags = (entity as TextDisplayAccessor).nsGetFlags().toInt()
+                    valueOf(flags and Display.TextDisplay.FLAG_SHADOW != 0)
+                } else {
+                    NIL
+                }
+            }
+            "see_through" -> {
+                if (entity is Display.TextDisplay) {
+                    val flags = (entity as TextDisplayAccessor).nsGetFlags().toInt()
+                    valueOf(flags and Display.TextDisplay.FLAG_SEE_THROUGH != 0)
+                } else {
+                    NIL
+                }
+            }
+            "use_default_background", "default_background" -> {
+                if (entity is Display.TextDisplay) {
+                    val flags = (entity as TextDisplayAccessor).nsGetFlags().toInt()
+                    valueOf(flags and Display.TextDisplay.FLAG_USE_DEFAULT_BACKGROUND != 0)
+                } else {
+                    NIL
+                }
+            }
+            "text_align", "text_alignment" -> {
+                if (entity is Display.TextDisplay) {
+                    val flags = (entity as TextDisplayAccessor).nsGetFlags().toInt()
+                    when {
+                        flags and Display.TextDisplay.FLAG_ALIGN_LEFT != 0 -> valueOf("left")
+                        flags and Display.TextDisplay.FLAG_ALIGN_RIGHT != 0 -> valueOf("right")
+                        else -> valueOf("center")
+                    }
+                } else {
+                    NIL
+                }
+            }
 
             // Специфичные для ItemDisplay
             "display_item", "displayed_item" -> {
@@ -932,6 +968,34 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "background_color" -> {
                 if (entity is Display.TextDisplay && value.isnumber()) {
                     (entity as TextDisplayAccessor).nsSetBackgroundColor(value.toint())
+                }
+            }
+            "text_shadow", "has_text_shadow", "see_through", "use_default_background", "default_background" -> {
+                if (entity is Display.TextDisplay && value.isboolean()) {
+                    val accessor = entity as TextDisplayAccessor
+                    val bit = when (field) {
+                        "see_through" -> Display.TextDisplay.FLAG_SEE_THROUGH
+                        "use_default_background", "default_background" -> Display.TextDisplay.FLAG_USE_DEFAULT_BACKGROUND
+                        else -> Display.TextDisplay.FLAG_SHADOW
+                    }
+                    var flags = accessor.nsGetFlags().toInt()
+                    flags = if (value.toboolean()) flags or bit else flags and bit.inv()
+                    accessor.nsSetFlags(flags.toByte())
+                }
+            }
+            "text_align", "text_alignment" -> {
+                if (entity is Display.TextDisplay && value.isstring()) {
+                    val accessor = entity as TextDisplayAccessor
+                    val align = value.tojstring().lowercase()
+                    val leftBit = Display.TextDisplay.FLAG_ALIGN_LEFT
+                    val rightBit = Display.TextDisplay.FLAG_ALIGN_RIGHT
+                    var flags = accessor.nsGetFlags().toInt() and (leftBit or rightBit).inv()
+                    flags = when (align) {
+                        "left" -> flags or leftBit
+                        "right" -> flags or rightBit
+                        else -> flags // center: оба бита сняты
+                    }
+                    accessor.nsSetFlags(flags.toByte())
                 }
             }
 

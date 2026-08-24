@@ -30,4 +30,10 @@ public interface TextDisplayAccessor {
 
     @Invoker("setBackgroundColor")
     void nsSetBackgroundColor(int color);
+
+    @Invoker("getFlags")
+    byte nsGetFlags();
+
+    @Invoker("setFlags")
+    void nsSetFlags(byte flags);
 }
