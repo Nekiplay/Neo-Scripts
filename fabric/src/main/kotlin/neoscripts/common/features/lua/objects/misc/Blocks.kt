@@ -41,8 +41,9 @@ class Blocks : LuaValue() {
                         val table = args.arg(2).checktable()
                         val properties = state.get(LuaValue.valueOf("properties"))
                         val keys = table.keys()
-                        for (i in 1..keys.narg()) {
-                            val key = keys.arg(i)
+                        val count = keys.length().toint()
+                        for (i in 1..count) {
+                            val key = keys.get(i)
                             properties.set(key, table.get(key))
                         }
                     }
