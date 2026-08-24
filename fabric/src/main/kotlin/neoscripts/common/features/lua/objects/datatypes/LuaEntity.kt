@@ -301,14 +301,8 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
 
             // Инвентарь игрока (для ServerPlayer изменения синхронизируются сервером с клиентом автоматически)
-            "give_item", "add_item" -> {
-                if (entity is Player) GiveItemFunction() else NIL
-            }
-            "take_item", "remove_item" -> {
-                if (entity is Player) RemoveItemFunction() else NIL
-            }
-            "get_items", "inventory_items" -> {
-                if (entity is Player) GetItemsFunction() else NIL
+            "inventory" -> {
+                if (entity is Player) LuaInventory(entity.inventory) else NIL
             }
             "teleport" -> TeleportFunction()
             else -> super.get(key)
@@ -335,89 +329,6 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             else -> {
                 LuaValue.FALSE
             }
-        }
-    }
-
-    private inner class GiveItemFunction : TwoArgFunction() {
-        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
-            val player = entity as? Player ?: return NIL
-            val source = when {
-                arg1?.isuserdata() == true && arg1.touserdata() is LuaItemStack ->
-                    (arg1.touserdata() as LuaItemStack).stack.copy()
-                arg1?.isuserdata() == true && arg1.touserdata() is ItemStack ->
-                    (arg1.touserdata() as ItemStack).copy()
-                else -> return NIL
-            }
-            if (arg2?.isnumber() == true) {
-                source.count = arg2.toint()
-            }
-            if (source.isEmpty) return valueOf(0)
-            val requested = source.count
-            player.inventory.add(source)
-            return valueOf(requested - source.count)
-        }
-    }
-
-    private inner class RemoveItemFunction : TwoArgFunction() {
-        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
-            val player = entity as? Player ?: return NIL
-            val inv = player.inventory
-
-            // Удаление из конкретного слота: remove_item(slot[, count])
-            if (arg1?.isnumber() == true) {
-                val slot = arg1.toint()
-                val stack = inv.getItem(slot)
-                if (stack.isEmpty) return valueOf(0)
-                val count = if (arg2?.isnumber() == true) arg2.toint() else stack.count
-                val removed = inv.removeItem(slot, count)
-                return valueOf(removed.count)
-            }
-
-            // Удаление по предмету/идентификатору: remove_item(itemstack|identifier[, amount])
-            val identifier = when {
-                arg1?.isuserdata() == true && arg1.touserdata() is LuaItemStack ->
-                    BuiltInRegistries.ITEM.getKey((arg1.touserdata() as LuaItemStack).stack.item).toString()
-                arg1?.isuserdata() == true && arg1.touserdata() is ItemStack ->
-                    BuiltInRegistries.ITEM.getKey((arg1.touserdata() as ItemStack).item).toString()
-                arg1?.isstring() == true -> arg1.tojstring()
-                else -> return NIL
-            }
-            var remaining = if (arg2?.isnumber() == true) arg2.toint() else 1
-            if (remaining <= 0) return valueOf(0)
-
-            var removedTotal = 0
-            for (slot in 0 until inv.containerSize) {
-                if (remaining <= 0) break
-                val stack = inv.getItem(slot)
-                if (stack.isEmpty) continue
-                if (BuiltInRegistries.ITEM.getKey(stack.item).toString() != identifier) continue
-                val take = minOf(remaining, stack.count)
-                stack.count -= take
-                if (stack.isEmpty) {
-                    inv.setItem(slot, ItemStack.EMPTY)
-                }
-                remaining -= take
-                removedTotal += take
-            }
-            return valueOf(removedTotal)
-        }
-    }
-
-    private inner class GetItemsFunction : ZeroArgFunction() {
-        override fun call(): LuaValue {
-            val player = entity as? Player ?: return NIL
-            val inv = player.inventory
-            val result = tableOf()
-            var index = 1
-            for (slot in 0 until inv.containerSize) {
-                val stack = inv.getItem(slot)
-                if (stack.isEmpty) continue
-                val entry = tableOf()
-                entry.set("slot", valueOf(slot))
-                entry.set("item", LuaItemStack(stack))
-                result.set(index++, entry)
-            }
-            return result
         }
     }
 

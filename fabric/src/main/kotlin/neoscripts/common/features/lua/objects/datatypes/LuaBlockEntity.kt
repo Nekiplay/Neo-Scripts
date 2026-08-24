@@ -53,13 +53,7 @@ class LuaBlockEntity(var blockEntity: BlockEntity) : LuaUserdata(blockEntity) {
                 if (c != null) valueOf(c.containerSize) else NIL
             }
             "inventory" -> {
-                if (c == null) return NIL
-                val table = tableOf()
-                for (i in 0 until c.containerSize) {
-                    val stack = c.getItem(i)
-                    table.set(i + 1, if (stack.isEmpty) NIL else LuaItemStack(stack))
-                }
-                table
+                if (c != null) LuaInventory(c) else NIL
             }
 
             // --- Свойства печки ---
