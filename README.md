@@ -7,7 +7,8 @@
 
 # Features
 ### Commands:
-- /lua - Lua API control
+- /lua - Lua API control on client-side
+- /slua - Lua API control on server-side
 
 ### Misc:
 - [Lua API](https://skillshop.gitbook.io/hypixelcry/), [Forum](http://130.255.41.75/), [Discord](https://discord.gg/GHXSpYAEgh)
