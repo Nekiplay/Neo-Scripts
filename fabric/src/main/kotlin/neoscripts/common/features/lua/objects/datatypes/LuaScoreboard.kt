@@ -10,6 +10,7 @@ import net.minecraft.world.scores.Scoreboard
 import net.minecraft.world.scores.criteria.ObjectiveCriteria
 import org.luaj.vm2.LuaUserdata
 import org.luaj.vm2.LuaValue
+import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.VarArgFunction
