@@ -634,6 +634,7 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
      */
     fun onSluaInvoke(info: LuaValue) {
         val callbacks = synchronized(callbacksLock) {
+            sluaInvokeCallbacks.toTypedArray()
         }
 
         for (callback in callbacks) {
