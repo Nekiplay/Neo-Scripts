@@ -21,17 +21,18 @@ class LuaTransform(
             val radX = Math.toRadians(rotationDegrees.x.toDouble()).toFloat()
             val radY = Math.toRadians(rotationDegrees.y.toDouble()).toFloat()
             val radZ = Math.toRadians(rotationDegrees.z.toDouble()).toFloat()
-            val leftRot = Quaternionf().rotationZYX(radZ, radY, radX)
+            // Порядок XYZ (Rx * Ry * Rz) — согласован с fromTransformation (getEulerAnglesXYZ)
+            val leftRot = Quaternionf().rotationXYZ(radX, radY, radZ)
             return Transformation(translation, leftRot, scale, Quaternionf())
         }
 
         fun fromTransformation(transformation: Transformation): LuaTransform {
             val translation = Vector3f(transformation.translation())
             val scale = Vector3f(transformation.scale())
-            // Декодируем в том же порядке, что и кодируем в toTransformation (rotationZYX),
+            // Декодируем в том же порядке, что и кодируем в toTransformation (rotationXYZ),
             // иначе обратная конвертация не совпадает при мультиосевых поворотах
             val eulerRad = Vector3f()
-            transformation.leftRotation().getEulerAnglesZYX(eulerRad)
+            transformation.leftRotation().getEulerAnglesXYZ(eulerRad)
             val rotationDegrees = Vector3f(
                 Math.toDegrees(eulerRad.x.toDouble()).toFloat(),
                 Math.toDegrees(eulerRad.y.toDouble()).toFloat(),
