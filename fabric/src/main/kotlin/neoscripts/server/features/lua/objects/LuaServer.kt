@@ -22,7 +22,8 @@ class LuaServer(val server: MinecraftServer?) : LuaValue() {
 
     override fun get(key: LuaValue): LuaValue {
         return when (key.tojstring()) {
-            "getLevel" -> GetLevel()
+            "getLevel", "getWorld" -> GetLevel()
+            "getLevels", "getWorlds" -> GetLevels()
             "getOnlinePlayers" -> GetOnlinePlayers()
             else -> super.get(key)
         }
@@ -44,6 +45,17 @@ class LuaServer(val server: MinecraftServer?) : LuaValue() {
             val dim = ResourceKey.create(Registries.DIMENSION, Identifier.parse(world));
 
             return ServerWorldObject(server?.getLevel(dim))
+        }
+    }
+
+    // Все загруженные измерения сервера
+    inner class GetLevels : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val table = tableOf()
+            server?.allLevels?.forEachIndexed { index, level ->
+                table.set(index + 1, ServerWorldObject(level))
+            }
+            return table
         }
     }
 }
