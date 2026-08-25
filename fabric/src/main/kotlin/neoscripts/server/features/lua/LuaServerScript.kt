@@ -647,6 +647,42 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
     }
 
     /**
+     * Вызывается после полной загрузки сервера и всех миров
+     * (на первом тике, после автозагрузки скриптов).
+     */
+    fun onServerStarted() {
+        val callbacks = synchronized(callbacksLock) {
+            serverStartedCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                callback.call()
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in server started callback in ${scriptName}", e)
+            }
+        }
+    }
+
+    /**
+     * Вызывается, когда мир (измерение) полностью загружен.
+     * На старте сервера — для каждого измерения после onServerStarted.
+     */
+    fun onWorldLoaded(world: ServerWorldObject) {
+        val callbacks = synchronized(callbacksLock) {
+            worldLoadedCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                callback.call(world)
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in world loaded callback in ${scriptName}", e)
+            }
+        }
+    }
+
+    /**
      * Вызывается при остановке сервера/мира, пока уровни ещё загружены.
      */
     fun onServerStopping(world: ServerWorldObject) {

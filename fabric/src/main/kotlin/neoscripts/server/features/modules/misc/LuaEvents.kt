@@ -6,9 +6,7 @@ import com.nekiplay.neoscripts.server.features.lua.objects.ServerWorldObject
 import com.nekiplay.neoscripts.server.features.modules.ServerModule
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents
 import net.minecraft.server.MinecraftServer
-import net.minecraft.server.level.ServerLevel
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback
 import net.fabricmc.fabric.api.event.player.BlockEvents
@@ -28,7 +26,6 @@ object LuaEvents : ServerModule() {
         registerTickEvents()
         registerLifecycleEvents()
         registerInteractionEvents()
-        registerWorldLoadEvents()
     }
 
     private fun registerTickEvents() {
@@ -83,19 +80,10 @@ object LuaEvents : ServerModule() {
     }
 
     /**
-     * Поздняя загрузка измерений в рантайме (после старта сервера).
-     * Первичная загрузка миров диспатчится из dispatchServerStarted,
-     * т.к. ServerWorldEvents.LOAD срабатывает до загрузки скриптов.
-     */
-    private fun registerWorldLoadEvents() {
-        ServerWorldEvents.LOAD.register(ServerWorldEvents.Load { _, level ->
-            dispatchWorldLoaded(level)
-        })
-    }
-
-    /**
-     * Вызывается из ServerMain после автозагрузки скриптов в SERVER_STARTED:
-     * сервер полностью запущен, все миры загружены и колбэки уже зарегистрированы.
+     * Вызывается из ServerMain на первом тике после старта: сервер полностью
+     * запущен, все измерения загружены, автозагрузка выполнена.
+     * worldLoaded диспатчится здесь для каждого измерения — события загрузки
+     * миров до этого момента недоступны (скрипты ещё не загружены).
      */
     fun dispatchServerStarted(server: MinecraftServer) {
         dispatchNotify({ it.hasServerStartedCallbacks }, { it.onServerStarted() })
