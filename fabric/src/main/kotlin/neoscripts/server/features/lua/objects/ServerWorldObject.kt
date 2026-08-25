@@ -30,7 +30,17 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.Identifier
 import net.minecraft.network.chat.Component
+import net.minecraft.network.protocol.game.ClientboundAddEntityPacket
+import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket
+import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket
+import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket
+import net.minecraft.network.protocol.game.ClientboundRotateHeadPacket
+import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket
+import net.minecraft.network.protocol.game.ClientboundRemoveMobEffectPacket
+import net.minecraft.network.protocol.game.ClientboundUpdateMobEffectPacket
+import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.server.permissions.PermissionSet
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
@@ -38,8 +48,11 @@ import net.minecraft.util.Mth
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EntitySpawnReason
 import net.minecraft.world.entity.EntityType
+import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.PositionMoveRotation
 import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.ClipContext
 import net.minecraft.world.level.LightLayer
 import net.minecraft.world.level.block.Block
@@ -56,9 +69,13 @@ import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.ThreeArgFunction
+import org.luaj.vm2.lib.TwoArgFunction
 import org.luaj.vm2.lib.VarArgFunction
 import org.luaj.vm2.lib.ZeroArgFunction
 import org.luaj.vm2.lib.jse.JavaInstance
+import net.minecraft.world.entity.Relative
+import java.util.EnumSet
+import java.util.UUID
 
 class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
     override fun call(): LuaValue {
@@ -144,6 +161,25 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
                     null
                 }
                 else -> arg?.toEntityType()
+            }
+        }
+
+        /**
+         * Разрешает аргумент в ServerPlayer: LuaEntity (обёртка над игроком),
+         * числовой id сущности или строка (ник / UUID).
+         */
+        private fun resolveServerPlayer(lvl: ServerLevel, arg: LuaValue?): ServerPlayer? {
+            return when {
+                arg != null && arg.isEntity() -> arg.toEntity() as? ServerPlayer
+                arg?.isnumber() == true -> lvl.getEntity(arg.toint()) as? ServerPlayer
+                arg?.isstring() == true -> {
+                    val server = lvl.server ?: return null
+                    val query = arg.tojstring()
+                    runCatching { server.playerList.getPlayer(UUID.fromString(query)) }.getOrNull()
+                        ?: server.playerList.getPlayer(query)
+                        ?: server.playerList.players.firstOrNull { it.gameProfile.name.equals(query, ignoreCase = true) }
+                }
+                else -> null
             }
         }
 
@@ -304,6 +340,16 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
             put(valueOf("playSound"), PlaySoundFunction())
             put(valueOf("executeCommand"), ExecuteCommandFunction())
             put(valueOf("runCommand"), ExecuteCommandFunction())
+            put(valueOf("spawnEntityFor"), SpawnPrivateEntityFunction())
+            put(valueOf("spawnPrivateEntity"), SpawnPrivateEntityFunction())
+            put(valueOf("removeEntityFor"), RemovePrivateEntityFunction())
+            put(valueOf("removePrivateEntity"), RemovePrivateEntityFunction())
+            put(valueOf("updateEntityFor"), UpdatePrivateEntityFunction())
+            put(valueOf("updatePrivateEntity"), UpdatePrivateEntityFunction())
+            put(valueOf("setBlockFor"), SetBlockForPlayerFunction())
+            put(valueOf("setPrivateBlock"), SetBlockForPlayerFunction())
+            put(valueOf("resetBlockFor"), ResetBlockForPlayerFunction())
+            put(valueOf("resetPrivateBlock"), ResetBlockForPlayerFunction())
         }
     }
 
@@ -1001,6 +1047,172 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
             } catch (e: CommandSyntaxException) {
                 LuaValue.varargsOf(FALSE, NIL, valueOf(e.message ?: "Unknown command error"))
             }
+        }
+    }
+
+    /**
+     * world.spawnEntityFor(player, type, x, y, z [, yaw, pitch]) — создаёт сущность,
+     * видимую ТОЛЬКО переданному игроку. Сущность не добавляется в мир: она не тикает
+     * и не видна другим игрокам. Возвращает LuaEntity (для последующего removeEntityFor).
+     */
+    private inner class SpawnPrivateEntityFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val lvl = level ?: return NIL
+
+            val player = resolveServerPlayer(lvl, args.arg(1))
+                ?: return error("Invalid arguments: expected player (entity, id or name)")
+            val entity = run {
+                val type = resolveEntityType(args.arg(2))
+                    ?: return error("Unknown entity type: expected identifier string, entitytype userdata or EntityType")
+                type.create(lvl, EntitySpawnReason.COMMAND)
+            } ?: return NIL
+
+            val (posVec, offset) = parseVec3(args.arg(3), args.arg(4), args.arg(5))
+                .let { if (it.second > 0) it else Pair<Vec3?, Int>(null, 0) }
+            if (posVec == null) {
+                return error("Invalid position: expected x, y, z numbers or vector")
+            }
+
+            val nextArgIndex = 3 + offset
+            val yaw = args.arg(nextArgIndex)?.optdouble(0.0) ?: 0.0
+            val pitch = args.arg(nextArgIndex + 1)?.optdouble(0.0) ?: 0.0
+
+            entity.snapTo(posVec.x, posVec.y, posVec.z, yaw.toFloat(), pitch.toFloat())
+            entity.setId(lvl.nextEntityId)
+
+            // Пакет спавна отправляем только целевому игроку; сущность НЕ добавляется в мир
+            player.connection.send(ClientboundAddEntityPacket(entity, 0, BlockPos.containing(entity.position())))
+
+            // Метаданные (имя, невидимость и т.п.), если отличаются от дефолта
+            val dataValues = entity.entityData.nonDefaultValues
+            if (!dataValues.isNullOrEmpty()) {
+                player.connection.send(ClientboundSetEntityDataPacket(entity.id, dataValues))
+            }
+
+            return LuaEntity(entity)
+        }
+    }
+
+    /**
+     * world.removeEntityFor(player, entity|entityId) — убирает приватную сущность
+     * у указанного игрока (пакет удаления).
+     */
+    private inner class RemovePrivateEntityFunction : TwoArgFunction() {
+        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
+            val lvl = level ?: return NIL
+            val player = resolveServerPlayer(lvl, arg1) ?: return FALSE
+            val entity = when {
+                arg2?.isnumber() == true -> lvl.getEntity(arg2.toint())
+                arg2 != null && arg2.isEntity() -> arg2.toEntity()
+                else -> null
+            } ?: return FALSE
+
+            player.connection.send(ClientboundRemoveEntitiesPacket(entity.id))
+            return TRUE
+        }
+    }
+
+    /**
+     * world.setBlockFor(player, x, y, z, blockState | pos, blockState) — показывает игроку
+     * блок-иллюзию: реальный блок мира не меняется, пакет обновления уходит только ему.
+     */
+    private inner class SetBlockForPlayerFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val lvl = level ?: return NIL
+
+            val player = resolveServerPlayer(lvl, args.arg(1))
+                ?: return error("Invalid arguments: expected player (entity, id or name)")
+
+            val (blockPos, blockState) = parseBlockPosWithBlockState(args.arg(2), args.arg(3), args.arg(4), args.arg(5))
+                ?: return error("Invalid arguments: expected (x, y, z, BlockState) or (BlockPos, BlockState)")
+
+            player.connection.send(ClientboundBlockUpdatePacket(blockPos.immutable(), blockState))
+            return TRUE
+        }
+    }
+
+    /**
+     * world.resetBlockFor(player, x, y, z | pos) — восстанавливает реальное состояние блока
+     * у игрока после setBlockFor.
+     */
+    private inner class ResetBlockForPlayerFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val lvl = level ?: return NIL
+
+            val player = resolveServerPlayer(lvl, args.arg(1))
+                ?: return error("Invalid arguments: expected player (entity, id or name)")
+
+            val blockPos = parseBlockPos(args.arg(2), args.arg(3), args.arg(4))
+                ?: return error("Invalid arguments: expected (x, y, z) or BlockPos")
+
+            player.connection.send(ClientboundBlockUpdatePacket(lvl, blockPos))
+            return TRUE
+        }
+    }
+
+    /**
+     * world.updateEntityFor(player, entity) — синхронизирует приватную сущность с клиентом
+     * игрока: позиция/поворот, поворот головы, метаданные, броня и активные эффекты.
+     * Вызывайте после изменения x/y/z/yaw/pitch/health/custom_name/эффектов и т.п.
+     *
+     * Приватные сущности не зарегистрированы в мире (поиск по id невозможен),
+     * поэтому entity принимается только объектом (LuaEntity / Entity).
+     */
+    private inner class UpdatePrivateEntityFunction : TwoArgFunction() {
+        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
+            val lvl = level ?: return NIL
+            val player = resolveServerPlayer(lvl, arg1) ?: return FALSE
+            val entity = when {
+                arg2 != null && arg2.isEntity() -> arg2.toEntity()
+                else -> null
+            } ?: return FALSE
+
+            // Позиция и поворот
+            player.connection.send(
+                ClientboundTeleportEntityPacket(
+                    entity.id,
+                    PositionMoveRotation(entity.position(), entity.deltaMovement, entity.yRot, entity.xRot),
+                    EnumSet.noneOf(Relative::class.java),
+                    entity.onGround()
+                )
+            )
+            player.connection.send(
+                ClientboundRotateHeadPacket(entity, (entity.yHeadRot * 256f / 360f).toInt().toByte())
+            )
+
+            // Метаданные (флаги, кастомное имя, невидимость и т.п.)
+            val dataValues = entity.entityData.nonDefaultValues
+            if (!dataValues.isNullOrEmpty()) {
+                player.connection.send(ClientboundSetEntityDataPacket(entity.id, dataValues))
+            }
+
+            if (entity is LivingEntity) {
+                // Броня и предметы в руках
+                val equipment = mutableListOf<Pair<EquipmentSlot, ItemStack>>()
+                for (slot in EquipmentSlot.entries) {
+                    val stack = entity.getItemBySlot(slot)
+                    if (!stack.isEmpty) {
+                        equipment.add(Pair(slot, stack))
+                    }
+                }
+                if (equipment.isNotEmpty()) {
+                    player.connection.send(ClientboundSetEquipmentPacket(entity.id, equipment))
+                }
+
+                // Эффекты: снимаем все известные у клиента и накладываем актуальные.
+                // Пакет удаления несуществующего эффекта безвреден.
+                val active = entity.activeEffectsMap.keys.toHashSet()
+                for (holder in BuiltInRegistries.MOB_EFFECT) {
+                    if (holder !in active) {
+                        player.connection.send(ClientboundRemoveMobEffectPacket(entity.id, holder))
+                    }
+                }
+                for ((holder, instance) in entity.activeEffectsMap) {
+                    player.connection.send(ClientboundUpdateMobEffectPacket(entity.id, instance, false))
+                }
+            }
+
+            return TRUE
         }
     }
 
