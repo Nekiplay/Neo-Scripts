@@ -16,6 +16,10 @@ class LuaTransform(
     var rotationDegrees: Vector3f = Vector3f(0f, 0f, 0f)
 ) : LuaUserdata(toTransformation(translation, scale, rotationDegrees)) {
 
+    // Полная матрица 4x4 (если трансформация была получена из Transformation,
+    // где возможен ненулевой rightRotation — euler-поля её не покрывают)
+    var fullMatrix: org.joml.Matrix4f? = null
+
     companion object {
         fun toTransformation(translation: Vector3f, scale: Vector3f, rotationDegrees: Vector3f): Transformation {
             val radX = Math.toRadians(rotationDegrees.x.toDouble()).toFloat()
@@ -38,7 +42,9 @@ class LuaTransform(
                 Math.toDegrees(eulerRad.y.toDouble()).toFloat(),
                 Math.toDegrees(eulerRad.z.toDouble()).toFloat()
             )
-            return LuaTransform(translation, scale, rotationDegrees)
+            val result = LuaTransform(translation, scale, rotationDegrees)
+            result.fullMatrix = transformation.getMatrixCopy()
+            return result
         }
     }
 
@@ -49,8 +55,25 @@ class LuaTransform(
             "translation", "offset" -> vectorToTable(translation)
             "scale" -> vectorToTable(scale)
             "rotation", "rotation_degrees" -> vectorToTable(rotationDegrees)
+            "matrix" -> matrixToTable()
             else -> super.get(key)
         }
+    }
+
+    /**
+     * Полная матрица 4x4 в row-major порядке (1..16).
+     * Возвращает nil, если трансформация создана через createTransform
+     * (там достаточно translation/scale/rotation).
+     */
+    private fun matrixToTable(): LuaValue {
+        val m = fullMatrix ?: return NIL
+        val t = tableOf()
+        for (row in 0..3) {
+            for (col in 0..3) {
+                t.set(row * 4 + col + 1, valueOf(m.get(col, row).toDouble()))
+            }
+        }
+        return t
     }
 
     override fun set(key: LuaValue, value: LuaValue) {
