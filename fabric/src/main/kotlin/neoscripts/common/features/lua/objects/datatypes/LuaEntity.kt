@@ -17,6 +17,7 @@ import com.nekiplay.neoscripts.common.mixins.minecraft.TextDisplayAccessor
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaVector3d
+import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaTransform
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponentBuilder
@@ -1034,6 +1035,13 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "transformation", "transform" -> {
                 if (entity is Display) {
                     when {
+                        // LuaTransform с полной матрицей (прочитан с display-сущности) —
+                        // применяем матрицу как есть, без эйлер-конверсии
+                        value is LuaTransform && value.fullMatrix != null -> {
+                            (entity as DisplayAccessor).nsSetTransformation(
+                                com.mojang.math.Transformation(org.joml.Matrix4f(value.fullMatrix))
+                            )
+                        }
                         // LuaTransform (creator.createTransform) — euler + scale
                         value.isTransformation() -> {
                             (entity as DisplayAccessor).nsSetTransformation(value.toTransformation())
