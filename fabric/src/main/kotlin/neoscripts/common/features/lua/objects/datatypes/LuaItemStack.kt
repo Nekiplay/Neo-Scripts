@@ -77,7 +77,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
             "is_museum_donated" -> valueOf(stack.isMuseumDonated())
             "is_enchanted" -> valueOf(stack.isEnchanted)
             "uuid" -> valueOf(stack.getItemUuid())
-            "is_сorrect_tool" -> isCorrectToolForDrops()
+            "is_correct_tool" -> isCorrectToolForDrops()
             "is_sword" -> {
                 valueOf(stack.`is`(ItemTags.SWORDS))
             }
