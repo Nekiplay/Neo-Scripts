@@ -37,7 +37,8 @@
     "minecraft.item.MixinItem",
     "packets.ClientPacketListenerMixin",
     "packets.ServerboundMovePlayerPacketAccessor",
-    "renderer.BlockEntityRenderStateAccessor"
+    "renderer.BlockEntityRenderStateAccessor",
+    "YggdrasilSessionServiceMixin"
   ],
   "client": [
     "FrustumInvoker",
