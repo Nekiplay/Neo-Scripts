@@ -6,6 +6,7 @@ import com.nekiplay.neoscripts.client.events.main.EventBus
 import com.nekiplay.neoscripts.client.features.commands.impl.LuaCommand
 import com.nekiplay.neoscripts.common.features.lua.LuaManager
 import com.nekiplay.neoscripts.server.features.modules.ModuleManager.registerInbuilt
+import com.nekiplay.neoscripts.server.features.modules.misc.LuaEvents
 import io.github.classgraph.ClassGraph
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
@@ -13,6 +14,7 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.ServerStarted
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.ServerStopped
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
@@ -61,6 +63,32 @@ object ServerMain : ModInitializer {
     }
 
     private val startUpScriptNames = arrayOf("autoload.lua", "startup.lua", ("init.lua"))
+
+    // Автозагрузка откладывается до первого тика сервера: во время SERVER_STARTED
+    // миры уже созданы, но командный диспетчер (/summon и т.п.) ещё не готов.
+    private var autoloadPending = false
+
+    private fun runAutoloadScripts(server: MinecraftServer) {
+        val manager = LUA_MANAGER ?: return
+        val dir = scriptsDir ?: return
+        for (name in startUpScriptNames) {
+            val autoLoadScript: File = File(dir, name)
+            if (autoLoadScript.exists()) {
+                try {
+                    val script = manager.getScript(autoLoadScript, true, server)
+                    manager.executeScript(autoLoadScript, script)
+                    println("Autoload script \"$name\" executed successfully")
+                } catch (e: Exception) {
+                    println("Error executing autoload script \"$name\": " + e.message)
+                    e.printStackTrace()
+                }
+            }
+        }
+
+        // Сервер и все миры полностью загружены, скрипты выполнены —
+        // диспатчим события полной загрузки зарегистрированным колбэкам
+        LuaEvents.dispatchServerStarted(server)
+    }
 
     override fun onInitialize() {
 
@@ -116,22 +144,20 @@ object ServerMain : ModInitializer {
             LUA_MANAGER?.addSearchPath(worldRoot.toString())
             LUA_MANAGER?.addSearchPath(neuDir.toString())
 
-            for (name in startUpScriptNames) {
-                val autoLoadScript: File = File(scriptsDir2.toFile(), name)
-                if (autoLoadScript.exists()) {
-                    try {
-                        val script = LUA_MANAGER!!.getScript(autoLoadScript, true, server)
-                        LUA_MANAGER?.executeScript(autoLoadScript, script)
-                        println("Autoload script \"" + name + "\" executed successfully")
-                    } catch (e: Exception) {
-                        println("Error executing autoload script \"" + name + "\": " + e.message)
-                        e.printStackTrace()
-                    }
-                }
+            autoloadPending = true
+        })
+
+        ServerTickEvents.START_SERVER_TICK.register(ServerTickEvents.StartTick { server ->
+            if (autoloadPending && LUA_MANAGER != null) {
+                autoloadPending = false
+                runAutoloadScripts(server)
             }
         })
 
         ServerLifecycleEvents.SERVER_STOPPED.register(ServerStopped { server: MinecraftServer? ->
+            // true, чтобы при повторном входе в мир (интегрированный сервер)
+            // автозагрузка и ивенты полной загрузки отработали заново
+            autoloadPending = true
             LUA_MANAGER?.scripts?.values?.forEach { script ->
                 script.cleanup()
             }

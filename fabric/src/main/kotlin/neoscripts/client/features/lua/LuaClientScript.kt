@@ -121,6 +121,9 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
     // Script events
     private val scriptUnloadCallbacks = ArrayList<LuaValue>()
 
+    // Скрипт запущен через команду /lua
+    private val luaInvokeCallbacks = ArrayList<LuaValue>()
+
     // Synchronize only when needed
     private val callbacksLock = Any()
 
@@ -176,6 +179,16 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
                 if (!callback.isfunction()) return FALSE
                 synchronized(callbacksLock) {
                     return valueOf(scriptUnloadCallbacks.add(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("registerLuaInvokeCallback", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(luaInvokeCallbacks.add(callback))
                 }
             }
         })
@@ -458,6 +471,16 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
                 if (!callback.isfunction()) return FALSE
                 synchronized(callbacksLock) {
                     return valueOf(scriptUnloadCallbacks.remove(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("unregisterLuaInvokeCallback", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(luaInvokeCallbacks.remove(callback))
                 }
             }
         })
@@ -773,8 +796,25 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
         })
     }
 
-    fun addCommandCallback(commandName: String, callback: LuaValue, suggestionsCallback: LuaValue? = null): Boolean {
-        if (!callback.isfunction()) return false
+    /**
+     * Вызывается, когда скрипт запущен через команду /lua (load или toggle).
+     * info: { command = "load"|"toggle", was_loaded = boolean, executor = string }
+     */
+    fun onLuaInvoke(info: LuaValue) {
+        val callbacks = synchronized(callbacksLock) {
+            luaInvokeCallbacks.toTypedArray()
+        }
+
+        for (callback in callbacks) {
+            try {
+                callback.call(info)
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in lua invoke callback in ${scriptName}", e)
+            }
+        }
+    }
+
+    fun addCommandCallback(commandName: String, callback: LuaValue, suggestionsCallback: LuaValue? = null): Boolean {        if (!callback.isfunction()) return false
         if (commandName.isBlank()) return false
         if (suggestionsCallback != null && !suggestionsCallback.isfunction()) return false
 
@@ -1035,6 +1075,8 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
             return commandCallbacks.remove(commandName) != null
         }
     }
+
+    val hasLuaInvokeCallbacks: Boolean get() = synchronized(callbacksLock) { luaInvokeCallbacks.isNotEmpty() }
 
     // Event handlers
     fun onSlotClick(slot: Int, button: Int, clickType: Int) {
@@ -1731,6 +1773,7 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
         // Очищаем все коллбэки
         synchronized(callbacksLock) {
             scriptUnloadCallbacks.clear()
+            luaInvokeCallbacks.clear()
             inventoryItemChangeCallbacks.clear()
             useBlockCallbacks.clear()
             attackBlockCallbacks.clear()

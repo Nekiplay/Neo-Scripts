@@ -176,6 +176,15 @@ object LuaCommand {
                     val script = ClientMain.LUA_MANAGER?.getScript(scriptFile, false, null)
                     if (script != null) {
                         luaManager?.executeScript(scriptFile, script)
+
+                        if (script is LuaClientScript && script.hasLuaInvokeCallbacks) {
+                            val info = LuaValue.tableOf()
+                            info.set("command", LuaValue.valueOf("toggle"))
+                            info.set("was_loaded", LuaValue.valueOf(false))
+                            info.set("executor", LuaValue.valueOf(source.player?.name?.string ?: "client"))
+                            script.onLuaInvoke(info)
+                        }
+
                         source.sendFeedback(Component.literal("${ClientMain.PREFIX}§7Script §a$name §7is now §aloaded§7."))
                     }
                     else {
@@ -273,6 +282,14 @@ object LuaCommand {
             val script = ClientMain.LUA_MANAGER?.getScript(scriptFile, false, null)
             if (script != null) {
                 val result = luaManager?.executeScript(scriptFile, script)
+
+                if (script is LuaClientScript && script.hasLuaInvokeCallbacks) {
+                    val info = LuaValue.tableOf()
+                    info.set("command", LuaValue.valueOf("load"))
+                    info.set("was_loaded", LuaValue.valueOf(wasLoaded == true))
+                    info.set("executor", LuaValue.valueOf(source.player?.name?.string ?: "client"))
+                    script.onLuaInvoke(info)
+                }
 
                 if (wasLoaded == true) {
                     source.sendFeedback(Component.literal(ClientMain.PREFIX + "§aScript '${scriptFile.nameWithoutExtension}' restarted successfully, result: '${result}'"))

@@ -77,6 +77,13 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
     private val serverWorldPreTickCallbacks = ArrayList<LuaValue>()
     private val serverStoppingCallbacks = ArrayList<LuaValue>()
 
+    // Полная загрузка сервера / мира (после автозагрузки скриптов)
+    private val serverStartedCallbacks = ArrayList<LuaValue>()
+    private val worldLoadedCallbacks = ArrayList<LuaValue>()
+
+    // Скрипт вызван через команду /slua
+    private val sluaInvokeCallbacks = ArrayList<LuaValue>()
+
     // Interaction events
     private val attackBlockCallbacks = ArrayList<LuaValue>()
     private val useBlockCallbacks = ArrayList<LuaValue>()
@@ -210,6 +217,36 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
             }
         })
 
+        scriptGlobals.set("registerServerStartedCallback", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(serverStartedCallbacks.add(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("registerWorldLoadedCallback", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(worldLoadedCallbacks.add(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("registerSluaInvokeCallback", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(sluaInvokeCallbacks.add(callback))
+                }
+            }
+        })
+
         registerInteractionEventFunction("registerAttackBlockCallback", attackBlockCallbacks)
         registerInteractionEventFunction("registerUseBlockCallback", useBlockCallbacks)
         registerInteractionEventFunction("registerUseItemOnBlockCallback", useItemOnBlockCallbacks)
@@ -261,6 +298,9 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
     val hasPickItemFromBlockCallbacks: Boolean get() = synchronized(callbacksLock) { pickItemFromBlockCallbacks.isNotEmpty() }
     val hasPickItemFromEntityCallbacks: Boolean get() = synchronized(callbacksLock) { pickItemFromEntityCallbacks.isNotEmpty() }
     val hasServerStoppingCallbacks: Boolean get() = synchronized(callbacksLock) { serverStoppingCallbacks.isNotEmpty() }
+    val hasServerStartedCallbacks: Boolean get() = synchronized(callbacksLock) { serverStartedCallbacks.isNotEmpty() }
+    val hasWorldLoadedCallbacks: Boolean get() = synchronized(callbacksLock) { worldLoadedCallbacks.isNotEmpty() }
+    val hasSluaInvokeCallbacks: Boolean get() = synchronized(callbacksLock) { sluaInvokeCallbacks.isNotEmpty() }
 
     private fun registerEventUnregistrationFunctions() {
         scriptGlobals.set("unregisterUnloadCallback", object : OneArgFunction() {
@@ -338,6 +378,36 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
                 if (!callback.isfunction()) return FALSE
                 synchronized(callbacksLock) {
                     return valueOf(serverStoppingCallbacks.remove(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("unregisterServerStartedCallback", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(serverStartedCallbacks.remove(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("unregisterWorldLoadedCallback", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(worldLoadedCallbacks.remove(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("unregisterSluaInvokeCallback", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(sluaInvokeCallbacks.remove(callback))
                 }
             }
         })
@@ -554,6 +624,23 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
                 callback.call(world)
             } catch (e: Exception) {
                 ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in client pre tick callback in ${scriptName}", e)
+            }
+        }
+    }
+
+    /**
+     * Вызывается, когда скрипт запущен через команду /slua (load или toggle).
+     * info: { command = "load"|"toggle", was_loaded = boolean, executor = string }
+     */
+    fun onSluaInvoke(info: LuaValue) {
+        val callbacks = synchronized(callbacksLock) {
+        }
+
+        for (callback in callbacks) {
+            try {
+                callback.call(info)
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in slua invoke callback in ${scriptName}", e)
             }
         }
     }

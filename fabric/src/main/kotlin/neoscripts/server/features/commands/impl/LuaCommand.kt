@@ -5,14 +5,14 @@ import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.suggestion.SuggestionProvider
 import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
-import com.nekiplay.neoscripts.ClientMain
 import com.nekiplay.neoscripts.ServerMain
-import com.nekiplay.neoscripts.client.features.lua.LuaClientScript
+import com.nekiplay.neoscripts.server.features.lua.LuaServerScript
 import net.minecraft.commands.CommandBuildContext
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.network.chat.Component
 import net.minecraft.server.permissions.Permissions
+import org.luaj.vm2.LuaValue
 import org.luaj.vm2.compiler.DumpState
 import org.luaj.vm2.compiler.LuaC
 import java.io.File
@@ -139,6 +139,15 @@ object LuaCommand {
                     val script = luaManager?.getScript(scriptFile, true, source.server)
                     if (script != null) {
                         luaManager?.executeScript(scriptFile, script)
+
+                        if (script is LuaServerScript && script.hasSluaInvokeCallbacks) {
+                            val info = LuaValue.tableOf()
+                            info.set("command", LuaValue.valueOf("toggle"))
+                            info.set("was_loaded", LuaValue.valueOf(false))
+                            info.set("executor", LuaValue.valueOf(source.getTextName()))
+                            script.onSluaInvoke(info)
+                        }
+
                         reply(source, "${ServerMain.PREFIX}§7Script §a$name §7is now §aloaded§7.")
                     }
                     else {
@@ -243,6 +252,14 @@ object LuaCommand {
             if (script != null) {
                 val result = luaManager.executeScript(scriptFile, script)
 
+                if (script is LuaServerScript && script.hasSluaInvokeCallbacks) {
+                    val info = LuaValue.tableOf()
+                    info.set("command", LuaValue.valueOf("load"))
+                    info.set("was_loaded", LuaValue.valueOf(wasLoaded))
+                    info.set("executor", LuaValue.valueOf(source.getTextName()))
+                    script.onSluaInvoke(info)
+                }
+
                 if (wasLoaded) {
                     reply(
                         source,
@@ -335,7 +352,7 @@ object LuaCommand {
             reply(source, "")
 
             scriptsToDisplay.forEach { script ->
-                if (script is LuaClientScript) {
+                if (script is LuaServerScript) {
                     val depCount = countUniqueDependencies(script.localDependencyGraph)
                     val depInfo = if (depCount > 0) " §8(§7$depCount modules§8)" else ""
                     reply(source, "  §6▶ §a§l${script.scriptName}$depInfo")
@@ -360,7 +377,7 @@ object LuaCommand {
         // РЕЖИМ 2: Просто краткий список всех загруженных скриптов
         reply(source, "${ServerMain.PREFIX}§6Loaded scripts §7(${loadedScripts.size}):")
         loadedScripts.forEach { script ->
-            if (script is LuaClientScript) {
+            if (script is LuaServerScript) {
                 val depCount = countUniqueDependencies(script.localDependencyGraph)
                 // Стиль как в вашем listLuaFiles: §7- §aИмя §7(доп инфо)
                 reply(
