@@ -102,6 +102,17 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
 
             "box" -> LuaBox(entity.boundingBox)
 
+            // Текущая трансформация display-сущности (только чтение через LuaTransform)
+            "transformation", "transform" -> {
+                if (entity is Display) {
+                    LuaTransform.fromTransformation(
+                        DisplayAccessor.nsCreateTransformation(entity.entityData)
+                    )
+                } else {
+                    NIL
+                }
+            }
+
             "velocity_x" -> valueOf(entity.deltaMovement.x)
             "velocity_y" -> valueOf(entity.deltaMovement.y)
             "velocity_z" -> valueOf(entity.deltaMovement.z)

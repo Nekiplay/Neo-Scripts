@@ -42,5 +42,10 @@ public interface DisplayAccessor {
 
     @Invoker("setTransformation")
     void nsSetTransformation(Transformation transformation);
+
+    @Invoker("createTransformation")
+    static Transformation nsCreateTransformation(net.minecraft.network.syncher.SynchedEntityData data) {
+        throw new AssertionError();
+    }
 }
 
