@@ -144,11 +144,8 @@ class InputObject: LuaValue() {
             }
             else if (args.narg() == 1) {
                 val result = when {
-                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is LuaRaycast -> {
-                        (args.arg1().touserdata() as LuaRaycast).hitResult
-                    }
-                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is HitResult -> {
-                        (args.arg1().touserdata() as HitResult)
+                    args.arg1() != null && args.arg1().isRaycast() -> {
+                        args.arg1().toRaycast()
                     }
                     else -> null
                 }
@@ -172,11 +169,8 @@ class InputObject: LuaValue() {
             }
             else if (args.narg() == 1) {
                 val result = when {
-                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is LuaRaycast -> {
-                        (args.arg1().touserdata() as LuaRaycast).hitResult
-                    }
-                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is HitResult -> {
-                        (args.arg1().touserdata() as HitResult)
+                    args.arg1() != null && args.arg1().isRaycast() -> {
+                        args.arg1().toRaycast()
                     }
                     else -> null
                 }
@@ -200,11 +194,8 @@ class InputObject: LuaValue() {
             }
             else if (args.narg() == 1) {
                 val result = when {
-                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is LuaRaycast -> {
-                        (args.arg1().touserdata() as LuaRaycast).hitResult
-                    }
-                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is HitResult -> {
-                        (args.arg1().touserdata() as HitResult)
+                    args.arg1() != null && args.arg1().isRaycast() -> {
+                        args.arg1().toRaycast()
                     }
                     else -> null
                 }
@@ -228,11 +219,8 @@ class InputObject: LuaValue() {
             }
             else if (args.narg() == 1) {
                 val result = when {
-                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is LuaRaycast -> {
-                        (args.arg1().touserdata() as LuaRaycast).hitResult
-                    }
-                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is HitResult -> {
-                        (args.arg1().touserdata() as HitResult)
+                    args.arg1() != null && args.arg1().isRaycast() -> {
+                        args.arg1().toRaycast()
                     }
                     else -> null
                 }
@@ -256,11 +244,8 @@ class InputObject: LuaValue() {
             }
             else if (args.narg() == 1) {
                 val result = when {
-                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is LuaRaycast -> {
-                        (args.arg1().touserdata() as LuaRaycast).hitResult
-                    }
-                    args.arg1()?.isuserdata() == true && args.arg1().touserdata() is HitResult -> {
-                        (args.arg1().touserdata() as HitResult)
+                    args.arg1() != null && args.arg1().isRaycast() -> {
+                        args.arg1().toRaycast()
                     }
                     else -> null
                 }

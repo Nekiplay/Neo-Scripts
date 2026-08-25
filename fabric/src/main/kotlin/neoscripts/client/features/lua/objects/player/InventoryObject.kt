@@ -4,6 +4,8 @@ import com.nekiplay.neoscripts.ClientMain.mc
 import com.nekiplay.neoscripts.common.mixins.gui.AbstractSignEditScreenAccessor
 import com.nekiplay.neoscripts.common.mixins.gui.AnvilScreenAccessor
 import com.nekiplay.neoscripts.client.sugar.getFormattedString
+import com.nekiplay.neoscripts.client.sugar.isItem
+import com.nekiplay.neoscripts.client.sugar.toItem
 import com.nekiplay.neoscripts.client.utils.InventoryUtils
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaItemStack
 import net.minecraft.client.gui.screens.ChatScreen
@@ -358,11 +360,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         override fun call(arg: LuaValue?, arg2: LuaValue?): LuaValue {
             if (arg == null || !arg.isnumber()) return NIL
 
-            val itemStack = when {
-                arg2?.isuserdata() == true && arg2.touserdata() is LuaItemStack -> (arg2.touserdata() as LuaItemStack).stack
-                arg2?.isuserdata() == true && arg2.touserdata() is ItemStack -> arg2.touserdata() as ItemStack
-                else -> null
-            }
+            val itemStack = if (arg2 != null && arg2.isItem()) arg2.toItem() else null
 
             if (itemStack != null) {
                 val slot = arg.toint()
@@ -381,11 +379,7 @@ import org.luaj.vm2.lib.ZeroArgFunction
         override fun call(arg: LuaValue?, arg2: LuaValue?): LuaValue {
             if (arg == null || !arg.isnumber()) return NIL
 
-            val itemStack = when {
-                arg2?.isuserdata() == true && arg2.touserdata() is LuaItemStack -> (arg2.touserdata() as LuaItemStack).stack
-                arg2?.isuserdata() == true && arg2.touserdata() is ItemStack -> arg2.touserdata() as ItemStack
-                else -> null
-            }
+            val itemStack = if (arg2 != null && arg2.isItem()) arg2.toItem() else null
 
             if (mc.player != null && mc.player?.containerMenu != null && itemStack != null) {
                 val screen = mc.player!!.containerMenu

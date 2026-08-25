@@ -3,6 +3,14 @@ package com.nekiplay.neoscripts.client.features.lua.objects.render
 import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.neoscripts.ClientMain.mc
 import com.nekiplay.neoscripts.client.utils.render.primitive.PrimitiveCollector
+import com.nekiplay.neoscripts.client.sugar.isBlock
+import com.nekiplay.neoscripts.client.sugar.isBlockPos
+import com.nekiplay.neoscripts.client.sugar.isBox
+import com.nekiplay.neoscripts.client.sugar.isVector
+import com.nekiplay.neoscripts.client.sugar.toBlock
+import com.nekiplay.neoscripts.client.sugar.toBlockPos
+import com.nekiplay.neoscripts.client.sugar.toBox
+import com.nekiplay.neoscripts.client.sugar.toVector
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaVector3d
@@ -84,9 +92,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
 
     private fun parseBlockPos(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): BlockPos? {
         return when {
-            arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
-                (arg1.touserdata() as LuaBlockPos).pos
-            }
+            arg1 != null && arg1.isBlockPos() -> arg1.toBlockPos()
             arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
                 BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
             }
@@ -101,10 +107,10 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
         arg4: LuaValue?
     ): Pair<BlockPos, BlockState>? {
         return when {
-            arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
-                val pos = (arg1.touserdata() as LuaBlockPos).pos
+            arg1 != null && arg1.isBlockPos() -> {
+                val pos = arg1.toBlockPos()
                 val state = parseBlockState(arg2)
-                if (state != null) pos to state else null
+                if (pos != null && state != null) pos to state else null
             }
             arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
                 val pos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
@@ -117,12 +123,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
 
     private fun parseBlockState(arg: LuaValue?): BlockState? {
         return when {
-            arg?.isuserdata(LuaBlockState::class.java) == true -> {
-                (arg.touserdata() as? LuaBlockState)?.blockState
-            }
-            arg?.isuserdata(BlockState::class.java) == true -> {
-                arg.touserdata() as? BlockState
-            }
+            arg != null && arg.isBlock() -> arg.toBlock()
             arg?.isnumber() == true -> {
                 Block.stateById(arg.toint())
             }
@@ -132,14 +133,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
 
     private fun parseVec3(args: Varargs): Pair<Vec3, Int>? {
         return when {
-            args.arg(1).isuserdata() && args.arg(1).touserdata() is LuaVector3d -> {
-                val vec = (args.arg(1).touserdata() as LuaVector3d).location
-                vec to 2
-            }
-            args.arg(1).isuserdata() && args.arg(1).touserdata() is Vec3 -> {
-                val vec = args.arg(1).touserdata() as Vec3
-                vec to 2
-            }
+            args.arg(1).isVector() -> args.arg(1).toVector() to 2
             args.arg(1).isnumber() && args.arg(2).isnumber() && args.arg(3).isnumber() -> {
                 val vec = Vec3(args.arg(1).todouble(), args.arg(2).todouble(), args.arg(3).todouble())
                 vec to 4
@@ -207,12 +201,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
     private inner class SubmitQuadFunction : VarArgFunction() {
         private fun parsePoint(arg: LuaValue): Vec3? {
             return when {
-                arg.isuserdata() && arg.touserdata() is LuaVector3d -> {
-                    (arg.touserdata() as LuaVector3d).location
-                }
-                arg.isuserdata() && arg.touserdata() is Vec3 -> {
-                    arg.touserdata() as Vec3
-                }
+                arg.isVector() -> arg.toVector()
                 arg.istable() -> {
                     val x = arg.get("x").optdouble(0.0)
                     val y = arg.get("y").optdouble(0.0)
@@ -308,12 +297,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             if (context == null) return NIL
 
             val boxArg = args.arg(1)
-            val box = when {
-                boxArg.isuserdata() && boxArg.touserdata() is LuaBox -> (boxArg.touserdata() as LuaBox).box
-                boxArg.istable() && boxArg.touserdata() is LuaBox -> (boxArg.touserdata() as LuaBox).box
-                boxArg.isuserdata() && boxArg.touserdata() is AABB -> boxArg.touserdata() as AABB
-                else -> null
-            }
+            val box = if (boxArg.isBox()) boxArg.toBox() else null
             if (box == null) return NIL
 
             val red = args.optint(2, 0)
@@ -339,12 +323,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             if (context == null) return NIL
 
             val boxArg = args.arg(1)
-            val box = when {
-                boxArg.isuserdata() && boxArg.touserdata() is LuaBox -> (boxArg.touserdata() as LuaBox).box
-                boxArg.istable() && boxArg.touserdata() is LuaBox -> (boxArg.touserdata() as LuaBox).box
-                boxArg.isuserdata() && boxArg.touserdata() is AABB -> boxArg.touserdata() as AABB
-                else -> null
-            }
+            val box = if (boxArg.isBox()) boxArg.toBox() else null
             if (box == null) return NIL
 
             val red = args.optint(2, 0)
@@ -407,12 +386,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
     private inner class RenderLinesFromPointsFunction : VarArgFunction() {
         private fun parsePoint(arg: LuaValue): Vec3? {
             return when {
-                arg.isuserdata() && arg.touserdata() is LuaVector3d -> {
-                    (arg.touserdata() as LuaVector3d).location
-                }
-                arg.isuserdata() && arg.touserdata() is Vec3 -> {
-                    arg.touserdata() as Vec3
-                }
+                arg.isVector() -> arg.toVector()
                 arg.istable() -> {
                     val x = arg.get("x").optdouble(0.0)
                     val y = arg.get("y").optdouble(0.0)
@@ -502,14 +476,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             if (path.isEmpty()) return NIL
 
             val (pos, offset) = when {
-                args.arg(1).isuserdata() && args.arg(1).touserdata() is LuaVector3d -> {
-                    val vec = (args.arg(1).touserdata() as LuaVector3d).location
-                    vec to 2
-                }
-                args.arg(1).isuserdata() && args.arg(1).touserdata() is Vec3 -> {
-                    val vec = args.arg(1).touserdata() as Vec3
-                    vec to 2
-                }
+                args.arg(1).isVector() -> args.arg(1).toVector() to 2
                 args.arg(2).isnumber() && args.arg(3).isnumber() && args.arg(4).isnumber() -> {
                     val vec = Vec3(args.arg(2).todouble(), args.arg(3).todouble(), args.arg(4).todouble())
                     vec to 5

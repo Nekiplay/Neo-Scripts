@@ -1,5 +1,7 @@
 package com.nekiplay.neoscripts.common.features.lua.objects.datatypes
 
+import com.nekiplay.neoscripts.client.sugar.isItem
+import com.nekiplay.neoscripts.client.sugar.toItem
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.Container
 import net.minecraft.world.item.ItemStack
@@ -60,8 +62,7 @@ class LuaInventory(val container: Container) : LuaUserdata(container) {
 
     private fun toStack(value: LuaValue?): ItemStack? = when {
         value == null || value.isnil() -> ItemStack.EMPTY
-        value.isuserdata() && value.touserdata() is LuaItemStack -> (value.touserdata() as LuaItemStack).stack.copy()
-        value.isuserdata() && value.touserdata() is ItemStack -> (value.touserdata() as ItemStack).copy()
+        value.isItem() -> value.toItem()
         else -> null
     }
 
@@ -142,11 +143,10 @@ class LuaInventory(val container: Container) : LuaUserdata(container) {
             }
 
             // Удаление по предмету/идентификатору
+            val lookupStack = if (arg1 != null && arg1.isItem()) arg1.toItem() else null
             val identifier = when {
-                arg1?.isuserdata() == true && arg1.touserdata() is LuaItemStack ->
-                    BuiltInRegistries.ITEM.getKey((arg1.touserdata() as LuaItemStack).stack.item).toString()
-                arg1?.isuserdata() == true && arg1.touserdata() is ItemStack ->
-                    BuiltInRegistries.ITEM.getKey((arg1.touserdata() as ItemStack).item).toString()
+                lookupStack != null ->
+                    BuiltInRegistries.ITEM.getKey(lookupStack.item).toString()
                 arg1?.isstring() == true -> arg1.tojstring()
                 else -> return NIL
             }

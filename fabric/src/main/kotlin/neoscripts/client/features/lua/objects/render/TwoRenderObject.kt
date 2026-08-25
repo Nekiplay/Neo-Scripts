@@ -3,6 +3,8 @@ package com.nekiplay.neoscripts.client.features.lua.objects.render
 import com.mojang.blaze3d.platform.NativeImage
 import com.nekiplay.neoscripts.ClientMain.mc
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaItemStack
+import com.nekiplay.neoscripts.client.sugar.isItem
+import com.nekiplay.neoscripts.client.sugar.toItem
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -446,11 +448,7 @@ class TwoRenderObject(private val gui: GuiGraphicsExtractor, private val scriptI
             val itemStackArg = args.arg(3)
             val scale = args.optdouble(4, 1.0).toFloat()
 
-            val itemStack = when {
-                itemStackArg.isuserdata() && itemStackArg.touserdata() is LuaItemStack -> (itemStackArg.touserdata() as LuaItemStack).stack
-                itemStackArg.isuserdata() && itemStackArg.touserdata() is ItemStack -> itemStackArg.touserdata() as ItemStack
-                else -> null
-            }
+            val itemStack = if (itemStackArg.isItem()) itemStackArg.toItem() else null
 
             if (itemStack != null) {
                 if (scale != 1.0f) {

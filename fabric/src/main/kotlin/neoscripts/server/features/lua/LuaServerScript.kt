@@ -1,6 +1,8 @@
-﻿package com.nekiplay.neoscripts.server.features.lua
+package com.nekiplay.neoscripts.server.features.lua
 
 import com.nekiplay.neoscripts.ClientMain
+import com.nekiplay.neoscripts.client.sugar.isItem
+import com.nekiplay.neoscripts.client.sugar.toItem
 import com.nekiplay.neoscripts.common.features.lua.objects.misc.ArchiveLib
 import com.nekiplay.neoscripts.common.features.lua.objects.misc.ThreadLib
 import com.nekiplay.neoscripts.common.features.lua.LuaManager
@@ -736,8 +738,7 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
         for (callback in callbacks) {
             try {
                 val res = callback.call(t)
-                if (override == null && res is LuaItemStack) override = res.stack.copy()
-                else if (override == null && res.isuserdata(ItemStack::class.java)) override = (res.touserdata() as ItemStack).copy()
+                if (override == null && res.isItem()) override = res.toItem()
             } catch (e: Exception) {
                 ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in pick item callback in ${scriptName}", e)
             }
@@ -757,8 +758,7 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
         for (callback in callbacks) {
             try {
                 val res = callback.call(t)
-                if (override == null && res is LuaItemStack) override = res.stack.copy()
-                else if (override == null && res.isuserdata(ItemStack::class.java)) override = (res.touserdata() as ItemStack).copy()
+                if (override == null && res.isItem()) override = res.toItem()
             } catch (e: Exception) {
                 ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in pick item callback in ${scriptName}", e)
             }

@@ -2,7 +2,10 @@ package com.nekiplay.neoscripts.client.features.lua.objects.player
 
 import com.nekiplay.neoscripts.ClientMain.mc
 import com.nekiplay.neoscripts.client.features.lua.customArgs.FourArgFunction
+import com.nekiplay.neoscripts.client.sugar.isDirection
 import com.nekiplay.neoscripts.client.sugar.sendSequencedPacket
+import com.nekiplay.neoscripts.client.sugar.toBlockPos
+import com.nekiplay.neoscripts.client.sugar.toDirection
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaDirection
 import net.minecraft.client.Minecraft
@@ -28,12 +31,8 @@ class NetworkObject : LuaValue() {
     companion object {
         fun parseDirection(arg: LuaValue?): Direction? {
             return when {
-                arg?.isuserdata() == true && arg.touserdata() is LuaDirection -> {
-                    (arg.touserdata() as LuaDirection).direction
-                }
-
-                arg?.isuserdata() == true && arg.touserdata() is Direction -> {
-                    arg.touserdata() as Direction
+                arg != null && arg.isDirection() -> {
+                    arg.toDirection()
                 }
 
                 arg?.isstring() == true -> {
@@ -183,13 +182,8 @@ class NetworkObject : LuaValue() {
             val gamemode = mc.gameMode
 
             val (blockPos, direction) = when {
-                arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
-                    val pos = (arg1.touserdata() as LuaBlockPos).pos
-                    val dir = parseDirection(arg2)
-                    pos to dir
-                }
-                arg1?.isuserdata() == true && arg1.touserdata() is BlockPos -> {
-                    val pos = arg1.touserdata() as BlockPos
+                arg1 != null && arg1.isBlockPos() -> {
+                    val pos = arg1.toBlockPos() ?: return null
                     val dir = parseDirection(arg2)
                     pos to dir
                 }
@@ -228,13 +222,8 @@ class NetworkObject : LuaValue() {
             val gamemode = mc.gameMode
 
             val (blockPos, direction) = when {
-                arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
-                    val pos = (arg1.touserdata() as LuaBlockPos).pos
-                    val dir = parseDirection(arg2)
-                    pos to dir
-                }
-                arg1?.isuserdata() == true && arg1.touserdata() is BlockPos -> {
-                    val pos = arg1.touserdata() as BlockPos
+                arg1 != null && arg1.isBlockPos() -> {
+                    val pos = arg1.toBlockPos() ?: return null
                     val dir = parseDirection(arg2)
                     pos to dir
                 }
@@ -273,13 +262,8 @@ class NetworkObject : LuaValue() {
             val gamemode = mc.gameMode
 
             val (blockPos, direction) = when {
-                arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
-                    val pos = (arg1.touserdata() as LuaBlockPos).pos
-                    val dir = parseDirection(arg2)
-                    pos to dir
-                }
-                arg1?.isuserdata() == true && arg1.touserdata() is BlockPos -> {
-                    val pos = arg1.touserdata() as BlockPos
+                arg1 != null && arg1.isBlockPos() -> {
+                    val pos = arg1.toBlockPos() ?: return null
                     val dir = parseDirection(arg2)
                     pos to dir
                 }

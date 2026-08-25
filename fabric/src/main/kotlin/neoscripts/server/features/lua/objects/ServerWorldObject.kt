@@ -5,6 +5,18 @@ import com.nekiplay.neoscripts.client.features.lua.customArgs.FourArgFunction
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaBlockEntity
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.phys.LuaBox
+import com.nekiplay.neoscripts.client.sugar.isBlock
+import com.nekiplay.neoscripts.client.sugar.isBlockPos
+import com.nekiplay.neoscripts.client.sugar.isBox
+import com.nekiplay.neoscripts.client.sugar.isEntity
+import com.nekiplay.neoscripts.client.sugar.isEntityType
+import com.nekiplay.neoscripts.client.sugar.isVector
+import com.nekiplay.neoscripts.client.sugar.toBlock
+import com.nekiplay.neoscripts.client.sugar.toBlockPos
+import com.nekiplay.neoscripts.client.sugar.toBox
+import com.nekiplay.neoscripts.client.sugar.toEntity
+import com.nekiplay.neoscripts.client.sugar.toEntityType
+import com.nekiplay.neoscripts.client.sugar.toVector
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaMutableBlockPos
@@ -60,11 +72,7 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
             }
             return when {
                 arg1 is LuaMutableBlockPos -> arg1.pos
-                arg1 is LuaBlockPos -> arg1.pos
-                arg1?.isuserdata() == true && arg1.touserdata() is BlockPos.MutableBlockPos ->
-                    arg1.touserdata() as BlockPos.MutableBlockPos
-                arg1?.isuserdata() == true && arg1.touserdata() is BlockPos ->
-                    arg1.touserdata() as BlockPos
+                arg1 != null && arg1.isBlockPos() -> arg1.toBlockPos()
                 arg1?.istable() == true -> {
                     val x = arg1.get("x").toint()
                     val y = arg1.get("y").toint()
@@ -77,12 +85,7 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
 
         private fun parseVec3(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): Pair<Vec3?, Int> {
             return when {
-                arg1?.isuserdata() == true && arg1.touserdata() is LuaVector3d -> {
-                    Pair((arg1.touserdata() as LuaVector3d).location, 1)
-                }
-                arg1?.isuserdata() == true && arg1.touserdata() is Vec3 -> {
-                    Pair(arg1.touserdata() as Vec3, 1)
-                }
+                arg1 != null && arg1.isVector() -> Pair(arg1.toVector(), 1)
                 arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
                     Pair(Vec3(arg1.todouble(), arg2.todouble(), arg3.todouble()), 3)
                 }
@@ -104,20 +107,10 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
             arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?, arg4: LuaValue?
         ): Pair<BlockPos, BlockState>? {
             return when {
-                arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos -> {
-                    val pos = (arg1.touserdata() as LuaBlockPos).pos
+                arg1 != null && arg1.isBlockPos() -> {
+                    val pos = arg1.toBlockPos()
                     val state = parseBlockState(arg2)
-                    if (state != null) pos to state else null
-                }
-                arg1?.isuserdata() == true && arg1.touserdata() is BlockPos.MutableBlockPos -> {
-                    val pos = arg1.touserdata() as BlockPos.MutableBlockPos
-                    val state = parseBlockState(arg2)
-                    if (state != null) pos to state else null
-                }
-                arg1?.isuserdata() == true && arg1.touserdata() is BlockPos -> {
-                    val pos = arg1.touserdata() as BlockPos
-                    val state = parseBlockState(arg2)
-                    if (state != null) pos to state else null
+                    if (pos != null && state != null) pos to state else null
                 }
                 arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true -> {
                     val pos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
@@ -129,15 +122,7 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
         }
 
         private fun parseBlockState(arg: LuaValue?): BlockState? {
-            return when {
-                arg?.isuserdata(LuaBlockState::class.java) == true -> {
-                    (arg.touserdata() as? LuaBlockState)?.blockState
-                }
-                arg?.isuserdata(BlockState::class.java) == true -> {
-                    arg.touserdata() as? BlockState
-                }
-                else -> null
-            }
+            return if (arg != null && arg.isBlock()) arg.toBlock() else null
         }
 
         /**
@@ -146,15 +131,13 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
          */
         private fun resolveEntityType(arg: LuaValue?): EntityType<*>? {
             return when {
-                arg is LuaEntityType -> arg.entityType
-                arg?.isuserdata() == true && arg.touserdata() is EntityType<*> -> arg.touserdata() as EntityType<*>
                 arg?.isstring() == true -> try {
                     val holder = BuiltInRegistries.ENTITY_TYPE.get(Identifier.parse(arg.tojstring()))
                     if (holder.isPresent) holder.get().value() else null
                 } catch (e: Exception) {
                     null
                 }
-                else -> null
+                else -> arg?.toEntityType()
             }
         }
 
@@ -421,17 +404,9 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
         ): LuaValue? {
             val lvl = level ?: return NIL
 
-            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isuserdata() == true && arg4.touserdata() is LuaBlockState) {
+            if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4 != null && arg4.isBlock()) {
                 val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
-                val blockState = arg4.touserdata() as LuaBlockState
-
-                lvl.setBlockAndUpdate(blockPos, blockState.blockState)
-                lvl.updateNeighborsAt(blockPos, blockState.blockState.block)
-                return TRUE
-            }
-            else if (arg1?.isnumber() == true && arg2?.isnumber() == true && arg3?.isnumber() == true && arg4?.isuserdata() == true && arg4.touserdata() is BlockState) {
-                val blockPos = BlockPos(arg1.toint(), arg2.toint(), arg3.toint())
-                val blockState = arg4.touserdata() as BlockState
+                val blockState = arg4.toBlock() ?: return NIL
 
                 lvl.setBlockAndUpdate(blockPos, blockState)
                 lvl.updateNeighborsAt(blockPos, blockState.block)
@@ -459,30 +434,15 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
                 lvl.updateNeighborsAt(blockPos, blockState.block)
                 return TRUE
             }
-            else if (arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos && arg2?.isuserdata() == true && arg2.touserdata() is LuaBlockState) {
-                val pos = arg1.touserdata() as LuaBlockPos
-                val state = arg2.touserdata() as LuaBlockState
-                lvl.setBlockAndUpdate(pos.pos, state.blockState)
-                lvl.updateNeighborsAt(pos.pos, state.blockState.block)
-                return TRUE
-            }
-            else if (arg1?.isuserdata() == true && arg1.touserdata() is BlockPos && arg2?.isuserdata() == true && arg2.touserdata() is BlockState) {
-                val pos = arg1.touserdata() as BlockPos
-                val state = arg2.touserdata() as BlockState
+            else if (arg1 != null && arg1.isBlockPos() && arg2 != null && arg2.isBlock()) {
+                val pos = arg1.toBlockPos() ?: return NIL
+                val state = arg2.toBlock() ?: return NIL
                 lvl.setBlockAndUpdate(pos, state)
                 lvl.updateNeighborsAt(pos, state.block)
                 return TRUE
             }
-            else if (arg1?.isuserdata() == true && arg1.touserdata() is LuaBlockPos) {
-                val pos = arg1.touserdata() as LuaBlockPos
-                val blockId = arg2?.optint(1) ?: 1
-                val blockState = Block.stateById(blockId)
-                lvl.setBlockAndUpdate(pos.pos, blockState)
-                lvl.updateNeighborsAt(pos.pos, blockState.block)
-                return TRUE
-            }
-            else if (arg1?.isuserdata() == true && arg1.touserdata() is BlockPos) {
-                val pos = arg1.touserdata() as BlockPos
+            else if (arg1 != null && arg1.isBlockPos()) {
+                val pos = arg1.toBlockPos() ?: return NIL
                 val blockId = arg2?.optint(1) ?: 1
                 val blockState = Block.stateById(blockId)
                 lvl.setBlockAndUpdate(pos, blockState)
@@ -538,12 +498,7 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
 
     private inner class GetEntitiesInBoxFunction() : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
-            val box = when {
-                arg.isuserdata() && arg.touserdata() is LuaBox -> (arg.touserdata() as LuaBox).box
-                arg is LuaBox -> arg.box
-                arg.isuserdata() && arg.touserdata() is AABB -> arg.touserdata() as AABB
-                else -> null
-            }
+            val box = if (arg.isBox()) arg.toBox() else null
             val entitiesTable = tableOf()
             if (box != null) {
                 var index = 1
@@ -557,12 +512,7 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
 
     private inner class GetArmorStandEntitiesInBoxFunction() : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
-            val box = when {
-                arg.isuserdata() && arg.touserdata() is LuaBox -> (arg.touserdata() as LuaBox).box
-                arg is LuaBox -> arg.box
-                arg.isuserdata() && arg.touserdata() is AABB -> arg.touserdata() as AABB
-                else -> null
-            }
+            val box = if (arg.isBox()) arg.toBox() else null
             val entitiesTable = tableOf()
             if (box != null) {
                 var index = 1
@@ -589,15 +539,22 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
 
     /**
      * world.spawnEntity(type, x, y, z [, yaw, pitch])
-     * type: строка "minecraft:sheep", creator.createEntity(...) или EntityType.
+     * type: строка "minecraft:sheep", creator.createEntity(...) (готовый LuaEntity —
+     * будет заспавнен именно этот инстанс), creator.createEntityType(...) или EntityType.
      * Возвращает заспавненную LuaEntity или NIL.
      */
     private inner class SpawnEntityFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val lvl = level ?: return NIL
 
-            val type = resolveEntityType(args.arg(1))
-                ?: return error("Unknown entity type: expected identifier string, entitytype userdata or EntityType")
+            // Готовый инстанс сущности (LuaEntity или сырой Entity) — спавним его же
+            val preCreated = if (args.arg(1).isEntity()) args.arg(1).toEntity() else null
+
+            val entity = preCreated ?: run {
+                val type = resolveEntityType(args.arg(1))
+                    ?: return error("Unknown entity type: expected identifier string, entitytype userdata or EntityType")
+                type.create(lvl, EntitySpawnReason.COMMAND)
+            } ?: return NIL
 
             val (posVec, offset) = parseVec3(args.arg(2), args.arg(3), args.arg(4))
                 .let { if (it.second > 0) it else Pair<Vec3?, Int>(null, 0) }
@@ -609,7 +566,6 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
             val yaw = args.arg(nextArgIndex)?.optdouble(0.0) ?: 0.0
             val pitch = args.arg(nextArgIndex + 1)?.optdouble(0.0) ?: 0.0
 
-            val entity = type.create(lvl, EntitySpawnReason.COMMAND) ?: return NIL
             entity.snapTo(posVec.x, posVec.y, posVec.z, yaw.toFloat(), pitch.toFloat())
             lvl.addFreshEntity(entity)
 
@@ -626,10 +582,7 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
             val lvl = level ?: return NIL
             val entity = when {
                 arg?.isnumber() == true -> lvl.getEntity(arg.toint())
-                arg?.isuserdata() == true && arg.touserdata() is LuaEntity ->
-                    (arg.touserdata() as LuaEntity).entity
-                arg?.isuserdata() == true && arg.touserdata() is Entity ->
-                    arg.touserdata() as Entity
+                arg != null && arg.isEntity() -> arg.toEntity()
                 else -> null
             } ?: return FALSE
             if (!entity.isAlive) return FALSE
@@ -704,12 +657,8 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
             val arg1 = args.arg(1)
 
             // Вариант 1: world.getBlocksInBox(luaBox)
-            if (arg1.isuserdata() && (arg1.touserdata() is LuaBox || arg1.touserdata() is AABB)) {
-                val aabb = if (arg1.touserdata() is LuaBox) {
-                    (arg1.touserdata() as LuaBox).box
-                } else {
-                    arg1.touserdata() as AABB
-                }
+            if (arg1.isBox()) {
+                val aabb = arg1.toBox() ?: return error("Invalid arguments: expected (LuaBox) or (BlockPos, BlockPos)")
                 minPos = BlockPos(
                     Math.floor(aabb.minX).toInt(),
                     Math.floor(aabb.minY).toInt(),

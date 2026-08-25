@@ -1,5 +1,9 @@
 package com.nekiplay.neoscripts.common.features.lua.objects.datatypes
 
+import com.google.gson.JsonArray
+import com.google.gson.JsonNull
+import com.google.gson.JsonObject
+import com.google.gson.JsonPrimitive
 import com.mojang.authlib.properties.Property
 import com.nekiplay.neoscripts.ClientMain
 import com.nekiplay.neoscripts.ClientMain.mc
@@ -18,11 +22,21 @@ import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaCom
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponentBuilder
 import com.nekiplay.neoscripts.client.sugar.getFormattedString
 import com.nekiplay.neoscripts.client.sugar.getRotation
+import com.nekiplay.neoscripts.client.sugar.isBlock
+import com.nekiplay.neoscripts.client.sugar.isEntity
+import com.nekiplay.neoscripts.client.sugar.isTransformation
+import com.nekiplay.neoscripts.client.sugar.isVector
+import com.nekiplay.neoscripts.client.sugar.toBlock
+import com.nekiplay.neoscripts.client.sugar.toEntity
+import com.nekiplay.neoscripts.client.sugar.toTransformation
+import com.nekiplay.neoscripts.client.sugar.toVector
 import com.nekiplay.neoscripts.client.utils.Utils
 import net.minecraft.core.Holder
 import net.minecraft.core.Rotations
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.ComponentSerialization
+import com.mojang.serialization.JsonOps
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
 import net.minecraft.resources.Identifier
 import net.minecraft.util.Brightness
@@ -572,13 +586,8 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
         }
     }
 
-    private fun parseEntityArg(arg: LuaValue?): Entity? = when {
-        arg?.isuserdata() == true && arg.touserdata() is LuaEntity ->
-            (arg.touserdata() as LuaEntity).entity
-        arg?.isuserdata() == true && arg.touserdata() is Entity ->
-            arg.touserdata() as Entity
-        else -> null
-    }
+    private fun parseEntityArg(arg: LuaValue?): Entity? =
+        if (arg != null && arg.isEntity()) arg.toEntity() else null
 
     // Добавление пассажира: add_passenger(entity) -> boolean
     private inner class AddPassengerFunction : OneArgFunction() {
@@ -609,16 +618,8 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
     }
 
     private fun parseRotations(value: LuaValue): Rotations? {
-        if (value.isuserdata() && value.touserdata() is LuaVector3d) {
-            val vector = value.touserdata() as LuaVector3d
-            return Rotations(
-                vector.location.x.toFloat(),
-                vector.location.y.toFloat(),
-                vector.location.z.toFloat()
-            )
-        }
-        if (value.isuserdata() && value.touserdata() is Vec3) {
-            val vector = value.touserdata() as Vec3
+        val vector = if (value.isVector()) value.toVector() else null
+        if (vector != null) {
             return Rotations(vector.x.toFloat(), vector.y.toFloat(), vector.z.toFloat())
         }
         if (value.istable() != true) return null
@@ -651,12 +652,8 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     if (arg1.get("on_ground").isboolean()) onGround = arg1.get("on_ground").toboolean()
                     vector = Vec3(x, y, z)
                 }
-                arg1?.isuserdata() == true && arg1.touserdata() is LuaVector3d -> {
-                    vector = (arg1.touserdata() as LuaVector3d).location
-                    if (arg2?.isboolean() == true) onGround = arg2.toboolean()
-                }
-                arg1?.isuserdata() == true && arg1.touserdata() is Vec3 -> {
-                    vector = arg1.touserdata() as Vec3
+                arg1 != null && arg1.isVector() -> {
+                    vector = arg1.toVector()
                     if (arg2?.isboolean() == true) onGround = arg2.toboolean()
                 }
             }
@@ -680,6 +677,50 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
         }
     }
 
+    /**
+     * Конвертирует Lua-значение (таблица/строка/число/булево) в Gson JsonElement.
+     * Таблицы с последовательными целыми ключами 1..n становятся массивами,
+     * остальные — объектами. Используется для JSON text components.
+     */
+    private fun luaToJson(v: LuaValue): com.google.gson.JsonElement {
+        return when {
+            v.istable() -> {
+                val t = v.checktable()
+                var count = 0
+                var isArray = true
+                var k: LuaValue = LuaValue.NIL
+                while (true) {
+                    val e = t.next(k)
+                    k = e.arg(1)
+                    if (k.isnil()) break
+                    if (!k.isint() || k.toint() != count + 1) isArray = false
+                    count++
+                }
+                if (count == 0) {
+                    JsonObject()
+                } else if (isArray) {
+                    val arr = JsonArray()
+                    for (i in 1..count) arr.add(luaToJson(t.get(i)))
+                    arr
+                } else {
+                    val obj = JsonObject()
+                    var k2: LuaValue = LuaValue.NIL
+                    while (true) {
+                        val e = t.next(k2)
+                        k2 = e.arg(1)
+                        if (k2.isnil()) break
+                        obj.add(k2.tojstring(), luaToJson(e.arg(2)))
+                    }
+                    obj
+                }
+            }
+            v.isboolean() -> JsonPrimitive(v.toboolean())
+            v.isnumber() -> JsonPrimitive(v.todouble())
+            v.isstring() -> JsonPrimitive(v.tojstring())
+            else -> JsonNull.INSTANCE
+        }
+    }
+
     private fun toStack(value: LuaValue): ItemStack? = when {
         value.isnil() -> ItemStack.EMPTY
         value is LuaItemStack -> value.stack.copy()
@@ -693,29 +734,30 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
 
         when (field) {
             // --- Позиция и движение (любая сущность; пакет — только для локального игрока) ---
+            // hurtMarked = true заставляет сервер разослать SetEntityMotion наблюдателям
             "velocity_x" -> {
                 if (value.isnumber()) {
                     entity.setDeltaMovement(value.todouble(), entity.deltaMovement.y, entity.deltaMovement.z)
+                    entity.hurtMarked = true
                 }
             }
             "velocity_y" -> {
                 if (value.isnumber()) {
                     entity.setDeltaMovement(entity.deltaMovement.x, value.todouble(), entity.deltaMovement.z)
+                    entity.hurtMarked = true
                 }
             }
             "velocity_z" -> {
                 if (value.isnumber()) {
                     entity.setDeltaMovement(entity.deltaMovement.x, entity.deltaMovement.y, value.todouble())
+                    entity.hurtMarked = true
                 }
             }
             "velocity" -> {
-                if (value.isuserdata() && value.touserdata() is LuaVector3d) {
-                    val vector = value.touserdata() as LuaVector3d
-                    entity.setDeltaMovement(vector.location.x, vector.location.y, vector.location.z)
-                }
-                else if (value.isuserdata() && value.touserdata() is Vec3) {
-                    val vector = value.touserdata() as Vec3
+                val vector = if (value.isVector()) value.toVector() else null
+                if (vector != null) {
                     entity.setDeltaMovement(vector.x, vector.y, vector.z)
+                    entity.hurtMarked = true
                 }
             }
             "x" -> {
@@ -766,10 +808,8 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
             "pos", "position" -> {
                 var vector: Vec3? = null
-                if (value.isuserdata() && value.touserdata() is LuaVector3d) {
-                    vector = (value.touserdata() as LuaVector3d).location
-                } else if (value.isuserdata() && value.touserdata() is Vec3) {
-                    vector = value.touserdata() as Vec3
+                if (value.isVector()) {
+                    vector = value.toVector()
                 }
                 if (vector != null) {
                     if (!entity.level().isClientSide) {
@@ -981,13 +1021,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 }
             }
             "transformation", "transform" -> {
-                val transformation = when {
-                    value?.isuserdata() == true && value.touserdata() is LuaTransform ->
-                        (value.touserdata() as LuaTransform).toTransformation()
-                    value?.isuserdata() == true && value.touserdata() is com.mojang.math.Transformation ->
-                        value.touserdata() as com.mojang.math.Transformation
-                    else -> null
-                }
+                val transformation = if (value != null && value.isTransformation()) value.toTransformation() else null
                 if (entity is Display && transformation != null) {
                     (entity as DisplayAccessor).nsSetTransformation(transformation)
                 }
@@ -1000,6 +1034,14 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                         value.isstring() -> (entity as TextDisplayAccessor).nsSetText(Component.literal(value.tojstring()))
                         value is LuaComponentBuilder -> (entity as TextDisplayAccessor).nsSetText(value.buildComponent())
                         value is LuaComponent -> (entity as TextDisplayAccessor).nsSetText(value.component.copy())
+                        value.istable() -> {
+                            // JSON text component (как в NBT text_display): таблица -> JsonElement -> Component
+                            val json = luaToJson(value)
+                            val parsed = ComponentSerialization.CODEC.decode(JsonOps.INSTANCE, json).result()
+                            if (parsed.isPresent) {
+                                (entity as TextDisplayAccessor).nsSetText(parsed.get())
+                            }
+                        }
                     }
                 }
             }
@@ -1057,13 +1099,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
 
             // --- Специфичные для BlockDisplay ---
             "display_block", "displayed_block" -> {
-                val state = when {
-                    value?.isuserdata(LuaBlockState::class.java) == true ->
-                        (value.touserdata() as LuaBlockState).blockState
-                    value?.isuserdata(BlockState::class.java) == true ->
-                        value.touserdata() as BlockState
-                    else -> null
-                }
+                val state = if (value != null && value.isBlock()) value.toBlock() else null
                 if (entity is Display.BlockDisplay && state != null) {
                     (entity as BlockDisplayAccessor).nsSetBlockState(state)
                 }

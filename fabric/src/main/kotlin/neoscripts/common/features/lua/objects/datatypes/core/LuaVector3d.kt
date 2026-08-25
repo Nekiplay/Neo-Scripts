@@ -1,5 +1,7 @@
 package com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core
 
+import com.nekiplay.neoscripts.client.sugar.isVector
+import com.nekiplay.neoscripts.client.sugar.toVector
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaUserdata
@@ -228,12 +230,7 @@ class LuaVector3d(val location: Vec3): LuaUserdata(location) {
     private fun parseVec3(args: Varargs?): Vec3? {
         if (args == null) return null
         return when {
-            args.arg(1).isuserdata() && args.arg(1).touserdata() is LuaVector3d -> {
-                (args.arg(1).touserdata() as LuaVector3d).location
-            }
-            args.arg(1).isuserdata() && args.arg(1).touserdata() is Vec3 -> {
-                args.arg(1).touserdata() as Vec3
-            }
+            args.arg(1).isVector() -> args.arg(1).toVector()
             args.arg(1).isnumber() && args.arg(2).isnumber() && args.arg(3).isnumber() -> {
                 Vec3(args.arg(1).todouble(), args.arg(2).todouble(), args.arg(3).todouble())
             }

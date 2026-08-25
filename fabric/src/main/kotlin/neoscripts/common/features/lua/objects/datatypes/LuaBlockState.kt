@@ -1,7 +1,8 @@
 package com.nekiplay.neoscripts.common.features.lua.objects.datatypes
 
-import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.client.sugar.getFormattedString
+import com.nekiplay.neoscripts.client.sugar.isDirection
+import com.nekiplay.neoscripts.client.sugar.toDirection
 import net.minecraft.core.Direction
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.level.block.Block
@@ -194,13 +195,9 @@ class LuaBlockState(var blockState: BlockState) : LuaUserdata(blockState) {
             }
             "facing" -> {
                 if (blockState.hasProperty(DoorBlock.FACING)) {
-                    if (value.touserdata() is Direction) {
-                        val dir = value.touserdata() as Direction
-                        blockState = blockState.setValue(DoorBlock.FACING, dir)
-                    }
-                    else if (value.touserdata() is LuaDirection) {
-                        val dir = value.touserdata() as LuaDirection
-                        blockState = blockState.setValue(DoorBlock.FACING, dir.direction)
+                    if (value.isDirection()) {
+                        val dir = value.toDirection()
+                        if (dir != null) blockState = blockState.setValue(DoorBlock.FACING, dir)
                     }
                     else if (value.isstring()) {
                         blockState = blockState.setValue(DoorBlock.FACING, Direction.valueOf(value.tojstring().uppercase()))

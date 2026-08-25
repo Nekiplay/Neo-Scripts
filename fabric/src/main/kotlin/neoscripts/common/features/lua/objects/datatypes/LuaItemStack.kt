@@ -10,6 +10,7 @@ import com.nekiplay.neoscripts.client.sugar.getReforgeModifier
 import com.nekiplay.neoscripts.client.sugar.isMuseumDonated
 import com.nekiplay.neoscripts.client.sugar.isRecombobulated
 import com.nekiplay.neoscripts.client.sugar.setDisplayName
+import com.nekiplay.neoscripts.client.sugar.toBlock
 import com.nekiplay.neoscripts.client.utils.ItemUtils
 import com.nekiplay.neoscripts.client.utils.Utils
 import net.minecraft.core.registries.BuiltInRegistries
@@ -363,13 +364,9 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
 
     private inner class isCorrectToolForDrops : OneArgFunction() {
         override fun call(block: LuaValue): LuaValue {
-            if (block.touserdata() is BlockState) {
-                val blockState = block.touserdata() as BlockState
+            val blockState = block.toBlock()
+            if (blockState != null) {
                 return valueOf(stack.isCorrectToolForDrops(blockState))
-            }
-            else if (block.touserdata() is LuaBlockState) {
-                val blockState = block.touserdata() as LuaBlockState
-                return valueOf(stack.isCorrectToolForDrops(blockState.blockState))
             }
             return FALSE
         }

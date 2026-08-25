@@ -5,6 +5,7 @@ import com.nekiplay.neoscripts.common.mixins.gui.HudAccessor
 import com.nekiplay.neoscripts.client.sugar.getFormattedString
 import com.nekiplay.neoscripts.client.sugar.getScorebordLines
 import com.nekiplay.neoscripts.client.sugar.getTab
+import com.nekiplay.neoscripts.client.sugar.toEntity
 import com.nekiplay.neoscripts.client.utils.MathUtil
 import com.nekiplay.neoscripts.client.utils.PlayerUtils
 import com.nekiplay.neoscripts.client.utils.RaycastUtils
@@ -129,15 +130,9 @@ class PlayerObject : LuaValue() {
 
     private class IsHasLineOfSight : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue? {
-            if (arg is LuaEntity) {
-                if (mc.player?.hasLineOfSight(arg.entity) == true) {
-                    return TRUE
-                }
-            }
-            else if (arg.touserdata() is LuaEntity) {
-                if (mc.player?.hasLineOfSight((arg.touserdata() as LuaEntity).entity) == true) {
-                    return TRUE
-                }
+            val entity = arg.toEntity()
+            if (entity != null && mc.player?.hasLineOfSight(entity) == true) {
+                return TRUE
             }
             return FALSE
         }

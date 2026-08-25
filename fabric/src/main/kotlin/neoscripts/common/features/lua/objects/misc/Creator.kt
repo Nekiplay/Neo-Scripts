@@ -1,6 +1,8 @@
 package com.nekiplay.neoscripts.common.features.lua.objects.misc
 
+import com.nekiplay.neoscripts.ServerMain
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaBlockState
+import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaTransform
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaDirection
@@ -11,7 +13,9 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.Identifier
+import net.minecraft.world.entity.EntitySpawnReason
 import net.minecraft.world.entity.EntityType
+import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
@@ -104,8 +108,9 @@ class Creator : LuaValue() {
     }
 
     /**
-     * Создает тип сущности из идентификатора (например "minecraft:sheep"),
-     * который возвращает entities.getAll().
+     * Создает экземпляр сущности по идентификатору (например "minecraft:sheep")
+     * и возвращает её как LuaEntity (как new Entity в Java).
+     * Сущность НЕ в мире: настройте поля и заспавньте через world.spawnEntity(entity, ...).
      */
     class CreateEntity : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
@@ -114,8 +119,11 @@ class Creator : LuaValue() {
             return try {
                 val id = Identifier.parse(arg.tojstring())
                 val holder = BuiltInRegistries.ENTITY_TYPE.get(id)
-                if (holder.isPresent) {
-                    LuaEntityType(holder.get().value())
+                val server = ServerMain.SERVER
+                val level = server?.getLevel(Level.OVERWORLD)
+                if (holder.isPresent && level != null) {
+                    val entity = holder.get().value().create(level, EntitySpawnReason.COMMAND)
+                    if (entity != null) LuaEntity(entity) else NIL
                 } else {
                     NIL
                 }
