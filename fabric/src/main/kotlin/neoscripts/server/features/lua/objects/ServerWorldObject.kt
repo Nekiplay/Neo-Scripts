@@ -22,11 +22,16 @@ import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaBlo
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaMutableBlockPos
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.phys.LuaRaycast
+import com.mojang.brigadier.exceptions.CommandSyntaxException
 import com.nekiplay.neoscripts.common.features.lua.objects.misc.LuaEntityType
+import net.minecraft.commands.CommandSource
+import net.minecraft.commands.CommandSourceStack
 import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.Identifier
+import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.server.permissions.PermissionSet
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
 import net.minecraft.util.Mth
@@ -35,6 +40,7 @@ import net.minecraft.world.entity.EntitySpawnReason
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.ClipContext
 import net.minecraft.world.level.LightLayer
 import net.minecraft.world.level.block.Block
@@ -43,6 +49,7 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.HitResult
+import net.minecraft.world.phys.Vec2
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.CollisionContext
 import org.luaj.vm2.LuaUserdata
@@ -296,6 +303,8 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
             put(valueOf("raycastToBlocksFromId"), RaycastToBlocksFunction())
             put(valueOf("raycastToBlocksFromIdentifier"), RaycastToBlocksFromIdentifierFunction())
             put(valueOf("playSound"), PlaySoundFunction())
+            put(valueOf("executeCommand"), ExecuteCommandFunction())
+            put(valueOf("runCommand"), ExecuteCommandFunction())
         }
     }
 
@@ -918,6 +927,140 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
                 LuaRaycast(hitResult)
             } else {
                 NIL
+            }
+        }
+    }
+
+    /**
+     * world.executeCommand(command [, x, y, z] [, options]) — выполняет серверную команду от имени
+     * виртуального источника с полными правами (PermissionSet.ALL_PERMISSIONS).
+     *
+     * Возвращает несколько значений:
+     *   1) результат команды:
+     *        - LuaEntity — команда заспавнила ровно одну сущность (например, /summon);
+     *        - таблица LuaEntity — заспавнено несколько сущностей;
+     *        - таблица { pos = LuaBlockPos, state = LuaBlockState } — команда изменила блоки
+     *          (/setblock, /fill, /clone и т.п.);
+     *        - TRUE — сущностей/изменений блоков не обнаружено;
+     *        - FALSE при ошибке выполнения;
+     *   2) числовой результат команды (int) или NIL;
+     *   3) сообщение об ошибке (string) или NIL.
+     *
+     * Необязательная позиция задаёт точку для относительных координат (~) и центр области диффа
+     * блоков. options: { radius = n } — полуразмер кубической области поиска изменённых блоков
+     * вокруг позиции (по умолчанию 8). Дифф ведётся только по чанкам, загруженным ДО выполнения
+     * команды; изменения в выгруженных чанках не отслеживаются.
+     */
+    private inner class ExecuteCommandFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val lvl = level ?: return NIL
+            val server = lvl.server ?: return NIL
+
+            if (args.narg() < 1 || !args.arg1().isstring()) {
+                return error("Invalid arguments: expected command string")
+            }
+
+            // Brigadier ожидает команду без ведущего слэша
+            val command = args.arg1().tojstring().removePrefix("/")
+
+            // [cmd, x, y, z] | [cmd, {x,y,z}] | [cmd] + опциональная таблица options последним аргументом
+            var argIndex = 2
+            val parsedPos = parseVec3(args.arg(argIndex), args.arg(argIndex + 1), args.arg(argIndex + 2))
+            val position = if (parsedPos.second > 0) {
+                argIndex += parsedPos.second
+                parsedPos.first ?: Vec3.ZERO
+            } else {
+                Vec3.ZERO
+            }
+
+            var radius = 8
+            if (args.arg(argIndex).istable()) {
+                val opts = args.arg(argIndex)
+                radius = opts.get("radius").optdouble(8.0).toInt()
+            }
+            radius = radius.coerceIn(0, 64)
+
+            val centerPos = BlockPos.containing(position)
+
+            fun forEachRegionPos(action: (BlockPos) -> Unit) {
+                val mutable = BlockPos.MutableBlockPos()
+                for (x in centerPos.x - radius..centerPos.x + radius) {
+                    for (y in centerPos.y - radius..centerPos.y + radius) {
+                        for (z in centerPos.z - radius..centerPos.z + radius) {
+                            mutable.set(x, y, z)
+                            action(mutable.immutable())
+                        }
+                    }
+                }
+            }
+
+            // Снимки до выполнения: сущности, загруженные чанки и состояния блоков в области диффа
+            val entitiesBefore = HashSet<Entity>(lvl.allEntities)
+            val loadedChunksBefore = HashSet<ChunkPos>()
+            val blocksBefore = HashMap<BlockPos, BlockState>()
+            forEachRegionPos { pos ->
+                if (lvl.hasChunkAt(pos)) {
+                    loadedChunksBefore.add(ChunkPos(pos.x shr 4, pos.z shr 4))
+                    blocksBefore[pos] = lvl.getBlockState(pos)
+                }
+            }
+
+            val source = CommandSourceStack(
+                CommandSource.NULL,
+                position,
+                Vec2.ZERO,
+                lvl,
+                PermissionSet.ALL_PERMISSIONS,
+                "NeoScripts",
+                Component.literal("NeoScripts"),
+                server,
+                null
+            ).withSuppressedOutput()
+
+            val dispatcher = server.commands.dispatcher
+            return try {
+                val parseResults = dispatcher.parse(command, source)
+                val result = dispatcher.execute(parseResults)
+
+                // Разница снимков: новые сущности
+                val spawned = lvl.allEntities.filter { it !in entitiesBefore }
+
+                when {
+                    spawned.size == 1 ->
+                        LuaValue.varargsOf(LuaEntity(spawned[0]), valueOf(result))
+
+                    spawned.isNotEmpty() -> {
+                        val entitiesTable = tableOf()
+                        spawned.forEachIndexed { index, entity ->
+                            entitiesTable.set(index + 1, LuaEntity(entity))
+                        }
+                        LuaValue.varargsOf(entitiesTable, valueOf(result))
+                    }
+
+                    else -> {
+                        // Изменённые/добавленные/удалённые блоки в области диффа
+                        val changedBlocks = tableOf()
+                        var blockIndex = 1
+                        forEachRegionPos { pos ->
+                            if (ChunkPos(pos.x shr 4, pos.z shr 4) in loadedChunksBefore) {
+                                val state = lvl.getBlockState(pos)
+                                if (blocksBefore[pos] != state) {
+                                    val entry = tableOf()
+                                    entry.set("pos", LuaBlockPos(pos))
+                                    entry.set("state", LuaBlockState(state))
+                                    changedBlocks.set(blockIndex++, entry)
+                                }
+                            }
+                        }
+
+                        LuaValue.varargsOf(
+                            if (blockIndex > 1) changedBlocks else TRUE,
+                            valueOf(result)
+                        )
+                    }
+                }
+            } catch (e: CommandSyntaxException) {
+                LuaValue.varargsOf(FALSE, NIL, valueOf(e.message ?: "Unknown command error"))
             }
         }
     }
