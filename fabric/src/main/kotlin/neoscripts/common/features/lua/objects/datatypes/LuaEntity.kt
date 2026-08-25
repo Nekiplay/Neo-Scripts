@@ -1039,7 +1039,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                             val json = luaToJson(value)
                             val parsed = ComponentSerialization.CODEC.decode(JsonOps.INSTANCE, json).result()
                             if (parsed.isPresent) {
-                                (entity as TextDisplayAccessor).nsSetText(parsed.get())
+                                (entity as TextDisplayAccessor).nsSetText(parsed.get().first)
                             }
                         }
                     }

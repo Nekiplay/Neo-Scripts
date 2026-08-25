@@ -1,5 +1,6 @@
 package com.nekiplay.neoscripts.common.features.lua.objects.datatypes
 
+import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.client.sugar.getFormattedString
 import com.nekiplay.neoscripts.client.sugar.isDirection
 import com.nekiplay.neoscripts.client.sugar.toDirection

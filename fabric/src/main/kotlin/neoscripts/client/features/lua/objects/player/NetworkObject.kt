@@ -2,6 +2,7 @@ package com.nekiplay.neoscripts.client.features.lua.objects.player
 
 import com.nekiplay.neoscripts.ClientMain.mc
 import com.nekiplay.neoscripts.client.features.lua.customArgs.FourArgFunction
+import com.nekiplay.neoscripts.client.sugar.isBlockPos
 import com.nekiplay.neoscripts.client.sugar.isDirection
 import com.nekiplay.neoscripts.client.sugar.sendSequencedPacket
 import com.nekiplay.neoscripts.client.sugar.toBlockPos

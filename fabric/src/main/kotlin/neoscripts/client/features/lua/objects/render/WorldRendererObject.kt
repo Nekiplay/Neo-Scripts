@@ -133,7 +133,7 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
 
     private fun parseVec3(args: Varargs): Pair<Vec3, Int>? {
         return when {
-            args.arg(1).isVector() -> args.arg(1).toVector() to 2
+            args.arg(1).isVector() -> args.arg(1).toVector()?.let { it to 2 }
             args.arg(1).isnumber() && args.arg(2).isnumber() && args.arg(3).isnumber() -> {
                 val vec = Vec3(args.arg(1).todouble(), args.arg(2).todouble(), args.arg(3).todouble())
                 vec to 4
@@ -475,8 +475,9 @@ class WorldRendererObject(private val context: PrimitiveCollector?): LuaValue() 
             val path = args.optjstring(1, "") ?: return NIL
             if (path.isEmpty()) return NIL
 
+            val directVec = if (args.arg(1).isVector()) args.arg(1).toVector() else null
             val (pos, offset) = when {
-                args.arg(1).isVector() -> args.arg(1).toVector() to 2
+                directVec != null -> directVec to 2
                 args.arg(2).isnumber() && args.arg(3).isnumber() && args.arg(4).isnumber() -> {
                     val vec = Vec3(args.arg(2).todouble(), args.arg(3).todouble(), args.arg(4).todouble())
                     vec to 5

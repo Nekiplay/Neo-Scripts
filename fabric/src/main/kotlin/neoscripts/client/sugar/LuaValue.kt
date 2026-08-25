@@ -1,12 +1,9 @@
 package com.nekiplay.neoscripts.client.sugar
 
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaBlockState
-import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaComponent
-import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaComponentBuilder
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaTransform
-import com.mojang.math.Transformation
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaAxis
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaAxisDirection
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaBlockPos
@@ -16,7 +13,10 @@ import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaMut
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.phys.LuaRaycast
+import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent
+import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponentBuilder
 import com.nekiplay.neoscripts.common.features.lua.objects.misc.LuaEntityType
+import com.mojang.math.Transformation
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.network.chat.Component
@@ -43,9 +43,9 @@ fun LuaValue.isItem(): Boolean =
     this is LuaItemStack || isuserdata(ItemStack::class.java)
 
 /** Приведение к ItemStack (возвращает копию стака). */
-fun LuaValue.toItem(): ItemStack? = when (this) {
-    is LuaItemStack -> stack.copy()
-    else -> touserdata(ItemStack::class.java)?.copy()
+fun LuaValue.toItem(): ItemStack? = when {
+    this is LuaItemStack -> stack.copy()
+    else -> (touserdata() as? ItemStack)?.copy()
 }
 
 // --- BlockState ---
@@ -55,9 +55,9 @@ fun LuaValue.isBlock(): Boolean =
     this is LuaBlockState || isuserdata(BlockState::class.java)
 
 /** Приведение к BlockState. */
-fun LuaValue.toBlock(): BlockState? = when (this) {
-    is LuaBlockState -> blockState
-    else -> touserdata(BlockState::class.java)
+fun LuaValue.toBlock(): BlockState? = when {
+    this is LuaBlockState -> blockState
+    else -> touserdata() as? BlockState
 }
 
 // --- Vec3 ---
@@ -67,9 +67,9 @@ fun LuaValue.isVector(): Boolean =
     this is LuaVector3d || isuserdata(Vec3::class.java)
 
 /** Приведение к Vec3. */
-fun LuaValue.toVector(): Vec3? = when (this) {
-    is LuaVector3d -> location
-    else -> touserdata(Vec3::class.java)
+fun LuaValue.toVector(): Vec3? = when {
+    this is LuaVector3d -> location
+    else -> touserdata() as? Vec3
 }
 
 // --- Entity ---
@@ -79,9 +79,9 @@ fun LuaValue.isEntity(): Boolean =
     this is LuaEntity || isuserdata(Entity::class.java)
 
 /** Приведение к Entity. */
-fun LuaValue.toEntity(): Entity? = when (this) {
-    is LuaEntity -> entity
-    else -> touserdata(Entity::class.java)
+fun LuaValue.toEntity(): Entity? = when {
+    this is LuaEntity -> entity
+    else -> touserdata() as? Entity
 }
 
 /** Приведение к конкретному типу сущности (Player, Display.ItemDisplay, ...). */
@@ -100,10 +100,10 @@ fun LuaValue.isComponent(): Boolean =
  * Приведение к Component.
  * Дополнительно принимает обычную строку -> Component.literal(...).
  */
-fun LuaValue.toComponent(): Component? = when (this) {
-    is LuaComponent -> component.copy()
-    is LuaComponentBuilder -> buildComponent()
-    isuserdata(Component::class.java) -> touserdata(Component::class.java)
+fun LuaValue.toComponent(): Component? = when {
+    this is LuaComponent -> component.copy()
+    this is LuaComponentBuilder -> buildComponent()
+    isuserdata(Component::class.java) -> touserdata() as? Component
     isstring() -> Component.literal(tojstring())
     else -> null
 }
@@ -115,10 +115,10 @@ fun LuaValue.isBlockPos(): Boolean =
     this is LuaBlockPos || this is LuaMutableBlockPos || isuserdata(BlockPos::class.java)
 
 /** Приведение к BlockPos. */
-fun LuaValue.toBlockPos(): BlockPos? = when (this) {
-    is LuaMutableBlockPos -> pos
-    is LuaBlockPos -> pos
-    else -> touserdata(BlockPos::class.java)
+fun LuaValue.toBlockPos(): BlockPos? = when {
+    this is LuaMutableBlockPos -> pos
+    this is LuaBlockPos -> pos
+    else -> touserdata() as? BlockPos
 }
 
 // --- Direction / Axis ---
@@ -128,9 +128,9 @@ fun LuaValue.isDirection(): Boolean =
     this is LuaDirection || isuserdata(Direction::class.java)
 
 /** Приведение к Direction. */
-fun LuaValue.toDirection(): Direction? = when (this) {
-    is LuaDirection -> direction
-    else -> touserdata(Direction::class.java)
+fun LuaValue.toDirection(): Direction? = when {
+    this is LuaDirection -> direction
+    else -> touserdata() as? Direction
 }
 
 /** Проверка: ось (axis). */
@@ -138,9 +138,9 @@ fun LuaValue.isAxis(): Boolean =
     this is LuaAxis || isuserdata(Direction.Axis::class.java)
 
 /** Приведение к Direction.Axis. */
-fun LuaValue.toAxis(): Direction.Axis? = when (this) {
-    is LuaAxis -> axis
-    else -> touserdata(Direction.Axis::class.java)
+fun LuaValue.toAxis(): Direction.Axis? = when {
+    this is LuaAxis -> axis
+    else -> touserdata() as? Direction.Axis
 }
 
 /** Проверка: направление по оси (axisdirection). */
@@ -148,9 +148,9 @@ fun LuaValue.isAxisDirection(): Boolean =
     this is LuaAxisDirection || isuserdata(Direction.AxisDirection::class.java)
 
 /** Приведение к Direction.AxisDirection. */
-fun LuaValue.toAxisDirection(): Direction.AxisDirection? = when (this) {
-    is LuaAxisDirection -> axis
-    else -> touserdata(Direction.AxisDirection::class.java)
+fun LuaValue.toAxisDirection(): Direction.AxisDirection? = when {
+    this is LuaAxisDirection -> axis
+    else -> touserdata() as? Direction.AxisDirection
 }
 
 // --- ChunkPos ---
@@ -160,9 +160,9 @@ fun LuaValue.isChunkPos(): Boolean =
     this is LuaChunkPos || isuserdata(ChunkPos::class.java)
 
 /** Приведение к ChunkPos. */
-fun LuaValue.toChunkPos(): ChunkPos? = when (this) {
-    is LuaChunkPos -> pos
-    else -> touserdata(ChunkPos::class.java)
+fun LuaValue.toChunkPos(): ChunkPos? = when {
+    this is LuaChunkPos -> pos
+    else -> touserdata() as? ChunkPos
 }
 
 // --- AABB ---
@@ -172,9 +172,9 @@ fun LuaValue.isBox(): Boolean =
     this is LuaBox || isuserdata(AABB::class.java)
 
 /** Приведение к AABB. */
-fun LuaValue.toBox(): AABB? = when (this) {
-    is LuaBox -> box
-    else -> touserdata(AABB::class.java)
+fun LuaValue.toBox(): AABB? = when {
+    this is LuaBox -> box
+    else -> touserdata() as? AABB
 }
 
 // --- HitResult ---
@@ -184,9 +184,9 @@ fun LuaValue.isRaycast(): Boolean =
     this is LuaRaycast || isuserdata(HitResult::class.java)
 
 /** Приведение к HitResult. */
-fun LuaValue.toRaycast(): HitResult? = when (this) {
-    is LuaRaycast -> hitResult
-    else -> touserdata(HitResult::class.java)
+fun LuaValue.toRaycast(): HitResult? = when {
+    this is LuaRaycast -> hitResult
+    else -> touserdata() as? HitResult
 }
 
 // --- EntityType ---
@@ -196,9 +196,9 @@ fun LuaValue.isEntityType(): Boolean =
     this is LuaEntityType || isuserdata(EntityType::class.java)
 
 /** Приведение к EntityType<*>. */
-fun LuaValue.toEntityType(): EntityType<*>? = when (this) {
-    is LuaEntityType -> entityType
-    else -> touserdata(EntityType::class.java)
+fun LuaValue.toEntityType(): EntityType<*>? = when {
+    this is LuaEntityType -> entityType
+    else -> touserdata() as? EntityType<*>
 }
 
 // --- Transformation ---
@@ -208,7 +208,7 @@ fun LuaValue.isTransformation(): Boolean =
     this is LuaTransform || isuserdata(Transformation::class.java)
 
 /** Приведение к com.mojang.math.Transformation. */
-fun LuaValue.toTransformation(): Transformation? = when (this) {
-    is LuaTransform -> LuaTransform.toTransformation(translation, scale, rotationDegrees)
-    else -> touserdata(Transformation::class.java)
+fun LuaValue.toTransformation(): Transformation? = when {
+    this is LuaTransform -> LuaTransform.toTransformation(translation, scale, rotationDegrees)
+    else -> touserdata() as? Transformation
 }
