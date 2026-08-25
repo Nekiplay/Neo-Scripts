@@ -1,5 +1,6 @@
 package com.nekiplay.neoscripts.common.features.lua.objects.misc
 
+import com.nekiplay.neoscripts.ClientMain.mc
 import com.nekiplay.neoscripts.ServerMain
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity
@@ -111,6 +112,8 @@ class Creator : LuaValue() {
      * Создает экземпляр сущности по идентификатору (например "minecraft:sheep")
      * и возвращает её как LuaEntity (как new Entity в Java).
      * Сущность НЕ в мире: настройте поля и заспавньте через world.spawnEntity(entity, ...).
+     * Мир нужен только потому, что EntityType.create(Level, ...) в ваниле требует Level;
+     * берётся клиентский уровень, а если его нет — серверный.
      */
     class CreateEntity : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
@@ -119,8 +122,7 @@ class Creator : LuaValue() {
             return try {
                 val id = Identifier.parse(arg.tojstring())
                 val holder = BuiltInRegistries.ENTITY_TYPE.get(id)
-                val server = ServerMain.SERVER
-                val level = server?.getLevel(Level.OVERWORLD)
+                val level = mc.level ?: ServerMain.SERVER?.getLevel(Level.OVERWORLD)
                 if (holder.isPresent && level != null) {
                     val entity = holder.get().value().create(level, EntitySpawnReason.COMMAND)
                     if (entity != null) LuaEntity(entity) else NIL
