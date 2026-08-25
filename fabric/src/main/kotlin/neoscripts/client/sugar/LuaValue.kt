@@ -108,6 +108,17 @@ fun LuaValue.toComponent(): Component? = when {
     else -> null
 }
 
+/**
+ * Приведение к Transformation.
+ * LuaTransform с полной матрицей (прочитан с display-сущности) конвертируется
+ * из неё напрямую, без эйлер-декомпозиции; иначе — из translation/scale/rotation.
+ */
+fun LuaValue.toTransformation(): Transformation? = when {
+    this is LuaTransform -> fullMatrix?.let { Transformation(org.joml.Matrix4f(it)) }
+        ?: LuaTransform.toTransformation(translation, scale, rotationDegrees)
+    else -> touserdata() as? Transformation
+}
+
 // --- BlockPos ---
 
 /** Проверка: позиция блока (blockpos, включая mutable). */
