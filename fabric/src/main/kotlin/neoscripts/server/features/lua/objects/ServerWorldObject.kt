@@ -1188,11 +1188,12 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
 
             if (entity is LivingEntity) {
                 // Броня и предметы в руках
-                val equipment = mutableListOf<Pair<EquipmentSlot, ItemStack>>()
+                val equipment =
+                    mutableListOf<com.mojang.datafixers.util.Pair<EquipmentSlot, ItemStack>>()
                 for (slot in EquipmentSlot.entries) {
                     val stack = entity.getItemBySlot(slot)
                     if (!stack.isEmpty) {
-                        equipment.add(Pair(slot, stack))
+                        equipment.add(com.mojang.datafixers.util.Pair(slot, stack))
                     }
                 }
                 if (equipment.isNotEmpty()) {
@@ -1202,7 +1203,7 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
                 // Эффекты: снимаем все известные у клиента и накладываем актуальные.
                 // Пакет удаления несуществующего эффекта безвреден.
                 val active = entity.activeEffectsMap.keys.toHashSet()
-                for (holder in BuiltInRegistries.MOB_EFFECT) {
+                for (holder in BuiltInRegistries.MOB_EFFECT.listElements()) {
                     if (holder !in active) {
                         player.connection.send(ClientboundRemoveMobEffectPacket(entity.id, holder))
                     }
