@@ -1032,9 +1032,28 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 }
             }
             "transformation", "transform" -> {
-                val transformation = if (value != null && value.isTransformation()) value.toTransformation() else null
-                if (entity is Display && transformation != null) {
-                    (entity as DisplayAccessor).nsSetTransformation(transformation)
+                if (entity is Display) {
+                    when {
+                        // LuaTransform (creator.createTransform) — euler + scale
+                        value.isTransformation() -> {
+                            (entity as DisplayAccessor).nsSetTransformation(value.toTransformation())
+                        }
+                        // { matrix = {16 чисел row-major} } — точная матрица 4x4, без эйлеров
+                        value.istable() -> {
+                            val mt = value.get("matrix")
+                            if (mt.istable() && mt.length() >= 16) {
+                                val mat = org.joml.Matrix4f()
+                                for (col in 0..3) {
+                                    for (row in 0..3) {
+                                        mat.set(col, row, mt[row * 4 + col + 1].tofloat())
+                                    }
+                                }
+                                (entity as DisplayAccessor).nsSetTransformation(
+                                    com.mojang.math.Transformation(mat)
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
