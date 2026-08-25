@@ -30,6 +30,7 @@ import com.nekiplay.neoscripts.common.features.lua.objects.misc.UDPLib
 import com.nekiplay.neoscripts.common.features.lua.objects.misc.http.HttpClientLib
 import com.nekiplay.neoscripts.server.features.lua.objects.LuaServer
 import com.nekiplay.neoscripts.server.features.lua.objects.ServerWorldObject
+import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.server.MinecraftServer
@@ -383,6 +384,13 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
 
     private fun registerOtherCustomFunctions() {
         scriptGlobals.set("currentScriptName", LuaValue.valueOf(scriptName))
+
+        // Текущая версия мода из метаданных Fabric
+        scriptGlobals.set("modVersion", LuaValue.valueOf(
+            FabricLoader.getInstance().getModContainer("neoscripts")
+                .map { it.metadata.version.friendlyString }
+                .orElse("unknown")
+        ))
 
         // Register print function
         scriptGlobals.set("print", object : VarArgFunction() {

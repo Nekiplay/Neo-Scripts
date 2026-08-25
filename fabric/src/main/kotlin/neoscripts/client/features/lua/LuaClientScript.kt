@@ -749,6 +749,13 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
     private fun registerOtherCustomFunctions() {
         scriptGlobals.set("currentScriptName", LuaValue.valueOf(scriptName))
 
+        // Текущая версия мода из метаданных Fabric
+        scriptGlobals.set("modVersion", LuaValue.valueOf(
+            FabricLoader.getInstance().getModContainer("neoscripts")
+                .map { it.metadata.version.friendlyString }
+                .orElse("unknown")
+        ))
+
         // Register print function
         scriptGlobals.set("print", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
