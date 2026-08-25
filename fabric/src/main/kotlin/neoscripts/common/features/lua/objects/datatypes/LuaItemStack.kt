@@ -16,8 +16,11 @@ import com.nekiplay.neoscripts.client.utils.Utils
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.component.DataComponents
 import net.minecraft.nbt.ByteArrayTag
+import net.minecraft.nbt.ByteTag
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.DoubleTag
 import net.minecraft.nbt.IntArrayTag
+import net.minecraft.nbt.IntTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.nbt.LongArrayTag
 import net.minecraft.nbt.NbtOps
@@ -42,6 +45,7 @@ import net.minecraft.world.item.ShearsItem
 import net.minecraft.world.item.ShieldItem
 import net.minecraft.world.item.TridentItem
 import net.minecraft.world.item.component.ItemLore
+import net.minecraft.world.item.component.CustomData
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import org.luaj.vm2.LuaDouble
@@ -358,8 +362,74 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                     stack.set(DataComponents.PROFILE, ResolvableProfile.createResolved(GameProfile(uuid, "", PropertyMap(multimap))))
                 }
             }
-            else -> super.set(key, value)
+            else -> setCustomVariable(field, value)
         }
+    }
+
+    /**
+     * Произвольные пользовательские переменные предмета хранятся в компоненте
+     * CUSTOM_DATA и автоматически синхронизируются между сервером и клиентом
+     * вместе с ItemStack. Чтение выполняется через getUnknownData.
+     */
+    private fun setCustomVariable(field: String, value: LuaValue) {
+        val tag = ItemUtils.getCustomData(stack).copy()
+
+        if (value.isnil()) {
+            tag.remove(field)
+        } else {
+            val nbt = luaToNbt(value) ?: return
+            tag.put(field, nbt)
+        }
+
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag))
+    }
+
+    /**
+     * Конвертирует Lua-значение в NBT-тег:
+     * boolean -> ByteTag, целое число -> IntTag, дробное -> DoubleTag,
+     * строка -> StringTag, таблица -> ListTag (последовательные ключи 1..n)
+     * или CompoundTag (остальные таблицы).
+     */
+    private fun luaToNbt(value: LuaValue): Tag? = when {
+        value.isboolean() -> ByteTag.valueOf(value.toboolean())
+        value.isint() -> IntTag.valueOf(value.toint())
+        value.isnumber() -> DoubleTag.valueOf(value.todouble())
+        value.isstring() -> StringTag.valueOf(value.tojstring())
+        value.istable() -> {
+            val t = value.checktable()
+            val len = t.length()
+            var isList = len > 0
+            val list = ListTag()
+            if (isList) {
+                for (i in 1..len) {
+                    val element = t.get(i)
+                    if (element.isnil()) {
+                        isList = false
+                        break
+                    }
+                    val converted = luaToNbt(element)
+                    if (converted == null) {
+                        isList = false
+                        break
+                    }
+                    list.add(converted)
+                }
+            }
+            if (isList) {
+                list
+            } else {
+                val compound = CompoundTag()
+                var k: LuaValue = LuaValue.NIL
+                while (true) {
+                    val entry = t.next(k)
+                    k = entry.arg(1)
+                    if (k.isnil()) break
+                    luaToNbt(entry.arg(2))?.let { compound.put(k.tojstring(), it) }
+                }
+                compound
+            }
+        }
+        else -> null
     }
 
     private inner class isCorrectToolForDrops : OneArgFunction() {
