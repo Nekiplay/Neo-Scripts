@@ -28,8 +28,10 @@ class LuaTransform(
         fun fromTransformation(transformation: Transformation): LuaTransform {
             val translation = Vector3f(transformation.translation())
             val scale = Vector3f(transformation.scale())
+            // Декодируем в том же порядке, что и кодируем в toTransformation (rotationZYX),
+            // иначе обратная конвертация не совпадает при мультиосевых поворотах
             val eulerRad = Vector3f()
-            transformation.leftRotation().getEulerAnglesXYZ(eulerRad)
+            transformation.leftRotation().getEulerAnglesZYX(eulerRad)
             val rotationDegrees = Vector3f(
                 Math.toDegrees(eulerRad.x.toDouble()).toFloat(),
                 Math.toDegrees(eulerRad.y.toDouble()).toFloat(),
