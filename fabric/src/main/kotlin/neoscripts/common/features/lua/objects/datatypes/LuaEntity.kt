@@ -17,7 +17,6 @@ import com.nekiplay.neoscripts.common.mixins.minecraft.TextDisplayAccessor
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaVector3d
-import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaTransform
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.phys.LuaBox
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponentBuilder
@@ -1035,18 +1034,11 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "transformation", "transform" -> {
                 if (entity is Display) {
                     when {
-                        // LuaTransform с полной матрицей (прочитан с display-сущности) —
-                        // применяем матрицу как есть, без эйлер-конверсии
-                        value is LuaTransform && value.fullMatrix != null -> {
-                            (entity as DisplayAccessor).nsSetTransformation(
-                                com.mojang.math.Transformation(org.joml.Matrix4f(value.fullMatrix))
-                            )
-                        }
-                        // LuaTransform (creator.createTransform) — euler + scale
+                        // LuaTransform / Transformation (sugar учитывает fullMatrix)
                         value.isTransformation() -> {
                             (entity as DisplayAccessor).nsSetTransformation(value.toTransformation())
                         }
-                        // { matrix = {16 чисел row-major} } — точная матрица 4x4, без эйлеров
+                        // { matrix = {16 чисел row-major} } — точная матрица 4x4
                         value.istable() -> {
                             val mt = value.get("matrix")
                             if (mt.istable() && mt.length() >= 16) {

@@ -217,9 +217,3 @@ fun LuaValue.toEntityType(): EntityType<*>? = when {
 /** Проверка: трансформация display-сущностей (transform) или сырая Transformation. */
 fun LuaValue.isTransformation(): Boolean =
     this is LuaTransform || isuserdata(Transformation::class.java)
-
-/** Приведение к com.mojang.math.Transformation. */
-fun LuaValue.toTransformation(): Transformation? = when {
-    this is LuaTransform -> LuaTransform.toTransformation(translation, scale, rotationDegrees)
-    else -> touserdata() as? Transformation
-}
