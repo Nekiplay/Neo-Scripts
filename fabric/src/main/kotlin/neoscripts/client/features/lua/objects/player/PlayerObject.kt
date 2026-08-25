@@ -12,6 +12,7 @@ import com.nekiplay.neoscripts.client.utils.RaycastUtils
 import com.nekiplay.neoscripts.client.utils.RotationUtils
 import com.nekiplay.neoscripts.client.utils.aiming.RotationManager
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity
+import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaScoreboard
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaVector3d
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.phys.LuaRaycast
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent
@@ -93,6 +94,8 @@ class PlayerObject : LuaValue() {
             put(LuaValue.valueOf("getLookEndPos"), GetLookEndPosFunction())
             put(LuaValue.valueOf("getDirectionFromYawPitch"), GetDirectionFromYawPitch())
             put(LuaValue.valueOf("getScoreBoardLines"), GetScoreboardLinesFunction())
+            put(LuaValue.valueOf("getScoreboard"), GetScoreboardFunction())
+            put(LuaValue.valueOf("getScoreBoard"), GetScoreboardFunction())
             put(LuaValue.valueOf("getTab"), GetTabFunction())
             put(LuaValue.valueOf("addToast"), AddToastFunction())
             put(LuaValue.valueOf("getBossBar"), GetBossBarFunction())
@@ -227,6 +230,13 @@ class PlayerObject : LuaValue() {
                 table.set(index + 1, valueOf(line.getFormattedString()))
             }
             return table
+        }
+    }
+
+    private class GetScoreboardFunction : ZeroArgFunction() {
+        override fun call(): LuaValue? {
+            val player = mc.player ?: return NIL
+            return LuaScoreboard(player.level().getScoreboard())
         }
     }
 

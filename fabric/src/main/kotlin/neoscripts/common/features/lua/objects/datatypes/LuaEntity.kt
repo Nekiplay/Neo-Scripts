@@ -530,6 +530,11 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "inventory" -> {
                 if (entity is Player) LuaInventory(entity.inventory) else NIL
             }
+
+            // Табло игрока (уровня). Клиент: локальные изменения; сервер: синхронизация клиентам
+            "scoreboard" -> {
+                if (entity is Player) LuaScoreboard(entity.level().getScoreboard()) else NIL
+            }
             "teleport" -> TeleportFunction()
             "add_passenger", "addPassenger" -> AddPassengerFunction()
             "remove_passenger", "removePassenger" -> RemovePassengerFunction()
