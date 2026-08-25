@@ -40,7 +40,6 @@ import net.minecraft.world.entity.EntitySpawnReason
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
-import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.ClipContext
 import net.minecraft.world.level.LightLayer
 import net.minecraft.world.level.block.Block
@@ -932,24 +931,19 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
     }
 
     /**
-     * world.executeCommand(command [, x, y, z] [, options]) — выполняет серверную команду от имени
+     * world.executeCommand(command [, x, y, z]) — выполняет серверную команду от имени
      * виртуального источника с полными правами (PermissionSet.ALL_PERMISSIONS).
      *
      * Возвращает несколько значений:
      *   1) результат команды:
      *        - LuaEntity — команда заспавнила ровно одну сущность (например, /summon);
      *        - таблица LuaEntity — заспавнено несколько сущностей;
-     *        - таблица { pos = LuaBlockPos, state = LuaBlockState } — команда изменила блоки
-     *          (/setblock, /fill, /clone и т.п.);
-     *        - TRUE — сущностей/изменений блоков не обнаружено;
+     *        - TRUE — новых сущностей нет;
      *        - FALSE при ошибке выполнения;
      *   2) числовой результат команды (int) или NIL;
      *   3) сообщение об ошибке (string) или NIL.
      *
-     * Необязательная позиция задаёт точку для относительных координат (~) и центр области диффа
-     * блоков. options: { radius = n } — полуразмер кубической области поиска изменённых блоков
-     * вокруг позиции (по умолчанию 8). Дифф ведётся только по чанкам, загруженным ДО выполнения
-     * команды; изменения в выгруженных чанках не отслеживаются.
+     * Необязательная позиция задаёт точку для относительных координат (~) в команде.
      */
     private inner class ExecuteCommandFunction : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
@@ -963,47 +957,11 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
             // Brigadier ожидает команду без ведущего слэша
             val command = args.arg1().tojstring().removePrefix("/")
 
-            // [cmd, x, y, z] | [cmd, {x,y,z}] | [cmd] + опциональная таблица options последним аргументом
-            var argIndex = 2
-            val parsedPos = parseVec3(args.arg(argIndex), args.arg(argIndex + 1), args.arg(argIndex + 2))
-            val position = if (parsedPos.second > 0) {
-                argIndex += parsedPos.second
-                parsedPos.first ?: Vec3.ZERO
-            } else {
-                Vec3.ZERO
-            }
+            val parsedPos = parseVec3(args.arg(2), args.arg(3), args.arg(4))
+            val position = if (parsedPos.second > 0) parsedPos.first ?: Vec3.ZERO else Vec3.ZERO
 
-            var radius = 8
-            if (args.arg(argIndex).istable()) {
-                val opts = args.arg(argIndex)
-                radius = opts.get("radius").optdouble(8.0).toInt()
-            }
-            radius = radius.coerceIn(0, 64)
-
-            val centerPos = BlockPos.containing(position)
-
-            fun forEachRegionPos(action: (BlockPos) -> Unit) {
-                val mutable = BlockPos.MutableBlockPos()
-                for (x in centerPos.x - radius..centerPos.x + radius) {
-                    for (y in centerPos.y - radius..centerPos.y + radius) {
-                        for (z in centerPos.z - radius..centerPos.z + radius) {
-                            mutable.set(x, y, z)
-                            action(mutable.immutable())
-                        }
-                    }
-                }
-            }
-
-            // Снимки до выполнения: сущности, загруженные чанки и состояния блоков в области диффа
-            val entitiesBefore = HashSet<Entity>(lvl.allEntities)
-            val loadedChunksBefore = HashSet<ChunkPos>()
-            val blocksBefore = HashMap<BlockPos, BlockState>()
-            forEachRegionPos { pos ->
-                if (lvl.hasChunkAt(pos)) {
-                    loadedChunksBefore.add(ChunkPos(pos.x shr 4, pos.z shr 4))
-                    blocksBefore[pos] = lvl.getBlockState(pos)
-                }
-            }
+            // Снимок сущностей до выполнения — по разнице находим заспавненные командой
+            val entitiesBefore = lvl.allEntities.toHashSet()
 
             val source = CommandSourceStack(
                 CommandSource.NULL,
@@ -1023,7 +981,7 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
                 val result = dispatcher.execute(parseResults)
 
                 // Разница снимков: новые сущности
-                val spawned = lvl.allEntities.filter { it !in entitiesBefore }
+                val spawned = lvl.allEntities.filter { !entitiesBefore.contains(it) }
 
                 when {
                     spawned.size == 1 ->
@@ -1037,27 +995,8 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
                         LuaValue.varargsOf(entitiesTable, valueOf(result))
                     }
 
-                    else -> {
-                        // Изменённые/добавленные/удалённые блоки в области диффа
-                        val changedBlocks = tableOf()
-                        var blockIndex = 1
-                        forEachRegionPos { pos ->
-                            if (ChunkPos(pos.x shr 4, pos.z shr 4) in loadedChunksBefore) {
-                                val state = lvl.getBlockState(pos)
-                                if (blocksBefore[pos] != state) {
-                                    val entry = tableOf()
-                                    entry.set("pos", LuaBlockPos(pos))
-                                    entry.set("state", LuaBlockState(state))
-                                    changedBlocks.set(blockIndex++, entry)
-                                }
-                            }
-                        }
-
-                        LuaValue.varargsOf(
-                            if (blockIndex > 1) changedBlocks else TRUE,
-                            valueOf(result)
-                        )
-                    }
+                    else ->
+                        LuaValue.varargsOf(TRUE, valueOf(result))
                 }
             } catch (e: CommandSyntaxException) {
                 LuaValue.varargsOf(FALSE, NIL, valueOf(e.message ?: "Unknown command error"))
