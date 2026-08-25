@@ -7,6 +7,7 @@ import net.minecraft.resources.ResourceKey
 import net.minecraft.server.MinecraftServer
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.lib.OneArgFunction
+import org.luaj.vm2.lib.ZeroArgFunction
 
 class LuaServer(val server: MinecraftServer?) : LuaValue() {
     override fun typename(): String = "luaserver"
