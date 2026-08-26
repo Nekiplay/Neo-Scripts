@@ -38,6 +38,7 @@ import com.nekiplay.neoscripts.common.features.lua.LuaManager
 import com.nekiplay.neoscripts.common.features.lua.MinecraftLuajavaLib
 import com.nekiplay.neoscripts.common.features.lua.Script
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaItemStack
+import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaLevelChunk
@@ -54,8 +55,10 @@ import net.minecraft.core.Holder
 import net.minecraft.network.chat.Component
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.world.InteractionHand
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.chunk.LevelChunk
+import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.Globals
 import org.luaj.vm2.LuaClosure
@@ -94,6 +97,8 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
     private val onSendCommandEventCallbacks = ArrayList<LuaValue>()
     private val useBlockCallbacks = ArrayList<LuaValue>()
     private val attackBlockCallbacks = ArrayList<LuaValue>()
+    private val useEntityCallbacks = ArrayList<LuaValue>()
+    private val attackEntityCallbacks = ArrayList<LuaValue>()
     private val imguiRenderCallbacks = ArrayList<LuaValue>()
     private val imguiInitCallbacks = ArrayList<LuaValue>()
     private val inventoryItemChangeCallbacks = ArrayList<LuaValue>()
@@ -239,6 +244,26 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
                 if (!callback.isfunction()) return FALSE
                 synchronized(callbacksLock) {
                     return valueOf(attackBlockCallbacks.add(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("registerAttackEntity", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(attackEntityCallbacks.add(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("registerUseEntity", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(useEntityCallbacks.add(callback))
                 }
             }
         })
@@ -567,6 +592,26 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
                 val callback = args.arg(1)
                 synchronized(callbacksLock) {
                     return valueOf(attackBlockCallbacks.remove(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("unregisterAttackEntity", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(attackEntityCallbacks.remove(callback))
+                }
+            }
+        })
+
+        scriptGlobals.set("unregisterUseEntity", object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                val callback = args.arg(1)
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(useEntityCallbacks.remove(callback))
                 }
             }
         })
@@ -1272,6 +1317,54 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
         return allow
     }
 
+    fun onAttackEntity(hand: InteractionHand, target: Entity, hit: EntityHitResult?): Boolean {
+        var allow = true
+        val callbacks = synchronized(callbacksLock) {
+            attackEntityCallbacks.toTypedArray()
+        }
+
+        val t = LuaValue.tableOf()
+        t.set("entity", LuaEntity(target))
+        t.set("hand", LuaValue.valueOf(hand.name))
+        if (hit != null) t.set("hit_pos", LuaVector3d(hit.location))
+
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(t)
+                if (res.isboolean() && !res.toboolean()) {
+                    allow = false
+                }
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in attack entity callback in ${scriptName}", e)
+            }
+        }
+        return allow
+    }
+
+    fun onUseEntity(hand: InteractionHand, target: Entity, hit: EntityHitResult?): Boolean {
+        var allow = true
+        val callbacks = synchronized(callbacksLock) {
+            useEntityCallbacks.toTypedArray()
+        }
+
+        val t = LuaValue.tableOf()
+        t.set("entity", LuaEntity(target))
+        t.set("hand", LuaValue.valueOf(hand.name))
+        if (hit != null) t.set("hit_pos", LuaVector3d(hit.location))
+
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(t)
+                if (res.isboolean() && !res.toboolean()) {
+                    allow = false
+                }
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in use entity callback in ${scriptName}", e)
+            }
+        }
+        return allow
+    }
+
     fun onClientTick() {
         val callbacks = synchronized(callbacksLock) {
             clientTickCallbacks.toTypedArray()
@@ -1777,6 +1870,8 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
             inventoryItemChangeCallbacks.clear()
             useBlockCallbacks.clear()
             attackBlockCallbacks.clear()
+            useEntityCallbacks.clear()
+            attackEntityCallbacks.clear()
             clientTickCallbacks.clear()
             clientPreTickCallbacks.clear()
             blockUpdateCallbacks.clear()

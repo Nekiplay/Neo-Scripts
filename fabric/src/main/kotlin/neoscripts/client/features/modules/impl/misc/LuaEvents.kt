@@ -25,7 +25,9 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback
+import net.fabricmc.fabric.api.event.player.AttackEntityCallback
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
+import net.fabricmc.fabric.api.event.player.UseEntityCallback
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.registries.BuiltInRegistries
@@ -44,6 +46,7 @@ import net.minecraft.world.entity.Relative
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
 import net.minecraft.world.phys.BlockHitResult
+import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.HitResult
 import org.luaj.vm2.LuaValue
 
@@ -375,6 +378,48 @@ object LuaEvents : ClientModule() {
                 try {
                     if (script is LuaClientScript)
                     if (!script.onAttackBlock(pos, direction, hand)) {
+                        allow = false
+                    }
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
+
+            if (allow) {
+                InteractionResult.PASS
+            } else {
+                InteractionResult.FAIL
+            }
+        })
+
+        AttackEntityCallback.EVENT.register(AttackEntityCallback { player: Player, world: Level, hand: InteractionHand, entity: net.minecraft.world.entity.Entity, hitResult: EntityHitResult? ->
+            var allow = true
+
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
+                try {
+                    if (script is LuaClientScript)
+                    if (!script.onAttackEntity(hand, entity, hitResult)) {
+                        allow = false
+                    }
+                } catch (e: Exception) {
+                    // Обработка ошибок
+                }
+            }
+
+            if (allow) {
+                InteractionResult.PASS
+            } else {
+                InteractionResult.FAIL
+            }
+        })
+
+        UseEntityCallback.EVENT.register(UseEntityCallback { player: Player, world: Level, hand: InteractionHand, entity: net.minecraft.world.entity.Entity, hitResult: EntityHitResult? ->
+            var allow = true
+
+            LUA_MANAGER?.scripts?.values?.forEach { script ->
+                try {
+                    if (script is LuaClientScript)
+                    if (!script.onUseEntity(hand, entity, hitResult)) {
                         allow = false
                     }
                 } catch (e: Exception) {
