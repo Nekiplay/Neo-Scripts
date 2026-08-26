@@ -62,6 +62,7 @@ class Creator : LuaValue() {
             "registerItem" -> RegisterItem()
             "registerBlock" -> RegisterBlock()
             "registerBlockItem" -> RegisterBlockItem()
+            "getItemTexture" -> GetItemTexture()
             "createVector3", "createVector3d" -> CreateVector3()
             "createTransform", "createTransformation" -> CreateTransform()
             else -> super.get(key)
@@ -215,6 +216,20 @@ class Creator : LuaValue() {
 
             val item = DynamicContent.registerBlockItem(args.arg1().tojstring(), state.block, settings) ?: return NIL
             return LuaItemStack(ItemStack(item))
+        }
+    }
+
+    /**
+     * creator.getItemTexture("neoscripts:my_item")
+     * Возвращает Identifier текстуры динамического предмета/блока как строку,
+     * загружая файл с диска при первом вызове (путь задается в settings.texture).
+     * nil, если текстура не задана или файл не найден.
+     */
+    class GetItemTexture : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            if (!arg.isstring()) return NIL
+            val identifier = DynamicContent.getDynamicTexture(arg.tojstring()) ?: return NIL
+            return valueOf(identifier.toString())
         }
     }
 
