@@ -189,11 +189,16 @@ open class CommonLuaScript(scriptName: String, manager: LuaManager) : Script(scr
             "items" -> Items()
             "text_builder", "textbuilder", "component_builder", "componentbuilder" ->
                 LuaComponentBuilder.createLibrary()
+            "content", "registrar", "content_lib", "dynamic_content" -> ContentLib()
             else -> null
         }
     }
 
     open fun requireModule(moduleName: String): LuaValue {
+        // Сначала общие библиотеки (creator, items, content, json, ...),
+        // затем поиск файла модуля
+        resolveCommonModule(moduleName.lowercase())?.let { return it }
+
         val moduleFile = manager.findModuleFile(moduleName)
             ?: throw org.luaj.vm2.LuaError("module '$moduleName' not found")
 

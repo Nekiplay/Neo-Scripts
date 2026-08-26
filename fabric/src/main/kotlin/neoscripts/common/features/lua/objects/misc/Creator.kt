@@ -2,14 +2,8 @@ package com.nekiplay.neoscripts.common.features.lua.objects.misc
 
 import com.nekiplay.neoscripts.ClientMain.mc
 import com.nekiplay.neoscripts.ServerMain
-import com.nekiplay.neoscripts.client.sugar.isBlock
-import com.nekiplay.neoscripts.client.sugar.isContentSettings
-import com.nekiplay.neoscripts.client.sugar.toBlock
-import com.nekiplay.neoscripts.client.sugar.toContentSettings
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaBlockState
-import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaContentSettings
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity
-import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaTransform
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaDirection
@@ -22,7 +16,6 @@ import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.Identifier
 import net.minecraft.world.entity.EntitySpawnReason
 import net.minecraft.world.entity.EntityType
-import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.AABB
@@ -58,11 +51,6 @@ class Creator : LuaValue() {
             "createMutableBlockPos" -> CreateMutableBlockPos()
             "createBlockState" -> CreateBlockState()
             "createEntity", "createEntityType" -> CreateEntity()
-            "createSettings", "contentSettings", "itemSettings", "blockSettings" -> CreateContentSettings()
-            "registerItem" -> RegisterItem()
-            "registerBlock" -> RegisterBlock()
-            "registerBlockItem" -> RegisterBlockItem()
-            "getItemTexture" -> GetItemTexture()
             "createVector3", "createVector3d" -> CreateVector3()
             "createTransform", "createTransformation" -> CreateTransform()
             else -> super.get(key)
@@ -147,91 +135,7 @@ class Creator : LuaValue() {
         }
     }
 
-    /**
-     * creator.createSettings({ name = "Мой предмет", texture = "neoscripts:textures/item/my.png",
-     *                           maxStackSize = 16, fireResistant = true, rarity = "epic" })
-     * Создает LuaContentSettings для registerItem/registerBlock/registerBlockItem.
-     * Все поля опциональны. Настройку можно менять и после создания: settings.name = "..."
-     */
-    class CreateContentSettings : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs =
-            if (args.narg() >= 1 && args.arg(1).istable()) {
-                LuaContentSettings.fromTable(args.arg(1))
-            } else {
-                LuaContentSettings()
-            }
-    }
-
-    /**
-     * creator.registerItem("neoscripts:my_item" [, settings])
-     * Динамически регистрирует предмет в BuiltInRegistries.ITEM.
-     * Работает из скриптов автозагрузки (реестр временно размораживается).
-     * settings — результат creator.createSettings({...}) (опционально):
-     * задает имя, текстуру, размер стака, редкость и т.д.
-     * Возвращает LuaItemStack нового предмета или nil при ошибке.
-     */
-    class RegisterItem : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            if (!args.arg(1).isstring()) return NIL
-            val settings = if (args.narg() >= 2) args.arg(2).toContentSettings() else null
-            val item = DynamicContent.registerItem(args.arg1().tojstring(), settings) ?: return NIL
-            return LuaItemStack(ItemStack(item))
-        }
-    }
-
-    /**
-     * creator.registerBlock("neoscripts:my_block" [, settings])
-     * Динамически регистрирует блок в BuiltInRegistries.BLOCK.
-     * Возвращает LuaBlockState (состояние по умолчанию) или nil при ошибке.
-     */
-    class RegisterBlock : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            if (!args.arg(1).isstring()) return NIL
-            val settings = if (args.narg() >= 2) args.arg(2).toContentSettings() else null
-            val block = DynamicContent.registerBlock(args.arg1().tojstring(), settings) ?: return NIL
-            return LuaBlockState(block.defaultBlockState())
-        }
-    }
-
-    /**
-     * creator.registerBlockItem("neoscripts:my_block", blockState [, settings])
-     * Регистрирует предмет-блок (BlockItem) для блока. Второй аргумент —
-     * результат creator.registerBlock (LuaBlockState).
-     * Возвращает LuaItemStack или nil.
-     */
-    class RegisterBlockItem : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {
-            if (!args.arg(1).isstring()) return NIL
-
-            // Аргументы могут идти как (id, state [, settings]) так и (id, settings, state)
-            var stateArg: LuaValue? = null
-            var settingsArg: LuaValue? = null
-            for (i in 2..args.narg()) {
-                val arg = args.arg(i)
-                if (arg.isBlock() && stateArg == null) stateArg = arg
-                else if (settingsArg == null && (arg.isContentSettings() || arg.istable())) settingsArg = arg
-            }
-            val state = stateArg?.toBlock() ?: return NIL
-            val settings = settingsArg?.toContentSettings()
-
-            val item = DynamicContent.registerBlockItem(args.arg1().tojstring(), state.block, settings) ?: return NIL
-            return LuaItemStack(ItemStack(item))
-        }
-    }
-
-    /**
-     * creator.getItemTexture("neoscripts:my_item")
-     * Возвращает Identifier текстуры динамического предмета/блока как строку,
-     * загружая файл с диска при первом вызове (путь задается в settings.texture).
-     * nil, если текстура не задана или файл не найден.
-     */
-    class GetItemTexture : OneArgFunction() {
-        override fun call(arg: LuaValue): LuaValue {
-            if (!arg.isstring()) return NIL
-            val identifier = DynamicContent.getDynamicTexture(arg.tojstring()) ?: return NIL
-            return valueOf(identifier.toString())
-        }
-    }
+    // Регистрация предметов/блоков переехала в ContentLib (require("content"))
 
     class CreateBlockPos : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
