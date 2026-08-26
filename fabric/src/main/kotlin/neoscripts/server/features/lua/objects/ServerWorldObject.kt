@@ -42,8 +42,12 @@ import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.server.permissions.PermissionSet
+import net.minecraft.core.particles.DustParticleOptions
+import net.minecraft.core.particles.ParticleOptions
+import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
+import org.joml.Vector3f
 import net.minecraft.util.Mth
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EntitySpawnReason
@@ -337,6 +341,14 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
             put(valueOf("raycastFromRotation"), RaycastFromRotationFunction())
             put(valueOf("raycastToBlocksFromId"), RaycastToBlocksFunction())
             put(valueOf("raycastToBlocksFromIdentifier"), RaycastToBlocksFromIdentifierFunction())
+            put(valueOf("spawnParticle"), SpawnParticleFunction())
+            put(valueOf("spawnParticles"), SpawnParticleFunction())
+            put(valueOf("particle"), SpawnParticleFunction())
+            put(valueOf("sendParticle"), SpawnParticleFunction())
+            put(valueOf("sendParticles"), SpawnParticleFunction())
+            put(valueOf("spawnParticleFor"), SpawnParticleForPlayerFunction())
+            put(valueOf("spawnParticleForPlayer"), SpawnParticleForPlayerFunction())
+            put(valueOf("sendParticleFor"), SpawnParticleForPlayerFunction())
             put(valueOf("playSound"), PlaySoundFunction())
             put(valueOf("executeCommand"), ExecuteCommandFunction())
             put(valueOf("runCommand"), ExecuteCommandFunction())
@@ -1213,6 +1225,147 @@ class ServerWorldObject(val level: ServerLevel?) : LuaUserdata(level) {
                 }
             }
 
+            return TRUE
+        }
+    }
+
+    // ── Particle helpers ──
+    private fun LuaValue.optF(default: Float): Float = if (isnumber()) tofloat() else default
+    private fun resolveParticleOptions(idStr: String, extra: LuaValue?): ParticleOptions? {
+        val id = idStr.trim().lowercase()
+        // Dust с цветом
+        if (id.contains("dust") || id == "minecraft:dust" || id == "dust") {
+            var r = 1.0f; var g = 0f; var b = 0f; var scale = 1.0f
+            if (extra != null && !extra.isnil()) {
+                if (extra.istable()) {
+                    // {r=1,g=0,b=0,scale=1} или {1,0,0} или {color={1,0,0}}
+                    val colorTbl = extra.get("color")
+                    if (!colorTbl.isnil() && colorTbl.istable()) {
+                        r = colorTbl.get(1).optF(r); g = colorTbl.get(2).optF(g); b = colorTbl.get(3).optF(b)
+                        if (r.isNaN()) { r = colorTbl.get("r").optF(r); g = colorTbl.get("g").optF(g); b = colorTbl.get("b").optF(b) }
+                    } else {
+                        r = extra.get("r").optF(extra.get(1).optF(r))
+                        g = extra.get("g").optF(extra.get(2).optF(g))
+                        b = extra.get("b").optF(extra.get(3).optF(b))
+                    }
+                    scale = extra.get("scale").optF(extra.get("size").optF(scale))
+                    // 0..1 или 0..255
+                    if (r > 1f || g > 1f || b > 1f) { r /= 255f; g /= 255f; b /= 255f }
+                }
+            }
+            val rgb = ((r * 255).toInt() shl 16) or (((g * 255).toInt() shl 8)) or (b * 255).toInt()
+            return try { DustParticleOptions(rgb, scale) } catch (_: Exception) { null }
+        }
+        // Простые частицы — резолв через реестр
+        return try {
+            val pid = Identifier.parse(idStr)
+            val holder = BuiltInRegistries.PARTICLE_TYPE.get(pid)
+            if (holder.isPresent) {
+                val type = holder.get().value()
+                // SimpleParticleType implements ParticleOptions, иначе пробуем как ParticleOptions
+                type as? ParticleOptions ?: ParticleTypes.FLAME as ParticleOptions
+            } else null
+        } catch (_: Exception) { null }
+    }
+
+    private data class ParticleArgs(
+        val options: ParticleOptions,
+        val pos: Vec3,
+        val count: Int,
+        val delta: Vec3,
+        val speed: Double,
+        val force: Boolean
+    )
+
+    private fun parseParticleVarargs(args: Varargs, startIdx: Int): ParticleArgs? {
+        // Поддерживаем две формы:
+        // 1) world:spawnParticle("minecraft:flame", x,y,z, count, dx,dy,dz, speed, force?, dustOpts?)
+        // 2) world:spawnParticle({id="minecraft:flame", pos={x,y,z}|Vec3, count=10, delta={x,y,z}, speed=0.1, force=false, color={r,g,b}})
+        if (args.narg() >= startIdx && args.arg(startIdx).istable() && args.arg(startIdx).get("id").isstring()) {
+            val tbl = args.arg(startIdx)
+            val id = tbl.get("id").tojstring()
+            val posTbl = tbl.get("pos")
+            val pos = when {
+                posTbl.isVector() -> posTbl.toVector()
+                posTbl.istable() -> {
+                    val x = posTbl.get("x").optdouble(Double.NaN); val y = posTbl.get("y").optdouble(Double.NaN); val z = posTbl.get("z").optdouble(Double.NaN)
+                    if (!x.isNaN()) Vec3(x, posTbl.get("y").todouble(), posTbl.get("z").todouble()) else null
+                }
+                else -> Vec3(tbl.get("x").optdouble(0.0), tbl.get("y").optdouble(0.0), tbl.get("z").optdouble(0.0))
+            } ?: Vec3.ZERO
+            val count = tbl.get("count").optint(1)
+            val deltaTbl = tbl.get("delta")
+            val dx = deltaTbl.get("x").optdouble(deltaTbl.get(1).optdouble(0.0))
+            val dy = deltaTbl.get("y").optdouble(deltaTbl.get(2).optdouble(0.0))
+            val dz = deltaTbl.get("z").optdouble(deltaTbl.get(3).optdouble(0.0))
+            val speed = tbl.get("speed").optdouble(0.0)
+            val force = tbl.get("force").optboolean(false)
+            val extra = tbl.get("color").takeIf { !it.isnil() } ?: tbl.get("dust").takeIf { !it.isnil() } ?: tbl
+            val opts = resolveParticleOptions(id, extra) ?: return null
+            return ParticleArgs(opts, pos, count, Vec3(dx, dy, dz), speed, force)
+        }
+        // Форма 1
+        val id = args.arg(startIdx).takeIf { it.isstring() }?.tojstring() ?: return null
+        // позиция: либо Vec3, либо x,y,z
+        var idx = startIdx + 1
+        var pos: Vec3? = null
+        val first = args.arg(idx)
+        if (first != null && first.isVector()) { pos = first.toVector(); idx += 1 }
+        else if (first != null && first.istable() && (!first.get("x").isnil() || first.get(1).isnumber())) {
+            // таблица pos
+            val x = first.get("x").optdouble(first.get(1).optdouble(Double.NaN))
+            val y = first.get("y").optdouble(first.get(2).optdouble(Double.NaN))
+            val z = first.get("z").optdouble(first.get(3).optdouble(Double.NaN))
+            if (!x.isNaN()) { pos = Vec3(x, y, z); idx += 1 }
+        } else if (args.arg(idx).isnumber() && args.arg(idx+1).isnumber() && args.arg(idx+2).isnumber()) {
+            pos = Vec3(args.arg(idx).todouble(), args.arg(idx+1).todouble(), args.arg(idx+2).todouble()); idx += 3
+        }
+        if (pos == null) return null
+        val count = args.arg(idx).takeIf { it.isnumber() }?.toint() ?: 1; if (args.arg(idx).isnumber()) idx += 1
+        var dx = 0.0; var dy = 0.0; var dz = 0.0
+        if (args.arg(idx).isnumber() && args.arg(idx+1).isnumber() && args.arg(idx+2).isnumber()) {
+            dx = args.arg(idx).todouble(); dy = args.arg(idx+1).todouble(); dz = args.arg(idx+2).todouble(); idx += 3
+        } else if (args.arg(idx).istable()) {
+            val t = args.arg(idx); dx = t.get("x").optdouble(t.get(1).optdouble(0.0)); dy = t.get("y").optdouble(t.get(2).optdouble(0.0)); dz = t.get("z").optdouble(t.get(3).optdouble(0.0)); idx += 1
+        }
+        val speed = args.arg(idx).takeIf { it.isnumber() }?.todouble() ?: 0.0; if (args.arg(idx).isnumber()) idx += 1
+        val force = args.arg(idx).takeIf { !it.isnil() }?.optboolean(false) ?: false; if (!args.arg(idx).isnil() && args.arg(idx).isboolean()) idx += 1
+        val extra = args.arg(idx).takeIf { it.istable() }
+        val opts = resolveParticleOptions(id, extra) ?: return null
+        return ParticleArgs(opts, pos, count, Vec3(dx, dy, dz), speed, force)
+    }
+
+    private inner class SpawnParticleFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val lvl = level ?: return NIL
+            val p = parseParticleVarargs(args, 1) ?: return error("Invalid arguments: expected (id, x,y,z [,count [,dx,dy,dz [,speed [,force]]]] ) or ({id, pos, ...})")
+            // 26.2: lvl.sendParticles(ParticleOptions, x,y,z, count, dx,dy,dz, speed)
+            // also: lvl.sendParticles(ParticleOptions, force, important, x,y,z, count, dx,dy,dz, speed)
+            try {
+                lvl.sendParticles(p.options, p.pos.x, p.pos.y, p.pos.z, p.count, p.delta.x, p.delta.y, p.delta.z, p.speed)
+            } catch (_: Exception) {
+                try {
+                    lvl.sendParticles(p.options, p.force, false, p.pos.x, p.pos.y, p.pos.z, p.count, p.delta.x, p.delta.y, p.delta.z, p.speed)
+                } catch (_: Exception) { return NIL }
+            }
+            return TRUE
+        }
+    }
+
+    private inner class SpawnParticleForPlayerFunction : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val lvl = level ?: return NIL
+            val player = resolveServerPlayer(lvl, args.arg(1)) ?: return error("Invalid player: expected player entity/id/name as first arg")
+            val p = parseParticleVarargs(args, 2) ?: return error("Invalid arguments: expected (player, id, x,y,z [,count ...]) or (player, {id, pos, ...})")
+            // 26.2: lvl.sendParticles(ServerPlayer, ParticleOptions, force, important, x,y,z, count, dx,dy,dz, speed)
+            try {
+                lvl.sendParticles(player, p.options, p.force, false, p.pos.x, p.pos.y, p.pos.z, p.count, p.delta.x, p.delta.y, p.delta.z, p.speed)
+            } catch (_: Exception) {
+                try {
+                    // фолбэк broadcast
+                    lvl.sendParticles(p.options, p.pos.x, p.pos.y, p.pos.z, p.count, p.delta.x, p.delta.y, p.delta.z, p.speed)
+                } catch (_: Exception) { return NIL }
+            }
             return TRUE
         }
     }

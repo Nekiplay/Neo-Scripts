@@ -57,6 +57,9 @@ import org.luaj.vm2.LuaValue
  *  noOcclusion / no_occlusion / transparent — отключить окклюзию (не заслоняет свет, как стекло)
  *  collision / collidable — true/false, алиас для noCollision
  *  ignitedByLava / ignited_by_lava — воспламеняется от лавы
+ *  tool / mineableTool / harvestTool — требуемый инструмент: "pickaxe","axe","shovel","hoe" (data/.../mineable/<tool>.json)
+ *  tier / miningTier / level — уровень добычи: "wood","stone","iron","diamond","netherite" (data/.../needs_<tier>_tool.json), требует requiresTool=true
+ *  shape / boxes / collisionShape — кастомная коллизия: {from={0,0,0},to={16,32,16}} или {0,0,0,16,32,16}, 32=2 блока высоты
  */
 class LuaContentSettings(
     var name: String? = null,
@@ -82,6 +85,11 @@ class LuaContentSettings(
     var offsetType: String? = null,
     var copyFrom: String? = null,
     var ignitedByLava: Boolean? = null,
+    // Требуемый инструмент и уровень добычи (для requiresCorrectToolForDrops)
+    // tool: "pickaxe"/"axe"/"shovel"/"hoe" -> data/minecraft/tags/block/mineable/<tool>.json
+    // tier: "wood"/"stone"/"iron"/"diamond"/"netherite"/"gold" -> data/minecraft/tags/block/needs_<tier>_tool.json
+    var mineableTool: String? = null,
+    var miningTier: String? = null,
     // Кастомная коллизия: список боксов [x1,y1,z1,x2,y2,z2] в координатах 0..32 (16=1 блок, 32=2 блока высоты)
     // Задается через shape / collisionShape / boxes : { {from={0,0,0},to={16,32,16}}, {0,0,0,16,16,16}, ... }
     var shapeBoxes: MutableList<DoubleArray>? = null
@@ -128,6 +136,8 @@ class LuaContentSettings(
         "copyFrom", "copy_from", "fullCopy", "full_copy", "copy" -> copyFrom?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
         "ignitedByLava", "ignited_by_lava" -> ignitedByLava?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
         "shape", "collisionShape", "collision_shape", "boxes", "collisionBoxes", "collision_boxes", "hitbox", "hitBox" -> shapeBoxes?.let { boxesToLua(it) } ?: LuaValue.NIL
+        "tool", "mineableTool", "mineable_tool", "harvestTool", "harvest_tool" -> mineableTool?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
+        "tier", "miningTier", "mining_tier", "miningLevel", "mining_level", "needsTier", "needs_tier" -> miningTier?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
         else -> super.get(key)
     }
 
@@ -153,13 +163,21 @@ class LuaContentSettings(
             "sound", "soundType", "sound_type" -> sound = if (value.isnil()) null else value.tojstring()
             "mapColor", "map_color", "color" -> mapColor = if (value.isnil()) null else value.tojstring()
             "instabreak", "insta_break", "instabreakable" -> instabreak = value.toboolean()
-            "requiresTool", "requires_tool", "requiresCorrectTool", "requires_correct_tool" -> requiresCorrectTool = value.toboolean()
+            "requiresTool", "requires_tool", "requiresCorrectTool", "requires_correct_tool" -> {
+                if (value.isstring()) {
+                    val s = value.tojstring().lowercase()
+                    if (s in listOf("true","false")) requiresCorrectTool = s=="true"
+                    else { miningTier = s; requiresCorrectTool = true }
+                } else requiresCorrectTool = value.toboolean()
+            }
             "offsetType", "offset_type", "offset" -> offsetType = if (value.isnil()) null else value.tojstring()
             "copyFrom", "copy_from", "fullCopy", "full_copy", "copy" -> copyFrom = if (value.isnil()) null else value.tojstring()
             "ignitedByLava", "ignited_by_lava" -> ignitedByLava = if (value.isnil()) null else value.toboolean()
             "shape", "collisionShape", "collision_shape", "boxes", "collisionBoxes", "collision_boxes", "hitbox", "hitBox" -> {
                 if (value.isnil()) shapeBoxes = null else shapeBoxes = parseShapeValue(value)
             }
+            "tool", "mineableTool", "mineable_tool", "harvestTool", "harvest_tool" -> mineableTool = if (value.isnil()) null else value.tojstring().lowercase()
+            "tier", "miningTier", "mining_tier", "miningLevel", "mining_level", "needsTier", "needs_tier", "level" -> miningTier = if (value.isnil()) null else value.tojstring().lowercase()
             else -> super.set(key, value)
         }
     }
@@ -451,6 +469,18 @@ class LuaContentSettings(
                 val v = table.get(k)
                 if (!v.isnil()) {
                     parseShapeValue(v)?.let { settings.shapeBoxes = it; break }
+                }
+            }
+            // tool / tier: строковые, но requiresTool может быть строкой-tier
+            settings.mineableTool = str("tool", "mineableTool", "mineable_tool", "harvestTool", "harvest_tool")
+            settings.miningTier = str("tier", "miningTier", "mining_tier", "miningLevel", "mining_level", "needsTier", "needs_tier", "level")
+            // алиас: requiresTool = "iron" -> tier
+            val reqToolStr = table.get("requiresTool").takeIf { it.isstring() }?.tojstring() ?: table.get("requires_tool").takeIf { it.isstring() }?.tojstring() ?: table.get("requiresCorrectTool").takeIf { it.isstring() }?.tojstring()
+            if (reqToolStr != null && settings.miningTier == null) {
+                val lower = reqToolStr.lowercase()
+                if (lower in listOf("wood","wooden","stone","iron","diamond","netherite","gold","golden","copper")) {
+                    settings.miningTier = lower
+                    settings.requiresCorrectTool = true
                 }
             }
             return settings

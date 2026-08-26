@@ -321,8 +321,53 @@ object DynamicContentResourcePack : PackResources {
         return files
     }
 
-    private fun clientFile(relativePath: String): IoSupplier<InputStream>? {
-        val bytes = buildFiles()[relativePath] ?: return null
+    // ── SERVER DATA: теги добычи ──
+    private fun buildServerFiles(): ConcurrentHashMap<String, ByteArray> {
+        val files = ConcurrentHashMap<String, ByteArray>()
+        // Группируем по инструменту
+        val toolGroups = mutableMapOf<String, MutableList<String>>()
+        for ((rawId, tool) in DynamicContent.blockMineableTool) {
+            if (!DynamicContent.isBlockRegistered(rawId)) continue
+            toolGroups.getOrPut(tool) { mutableListOf() }.add(rawId)
+        }
+        for ((tool, ids) in toolGroups) {
+            if (ids.isEmpty()) continue
+            val json = buildString {
+                append("{\"replace\":false,\"values\":[")
+                append(ids.joinToString(",") { "\"$it\"" })
+                append("]}")
+            }
+            files["data/minecraft/tags/block/mineable/${tool}.json"] = json.toByteArray(StandardCharsets.UTF_8)
+        }
+        // Группируем по тиру
+        val tierMap = mapOf(
+            "wood" to "needs_wood_tool", "stone" to "needs_stone_tool",
+            "iron" to "needs_iron_tool", "diamond" to "needs_diamond_tool",
+            "netherite" to "needs_netherite_tool", "gold" to "needs_gold_tool"
+        )
+        val tierGroups = mutableMapOf<String, MutableList<String>>()
+        for ((rawId, tier) in DynamicContent.blockMiningTier) {
+            if (!DynamicContent.isBlockRegistered(rawId)) continue
+            tierGroups.getOrPut(tier) { mutableListOf() }.add(rawId)
+        }
+        for ((tier, ids) in tierGroups) {
+            val tag = tierMap[tier] ?: "needs_${tier}_tool"
+            val json = buildString {
+                append("{\"replace\":false,\"values\":[")
+                append(ids.joinToString(",") { "\"$it\"" })
+                append("]}")
+            }
+            files["data/minecraft/tags/block/${tag}.json"] = json.toByteArray(StandardCharsets.UTF_8)
+        }
+        return files
+    }
+
+    private fun clientFile(relativePath: String, type: PackType): IoSupplier<InputStream>? {
+        val bytes = when (type) {
+            PackType.CLIENT_RESOURCES -> buildFiles()[relativePath]
+            PackType.SERVER_DATA -> buildServerFiles()[relativePath]
+            else -> null
+        } ?: return null
         return IoSupplier { ByteArrayInputStream(bytes) }
     }
 
@@ -337,8 +382,11 @@ object DynamicContentResourcePack : PackResources {
     }
 
     override fun getResource(type: PackType, id: Identifier): IoSupplier<InputStream>? {
-        if (type != PackType.CLIENT_RESOURCES) return null
-        return clientFile("assets/${id.namespace}/${id.path}")
+        return when (type) {
+            PackType.CLIENT_RESOURCES -> clientFile("assets/${id.namespace}/${id.path}", type)
+            PackType.SERVER_DATA -> clientFile("data/${id.namespace}/${id.path}", type)
+            else -> null
+        }
     }
 
     override fun listResources(
@@ -347,13 +395,25 @@ object DynamicContentResourcePack : PackResources {
         prefix: String,
         output: PackResources.ResourceOutput
     ) {
-        if (type != PackType.CLIENT_RESOURCES) return
-        val files = buildFiles()
-        val fullPrefix = "assets/$namespace/$prefix"
+        val files = when (type) {
+            PackType.CLIENT_RESOURCES -> buildFiles()
+            PackType.SERVER_DATA -> buildServerFiles()
+            else -> return
+        }
+        val fullPrefix = when (type) {
+            PackType.CLIENT_RESOURCES -> "assets/$namespace/$prefix"
+            PackType.SERVER_DATA -> "data/$namespace/$prefix"
+            else -> return
+        }
         for ((path, bytes) in files) {
             if (path.startsWith(fullPrefix)) {
-                // path = "assets/<ns>/<rest>"; отрезаем "assets/<ns>/" для Identifier
-                val rel = path.removePrefix("assets/").substringAfter('/')
+                val rel = path.removePrefix(
+                    when (type) {
+                        PackType.CLIENT_RESOURCES -> "assets/"
+                        PackType.SERVER_DATA -> "data/"
+                        else -> continue
+                    }
+                ).substringAfter('/')
                 try {
                     val id = Identifier.fromNamespaceAndPath(namespace, rel)
                     output.accept(id, IoSupplier { ByteArrayInputStream(bytes) })
@@ -364,17 +424,24 @@ object DynamicContentResourcePack : PackResources {
     }
 
     override fun getNamespaces(type: PackType): Set<String> {
-        if (type != PackType.CLIENT_RESOURCES) return emptySet()
-        val all = mutableSetOf<String>()
-        all.addAll(DynamicContent.textureData.keys)
-        all.addAll(DynamicContent.modelOverrides.keys)
-        all.addAll(DynamicContent.modelData.keys)
-        all.addAll(DynamicContent.getKnownIds().mapNotNull {
-            try { it.substringAfter(":").let { r -> Identifier.parse(r).namespace } } catch (_: Exception) { null }
-        })
-        return all.mapNotNull {
-            try { Identifier.parse(it).namespace } catch (_: Exception) { null }
-        }.toSet()
+        return when (type) {
+            PackType.CLIENT_RESOURCES -> {
+                val all = mutableSetOf<String>()
+                all.addAll(DynamicContent.textureData.keys)
+                all.addAll(DynamicContent.modelOverrides.keys)
+                all.addAll(DynamicContent.modelData.keys)
+                all.addAll(DynamicContent.getKnownIds().mapNotNull {
+                    try { it.substringAfter(":").let { r -> Identifier.parse(r).namespace } } catch (_: Exception) { null }
+                })
+                all.mapNotNull {
+                    try { Identifier.parse(it).namespace } catch (_: Exception) { null }
+                }.toSet()
+            }
+            PackType.SERVER_DATA -> {
+                if (DynamicContent.blockMineableTool.isNotEmpty() || DynamicContent.blockMiningTier.isNotEmpty()) setOf("minecraft") else emptySet()
+            }
+            else -> emptySet()
+        }
     }
 
     override fun <T : Any> getMetadataSection(sectionType: MetadataSectionType<T>): T? = null

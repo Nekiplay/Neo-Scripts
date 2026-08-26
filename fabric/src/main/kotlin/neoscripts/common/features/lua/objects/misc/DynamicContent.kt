@@ -75,6 +75,39 @@ object DynamicContent {
     val doorBlockSetType = ConcurrentHashMap<String, String>()
     // Кастомные VoxelShape для коллизии/очертания (поддержка высоты >1 блока: 0..32, 16=1 блок)
     val blockShapes = ConcurrentHashMap<String, VoxelShape>()
+    // Теги добычи: инструмент и уровень (для requiresCorrectToolForDrops)
+    val blockMineableTool = ConcurrentHashMap<String, String>() // rawId -> "pickaxe"|"axe"|...
+    val blockMiningTier = ConcurrentHashMap<String, String>() // rawId -> "stone"|"iron"|"diamond"|...
+
+    private fun normalizeTool(name: String?): String? {
+        if (name == null) return null
+        return when (name.lowercase()) {
+            "pick", "pickaxe" -> "pickaxe"
+            "axe", "ax" -> "axe"
+            "shovel", "spade" -> "shovel"
+            "hoe" -> "hoe"
+            "sword" -> "sword"
+            else -> null
+        }
+    }
+    private fun normalizeTier(name: String?): String? {
+        if (name == null) return null
+        return when (name.lowercase()) {
+            "wood", "wooden" -> "wood"
+            "stone" -> "stone"
+            "iron" -> "iron"
+            "diamond" -> "diamond"
+            "netherite" -> "netherite"
+            "gold", "golden" -> "gold"
+            else -> null
+        }
+    }
+    private fun storeToolTier(rawId: String, settings: LuaContentSettings?) {
+        val tool = normalizeTool(settings?.mineableTool)
+        val tier = normalizeTier(settings?.miningTier)
+        if (tool != null) blockMineableTool[rawId] = tool else blockMineableTool.remove(rawId)
+        if (tier != null) blockMiningTier[rawId] = tier else blockMiningTier.remove(rawId)
+    }
 
     fun getTextureOverride(rawId: String): String? = textureOverrides[rawId]
     fun getModelOverride(rawId: String): String? = modelOverrides[rawId]
@@ -287,6 +320,7 @@ object DynamicContent {
 
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            storeToolTier(rawId, settings)
 
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key)
@@ -349,6 +383,7 @@ object DynamicContent {
             }
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            storeToolTier(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
             val customName = settings?.displayName()
@@ -375,6 +410,7 @@ object DynamicContent {
             }
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            storeToolTier(rawId, settings)
 
             // База для stairs — состояние блока
             val baseIdStr = baseBlockId ?: "minecraft:stone"
@@ -412,6 +448,7 @@ object DynamicContent {
             }
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            storeToolTier(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
             val setType = parseBlockSetType(blockSetTypeName)
@@ -440,6 +477,7 @@ object DynamicContent {
             }
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            storeToolTier(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
             val setType = parseBlockSetType(blockSetTypeName)
@@ -468,6 +506,7 @@ object DynamicContent {
             }
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            storeToolTier(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
             val customName = settings?.displayName()
