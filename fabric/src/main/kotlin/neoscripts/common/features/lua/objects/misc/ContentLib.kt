@@ -5,8 +5,7 @@ import com.nekiplay.neoscripts.client.sugar.toBlock
 import com.nekiplay.neoscripts.client.sugar.toContentSettings
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaContentSettings
-import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaItemStack
-import net.minecraft.world.item.ItemStack
+import net.minecraft.core.registries.BuiltInRegistries
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
@@ -55,13 +54,17 @@ class ContentLib : LuaValue() {
 
     /**
      * content.registerItem("ns:my_item" [, settings])
+     * ВНИМАНИЕ: выполняется до биндинга компонентов (onInitialize), поэтому
+     * возвращает ID предмета СТРОКОЙ, а не LuaItemStack — создать ItemStack
+     * на этом этапе невозможно (Holder.components ещё не связаны).
+     * После загрузки игры предмет доступен через items.get("ns:id").
      */
     class RegisterItem : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             if (!args.arg(1).isstring()) return NIL
             val settings = if (args.narg() >= 2) args.arg(2).toContentSettings() else null
             val item = DynamicContent.registerItem(args.arg1().tojstring(), settings) ?: return NIL
-            return LuaItemStack(ItemStack(item))
+            return valueOf(BuiltInRegistries.ITEM.getKey(item).toString())
         }
     }
 
@@ -79,6 +82,7 @@ class ContentLib : LuaValue() {
 
     /**
      * content.registerBlockItem("ns:my_block", blockState [, settings])
+     * Возвращает ID предмета строкой (см. registerItem).
      */
     class RegisterBlockItem : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
@@ -96,7 +100,7 @@ class ContentLib : LuaValue() {
             val settings = settingsArg?.toContentSettings()
 
             val item = DynamicContent.registerBlockItem(args.arg1().tojstring(), state.block, settings) ?: return NIL
-            return LuaItemStack(ItemStack(item))
+            return valueOf(BuiltInRegistries.ITEM.getKey(item).toString())
         }
     }
 
