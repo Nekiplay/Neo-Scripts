@@ -6,6 +6,7 @@ import com.nekiplay.neoscripts.client.events.main.EventBus
 import com.nekiplay.neoscripts.client.features.commands.impl.LuaCommand
 import com.nekiplay.neoscripts.common.features.lua.LuaManager
 import com.nekiplay.neoscripts.server.features.modules.ModuleManager.registerInbuilt
+import com.nekiplay.neoscripts.common.features.creative.DynamicCreativeTab
 import com.nekiplay.neoscripts.server.features.modules.misc.LuaEvents
 import io.github.classgraph.ClassGraph
 import net.fabricmc.api.ModInitializer
@@ -116,6 +117,10 @@ object ServerMain : ModInitializer {
         val autostartDir = FabricLoader.getInstance().gameDir.resolve(MOD_ID).resolve("autostart")
         Files.createDirectories(autostartDir)
         LUA_MANAGER?.runAutostartScripts(autostartDir.toFile())
+
+        // Креативная вкладка "Neo Scripts" — создается ПОСЛЕ всех Autoload-скриптов,
+        // чтобы иконка и displayItems сразу видели все зарегистрированные предметы.
+        DynamicCreativeTab.register()
 
         val classes = HashSet<Class<*>>()
 
