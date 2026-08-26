@@ -4,9 +4,10 @@ import com.nekiplay.neoscripts.ServerMain
 import com.nekiplay.neoscripts.server.features.lua.LuaServerScript
 import com.nekiplay.neoscripts.server.features.lua.objects.ServerWorldObject
 import com.nekiplay.neoscripts.server.features.modules.ServerModule
+import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity
+import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
-import net.minecraft.server.MinecraftServer
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback
 import net.fabricmc.fabric.api.event.player.BlockEvents
@@ -16,9 +17,18 @@ import net.fabricmc.fabric.api.event.player.PlayerPickItemEvents
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
 import net.fabricmc.fabric.api.event.player.UseEntityCallback
 import net.fabricmc.fabric.api.event.player.UseItemCallback
+import net.fabricmc.fabric.api.message.v1.ServerMessageDecoratorEvent
+import net.fabricmc.fabric.api.message.v1.ServerMessageEvents
+import net.minecraft.commands.CommandSourceStack
+import net.minecraft.network.chat.ChatType
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.PlayerChatMessage
+import net.minecraft.server.MinecraftServer as McServer
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.item.ItemStack
+import java.util.concurrent.CompletableFuture
 
 object LuaEvents : ServerModule() {
 
@@ -26,6 +36,7 @@ object LuaEvents : ServerModule() {
         registerTickEvents()
         registerLifecycleEvents()
         registerInteractionEvents()
+        registerMessageEvents()
     }
 
     private fun registerTickEvents() {
@@ -85,7 +96,7 @@ object LuaEvents : ServerModule() {
      * worldLoaded диспатчится здесь для каждого измерения — события загрузки
      * миров до этого момента недоступны (скрипты ещё не загружены).
      */
-    fun dispatchServerStarted(server: MinecraftServer) {
+    fun dispatchServerStarted(server: McServer) {
         dispatchNotify({ it.hasServerStartedCallbacks }, { it.onServerStarted() })
         for (level in server.allLevels) {
             dispatchWorldLoaded(level)
@@ -244,6 +255,155 @@ object LuaEvents : ServerModule() {
             if (player.level() !is ServerLevel) return@PickItemFromEntity null
             dispatchPick({ it.hasPickItemFromEntityCallbacks }, { it.onPickItemFromEntity(player, entity, includeData) })
         })
+    }
+
+    private fun registerMessageEvents() {
+        ServerMessageDecoratorEvent.EVENT.register(ServerMessageDecoratorEvent.CONTENT_PHASE) { sender: ServerPlayer?, message: Component ->
+            val scripts = ServerMain.LUA_MANAGER?.getLoadedScripts()
+            if (scripts == null) return@register message
+
+            val senderEntity = sender?.let { LuaEntity(it) }
+            val messageComponent = LuaComponent(message)
+            var result = message
+            for (script in scripts) {
+                if (script !is LuaServerScript) continue
+                if (!script.hasMessageDecoratorContentCallbacks) continue
+                try {
+                    val luaScript = script as LuaServerScript
+                    val res = luaScript.onMessageDecoratorContent(senderEntity, result, messageComponent)
+                    if (res != null) result = res
+                } catch (e: Exception) {
+                    ServerMain.LOGGER?.error("${ServerMain.LOG_PREFIX}Error in message decorator content callback in ${script.scriptName}", e)
+                }
+            }
+            result
+        }
+
+        ServerMessageDecoratorEvent.EVENT.register(ServerMessageDecoratorEvent.STYLING_PHASE) { sender: ServerPlayer?, message: Component ->
+            val scripts = ServerMain.LUA_MANAGER?.getLoadedScripts()
+            if (scripts == null) return@register message
+
+            val senderEntity = sender?.let { LuaEntity(it) }
+            val messageComponent = LuaComponent(message)
+            var result = message
+            for (script in scripts) {
+                if (script !is LuaServerScript) continue
+                if (!script.hasMessageDecoratorStylingCallbacks) continue
+                try {
+                    val luaScript = script as LuaServerScript
+                    val res = luaScript.onMessageDecoratorStyling(senderEntity, result, messageComponent)
+                    if (res != null) result = res
+                } catch (e: Exception) {
+                    ServerMain.LOGGER?.error("${ServerMain.LOG_PREFIX}Error in message decorator styling callback in ${script.scriptName}", e)
+                }
+            }
+            result
+        }
+
+        ServerMessageEvents.ALLOW_CHAT_MESSAGE.register { message: PlayerChatMessage, sender: ServerPlayer, boundChatType: ChatType.Bound ->
+            val scripts = ServerMain.LUA_MANAGER?.getLoadedScripts() ?: return@register true
+
+            val senderEntity = LuaEntity(sender)
+            val messageComponent = LuaComponent(message.decoratedContent())
+            var allow = true
+            for (script in scripts) {
+                if (script !is LuaServerScript) continue
+                if (!script.hasAllowChatMessageCallbacks) continue
+                try {
+                    val luaScript = script as LuaServerScript
+                    if (!luaScript.onAllowChatMessage(message, senderEntity, messageComponent, boundChatType)) allow = false
+                } catch (e: Exception) {
+                    ServerMain.LOGGER?.error("${ServerMain.LOG_PREFIX}Error in allow chat message callback in ${script.scriptName}", e)
+                }
+            }
+            allow
+        }
+
+        ServerMessageEvents.ALLOW_GAME_MESSAGE.register { server: McServer, message: Component, overlay: Boolean ->
+            val scripts = ServerMain.LUA_MANAGER?.getLoadedScripts() ?: return@register true
+
+            val messageComponent = LuaComponent(message)
+            var allow = true
+            for (script in scripts) {
+                if (script !is LuaServerScript || !script.hasAllowGameMessageCallbacks) continue
+                try {
+                    if (!script.onAllowGameMessage(server, messageComponent, overlay)) allow = false
+                } catch (e: Exception) {
+                    ServerMain.LOGGER?.error("${ServerMain.LOG_PREFIX}Error in allow game message callback in ${script.scriptName}", e)
+                }
+            }
+            allow
+        }
+
+        ServerMessageEvents.ALLOW_COMMAND_MESSAGE.register { message: PlayerChatMessage, source: CommandSourceStack, boundChatType: ChatType.Bound ->
+            val scripts = ServerMain.LUA_MANAGER?.getLoadedScripts() ?: return@register true
+
+            val sourceEntity = source.entity?.let { LuaEntity(it) }
+            val messageComponent = LuaComponent(message.decoratedContent())
+            var allow = true
+            for (script in scripts) {
+                if (script !is LuaServerScript) continue
+                if (!script.hasAllowCommandMessageCallbacks) continue
+                try {
+                    val luaScript = script as LuaServerScript
+                    if (!luaScript.onAllowCommandMessage(message, sourceEntity, messageComponent, boundChatType)) allow = false
+                } catch (e: Exception) {
+                    ServerMain.LOGGER?.error("${ServerMain.LOG_PREFIX}Error in allow command message callback in ${script.scriptName}", e)
+                }
+            }
+            allow
+        }
+
+        ServerMessageEvents.CHAT_MESSAGE.register { message: PlayerChatMessage, sender: ServerPlayer, boundChatType: ChatType.Bound ->
+            val scripts = ServerMain.LUA_MANAGER?.getLoadedScripts()
+            if (scripts == null) return@register
+
+            val senderEntity = LuaEntity(sender)
+            val messageComponent = LuaComponent(message.decoratedContent())
+            for (script in scripts) {
+                if (script !is LuaServerScript) continue
+                if (!script.hasChatMessageCallbacks) continue
+                try {
+                    val luaScript = script as LuaServerScript
+                    luaScript.onChatMessage(message, senderEntity, messageComponent, boundChatType)
+                } catch (e: Exception) {
+                    ServerMain.LOGGER?.error("${ServerMain.LOG_PREFIX}Error in chat message callback in ${script.scriptName}", e)
+                }
+            }
+        }
+
+        ServerMessageEvents.GAME_MESSAGE.register { server: McServer, message: Component, overlay: Boolean ->
+            val scripts = ServerMain.LUA_MANAGER?.getLoadedScripts()
+            if (scripts == null) return@register
+
+            val messageComponent = LuaComponent(message)
+            for (script in scripts) {
+                if (script !is LuaServerScript || !script.hasGameMessageCallbacks) continue
+                try {
+                    script.onGameMessage(server, messageComponent, overlay)
+                } catch (e: Exception) {
+                    ServerMain.LOGGER?.error("${ServerMain.LOG_PREFIX}Error in game message callback in ${script.scriptName}", e)
+                }
+            }
+        }
+
+        ServerMessageEvents.COMMAND_MESSAGE.register { message: PlayerChatMessage, source: CommandSourceStack, boundChatType: ChatType.Bound ->
+            val scripts = ServerMain.LUA_MANAGER?.getLoadedScripts()
+            if (scripts == null) return@register
+
+            val sourceEntity = source.entity?.let { LuaEntity(it) }
+            val messageComponent = LuaComponent(message.decoratedContent())
+            for (script in scripts) {
+                if (script !is LuaServerScript) continue
+                if (!script.hasCommandMessageCallbacks) continue
+                try {
+                    val luaScript = script as LuaServerScript
+                    luaScript.onCommandMessage(message, sourceEntity, messageComponent, boundChatType)
+                } catch (e: Exception) {
+                    ServerMain.LOGGER?.error("${ServerMain.LOG_PREFIX}Error in command message callback in ${script.scriptName}", e)
+                }
+            }
+        }
     }
 
 

@@ -15,6 +15,7 @@ import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaItemStac
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaBlockPos
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaDirection
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.core.LuaVector3d
+import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponentBuilder
 import com.nekiplay.neoscripts.common.features.lua.objects.misc.Blocks
 import com.nekiplay.neoscripts.common.features.lua.objects.misc.CatboostLib
@@ -33,6 +34,10 @@ import com.nekiplay.neoscripts.server.features.lua.objects.ServerWorldObject
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.commands.CommandSourceStack
+import net.minecraft.network.chat.ChatType
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.PlayerChatMessage
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
@@ -57,6 +62,7 @@ import org.luaj.vm2.luajc.LuaJC
 import java.util.Collections
 import java.util.Stack
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CompletableFuture
 
 class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftServer?): Script(name, mgr) {
     private val loadingStack = Stack<String>()
@@ -98,6 +104,16 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
     private val useItemOnCallbacks = ArrayList<LuaValue>()
     private val pickItemFromBlockCallbacks = ArrayList<LuaValue>()
     private val pickItemFromEntityCallbacks = ArrayList<LuaValue>()
+
+    // Message events
+    private val messageDecoratorContentCallbacks = ArrayList<LuaValue>()
+    private val messageDecoratorStylingCallbacks = ArrayList<LuaValue>()
+    private val allowChatMessageCallbacks = ArrayList<LuaValue>()
+    private val allowGameMessageCallbacks = ArrayList<LuaValue>()
+    private val allowCommandMessageCallbacks = ArrayList<LuaValue>()
+    private val chatMessageCallbacks = ArrayList<LuaValue>()
+    private val gameMessageCallbacks = ArrayList<LuaValue>()
+    private val commandMessageCallbacks = ArrayList<LuaValue>()
 
     // Script-specific libraries
     private var tcpLib: TCPLib? = null
@@ -260,6 +276,26 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
         registerInteractionEventFunction("registerUseItemOnCallback", useItemOnCallbacks)
         registerInteractionEventFunction("registerPickItemFromBlockCallback", pickItemFromBlockCallbacks)
         registerInteractionEventFunction("registerPickItemFromEntityCallback", pickItemFromEntityCallbacks)
+
+        registerMessageEventFunction("registerMessageDecoratorContentCallback", messageDecoratorContentCallbacks)
+        registerMessageEventFunction("registerMessageDecoratorStylingCallback", messageDecoratorStylingCallbacks)
+        registerMessageEventFunction("registerAllowChatMessageCallback", allowChatMessageCallbacks)
+        registerMessageEventFunction("registerAllowGameMessageCallback", allowGameMessageCallbacks)
+        registerMessageEventFunction("registerAllowCommandMessageCallback", allowCommandMessageCallbacks)
+        registerMessageEventFunction("registerChatMessageCallback", chatMessageCallbacks)
+        registerMessageEventFunction("registerGameMessageCallback", gameMessageCallbacks)
+        registerMessageEventFunction("registerCommandMessageCallback", commandMessageCallbacks)
+    }
+
+    private fun registerMessageEventFunction(name: String, list: ArrayList<LuaValue>) {
+        scriptGlobals.set(name, object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(list.add(callback))
+                }
+            }
+        })
     }
 
     private fun registerInteractionEventFunction(name: String, list: ArrayList<LuaValue>) {
@@ -297,6 +333,16 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
     val hasUseItemOnCallbacks: Boolean get() = synchronized(callbacksLock) { useItemOnCallbacks.isNotEmpty() }
     val hasPickItemFromBlockCallbacks: Boolean get() = synchronized(callbacksLock) { pickItemFromBlockCallbacks.isNotEmpty() }
     val hasPickItemFromEntityCallbacks: Boolean get() = synchronized(callbacksLock) { pickItemFromEntityCallbacks.isNotEmpty() }
+
+    val hasMessageDecoratorContentCallbacks: Boolean get() = synchronized(callbacksLock) { messageDecoratorContentCallbacks.isNotEmpty() }
+    val hasMessageDecoratorStylingCallbacks: Boolean get() = synchronized(callbacksLock) { messageDecoratorStylingCallbacks.isNotEmpty() }
+    val hasAllowChatMessageCallbacks: Boolean get() = synchronized(callbacksLock) { allowChatMessageCallbacks.isNotEmpty() }
+    val hasAllowGameMessageCallbacks: Boolean get() = synchronized(callbacksLock) { allowGameMessageCallbacks.isNotEmpty() }
+    val hasAllowCommandMessageCallbacks: Boolean get() = synchronized(callbacksLock) { allowCommandMessageCallbacks.isNotEmpty() }
+    val hasChatMessageCallbacks: Boolean get() = synchronized(callbacksLock) { chatMessageCallbacks.isNotEmpty() }
+    val hasGameMessageCallbacks: Boolean get() = synchronized(callbacksLock) { gameMessageCallbacks.isNotEmpty() }
+    val hasCommandMessageCallbacks: Boolean get() = synchronized(callbacksLock) { commandMessageCallbacks.isNotEmpty() }
+
     val hasServerStoppingCallbacks: Boolean get() = synchronized(callbacksLock) { serverStoppingCallbacks.isNotEmpty() }
     val hasServerStartedCallbacks: Boolean get() = synchronized(callbacksLock) { serverStartedCallbacks.isNotEmpty() }
     val hasWorldLoadedCallbacks: Boolean get() = synchronized(callbacksLock) { worldLoadedCallbacks.isNotEmpty() }
@@ -425,6 +471,26 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
         unregisterInteractionEventFunction("unregisterUseItemOnCallback", useItemOnCallbacks)
         unregisterInteractionEventFunction("unregisterPickItemFromBlockCallback", pickItemFromBlockCallbacks)
         unregisterInteractionEventFunction("unregisterPickItemFromEntityCallback", pickItemFromEntityCallbacks)
+
+        unregisterMessageEventFunction("unregisterMessageDecoratorContentCallback", messageDecoratorContentCallbacks)
+        unregisterMessageEventFunction("unregisterMessageDecoratorStylingCallback", messageDecoratorStylingCallbacks)
+        unregisterMessageEventFunction("unregisterAllowChatMessageCallback", allowChatMessageCallbacks)
+        unregisterMessageEventFunction("unregisterAllowGameMessageCallback", allowGameMessageCallbacks)
+        unregisterMessageEventFunction("unregisterAllowCommandMessageCallback", allowCommandMessageCallbacks)
+        unregisterMessageEventFunction("unregisterChatMessageCallback", chatMessageCallbacks)
+        unregisterMessageEventFunction("unregisterGameMessageCallback", gameMessageCallbacks)
+        unregisterMessageEventFunction("unregisterCommandMessageCallback", commandMessageCallbacks)
+    }
+
+    private fun unregisterMessageEventFunction(name: String, list: ArrayList<LuaValue>) {
+        scriptGlobals.set(name, object : OneArgFunction() {
+            override fun call(callback: LuaValue): LuaValue {
+                if (!callback.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    return valueOf(list.remove(callback))
+                }
+            }
+        })
     }
 
     private fun registerRequireFunction() {
@@ -734,6 +800,15 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
         return t
     }
 
+    private fun luaValueToComponent(value: LuaValue): Component? {
+        return when (value) {
+            is LuaComponent -> value.component
+            is LuaComponentBuilder -> value.buildComponent()
+            is org.luaj.vm2.LuaString -> Component.literal(value.tojstring())
+            else -> null
+        }
+    }
+
 
     fun onAttackBlock(player: Player, level: Level, hand: InteractionHand, pos: BlockPos, direction: Direction): Boolean {
         val callbacks = synchronized(callbacksLock) { attackBlockCallbacks.toTypedArray() }
@@ -899,6 +974,173 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
         return override
     }
 
+    fun onMessageDecoratorContent(sender: com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity?, message: Component, messageComponent: com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent): Component? {
+        val callbacks = synchronized(callbacksLock) { messageDecoratorContentCallbacks.toTypedArray() }
+        if (callbacks.isEmpty()) return null
+
+        val t = LuaValue.tableOf()
+        t.set("sender", sender)
+        t.set("message", messageComponent)
+
+        var result: Component? = null
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(t)
+                result = luaValueToComponent(res) ?: result
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in message decorator content callback in ${scriptName}", e)
+            }
+        }
+        return result
+    }
+
+    fun onMessageDecoratorStyling(sender: com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity?, message: Component, messageComponent: com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent): Component? {
+        val callbacks = synchronized(callbacksLock) { messageDecoratorStylingCallbacks.toTypedArray() }
+        if (callbacks.isEmpty()) return null
+
+        val t = LuaValue.tableOf()
+        t.set("sender", sender)
+        t.set("message", messageComponent)
+
+        var result: Component? = null
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(t)
+                result = luaValueToComponent(res) ?: result
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in message decorator styling callback in ${scriptName}", e)
+            }
+        }
+        return result
+    }
+
+    fun onAllowChatMessage(message: PlayerChatMessage, sender: com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity, messageComponent: com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent, boundChatType: ChatType.Bound): Boolean {
+        val callbacks = synchronized(callbacksLock) { allowChatMessageCallbacks.toTypedArray() }
+        if (callbacks.isEmpty()) return true
+
+        val t = LuaValue.tableOf()
+        t.set("player", sender)
+        t.set("message", messageComponent)
+        t.set("chat_message", messageComponent)
+        t.set("bound_chat_type", boundChatType.toString())
+
+        var allow = true
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(t)
+                if (res.isboolean() && !res.toboolean()) {
+                    allow = false
+                }
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in allow chat message callback in ${scriptName}", e)
+            }
+        }
+        return allow
+    }
+
+    fun onAllowGameMessage(server: MinecraftServer, messageComponent: com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent, overlay: Boolean): Boolean {
+        val callbacks = synchronized(callbacksLock) { allowGameMessageCallbacks.toTypedArray() }
+        if (callbacks.isEmpty()) return true
+
+        val t = LuaValue.tableOf()
+        t.set("server", LuaServer(server))
+        t.set("message", messageComponent)
+        t.set("overlay", LuaValue.valueOf(overlay))
+
+        var allow = true
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(t)
+                if (res.isboolean() && !res.toboolean()) {
+                    allow = false
+                }
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in allow game message callback in ${scriptName}", e)
+            }
+        }
+        return allow
+    }
+
+    fun onAllowCommandMessage(message: PlayerChatMessage, source: com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity?, messageComponent: com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent, boundChatType: ChatType.Bound): Boolean {
+        val callbacks = synchronized(callbacksLock) { allowCommandMessageCallbacks.toTypedArray() }
+        if (callbacks.isEmpty()) return true
+
+        val t = LuaValue.tableOf()
+        t.set("source", source)
+        t.set("message", messageComponent)
+        t.set("chat_message", messageComponent)
+        t.set("bound_chat_type", boundChatType.toString())
+
+        var allow = true
+        for (callback in callbacks) {
+            try {
+                val res = callback.call(t)
+                if (res.isboolean() && !res.toboolean()) {
+                    allow = false
+                }
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in allow command message callback in ${scriptName}", e)
+            }
+        }
+        return allow
+    }
+
+    fun onChatMessage(message: PlayerChatMessage, sender: com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity, messageComponent: com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent, boundChatType: ChatType.Bound) {
+        val callbacks = synchronized(callbacksLock) { chatMessageCallbacks.toTypedArray() }
+        if (callbacks.isEmpty()) return
+
+        val t = LuaValue.tableOf()
+        t.set("player", sender)
+        t.set("message", messageComponent)
+        t.set("chat_message", messageComponent)
+        t.set("bound_chat_type", boundChatType.toString())
+
+        for (callback in callbacks) {
+            try {
+                callback.call(t)
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in chat message callback in ${scriptName}", e)
+            }
+        }
+    }
+
+    fun onGameMessage(server: MinecraftServer, messageComponent: com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent, overlay: Boolean) {
+        val callbacks = synchronized(callbacksLock) { gameMessageCallbacks.toTypedArray() }
+        if (callbacks.isEmpty()) return
+
+        val t = LuaValue.tableOf()
+        t.set("server", LuaServer(server))
+        t.set("message", messageComponent)
+        t.set("overlay", LuaValue.valueOf(overlay))
+
+        for (callback in callbacks) {
+            try {
+                callback.call(t)
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in game message callback in ${scriptName}", e)
+            }
+        }
+    }
+
+    fun onCommandMessage(message: PlayerChatMessage, source: com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity?, messageComponent: com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent, boundChatType: ChatType.Bound) {
+        val callbacks = synchronized(callbacksLock) { commandMessageCallbacks.toTypedArray() }
+        if (callbacks.isEmpty()) return
+
+        val t = LuaValue.tableOf()
+        t.set("source", source)
+        t.set("message", messageComponent)
+        t.set("chat_message", messageComponent)
+        t.set("bound_chat_type", boundChatType.toString())
+
+        for (callback in callbacks) {
+            try {
+                callback.call(t)
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in command message callback in ${scriptName}", e)
+            }
+        }
+    }
+
     override fun cleanup() {
         scriptUnloadCallbacks.forEach { callback ->
             try {
@@ -923,6 +1165,14 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
             useItemOnCallbacks.clear()
             pickItemFromBlockCallbacks.clear()
             pickItemFromEntityCallbacks.clear()
+            messageDecoratorContentCallbacks.clear()
+            messageDecoratorStylingCallbacks.clear()
+            allowChatMessageCallbacks.clear()
+            allowGameMessageCallbacks.clear()
+            allowCommandMessageCallbacks.clear()
+            chatMessageCallbacks.clear()
+            gameMessageCallbacks.clear()
+            commandMessageCallbacks.clear()
         }
 
         scriptGlobals = null
