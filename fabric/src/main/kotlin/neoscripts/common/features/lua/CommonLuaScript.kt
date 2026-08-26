@@ -4,6 +4,7 @@ import com.nekiplay.neoscripts.ClientMain
 import com.nekiplay.neoscripts.common.features.lua.objects.misc.ArchiveLib
 import com.nekiplay.neoscripts.common.features.lua.objects.misc.Blocks
 import com.nekiplay.neoscripts.common.features.lua.objects.misc.CatboostLib
+import com.nekiplay.neoscripts.common.features.lua.objects.misc.ContentLib
 import com.nekiplay.neoscripts.common.features.lua.objects.misc.Creator
 import com.nekiplay.neoscripts.common.features.lua.objects.misc.DJLLuaTrainer
 import com.nekiplay.neoscripts.common.features.lua.objects.misc.EncodingLib
