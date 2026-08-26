@@ -109,10 +109,13 @@ object ServerMain : ModInitializer {
         Files.createDirectories(gameScriptsDir.toPath())
         LUA_MANAGER = LuaManager(gameScriptsDir)
 
-        // Скрипты автозапуска сервера: <папка сервера>/neoscripts/autostart/*.lua
+        // Общие скрипты автозапуска сервера и клиента:
+        // <папка игры>/neoscripts/autostart/*.lua — выполняются как
+        // CommonLuaScript (только общие библиотеки), до заморозки реестров,
+        // поэтому могут регистрировать предметы/блоки как обычный Fabric-мод.
         val autostartDir = FabricLoader.getInstance().gameDir.resolve(MOD_ID).resolve("autostart")
         Files.createDirectories(autostartDir)
-        LUA_MANAGER?.runAutostartScripts(autostartDir.toFile(), false, null)
+        LUA_MANAGER?.runAutostartScripts(autostartDir.toFile())
 
         val classes = HashSet<Class<*>>()
 

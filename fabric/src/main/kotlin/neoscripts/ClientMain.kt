@@ -155,12 +155,10 @@ object ClientMain : ClientModInitializer {
             }
         )
 
-        // Общие скрипты автозапуска (<папка игры>/neoscripts/autostart) выполняются
-        // здесь, в onInitialize — ДО заморозки реестров, чтобы регистрация
-        // предметов/блоков работала как в Fabric API. Эти же скрипты на сервере
-        // запускает ServerMain.onInitialize.
+        // Общие скрипты автозапуска (<папка игры>/neoscripts/autostart) НЕ запускаются
+        // здесь: ServerMain.onInitialize выполняется и на клиенте, и на сервере
+        // (Fabric ModInitializer) и запускает их один раз до заморозки реестров.
         // Устаревшие autoload.lua / startup.lua / init.lua (config/neoscripts/scripts)
         // по-прежнему запускаются позже через WindowMixin.onGameLoadFinished.
-        LUA_MANAGER?.runAutostartScripts(AUTOSTART_DIR.toFile(), false, null)
     }
 }

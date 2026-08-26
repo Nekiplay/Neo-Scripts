@@ -130,11 +130,15 @@ class LuaManager(val configDir: File?) {
 
     /**
      * Выполняет все скрипты (*.lua, *.luac) в указанной папке автозапуска,
-     * отсортированные по имени файла. Используется для neoscripts/autostart
-     * как на клиенте, так и на сервере.
+     * отсортированные по имени файла. Используется для neoscripts/autostart.
+     *
+     * Скрипты создаются как CommonLuaScript: они содержат только общие для
+     * клиента и сервера библиотеки и выполняются один раз из
+     * ServerMain.onInitialize (на обеих сторонах), до заморозки реестров —
+     * поэтому могут регистрировать предметы/блоки как обычный Fabric-мод.
      * Возвращает количество успешно выполненных скриптов.
      */
-    fun runAutostartScripts(dir: File, serverSide: Boolean, server: MinecraftServer? = null): Int {
+    fun runAutostartScripts(dir: File): Int {
         if (!dir.exists()) return 0
         dir.mkdirs()
 
@@ -145,7 +149,8 @@ class LuaManager(val configDir: File?) {
         var executed = 0
         for (file in scriptFiles) {
             try {
-                val script = getScript(file, serverSide, server)
+                val scriptName = file.nameWithoutExtension
+                val script = CommonLuaScript(scriptName, this)
                 executeScript(file, script)
                 executed++
                 println("Autostart script \"${file.name}\" executed successfully")
