@@ -5,6 +5,7 @@ import com.nekiplay.neoscripts.ClientMain;
 import com.nekiplay.neoscripts.client.features.lua.LuaClientScript;
 import com.nekiplay.neoscripts.common.features.lua.Script;
 import net.minecraft.client.GameLoadCookie;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.main.GameConfig;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
