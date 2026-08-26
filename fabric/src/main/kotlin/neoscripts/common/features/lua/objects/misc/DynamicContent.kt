@@ -15,6 +15,8 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.item.ToolMaterial
 import net.minecraft.world.item.component.Consumables
 import net.minecraft.world.item.component.Tool
+import net.minecraft.core.BlockPos
+import net.minecraft.world.level.BlockGetter
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.DoorBlock
 import net.minecraft.world.level.block.FenceBlock
@@ -22,7 +24,11 @@ import net.minecraft.world.level.block.SlabBlock
 import net.minecraft.world.level.block.StairBlock
 import net.minecraft.world.level.block.TrapDoorBlock
 import net.minecraft.world.level.block.state.BlockBehaviour
+import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.properties.BlockSetType
+import net.minecraft.world.phys.shapes.CollisionContext
+import net.minecraft.world.phys.shapes.Shapes
+import net.minecraft.world.phys.shapes.VoxelShape
 import net.fabricmc.loader.api.FabricLoader
 import java.io.File
 import java.lang.reflect.Modifier
@@ -67,6 +73,8 @@ object DynamicContent {
     val blockTypes = ConcurrentHashMap<String, String>()
     val stairsBase = ConcurrentHashMap<String, String>() // stairs rawId -> base block rawId
     val doorBlockSetType = ConcurrentHashMap<String, String>()
+    // Кастомные VoxelShape для коллизии/очертания (поддержка высоты >1 блока: 0..32, 16=1 блок)
+    val blockShapes = ConcurrentHashMap<String, VoxelShape>()
 
     fun getTextureOverride(rawId: String): String? = textureOverrides[rawId]
     fun getModelOverride(rawId: String): String? = modelOverrides[rawId]
@@ -139,6 +147,51 @@ object DynamicContent {
             modelFilePath.remove(rawId)
         } catch (e: Exception) {
             ClientMain.LOGGER?.warn("[Neo Scripts] Invalid model id for $rawId: $trimmed")
+        }
+    }
+
+    fun buildVoxelShape(boxes: List<DoubleArray>): VoxelShape {
+        if (boxes.isEmpty()) return Shapes.block()
+        var shape: VoxelShape = Shapes.empty()
+        for (b in boxes) {
+            if (b.size != 6) continue
+            // clamp к -16..32 для поддержки 2+ блоков высоты, но Block.box требует 0..16, расширяем через Shapes?
+            // Block.box работает с 0..16, но для >16 используем directly Shapes.box с нормализованными 0..1 (делим на 16)
+            // Чтобы поддержать 0..32, делаем нормализацию: делим на 16.
+            // Используем Block.box для 0..16, иначе Shapes.box.
+            val boxShape = try {
+                if (b[0] >= 0 && b[1] >= 0 && b[2] >= 0 && b[3] <= 16 && b[4] <= 16 && b[5] <= 16) {
+                    Block.box(b[0], b[1], b[2], b[3], b[4], b[5])
+                } else {
+                    // нормализованные координаты 0..1 (32 → 2.0)
+                    Shapes.box(b[0]/16.0, b[1]/16.0, b[2]/16.0, b[3]/16.0, b[4]/16.0, b[5]/16.0)
+                }
+            } catch (_: Exception) { Shapes.empty() }
+            shape = Shapes.or(shape, boxShape)
+        }
+        return if (shape.isEmpty) Shapes.block() else shape
+    }
+
+    fun getBlockShape(rawId: String): VoxelShape? = blockShapes[rawId]
+
+    private fun createVoxelBlock(props: BlockBehaviour.Properties, shape: VoxelShape, customName: net.minecraft.network.chat.MutableComponent?): Block {
+        return if (customName != null) {
+            object : Block(props) {
+                override fun getName() = customName
+                override fun getShape(state: BlockState, level: BlockGetter, pos: BlockPos, ctx: CollisionContext): VoxelShape = shape
+                override fun getCollisionShape(state: BlockState, level: BlockGetter, pos: BlockPos, ctx: CollisionContext): VoxelShape = shape
+                override fun getOcclusionShape(state: BlockState): VoxelShape = shape
+                override fun getVisualShape(state: BlockState, level: BlockGetter, pos: BlockPos, ctx: CollisionContext): VoxelShape = shape
+                override fun getBlockSupportShape(state: BlockState, getter: BlockGetter, pos: BlockPos): VoxelShape = shape
+            }
+        } else {
+            object : Block(props) {
+                override fun getShape(state: BlockState, level: BlockGetter, pos: BlockPos, ctx: CollisionContext): VoxelShape = shape
+                override fun getCollisionShape(state: BlockState, level: BlockGetter, pos: BlockPos, ctx: CollisionContext): VoxelShape = shape
+                override fun getOcclusionShape(state: BlockState): VoxelShape = shape
+                override fun getVisualShape(state: BlockState, level: BlockGetter, pos: BlockPos, ctx: CollisionContext): VoxelShape = shape
+                override fun getBlockSupportShape(state: BlockState, getter: BlockGetter, pos: BlockPos): VoxelShape = shape
+            }
         }
     }
 
@@ -222,6 +275,7 @@ object DynamicContent {
 
     /**
      * Регистрирует блок по паттерну Fabric API. Возвращает Block или null.
+     * Поддерживает кастомную коллизию через settings.shapeBoxes (например в 2 блока высоты: {from={0,0,0},to={16,32,16}}).
      */
     fun registerBlock(rawId: String, settings: LuaContentSettings? = null): Block? {
         return try {
@@ -239,17 +293,24 @@ object DynamicContent {
                 ?: BlockBehaviour.Properties.of().setId(key)
             val customName = settings?.displayName()
 
-            val block = if (customName != null) {
-                object : Block(props) {
-                    override fun getName() = customName
-                }
+            val boxes = settings?.shapeBoxes
+            val block: Block = if (boxes != null && boxes.isNotEmpty()) {
+                val shape = buildVoxelShape(boxes)
+                blockShapes[rawId] = shape
+                createVoxelBlock(props, shape, customName)
             } else {
-                Block(props)
+                if (customName != null) {
+                    object : Block(props) {
+                        override fun getName() = customName
+                    }
+                } else {
+                    Block(props)
+                }
             }
 
             registerWithFreezeFallback(BuiltInRegistries.BLOCK as Registry<Block>) { Registry.register(BuiltInRegistries.BLOCK, key, block) }
             knownIds.add("block:$rawId")
-            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic block $rawId")
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic block $rawId${if (boxes != null) " shapeBoxes=${boxes.size}" else ""}")
             block
         } catch (e: Exception) {
             ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic block $rawId", e)

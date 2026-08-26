@@ -81,7 +81,10 @@ class LuaContentSettings(
     var requiresCorrectTool: Boolean = false,
     var offsetType: String? = null,
     var copyFrom: String? = null,
-    var ignitedByLava: Boolean? = null
+    var ignitedByLava: Boolean? = null,
+    // Кастомная коллизия: список боксов [x1,y1,z1,x2,y2,z2] в координатах 0..32 (16=1 блок, 32=2 блока высоты)
+    // Задается через shape / collisionShape / boxes : { {from={0,0,0},to={16,32,16}}, {0,0,0,16,16,16}, ... }
+    var shapeBoxes: MutableList<DoubleArray>? = null
 ) : LuaUserdata(this) {
 
     override fun typename(): String = "content_settings"
@@ -96,6 +99,7 @@ class LuaContentSettings(
             (if (requiresCorrectTool) ", requiresTool" else "") +
             (if (noCollision) ", noCollision" else "") +
             (if (noOcclusion) ", noOcclusion" else "") +
+            (shapeBoxes?.let { ", shapeBoxes=${it.size}" } ?: "") +
             (offsetType?.let { ", offset=$it" } ?: "") + "}"
 
     override fun get(key: LuaValue): LuaValue = when (key.tojstring()) {
@@ -123,6 +127,7 @@ class LuaContentSettings(
         "offsetType", "offset_type", "offset" -> offsetType?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
         "copyFrom", "copy_from", "fullCopy", "full_copy", "copy" -> copyFrom?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
         "ignitedByLava", "ignited_by_lava" -> ignitedByLava?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
+        "shape", "collisionShape", "collision_shape", "boxes", "collisionBoxes", "collision_boxes", "hitbox", "hitBox" -> shapeBoxes?.let { boxesToLua(it) } ?: LuaValue.NIL
         else -> super.get(key)
     }
 
@@ -152,6 +157,9 @@ class LuaContentSettings(
             "offsetType", "offset_type", "offset" -> offsetType = if (value.isnil()) null else value.tojstring()
             "copyFrom", "copy_from", "fullCopy", "full_copy", "copy" -> copyFrom = if (value.isnil()) null else value.tojstring()
             "ignitedByLava", "ignited_by_lava" -> ignitedByLava = if (value.isnil()) null else value.toboolean()
+            "shape", "collisionShape", "collision_shape", "boxes", "collisionBoxes", "collision_boxes", "hitbox", "hitBox" -> {
+                if (value.isnil()) shapeBoxes = null else shapeBoxes = parseShapeValue(value)
+            }
             else -> super.set(key, value)
         }
     }
@@ -273,18 +281,117 @@ class LuaContentSettings(
 
     companion object {
         /**
-         * Строка из Lua-значения: component/builder/строка -> текст компонента
-         * (иначе получилось бы "literal{Pizza}").
-         */
+          * Строка из Lua-значения: component/builder/строка -> текст компонента
+          * (иначе получилось бы "literal{Pizza}").
+          */
         fun readableString(v: LuaValue): String =
             v.toComponent()?.string ?: v.tojstring()
+
+        // ── shape helpers ──
+        fun parseShapeValue(v: LuaValue?): MutableList<DoubleArray>? {
+            if (v == null || v.isnil()) return null
+            // Ожидаем таблицу. Поддерживаем:
+            //  shape = {from={0,0,0}, to={16,32,16}}  — один бокс
+            //  shape = { {from={0,0,0}, to={16,16,16}}, {from={0,16,0}, to={16,32,16}} }
+            //  shape = { {0,0,0, 16,32,16}, {0,32,0, 16,48,16} }
+            //  shape = {0,0,0, 16,32,16} — один бокс плоско
+            if (!v.istable()) return null
+            // одиночный бокс вида {from=..., to=...}
+            if (!v.get("from").isnil() || !v.get("to").isnil()) {
+                parseSingleBox(v)?.let { return mutableListOf(it) }
+            }
+            val out = mutableListOf<DoubleArray>()
+            val n = v.length()
+            if (n > 0) {
+                for (i in 1..n) {
+                    val e = v.get(i)
+                    if (e.isnil()) continue
+                    if (e.istable()) {
+                        // либо 6 чисел подряд, либо from/to
+                        if (!e.get("from").isnil() || !e.get("to").isnil()) {
+                            parseSingleBox(e)?.let { out.add(it) }
+                        } else {
+                            // пробуем как массив 6 чисел
+                            val arr = mutableListOf<Double>()
+                            for (j in 1..e.length()) {
+                                val num = e.get(j)
+                                if (num.isnumber()) arr.add(num.todouble())
+                            }
+                            if (arr.size == 6) out.add(arr.toDoubleArray())
+                            else if (e.length() == 0 && e.get(1).isnil()) {
+                                // возможно пусто
+                            }
+                        }
+                    } else if (e.isnumber()) {
+                        // плоский массив на верхнем уровне {0,0,0,16,32,16}
+                        val arr = mutableListOf<Double>()
+                        for (j in 1..n) arr.add(v.get(j).todouble())
+                        if (arr.size == 6) return mutableListOf(arr.toDoubleArray())
+                        break
+                    }
+                }
+                // fallback: если передали {0,0,0,16,32,16} как v с length 6 и без вложенности
+                if (out.isEmpty() && n == 6) {
+                    val arr = (1..6).map { v.get(it).todouble() }.toDoubleArray()
+                    if (arr.all { !it.isNaN() }) out.add(arr)
+                }
+            } else {
+                // возможно {from={...}, to={...}} уже обработали, иначе пробуем как 6 чисел по ключам 1..6
+                parseSingleBox(v)?.let { out.add(it) }
+            }
+            return if (out.isEmpty()) null else out
+        }
+
+        private fun parseSingleBox(tbl: LuaValue): DoubleArray? {
+            // from/to могут быть таблицами {x,y,z} или {1=x,2=y,3=z}
+            fun readVec(key: String): DoubleArray? {
+                val vec = tbl.get(key)
+                if (vec.isnil()) return null
+                if (vec.istable()) {
+                    val x = vec.get(1).takeIf { it.isnumber() }?.todouble() ?: vec.get("x").takeIf { it.isnumber() }?.todouble() ?: vec.get("1").takeIf { it.isnumber() }?.todouble()
+                    val y = vec.get(2).takeIf { it.isnumber() }?.todouble() ?: vec.get("y").takeIf { it.isnumber() }?.todouble() ?: vec.get("2").takeIf { it.isnumber() }?.todouble()
+                    val z = vec.get(3).takeIf { it.isnumber() }?.todouble() ?: vec.get("z").takeIf { it.isnumber() }?.todouble() ?: vec.get("3").takeIf { it.isnumber() }?.todouble()
+                    if (x != null && y != null && z != null) return doubleArrayOf(x, y, z)
+                } else if (vec.isnumber()) {
+                    // неожиданно
+                }
+                return null
+            }
+            val from = readVec("from") ?: readVec("min") ?: readVec("start")
+            val to = readVec("to") ?: readVec("max") ?: readVec("end")
+            if (from != null && to != null) {
+                return doubleArrayOf(from[0], from[1], from[2], to[0], to[1], to[2])
+            }
+            // плоский {x1,y1,z1,x2,y2,z2}
+            if (tbl.length() >= 6) {
+                val arr = (1..6).mapNotNull { idx -> tbl.get(idx).takeIf { it.isnumber() }?.todouble() }
+                if (arr.size == 6) return arr.toDoubleArray()
+            }
+            return null
+        }
+
+        fun boxesToLua(boxes: List<DoubleArray>): LuaValue {
+            val tbl = LuaValue.tableOf()
+            for ((idx, b) in boxes.withIndex()) {
+                val boxTbl = LuaValue.tableOf()
+                // храним как {from={x1,y1,z1}, to={x2,y2,z2}}
+                val from = LuaValue.tableOf()
+                from.set(1, LuaValue.valueOf(b[0])); from.set(2, LuaValue.valueOf(b[1])); from.set(3, LuaValue.valueOf(b[2]))
+                val to = LuaValue.tableOf()
+                to.set(1, LuaValue.valueOf(b[3])); to.set(2, LuaValue.valueOf(b[4])); to.set(3, LuaValue.valueOf(b[5]))
+                boxTbl.set("from", from); boxTbl.set("to", to)
+                tbl.set(idx + 1, boxTbl)
+            }
+            return tbl
+        }
 
         /**
           * Собирает настройки из Lua-таблицы. Допустимые ключи (snake_case или camelCase):
           * name, texture, model/parent, maxStackSize / max_stack_size, fireResistant / fire_resistant,
           * rarity, durability, craftRemainder / craft_remainder, enchantable,
           * useCooldown / use_cooldown, hardness/destroyTime, resistance, luminance, friction,
-          * sound, mapColor, instabreak, requiresTool, offsetType, copyFrom, noCollision, noOcclusion.
+          * sound, mapColor, instabreak, requiresTool, offsetType, copyFrom, noCollision, noOcclusion,
+          * shape/boxes/collisionShape (см. документацию выше: {from={0,0,0},to={16,32,16}}).
           */
         fun fromTable(table: LuaValue?): LuaContentSettings {
             val settings = LuaContentSettings()
@@ -339,6 +446,13 @@ class LuaContentSettings(
             settings.offsetType = str("offsetType", "offset_type", "offset")
             settings.copyFrom = str("copyFrom", "copy_from", "fullCopy", "full_copy", "copy")
             bool("ignitedByLava", "ignited_by_lava")?.let { settings.ignitedByLava = it }
+            // shape: пробуем каждый ключ
+            for (k in arrayOf("shape", "collisionShape", "collision_shape", "boxes", "collisionBoxes", "collision_boxes", "hitbox", "hitBox")) {
+                val v = table.get(k)
+                if (!v.isnil()) {
+                    parseShapeValue(v)?.let { settings.shapeBoxes = it; break }
+                }
+            }
             return settings
         }
     }

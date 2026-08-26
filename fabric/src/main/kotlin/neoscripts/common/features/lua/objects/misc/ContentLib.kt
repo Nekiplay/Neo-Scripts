@@ -185,7 +185,7 @@ class ContentLib : LuaValue() {
                 when {
                     arg.isBlock() && baseId == null -> {
                         // LuaBlockState -> block id
-                        try { baseId = arg.toBlock().let { BuiltInRegistries.BLOCK.getKey(it).toString() } } catch (_: Exception) {}
+                        try { baseId = arg.toBlock()?.let { BuiltInRegistries.BLOCK.getKey(it.block).toString() } } catch (_: Exception) {}
                     }
                     arg.isstring() && baseId == null -> baseId = arg.tojstring()
                     arg.toContentSettings() != null && settings == null -> settings = arg.toContentSettings()
