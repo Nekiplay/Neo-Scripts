@@ -2,23 +2,18 @@ package com.nekiplay.neoscripts.common.features.lua.objects.misc
 
 import com.nekiplay.neoscripts.ClientMain
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaContentSettings
-import com.mojang.blaze3d.platform.NativeImage
 import net.minecraft.core.Registry
-import net.minecraft.core.RegistrationInfo
 import net.minecraft.core.registries.Registries
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.Identifier
 import net.minecraft.resources.ResourceKey
-import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.Item
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockBehaviour
 import java.io.File
-import java.io.FileInputStream
 import java.lang.reflect.Modifier
 import java.util.concurrent.ConcurrentHashMap
-import java.util.function.Supplier
 
 /**
  * Динамическая регистрация предметов и блоков из Lua-скриптов.
@@ -44,37 +39,27 @@ object DynamicContent {
     // ("neoscripts:my_item" -> "config/neoscripts/textures/my_item.png")
     val textureOverrides = ConcurrentHashMap<String, String>()
 
-    // Загруженные из файлов текстуры: rawId -> Identifier DynamicTexture
-    private val loadedTextures = ConcurrentHashMap<String, Identifier>()
+    // Содержимое PNG-файлов по id — отдается рантайм ресурспаком клиенту
+    val textureData = ConcurrentHashMap<String, ByteArray>()
 
     fun getTextureOverride(rawId: String): String? = textureOverrides[rawId]
 
     /**
-     * Возвращает Identifier текстуры предмета/блока, загружая файл с диска
-     * при первом обращении (тот же механизм, что и 2d renderer renderImage:
-     * File -> NativeImage.read -> DynamicTexture -> textureManager.register).
-     * Клиентский API: на выделенном сервере вернет null.
+     * Сохраняет путь и читает содержимое файла текстуры для ресурспака.
+     * Вызывается при регистрации (до загрузки ресурсов — поэтому файл
+     * попадает в первый же бейк моделей).
      */
-    fun getDynamicTexture(rawId: String): Identifier? {
-        val path = textureOverrides[rawId] ?: return null
-        loadedTextures[rawId]?.let { return it }
-
-        return try {
+    fun storeTexture(rawId: String, path: String) {
+        textureOverrides[rawId] = path
+        try {
             val file = File(path)
-            if (!file.exists() || !file.isFile) return null
-
-            FileInputStream(file).use { inputStream ->
-                val nativeImage = NativeImage.read(inputStream)
-                val name = "neoscripts:dynamic_${rawId.replace(':', '_')}"
-                val texture = DynamicTexture(Supplier { name }, nativeImage)
-                val identifier = Identifier.parse(name)
-                ClientMain.mc.textureManager.register(identifier, texture)
-                loadedTextures[rawId] = identifier
-                identifier
+            if (file.exists() && file.isFile) {
+                textureData[rawId] = file.readBytes()
+            } else {
+                ClientMain.LOGGER?.warn("[Neo Scripts] Texture file not found for $rawId: $path")
             }
         } catch (e: Exception) {
-            ClientMain.LOGGER?.error("[Neo Scripts] Failed to load dynamic texture for $rawId from $path", e)
-            null
+            ClientMain.LOGGER?.error("[Neo Scripts] Failed to read texture for $rawId from $path", e)
         }
     }
 
@@ -127,7 +112,7 @@ object DynamicContent {
                 if (existing.isPresent) return existing.get().value()
             }
 
-            settings?.texture?.let { textureOverrides[rawId] = it }
+            settings?.texture?.let { storeTexture(rawId, it) }
 
             val key = ResourceKey.create(Registries.ITEM, id)
             val props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
@@ -162,7 +147,7 @@ object DynamicContent {
                 if (existing.isPresent) return existing.get().value()
             }
 
-            settings?.texture?.let { textureOverrides[rawId] = it }
+            settings?.texture?.let { storeTexture(rawId, it) }
 
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key)
@@ -198,7 +183,7 @@ object DynamicContent {
                 if (existing.isPresent) return existing.get().value()
             }
 
-            settings?.texture?.let { textureOverrides[rawId] = it }
+            settings?.texture?.let { storeTexture(rawId, it) }
 
             val key = ResourceKey.create(Registries.ITEM, id)
             val props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)

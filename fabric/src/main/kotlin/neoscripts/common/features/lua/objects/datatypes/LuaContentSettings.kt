@@ -4,6 +4,7 @@ import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.MutableComponent
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
+import com.nekiplay.neoscripts.client.sugar.toComponent
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.Rarity
 import net.minecraft.world.level.block.state.BlockBehaviour
@@ -80,7 +81,7 @@ class LuaContentSettings(
 
     override fun set(key: LuaValue, value: LuaValue) {
         when (key.tojstring()) {
-            "name" -> name = if (value.isnil()) null else value.tojstring()
+            "name" -> name = if (value.isnil()) null else Companion.readableString(value)
             "texture" -> texture = if (value.isnil()) null else value.tojstring()
             "maxStackSize" -> maxStackSize = value.checkint()
             "fireResistant", "fire_resistant" -> fireResistant = value.toboolean()
@@ -146,6 +147,13 @@ class LuaContentSettings(
 
     companion object {
         /**
+         * Строка из Lua-значения: component/builder/строка -> текст компонента
+         * (иначе получилось бы "literal{Pizza}").
+         */
+        fun readableString(v: LuaValue): String =
+            v.toComponent()?.string ?: v.tojstring()
+
+        /**
          * Собирает настройки из Lua-таблицы. Допустимые ключи (snake_case или camelCase):
          * name, texture, maxStackSize / max_stack_size, fireResistant / fire_resistant,
          * rarity, durability, craftRemainder / craft_remainder, enchantable,
@@ -158,7 +166,7 @@ class LuaContentSettings(
             fun str(vararg keys: String): String? {
                 for (k in keys) {
                     val v = table.get(k)
-                    if (!v.isnil()) return v.tojstring()
+                    if (!v.isnil()) return readableString(v)
                 }
                 return null
             }
