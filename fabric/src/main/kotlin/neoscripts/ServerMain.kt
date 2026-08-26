@@ -102,6 +102,18 @@ object ServerMain : ModInitializer {
         }
         registerInbuilt()
 
+        // Менеджер создается уже в onInitialize, чтобы скрипты из
+        // neoscripts/autostart выполнялись до заморозки реестров —
+        // тогда регистрация предметов/блоков работает как в Fabric API.
+        val gameScriptsDir = FabricLoader.getInstance().gameDir.resolve(MOD_ID).resolve("scripts").toFile()
+        Files.createDirectories(gameScriptsDir.toPath())
+        LUA_MANAGER = LuaManager(gameScriptsDir)
+
+        // Скрипты автозапуска сервера: <папка сервера>/neoscripts/autostart/*.lua
+        val autostartDir = FabricLoader.getInstance().gameDir.resolve(MOD_ID).resolve("autostart")
+        Files.createDirectories(autostartDir)
+        LUA_MANAGER?.runAutostartScripts(autostartDir.toFile(), false, null)
+
         val classes = HashSet<Class<*>>()
 
         ClassGraph()
@@ -129,7 +141,6 @@ object ServerMain : ModInitializer {
             SERVER = server
             val worldRoot = server?.getWorldPath(LevelResource.ROOT)
 
-
             val neuDir = worldRoot!!.resolve("neoscripts")
             Files.createDirectories(neuDir)
 
@@ -140,7 +151,8 @@ object ServerMain : ModInitializer {
             val libsDir = scriptsDir2.resolve("libs")
             Files.createDirectories(libsDir)
 
-            LUA_MANAGER = LuaManager(scriptsDir2.toFile())
+            // Менеджер уже создан в onInitialize — только добавляем пути поиска
+            // скриптов мира и откладываем устаревшую автозагрузку до первого тика
             LUA_MANAGER?.addSearchPath(worldRoot.toString())
             LUA_MANAGER?.addSearchPath(neuDir.toString())
 
@@ -155,13 +167,12 @@ object ServerMain : ModInitializer {
         })
 
         ServerLifecycleEvents.SERVER_STOPPED.register(ServerStopped { server: MinecraftServer? ->
-            // true, чтобы при повторном входе в мир (интегрированный сервер)
-            // автозагрузка и ивенты полной загрузки отработали заново
+            // Менеджер НЕ очищается: он создан в onInitialize и содержит общие
+            // скрипты из neoscripts/autostart, а также нужен для повторного входа
+            // в мир (интегрированный сервер). autoloadPending=true гарантирует,
+            // что скрипты autoload.lua / startup.lua / init.lua из папки мира
+            // выполнится заново при следующем запуске мира.
             autoloadPending = true
-            LUA_MANAGER?.scripts?.values?.forEach { script ->
-                script.cleanup()
-            }
-            LUA_MANAGER = null
             SERVER = null
         })
     }

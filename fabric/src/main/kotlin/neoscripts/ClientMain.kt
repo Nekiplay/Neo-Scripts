@@ -43,6 +43,13 @@ object ClientMain : ClientModInitializer {
     @JvmField
     val CONFIG_DIR: Path = FabricLoader.getInstance().configDir.resolve(MOD_ID)
 
+    /**
+     * Папка автозапуска скриптов клиента: <папка игры>/neoscripts/autostart.
+     * Все .lua файлы из неё выполняются при старте игры (Minecraft.onGameLoadFinished).
+     */
+    @JvmField
+    val AUTOSTART_DIR: Path = FabricLoader.getInstance().gameDir.resolve(MOD_ID).resolve("autostart")
+
     val PREFIX: String =
         ChatFormatting.GRAY.toString() + "[" + ChatFormatting.GOLD + "Neo Scripts" + ChatFormatting.GRAY + "] " + ChatFormatting.RESET
     const val LOG_PREFIX: String = "[Neo Scripts] "
@@ -82,6 +89,8 @@ object ClientMain : ClientModInitializer {
         if (!libsDir.exists()) {
             libsDir.mkdir()
         }
+        // Папка автозапуска в директории игры
+        java.nio.file.Files.createDirectories(AUTOSTART_DIR)
 
         Runtime.getRuntime().addShutdownHook(Thread(Runnable { saveConfig() }))
 
@@ -145,5 +154,13 @@ object ClientMain : ClientModInitializer {
                 }
             }
         )
+
+        // Общие скрипты автозапуска (<папка игры>/neoscripts/autostart) выполняются
+        // здесь, в onInitialize — ДО заморозки реестров, чтобы регистрация
+        // предметов/блоков работала как в Fabric API. Эти же скрипты на сервере
+        // запускает ServerMain.onInitialize.
+        // Устаревшие autoload.lua / startup.lua / init.lua (config/neoscripts/scripts)
+        // по-прежнему запускаются позже через WindowMixin.onGameLoadFinished.
+        LUA_MANAGER?.runAutostartScripts(AUTOSTART_DIR.toFile(), false, null)
     }
 }

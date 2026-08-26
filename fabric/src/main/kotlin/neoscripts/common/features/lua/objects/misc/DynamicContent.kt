@@ -4,8 +4,11 @@ import com.nekiplay.neoscripts.ClientMain
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaContentSettings
 import com.mojang.blaze3d.platform.NativeImage
 import net.minecraft.core.Registry
+import net.minecraft.core.RegistrationInfo
+import net.minecraft.core.registries.Registries
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.Identifier
+import net.minecraft.resources.ResourceKey
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.Item
@@ -109,7 +112,12 @@ object DynamicContent {
     }
 
     /**
-     * Регистрирует простой предмет. Возвращает зарегистрированный Item или null.
+     * Регистрирует предмет по паттерну Fabric API:
+     * ResourceKey.create + Properties.setId(key) + Registry.register.
+     * Работает напрямую из скриптов автозапуска (onInitialize, реестр ещё не
+     * заморожен). Если реестр уже заморожен (запуск через /slua в рантайме) —
+     * временно размораживает через рефлексию и регистрирует всё равно.
+     * Возвращает зарегистрированный Item или null.
      */
     fun registerItem(rawId: String, settings: LuaContentSettings? = null): Item? {
         return try {
@@ -121,26 +129,22 @@ object DynamicContent {
 
             settings?.texture?.let { textureOverrides[rawId] = it }
 
-            setFrozen(false)
-            try {
-                val props = settings?.applyTo(Item.Properties()) ?: Item.Properties()
-                val customName = settings?.displayName()
+            val key = ResourceKey.create(Registries.ITEM, id)
+            val props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
+            val customName = settings?.displayName()
 
-                val item = if (customName != null) {
-                    object : Item(props) {
-                        override fun getName(stack: net.minecraft.world.item.ItemStack) = customName
-                    }
-                } else {
-                    Item(props)
+            val item = if (customName != null) {
+                object : Item(props) {
+                    override fun getName(stack: net.minecraft.world.item.ItemStack) = customName
                 }
-
-                Registry.register(BuiltInRegistries.ITEM, id, item)
-                knownIds.add("item:$rawId")
-                ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic item $rawId")
-                item
-            } finally {
-                setFrozen(true)
+            } else {
+                Item(props)
             }
+
+            registerWithFreezeFallback(BuiltInRegistries.ITEM as Registry<Item>) { Registry.register(BuiltInRegistries.ITEM, key, item) }
+            knownIds.add("item:$rawId")
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic item $rawId")
+            item
         } catch (e: Exception) {
             ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic item $rawId", e)
             null
@@ -148,7 +152,7 @@ object DynamicContent {
     }
 
     /**
-     * Регистрирует блок. Возвращает зарегистрированный Block или null.
+     * Регистрирует блок по паттерну Fabric API. Возвращает Block или null.
      */
     fun registerBlock(rawId: String, settings: LuaContentSettings? = null): Block? {
         return try {
@@ -160,26 +164,23 @@ object DynamicContent {
 
             settings?.texture?.let { textureOverrides[rawId] = it }
 
-            setFrozen(false)
-            try {
-                val props = settings?.applyTo(BlockBehaviour.Properties.of()) ?: BlockBehaviour.Properties.of()
-                val customName = settings?.displayName()
+            val key = ResourceKey.create(Registries.BLOCK, id)
+            val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key)
+                ?: BlockBehaviour.Properties.of().setId(key)
+            val customName = settings?.displayName()
 
-                val block = if (customName != null) {
-                    object : Block(props) {
-                        override fun getName() = customName
-                    }
-                } else {
-                    Block(props)
+            val block = if (customName != null) {
+                object : Block(props) {
+                    override fun getName() = customName
                 }
-
-                Registry.register(BuiltInRegistries.BLOCK, id, block)
-                knownIds.add("block:$rawId")
-                ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic block $rawId")
-                block
-            } finally {
-                setFrozen(true)
+            } else {
+                Block(props)
             }
+
+            registerWithFreezeFallback(BuiltInRegistries.BLOCK as Registry<Block>) { Registry.register(BuiltInRegistries.BLOCK, key, block) }
+            knownIds.add("block:$rawId")
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic block $rawId")
+            block
         } catch (e: Exception) {
             ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic block $rawId", e)
             null
@@ -187,7 +188,7 @@ object DynamicContent {
     }
 
     /**
-     * Регистрирует предмет-блок (BlockItem) для уже зарегистрированного блока.
+     * Регистрирует предмет-блок (BlockItem) для блока.
      */
     fun registerBlockItem(rawId: String, block: Block, settings: LuaContentSettings? = null): Item? {
         return try {
@@ -199,29 +200,43 @@ object DynamicContent {
 
             settings?.texture?.let { textureOverrides[rawId] = it }
 
-            setFrozen(false)
-            try {
-                val props = settings?.applyTo(Item.Properties()) ?: Item.Properties()
-                val customName = settings?.displayName()
+            val key = ResourceKey.create(Registries.ITEM, id)
+            val props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
+            val customName = settings?.displayName()
 
-                val item = if (customName != null) {
-                    object : BlockItem(block, props) {
-                        override fun getName(stack: net.minecraft.world.item.ItemStack) = customName
-                    }
-                } else {
-                    BlockItem(block, props)
+            val item = if (customName != null) {
+                object : BlockItem(block, props) {
+                    override fun getName(stack: net.minecraft.world.item.ItemStack) = customName
                 }
-
-                Registry.register(BuiltInRegistries.ITEM, id, item)
-                knownIds.add("item:$rawId")
-                ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic block item $rawId")
-                item
-            } finally {
-                setFrozen(true)
+            } else {
+                BlockItem(block, props)
             }
+
+            registerWithFreezeFallback(BuiltInRegistries.ITEM as Registry<Item>) { Registry.register(BuiltInRegistries.ITEM, key, item) }
+            knownIds.add("item:$rawId")
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic block item $rawId")
+            item
         } catch (e: Exception) {
             ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic block item $rawId", e)
             null
+        }
+    }
+
+    /**
+     * Пытается зарегистрировать напрямую; если реестр уже заморожен
+     * (скрипт запущен не в onInitialize, а позже — /slua и т.п.) —
+     * размораживает реестр через рефлексию и повторяет попытку.
+     */
+    private inline fun registerWithFreezeFallback(registry: Registry<*>, crossinline action: () -> Unit) {
+        try {
+            action()
+        } catch (e: IllegalStateException) {
+            setFrozen(false)
+            try {
+                action()
+            } finally {
+                setFrozen(true)
+            }
         }
     }
 }

@@ -128,4 +128,33 @@ class LuaManager(val configDir: File?) {
         return scripts.values.toList()
     }
 
+    /**
+     * Выполняет все скрипты (*.lua, *.luac) в указанной папке автозапуска,
+     * отсортированные по имени файла. Используется для neoscripts/autostart
+     * как на клиенте, так и на сервере.
+     * Возвращает количество успешно выполненных скриптов.
+     */
+    fun runAutostartScripts(dir: File, serverSide: Boolean, server: MinecraftServer? = null): Int {
+        if (!dir.exists()) return 0
+        dir.mkdirs()
+
+        val scriptFiles = dir.listFiles { file ->
+            file.isFile && (file.name.endsWith(".lua") || file.name.endsWith(".luac"))
+        }?.sortedBy { it.name.lowercase() } ?: return 0
+
+        var executed = 0
+        for (file in scriptFiles) {
+            try {
+                val script = getScript(file, serverSide, server)
+                executeScript(file, script)
+                executed++
+                println("Autostart script \"${file.name}\" executed successfully")
+            } catch (e: Exception) {
+                println("Error executing autostart script \"${file.name}\": " + e.message)
+                e.printStackTrace()
+            }
+        }
+        return executed
+    }
+
 }

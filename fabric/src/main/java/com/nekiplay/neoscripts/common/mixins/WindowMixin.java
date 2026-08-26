@@ -5,7 +5,6 @@ import com.nekiplay.neoscripts.ClientMain;
 import com.nekiplay.neoscripts.client.features.lua.LuaClientScript;
 import com.nekiplay.neoscripts.common.features.lua.Script;
 import net.minecraft.client.GameLoadCookie;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.main.GameConfig;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -35,7 +34,10 @@ public class WindowMixin {
 
     @Unique
     private void loadStartupScripts(File dir) {
-        // Автозагрузка скриптов при старте
+        // Старый запуск при полной загрузке игры: одиночные autoload.lua /
+        // startup.lua / init.lua в <config>/neoscripts/scripts.
+        // (Общая папка <игра>/neoscripts/autostart запускается раньше —
+        //  в ClientMain.onInitializeClient, до заморозки реестров.)
         for (String name : startUpScriptNames) {
             File autoLoadScript = new File(dir, name);
             if (autoLoadScript.exists()) {
