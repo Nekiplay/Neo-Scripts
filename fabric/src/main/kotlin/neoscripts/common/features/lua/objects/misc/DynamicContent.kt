@@ -7,8 +7,14 @@ import net.minecraft.core.registries.Registries
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.Identifier
 import net.minecraft.resources.ResourceKey
+import net.minecraft.core.component.DataComponents
+import net.minecraft.tags.BlockTags
+import net.minecraft.world.food.FoodProperties
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.Item
+import net.minecraft.world.item.ToolMaterial
+import net.minecraft.world.item.component.Consumables
+import net.minecraft.world.item.component.Tool
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockBehaviour
 import java.io.File
@@ -172,6 +178,87 @@ object DynamicContent {
         }
     }
 
+    fun buildFoodProperties(nutrition: Int, saturation: Float, alwaysEdible: Boolean): FoodProperties {
+        val builder = FoodProperties.Builder()
+            .nutrition(nutrition)
+            .saturationModifier(saturation)
+        if (alwaysEdible) builder.alwaysEdible()
+        return builder.build()
+    }
+
+    fun parseFoodTable(table: org.luaj.vm2.LuaValue?): FoodProperties? {
+        if (table == null || !table.istable()) return null
+        val nutrition = if (table.get("nutrition").isnumber()) table.get("nutrition").toint() else return null
+        val saturation = if (table.get("saturation").isnumber()) table.get("saturation").tofloat() else 0.6f
+        val alwaysEdible = table.get("alwaysEdible").optboolean(false) || table.get("always_edible").optboolean(false)
+        return buildFoodProperties(nutrition, saturation, alwaysEdible)
+    }
+
+    /**
+     * Регистрирует еду: Item с FoodProperties (+ дефолтный Consumable).
+     */
+    fun registerFood(rawId: String, settings: LuaContentSettings? = null, food: FoodProperties? = null): Item? {
+        return try {
+            val id = Identifier.parse(rawId)
+            if (knownIds.contains("item:$rawId")) {
+                val existing = BuiltInRegistries.ITEM.get(id)
+                if (existing.isPresent) return existing.get().value()
+            }
+            settings?.texture?.let { storeTexture(rawId, it) }
+            val key = ResourceKey.create(Registries.ITEM, id)
+            var props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
+            if (food != null) props = props.food(food)
+            val customName = settings?.displayName()
+            val item = if (customName != null) {
+                object : Item(props) {
+                    override fun getName(stack: net.minecraft.world.item.ItemStack) = customName
+                }
+            } else {
+                Item(props)
+            }
+            registerWithFreezeFallback(BuiltInRegistries.ITEM as Registry<Item>) { Registry.register(BuiltInRegistries.ITEM, key, item) }
+            knownIds.add("item:$rawId")
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic food $rawId")
+            item
+        } catch (e: Exception) {
+            ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic food $rawId", e)
+            null
+        }
+    }
+
+    /**
+     * Регистрирует напиток: Item с FoodProperties + Consumables.DEFAULT_DRINK (анимация питья).
+     */
+    fun registerDrink(rawId: String, settings: LuaContentSettings? = null, food: FoodProperties? = null): Item? {
+        return try {
+            val id = Identifier.parse(rawId)
+            if (knownIds.contains("item:$rawId")) {
+                val existing = BuiltInRegistries.ITEM.get(id)
+                if (existing.isPresent) return existing.get().value()
+            }
+            settings?.texture?.let { storeTexture(rawId, it) }
+            val key = ResourceKey.create(Registries.ITEM, id)
+            var props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
+            if (food != null) props = props.food(food, Consumables.DEFAULT_DRINK)
+            else props = props.food(FoodProperties.Builder().nutrition(0).saturationModifier(0f).build(), Consumables.DEFAULT_DRINK)
+            val customName = settings?.displayName()
+            val item = if (customName != null) {
+                object : Item(props) {
+                    override fun getName(stack: net.minecraft.world.item.ItemStack) = customName
+                }
+            } else {
+                Item(props)
+            }
+            registerWithFreezeFallback(BuiltInRegistries.ITEM as Registry<Item>) { Registry.register(BuiltInRegistries.ITEM, key, item) }
+            knownIds.add("item:$rawId")
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic drink $rawId")
+            item
+        } catch (e: Exception) {
+            ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic drink $rawId", e)
+            null
+        }
+    }
+
     /**
      * Регистрирует предмет-блок (BlockItem) для блока.
      */
@@ -203,6 +290,72 @@ object DynamicContent {
             item
         } catch (e: Exception) {
             ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic block item $rawId", e)
+            null
+        }
+    }
+
+    fun parseToolMaterial(name: String?): ToolMaterial = when (name?.lowercase()) {
+        "wood", "wooden" -> ToolMaterial.WOOD
+        "stone" -> ToolMaterial.STONE
+        "copper" -> ToolMaterial.COPPER
+        "iron" -> ToolMaterial.IRON
+        "diamond" -> ToolMaterial.DIAMOND
+        "gold", "golden" -> ToolMaterial.GOLD
+        "netherite" -> ToolMaterial.NETHERITE
+        else -> ToolMaterial.IRON
+    }
+
+    fun registerTool(rawId: String, settings: LuaContentSettings? = null, toolTable: org.luaj.vm2.LuaValue? = null): Item? {
+        return try {
+            val id = Identifier.parse(rawId)
+            if (knownIds.contains("item:$rawId")) {
+                val existing = BuiltInRegistries.ITEM.get(id)
+                if (existing.isPresent) return existing.get().value()
+            }
+            settings?.texture?.let { storeTexture(rawId, it) }
+            val key = ResourceKey.create(Registries.ITEM, id)
+            var props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
+            val type = toolTable?.get("type")?.tojstring()?.lowercase() ?: "pickaxe"
+            val material = parseToolMaterial(toolTable?.get("material")?.tojstring())
+            val damage = toolTable?.get("damage")?.takeIf { it.isnumber() }?.tofloat() ?: 1f
+            val speed = toolTable?.get("speed")?.takeIf { it.isnumber() }?.tofloat() ?: -2.8f
+            props = when (type) {
+                "pickaxe", "pick" -> props.pickaxe(material, damage, speed)
+                "axe" -> props.axe(material, damage, speed)
+                "shovel" -> props.shovel(material, damage, speed)
+                "hoe" -> props.hoe(material, damage, speed)
+                "sword" -> props.sword(material, damage, speed)
+                "paxel" -> {
+                    // Мульти-инструмент: комбинирует pickaxe/axe/shovel/hoe
+                    val lookup = BuiltInRegistries.acquireBootstrapRegistrationLookup(BuiltInRegistries.BLOCK)
+                    val rules = listOf(
+                        Tool.Rule.deniesDrops(lookup.getOrThrow(material.incorrectBlocksForDrops())),
+                        Tool.Rule.minesAndDrops(lookup.getOrThrow(BlockTags.MINEABLE_WITH_PICKAXE), speed),
+                        Tool.Rule.minesAndDrops(lookup.getOrThrow(BlockTags.MINEABLE_WITH_AXE), speed),
+                        Tool.Rule.minesAndDrops(lookup.getOrThrow(BlockTags.MINEABLE_WITH_SHOVEL), speed),
+                        Tool.Rule.minesAndDrops(lookup.getOrThrow(BlockTags.MINEABLE_WITH_HOE), speed)
+                    )
+                    val paxelTool = Tool(rules, 1.0f, 1, true)
+                    // Сначала получаем атрибуты/компоненты через любой tool, затем заменяем Tool
+                    val tmp = props.pickaxe(material, damage, speed)
+                    tmp.component(DataComponents.TOOL, paxelTool)
+                }
+                else -> props.pickaxe(material, damage, speed)
+            }
+            val customName = settings?.displayName()
+            val item = if (customName != null) {
+                object : Item(props) {
+                    override fun getName(stack: net.minecraft.world.item.ItemStack) = customName
+                }
+            } else {
+                Item(props)
+            }
+            registerWithFreezeFallback(BuiltInRegistries.ITEM as Registry<Item>) { Registry.register(BuiltInRegistries.ITEM, key, item) }
+            knownIds.add("item:$rawId")
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic tool $rawId type=$type")
+            item
+        } catch (e: Exception) {
+            ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic tool $rawId", e)
             null
         }
     }

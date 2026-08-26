@@ -19,10 +19,14 @@ import org.luaj.vm2.lib.VarArgFunction
  *
  * API:
  *  content.createSettings({ name=..., texture=..., maxStackSize=..., ... })
- *  content.registerItem("ns:id" [, settings])          -> LuaItemStack
- *  content.registerBlock("ns:id" [, settings])         -> LuaBlockState
- *  content.registerBlockItem("ns:id", blockState [, settings]) -> LuaItemStack
- *  content.getItemTexture("ns:id")                     -> string | nil
+ *  content.registerItem("ns:id" [, settings])                  -> string
+ *  content.registerBlock("ns:id" [, settings])                 -> LuaBlockState
+ *  content.registerBlockItem("ns:id", blockState [, settings]) -> string
+ *  content.registerFood("ns:id" [, settings [, foodTable]])    -> string
+ *  content.registerDrink("ns:id" [, settings [, foodTable]])   -> string
+ *  content.getItemTexture("ns:id")                             -> string | nil
+ *
+ *  foodTable: { nutrition=4, saturation=0.6, alwaysEdible=false }
  */
 class ContentLib : LuaValue() {
     override fun typename(): String = "content_lib"
@@ -36,6 +40,10 @@ class ContentLib : LuaValue() {
             "registerItem" -> RegisterItem()
             "registerBlock" -> RegisterBlock()
             "registerBlockItem" -> RegisterBlockItem()
+            "registerFood" -> RegisterFood()
+            "registerDrink" -> RegisterDrink()
+            "registerTool" -> RegisterTool()
+            "registerPaxel" -> RegisterTool()
             "getItemTexture" -> GetItemTexture()
             else -> super.get(key)
         }
@@ -101,6 +109,54 @@ class ContentLib : LuaValue() {
             val settings = settingsArg?.toContentSettings()
 
             val item = DynamicContent.registerBlockItem(args.arg1().tojstring(), state.block, settings) ?: return NIL
+            return valueOf(BuiltInRegistries.ITEM.getKey(item).toString())
+        }
+    }
+
+    companion object {
+        private fun extractFoodAndSettings(args: Varargs, startIdx: Int): Pair<LuaContentSettings?, org.luaj.vm2.LuaValue?> {
+            var settings: LuaContentSettings? = null
+            var foodTable: org.luaj.vm2.LuaValue? = null
+            for (i in startIdx..args.narg()) {
+                val arg = args.arg(i)
+                if (arg.toContentSettings() != null && settings == null) settings = arg.toContentSettings()
+                else if (arg.istable() && arg.toContentSettings() == null && foodTable == null) foodTable = arg
+            }
+            return settings to foodTable
+        }
+    }
+
+    class RegisterFood : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (!args.arg(1).isstring()) return NIL
+            val (settings, foodTable) = extractFoodAndSettings(args, 2)
+            val food = DynamicContent.parseFoodTable(foodTable) ?: DynamicContent.buildFoodProperties(4, 0.6f, false)
+            val item = DynamicContent.registerFood(args.arg1().tojstring(), settings, food) ?: return NIL
+            return valueOf(BuiltInRegistries.ITEM.getKey(item).toString())
+        }
+    }
+
+    class RegisterDrink : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (!args.arg(1).isstring()) return NIL
+            val (settings, foodTable) = extractFoodAndSettings(args, 2)
+            val food = DynamicContent.parseFoodTable(foodTable)
+            val item = DynamicContent.registerDrink(args.arg1().tojstring(), settings, food) ?: return NIL
+            return valueOf(BuiltInRegistries.ITEM.getKey(item).toString())
+        }
+    }
+
+    class RegisterTool : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (!args.arg(1).isstring()) return NIL
+            var settings: LuaContentSettings? = null
+            var toolTable: org.luaj.vm2.LuaValue? = null
+            for (i in 2..args.narg()) {
+                val arg = args.arg(i)
+                if (arg.toContentSettings() != null && settings == null) settings = arg.toContentSettings()
+                else if (arg.istable() && toolTable == null) toolTable = arg
+            }
+            val item = DynamicContent.registerTool(args.arg1().tojstring(), settings, toolTable) ?: return NIL
             return valueOf(BuiltInRegistries.ITEM.getKey(item).toString())
         }
     }
