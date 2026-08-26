@@ -6,11 +6,11 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import net.minecraft.server.packs.PackLocationInfo
 import net.minecraft.server.packs.PackResources
+import net.minecraft.server.packs.PackSelectionConfig
 import net.minecraft.server.packs.PackType
 import net.minecraft.server.packs.metadata.MetadataSectionType
 import net.minecraft.server.packs.repository.Pack
 import net.minecraft.server.packs.repository.PackCompatibility
-import net.minecraft.server.packs.repository.PackSelectionConfig
 import net.minecraft.server.packs.repository.PackSource
 import net.minecraft.server.packs.repository.RepositorySource
 import net.minecraft.server.packs.resources.IoSupplier
@@ -150,7 +150,7 @@ object DynamicContentResourcePack : PackResources {
         }.toSet()
     }
 
-    override fun <T : Any?> getMetadataSection(sectionType: MetadataSectionType<T>?): T? = null
+    override fun <T : Any> getMetadataSection(sectionType: MetadataSectionType<T>): T? = null
 
     override fun location(): PackLocationInfo = locationInfo
 

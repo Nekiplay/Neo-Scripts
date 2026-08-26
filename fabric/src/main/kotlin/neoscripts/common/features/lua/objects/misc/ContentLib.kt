@@ -6,6 +6,7 @@ import com.nekiplay.neoscripts.client.sugar.toContentSettings
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaBlockState
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaContentSettings
 import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.resources.Identifier
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
@@ -106,13 +107,21 @@ class ContentLib : LuaValue() {
 
     /**
      * content.getItemTexture("ns:id") — Identifier текстуры строкой,
-     * файл загружается при первом вызове (путь из settings.texture).
+     * как она лежит в рантайм ресурспаке ("ns:textures/item/path.png").
+     * nil, если текстура не задана или файл не прочитан.
      */
     class GetItemTexture : OneArgFunction() {
         override fun call(arg: LuaValue): LuaValue {
             if (!arg.isstring()) return NIL
-            val identifier = DynamicContent.getDynamicTexture(arg.tojstring()) ?: return NIL
-            return valueOf(identifier.toString())
+            val rawId = arg.tojstring()
+            if (DynamicContent.textureData.containsKey(rawId)) {
+                try {
+                    val id = Identifier.parse(rawId)
+                    return valueOf(Identifier.fromNamespaceAndPath(id.namespace, "textures/item/${id.path}.png").toString())
+                } catch (_: Exception) {
+                }
+            }
+            return NIL
         }
     }
 }
