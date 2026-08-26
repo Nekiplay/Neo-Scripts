@@ -67,7 +67,10 @@ object DynamicContentResourcePack : PackResources {
             FeatureFlagSet.of(),
             emptyList()
         )
-        val selectionConfig = PackSelectionConfig(false, Pack.Position.TOP, false)
+        // required + fixed: пак всегда включен и не отключается в меню паков.
+        // BOTTOM: минимальный приоритет — другие паки/моды могут переопределять
+        // модели динамических предметов.
+        val selectionConfig = PackSelectionConfig(true, Pack.Position.BOTTOM, true)
         return Pack(locationInfo, supplier, metadata, selectionConfig)
     }
 
