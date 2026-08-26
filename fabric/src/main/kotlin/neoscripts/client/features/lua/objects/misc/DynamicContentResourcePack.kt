@@ -22,17 +22,24 @@ import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Рантайм ресурспак с моделями и текстурами динамических предметов.
+ * Рантайм ресурспак с моделями и текстурами динамических предметов/блоков.
  *
- * Для каждого предмета, зарегистрированного через content.registerItem(...)
- * с settings.texture, генерирует стандартные ассеты:
+ * Генерирует:
+ *  Для предметов (items):
  *   assets/<ns>/items/<path>.json        — item model definition (26.x)
- *   assets/<ns>/models/item/<path>.json  — модель item/generated с layer0
- *   assets/<ns>/textures/item/<path>.png — содержимое файла текстуры
+ *   assets/<ns>/models/item/<path>.json  — модель (parent = settings.model или item/generated)
+ *   assets/<ns>/textures/item/<path>.png
+ *  Для блоков:
+ *   assets/<ns>/blockstates/<path>.json  — variants -> model "ns:block/path"
+ *   assets/<ns>/models/block/<path>.json — модель (parent = settings.model или cube_all), текстуры all/particle
+ *   assets/<ns>/textures/block/<path>.png
+ *   + для BlockItem (если тот же id зарегистрирован как item) — item-модель ссылается на block
  *
- * Пак добавляется в PackRepository через миксин (PackRepositoryMixin) при
- * создании репозитория — до первой загрузки ресурсов, поэтому текстуры
- * попадают в первый же бейк моделей и видны в инвентаре/в руке.
+ * Поддерживает settings.model:
+ *  - "minecraft:block/cube_all" — Identifier родительской модели
+ *  - "minecraft:diamond_block"   — короткая запись (разворачивается в "minecraft:block/diamond_block" для блоков)
+ *  - "tinker_construct:block/cast" — любой неймспейс
+ *  - путь к файлу "*.json"       — байты файла отдаются напрямую как model json
  */
 object DynamicContentResourcePack : PackResources {
 
@@ -76,23 +83,136 @@ object DynamicContentResourcePack : PackResources {
 
     // ═══ Генерация ассетов ═══
 
+    private fun expandModel(parent: String, isBlock: Boolean): String {
+        // Уже полный идентификатор модели (содержит '/') — оставляем как есть
+        if (parent.contains("/")) return parent
+        // Короткая запись "namespace:path" без слэша — разворачиваем в "namespace:block/path" или "namespace:item/path"
+        if (parent.contains(":")) {
+            val (ns, path) = parent.split(":", limit = 2)
+            return if (isBlock) "$ns:block/$path" else "$ns:item/$path"
+        }
+        // Без неймспейса — считаем minecraft
+        return if (isBlock) "minecraft:block/$parent" else "minecraft:item/$parent"
+    }
+
     private fun buildFiles(): ConcurrentHashMap<String, ByteArray> {
         val files = ConcurrentHashMap<String, ByteArray>()
-        for ((rawId, pngBytes) in DynamicContent.textureData) {
+
+        // Собираем все rawId, для которых нужно генерировать ассеты
+        val allRawIds = mutableSetOf<String>()
+        allRawIds.addAll(DynamicContent.textureData.keys)
+        allRawIds.addAll(DynamicContent.modelOverrides.keys)
+        allRawIds.addAll(DynamicContent.modelData.keys)
+        for (entry in DynamicContent.getKnownIds()) {
+            val raw = entry.substringAfter(":") // "block:ns:path" -> "ns:path"
+            if (raw.contains(":")) allRawIds.add(raw)
+        }
+
+        for (rawId in allRawIds) {
             try {
                 val id = Identifier.parse(rawId)
                 val ns = id.namespace
                 val path = id.path
 
-                files["assets/$ns/items/$path.json"] =
-                    """{"model":{"type":"minecraft:model","model":"$ns:item/$path"}}"""
-                        .toByteArray(StandardCharsets.UTF_8)
+                val blockKnown = DynamicContent.isBlockRegistered(rawId)
+                val itemKnown = DynamicContent.isItemRegistered(rawId)
 
-                files["assets/$ns/models/item/$path.json"] =
-                    """{"parent":"minecraft:item/generated","textures":{"layer0":"$ns:item/$path"}}"""
-                        .toByteArray(StandardCharsets.UTF_8)
+                // Если не зарегистрирован ни как блок ни как предмет, но есть текстура/модель — считаем предметом по умолчанию
+                val treatAsBlock = blockKnown
+                val treatAsItem = itemKnown || (!blockKnown && !itemKnown)
 
-                files["assets/$ns/textures/item/$path.png"] = pngBytes
+                val pngBytes = DynamicContent.textureData[rawId]
+
+                // ── БЛОК ──
+                if (treatAsBlock) {
+                    // blockstates
+                    files["assets/$ns/blockstates/$path.json"] =
+                        """{"variants":{"":{"model":"$ns:block/$path"}}}"""
+                            .toByteArray(StandardCharsets.UTF_8)
+
+                    // block model
+                    val blockModelBytes = DynamicContent.modelData[rawId]
+                    if (blockModelBytes != null) {
+                        files["assets/$ns/models/block/$path.json"] = blockModelBytes
+                    } else {
+                        val rawParent = DynamicContent.modelOverrides[rawId]
+                        val parent = if (rawParent != null) expandModel(rawParent, isBlock = true) else "minecraft:block/cube_all"
+                        // текстура для блока — ns:block/path
+                        val tex = "$ns:block/$path"
+                        // Если parent = cross (растение), то нужен текстурный ключ "cross"
+                        val texturesJson = when {
+                            parent.endsWith("/cross") || parent == "minecraft:block/cross" -> """"cross":"$tex""""
+                            else -> """"all":"$tex","particle":"$tex""""
+                        }
+                        files["assets/$ns/models/block/$path.json"] =
+                            """{"parent":"$parent","textures":{$texturesJson}}"""
+                                .toByteArray(StandardCharsets.UTF_8)
+                    }
+
+                    if (pngBytes != null) {
+                        files["assets/$ns/textures/block/$path.png"] = pngBytes
+                    }
+                }
+
+                // ── ПРЕДМЕТ ──
+                if (treatAsItem) {
+                    val customItemModelBytes = if (!treatAsBlock) DynamicContent.modelData[rawId] else null
+                    // Если это BlockItem (один и тот же id и блок и предмет) — item ссылается на блок
+                    if (treatAsBlock && itemKnown) {
+                        // item definition -> block model
+                        files["assets/$ns/items/$path.json"] =
+                            """{"model":{"type":"minecraft:model","model":"$ns:block/$path"}}"""
+                                .toByteArray(StandardCharsets.UTF_8)
+                        // item model (опционален, но для совместимости) — parent block
+                        if (customItemModelBytes == null) {
+                            // Если для этого id есть кастомная модель-файл, но он уже использован для блока — для предмета делаем ссылку
+                            files["assets/$ns/models/item/$path.json"] =
+                                """{"parent":"$ns:block/$path"}"""
+                                    .toByteArray(StandardCharsets.UTF_8)
+                        } else {
+                            files["assets/$ns/models/item/$path.json"] = customItemModelBytes
+                        }
+                    } else {
+                        // Чистый предмет
+                        if (customItemModelBytes != null) {
+                            files["assets/$ns/models/item/$path.json"] = customItemModelBytes
+                            files["assets/$ns/items/$path.json"] =
+                                """{"model":{"type":"minecraft:model","model":"$ns:item/$path"}}"""
+                                    .toByteArray(StandardCharsets.UTF_8)
+                        } else {
+                            val rawParent = DynamicContent.modelOverrides[rawId]
+                            val parent = if (rawParent != null) expandModel(rawParent, isBlock = false) else "minecraft:item/generated"
+                            // Если parent уже является готовой моделью блока/предмета (например "minecraft:block/diamond_block"),
+                            // то в items/<path>.json можно сослаться напрямую на неё без генерации models/item
+                            val isDirectModelRef = rawParent != null && rawParent != "minecraft:item/generated" && rawParent != "minecraft:item/handheld"
+                            // Для parent типа item/generated нужен layer0, для block/cube_all — all
+                            if (isDirectModelRef && (parent.startsWith("minecraft:block/") || parent.contains(":block/"))) {
+                                files["assets/$ns/items/$path.json"] =
+                                    """{"model":{"type":"minecraft:model","model":"$parent"}}"""
+                                        .toByteArray(StandardCharsets.UTF_8)
+                                // Не генерируем models/item — используется чужой блок
+                            } else {
+                                files["assets/$ns/items/$path.json"] =
+                                    """{"model":{"type":"minecraft:model","model":"$ns:item/$path"}}"""
+                                        .toByteArray(StandardCharsets.UTF_8)
+                                val tex = "$ns:item/$path"
+                                files["assets/$ns/models/item/$path.json"] =
+                                    """{"parent":"$parent","textures":{"layer0":"$tex"}}"""
+                                        .toByteArray(StandardCharsets.UTF_8)
+                            }
+                        }
+                    }
+
+                    if (pngBytes != null) {
+                        // Текстура предмета всегда в textures/item
+                        files["assets/$ns/textures/item/$path.png"] = pngBytes
+                        // Дублируем в textures/block для блоков-итемов, если ещё не создана
+                        if (treatAsBlock && !files.containsKey("assets/$ns/textures/block/$path.png")) {
+                            files["assets/$ns/textures/block/$path.png"] = pngBytes
+                        }
+                    }
+                }
+
             } catch (e: Exception) {
                 ClientMain.LOGGER?.error("[Neo Scripts] Failed to build assets for $rawId", e)
             }
@@ -144,12 +264,15 @@ object DynamicContentResourcePack : PackResources {
 
     override fun getNamespaces(type: PackType): Set<String> {
         if (type != PackType.CLIENT_RESOURCES) return emptySet()
-        return DynamicContent.textureData.keys.mapNotNull {
-            try {
-                Identifier.parse(it).namespace
-            } catch (_: Exception) {
-                null
-            }
+        val all = mutableSetOf<String>()
+        all.addAll(DynamicContent.textureData.keys)
+        all.addAll(DynamicContent.modelOverrides.keys)
+        all.addAll(DynamicContent.modelData.keys)
+        all.addAll(DynamicContent.getKnownIds().mapNotNull {
+            try { it.substringAfter(":").let { r -> Identifier.parse(r).namespace } } catch (_: Exception) { null }
+        })
+        return all.mapNotNull {
+            try { Identifier.parse(it).namespace } catch (_: Exception) { null }
         }.toSet()
     }
 

@@ -17,6 +17,7 @@ import net.minecraft.world.item.component.Consumables
 import net.minecraft.world.item.component.Tool
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockBehaviour
+import net.fabricmc.loader.api.FabricLoader
 import java.io.File
 import java.lang.reflect.Modifier
 import java.util.concurrent.ConcurrentHashMap
@@ -48,7 +49,16 @@ object DynamicContent {
     // Содержимое PNG-файлов по id — отдается рантайм ресурспаком клиенту
     val textureData = ConcurrentHashMap<String, ByteArray>()
 
+    // Родительская модель (Identifier строкой), например "minecraft:block/cube_all"
+    // или короткая запись "minecraft:diamond_block" (будет развёрнута в паке),
+    // или путь к JSON-файлу ("config/neoscripts/models/foo.json" -> bytes)
+    val modelOverrides = ConcurrentHashMap<String, String>()
+    // Байты кастомной JSON-модели, если model указал путь к файлу
+    val modelData = ConcurrentHashMap<String, ByteArray>()
+    val modelFilePath = ConcurrentHashMap<String, String>()
+
     fun getTextureOverride(rawId: String): String? = textureOverrides[rawId]
+    fun getModelOverride(rawId: String): String? = modelOverrides[rawId]
 
     /**
      * Сохраняет путь и читает содержимое файла текстуры для ресурспака.
@@ -66,6 +76,57 @@ object DynamicContent {
             }
         } catch (e: Exception) {
             ClientMain.LOGGER?.error("[Neo Scripts] Failed to read texture for $rawId from $path", e)
+        }
+    }
+
+    fun storeModel(rawId: String, modelId: String) {
+        val trimmed = modelId.trim()
+        if (trimmed.isEmpty()) return
+
+        // 1. Путь к файлу JSON? — проверяем File и gameDir-relative путь
+        val isJsonPath = trimmed.endsWith(".json", ignoreCase = true)
+        val directFile = File(trimmed)
+        val gameDirFile = FabricLoader.getInstance().gameDir.resolve(trimmed).toFile()
+
+        val fileToRead: File? = when {
+            isJsonPath && directFile.exists() && directFile.isFile -> directFile
+            isJsonPath && gameDirFile.exists() && gameDirFile.isFile -> gameDirFile
+            !isJsonPath && directFile.exists() && directFile.isFile -> directFile
+            !isJsonPath && gameDirFile.exists() && gameDirFile.isFile -> gameDirFile
+            else -> null
+        }
+
+        if (fileToRead != null) {
+            try {
+                modelData[rawId] = fileToRead.readBytes()
+                modelFilePath[rawId] = fileToRead.absolutePath
+                // Убираем возможный старый identifier-оверрайд
+                modelOverrides.remove(rawId)
+                ClientMain.LOGGER?.info("[Neo Scripts] Stored custom model file for $rawId from ${fileToRead.absolutePath}")
+                return
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("[Neo Scripts] Failed to read model file for $rawId from ${fileToRead.absolutePath}", e)
+            }
+        }
+
+        // 2. Identifier модели (например "minecraft:block/cube_all" или "minecraft:diamond_block")
+        //    Короткая запись без '/' (например "minecraft:diamond_block") будет развёрнута в паке
+        try {
+            // Валидация: либо содержит ":"/"/", либо считаем как path без namespace
+            if (trimmed.contains(":") || trimmed.contains("/")) {
+                // Если содержит '/', парсим как есть; если только ':', парсим как short id
+                Identifier.parse(trimmed)
+            } else {
+                // Без namespace — считаем minecraft:path
+                Identifier.parse("minecraft:$trimmed")
+                modelOverrides[rawId] = "minecraft:$trimmed"
+                return
+            }
+            modelOverrides[rawId] = trimmed
+            modelData.remove(rawId)
+            modelFilePath.remove(rawId)
+        } catch (e: Exception) {
+            ClientMain.LOGGER?.warn("[Neo Scripts] Invalid model id for $rawId: $trimmed")
         }
     }
 
@@ -102,6 +163,10 @@ object DynamicContent {
         return knownIds.contains("$type:$rawId")
     }
 
+    fun getKnownIds(): Set<String> = knownIds
+    fun isBlockRegistered(rawId: String): Boolean = knownIds.contains("block:$rawId")
+    fun isItemRegistered(rawId: String): Boolean = knownIds.contains("item:$rawId")
+
     /**
      * Регистрирует предмет по паттерну Fabric API:
      * ResourceKey.create + Properties.setId(key) + Registry.register.
@@ -119,6 +184,7 @@ object DynamicContent {
             }
 
             settings?.texture?.let { storeTexture(rawId, it) }
+            settings?.model?.let { storeModel(rawId, it) }
 
             val key = ResourceKey.create(Registries.ITEM, id)
             val props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
@@ -154,6 +220,7 @@ object DynamicContent {
             }
 
             settings?.texture?.let { storeTexture(rawId, it) }
+            settings?.model?.let { storeModel(rawId, it) }
 
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key)
@@ -205,6 +272,7 @@ object DynamicContent {
                 if (existing.isPresent) return existing.get().value()
             }
             settings?.texture?.let { storeTexture(rawId, it) }
+            settings?.model?.let { storeModel(rawId, it) }
             val key = ResourceKey.create(Registries.ITEM, id)
             var props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
             if (food != null) props = props.food(food)
@@ -237,6 +305,7 @@ object DynamicContent {
                 if (existing.isPresent) return existing.get().value()
             }
             settings?.texture?.let { storeTexture(rawId, it) }
+            settings?.model?.let { storeModel(rawId, it) }
             val key = ResourceKey.create(Registries.ITEM, id)
             var props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
             if (food != null) props = props.food(food, Consumables.DEFAULT_DRINK)
@@ -271,6 +340,7 @@ object DynamicContent {
             }
 
             settings?.texture?.let { storeTexture(rawId, it) }
+            settings?.model?.let { storeModel(rawId, it) }
 
             val key = ResourceKey.create(Registries.ITEM, id)
             val props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
@@ -313,6 +383,7 @@ object DynamicContent {
                 if (existing.isPresent) return existing.get().value()
             }
             settings?.texture?.let { storeTexture(rawId, it) }
+            settings?.model?.let { storeModel(rawId, it) }
             val key = ResourceKey.create(Registries.ITEM, id)
             var props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
             val type = toolTable?.get("type")?.tojstring()?.lowercase() ?: "pickaxe"
