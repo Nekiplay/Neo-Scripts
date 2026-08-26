@@ -1,6 +1,7 @@
 package com.nekiplay.neoscripts.client.sugar
 
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaBlockState
+import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaContentSettings
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaItemStack
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaTransform
@@ -210,6 +211,22 @@ fun LuaValue.isEntityType(): Boolean =
 fun LuaValue.toEntityType(): EntityType<*>? = when {
     this is LuaEntityType -> entityType
     else -> touserdata() as? EntityType<*>
+}
+
+// --- ContentSettings ---
+
+/** Проверка: настройки динамического контента (content_settings). */
+fun LuaValue.isContentSettings(): Boolean =
+    this is LuaContentSettings
+
+/**
+ * Приведение к LuaContentSettings.
+ * Дополнительно принимает обычную таблицу { name = ..., texture = ..., ... }.
+ */
+fun LuaValue.toContentSettings(): LuaContentSettings? = when {
+    this is LuaContentSettings -> this
+    istable() -> LuaContentSettings.fromTable(this)
+    else -> null
 }
 
 // --- Transformation ---
