@@ -536,7 +536,8 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
             "catboost" -> {
                 CatboostLib()
             }
-            "text_builder", "textbuilder", "component_builder", "componentbuilder" -> {
+            "text_builder", "textbuilder", "text-builder",
+            "component_builder", "componentbuilder", "component-builder" -> {
                 LuaComponentBuilder.createLibrary()
             }
             else -> return null

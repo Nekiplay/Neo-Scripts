@@ -188,7 +188,8 @@ open class CommonLuaScript(scriptName: String, manager: LuaManager) : Script(scr
             "blocks" -> Blocks()
             "entities" -> Entities()
             "items" -> Items()
-            "text_builder", "textbuilder", "component_builder", "componentbuilder" ->
+            "text_builder", "textbuilder", "text-builder", "textbuilder.lua",
+            "component_builder", "componentbuilder", "component-builder" ->
                 LuaComponentBuilder.createLibrary()
             "content", "registrar", "content_lib", "dynamic_content" -> ContentLib()
             else -> null
