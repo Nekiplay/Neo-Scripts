@@ -75,6 +75,8 @@ object DynamicContent {
     val doorBlockSetType = ConcurrentHashMap<String, String>()
     // Кастомные VoxelShape для коллизии/очертания (поддержка высоты >1 блока: 0..32, 16=1 блок)
     val blockShapes = ConcurrentHashMap<String, VoxelShape>()
+    // Множественные текстуры для кастомных моделей: rawId -> (textureKey -> bytes)
+    val multiTextureData = ConcurrentHashMap<String, MutableMap<String, ByteArray>>()
     // Теги добычи: инструмент и уровень (для requiresCorrectToolForDrops)
     val blockMineableTool = ConcurrentHashMap<String, String>() // rawId -> "pickaxe"|"axe"|...
     val blockMiningTier = ConcurrentHashMap<String, String>() // rawId -> "stone"|"iron"|"diamond"|...
@@ -183,6 +185,32 @@ object DynamicContent {
         }
     }
 
+    /**
+     * Сохраняет несколько текстур для кастомной модели (Blockbench).
+     * textures — таблица key -> file path (например { "0" = "path/tex0.png", "particle" = "path/particle.png" })
+     */
+    fun storeTextures(rawId: String, textures: Map<String, String>) {
+        val id = Identifier.parse(rawId)
+        val ns = id.namespace
+        val path = id.path
+        val map = mutableMapOf<String, ByteArray>()
+        for ((key, texPath) in textures) {
+            try {
+                val file = File(texPath)
+                if (file.exists() && file.isFile) {
+                    map[key] = file.readBytes()
+                } else {
+                    ClientMain.LOGGER?.warn("[Neo Scripts] Multi-texture file not found for $rawId key=$key: $texPath")
+                }
+            } catch (e: Exception) {
+                ClientMain.LOGGER?.error("[Neo Scripts] Failed to read multi-texture for $rawId key=$key from $texPath", e)
+            }
+        }
+        if (map.isNotEmpty()) {
+            multiTextureData[rawId] = map
+        }
+    }
+
     fun buildVoxelShape(boxes: List<DoubleArray>): VoxelShape {
         if (boxes.isEmpty()) return Shapes.block()
         var shape: VoxelShape = Shapes.empty()
@@ -283,6 +311,7 @@ object DynamicContent {
 
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            settings?.textures?.let { storeTextures(rawId, it) }
 
             val key = ResourceKey.create(Registries.ITEM, id)
             val props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
@@ -320,6 +349,7 @@ object DynamicContent {
 
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
 
             val key = ResourceKey.create(Registries.BLOCK, id)
@@ -383,6 +413,7 @@ object DynamicContent {
             }
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
@@ -410,6 +441,7 @@ object DynamicContent {
             }
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
 
             // База для stairs — состояние блока
@@ -448,6 +480,7 @@ object DynamicContent {
             }
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
@@ -477,6 +510,7 @@ object DynamicContent {
             }
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
@@ -506,6 +540,7 @@ object DynamicContent {
             }
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
@@ -552,6 +587,7 @@ object DynamicContent {
             }
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            settings?.textures?.let { storeTextures(rawId, it) }
             val key = ResourceKey.create(Registries.ITEM, id)
             var props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
             if (food != null) props = props.food(food)
@@ -585,6 +621,7 @@ object DynamicContent {
             }
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            settings?.textures?.let { storeTextures(rawId, it) }
             val key = ResourceKey.create(Registries.ITEM, id)
             var props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
             if (food != null) props = props.food(food, Consumables.DEFAULT_DRINK)
@@ -620,6 +657,7 @@ object DynamicContent {
 
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            settings?.textures?.let { storeTextures(rawId, it) }
 
             val key = ResourceKey.create(Registries.ITEM, id)
             val props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
@@ -663,6 +701,7 @@ object DynamicContent {
             }
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
+            settings?.textures?.let { storeTextures(rawId, it) }
             val key = ResourceKey.create(Registries.ITEM, id)
             var props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
             val type = toolTable?.get("type")?.tojstring()?.lowercase() ?: "pickaxe"

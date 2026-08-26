@@ -92,7 +92,8 @@ class LuaContentSettings(
     var miningTier: String? = null,
     // Кастомная коллизия: список боксов [x1,y1,z1,x2,y2,z2] в координатах 0..32 (16=1 блок, 32=2 блока высоты)
     // Задается через shape / collisionShape / boxes : { {from={0,0,0},to={16,32,16}}, {0,0,0,16,16,16}, ... }
-    var shapeBoxes: MutableList<DoubleArray>? = null
+    var shapeBoxes: MutableList<DoubleArray>? = null,
+    var textures: MutableMap<String, String>? = null
 ) : LuaUserdata(this) {
 
     override fun typename(): String = "content_settings"
@@ -138,6 +139,7 @@ class LuaContentSettings(
         "shape", "collisionShape", "collision_shape", "boxes", "collisionBoxes", "collision_boxes", "hitbox", "hitBox" -> shapeBoxes?.let { boxesToLua(it) } ?: LuaValue.NIL
         "tool", "mineableTool", "mineable_tool", "harvestTool", "harvest_tool" -> mineableTool?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
         "tier", "miningTier", "mining_tier", "miningLevel", "mining_level", "needsTier", "needs_tier" -> miningTier?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
+        "textures", "textureMap", "texture_map" -> textures?.let { mapToLua(it) } ?: LuaValue.NIL
         else -> super.get(key)
     }
 
@@ -178,6 +180,22 @@ class LuaContentSettings(
             }
             "tool", "mineableTool", "mineable_tool", "harvestTool", "harvest_tool" -> mineableTool = if (value.isnil()) null else value.tojstring().lowercase()
             "tier", "miningTier", "mining_tier", "miningLevel", "mining_level", "needsTier", "needs_tier", "level" -> miningTier = if (value.isnil()) null else value.tojstring().lowercase()
+            "textures", "textureMap", "texture_map" -> {
+                if (value.isnil()) textures = null
+                else if (value.istable()) {
+                    val map = mutableMapOf<String, String>()
+                    val table = value.checktable()
+                    val keys = table.keys()
+                    for (kObj in keys) {
+                        val k = kObj as? LuaValue ?: LuaValue.valueOf(kObj.toString())
+                        val v = table.get(k)
+                        if (!v.isnil()) {
+                            map[k.tojstring()] = v.tojstring()
+                        }
+                    }
+                    textures = map
+                }
+            }
             else -> super.set(key, value)
         }
     }
@@ -403,6 +421,14 @@ class LuaContentSettings(
             return tbl
         }
 
+        fun mapToLua(map: Map<String, String>): LuaValue {
+            val tbl = LuaValue.tableOf()
+            for ((k, v) in map) {
+                tbl.set(k, LuaValue.valueOf(v))
+            }
+            return tbl
+        }
+
         /**
           * Собирает настройки из Lua-таблицы. Допустимые ключи (snake_case или camelCase):
           * name, texture, model/parent, maxStackSize / max_stack_size, fireResistant / fire_resistant,
@@ -474,6 +500,21 @@ class LuaContentSettings(
             // tool / tier: строковые, но requiresTool может быть строкой-tier
             settings.mineableTool = str("tool", "mineableTool", "mineable_tool", "harvestTool", "harvest_tool")
             settings.miningTier = str("tier", "miningTier", "mining_tier", "miningLevel", "mining_level", "needsTier", "needs_tier", "level")
+            // textures: table of key -> file path
+            val texturesTbl = table.get("textures")
+            if (!texturesTbl.isnil() && texturesTbl.istable()) {
+                val map = mutableMapOf<String, String>()
+                val tbl = texturesTbl.checktable()
+                val keys = tbl.keys()
+                for (kObj in keys) {
+                    val k = kObj as? LuaValue ?: LuaValue.valueOf(kObj.toString())
+                    val v = tbl.get(k)
+                    if (!v.isnil()) {
+                        map[k.tojstring()] = v.tojstring()
+                    }
+                }
+                settings.textures = map
+            }
             // алиас: requiresTool = "iron" -> tier
             val reqToolStr = table.get("requiresTool").takeIf { it.isstring() }?.tojstring() ?: table.get("requires_tool").takeIf { it.isstring() }?.tojstring() ?: table.get("requiresCorrectTool").takeIf { it.isstring() }?.tojstring()
             if (reqToolStr != null && settings.miningTier == null) {

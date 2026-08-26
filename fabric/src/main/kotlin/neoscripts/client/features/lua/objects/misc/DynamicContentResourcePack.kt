@@ -127,6 +127,7 @@ object DynamicContentResourcePack : PackResources {
         allRawIds.addAll(DynamicContent.textureData.keys)
         allRawIds.addAll(DynamicContent.modelOverrides.keys)
         allRawIds.addAll(DynamicContent.modelData.keys)
+        allRawIds.addAll(DynamicContent.multiTextureData.keys)
         for (entry in DynamicContent.getKnownIds()) {
             val raw = entry.substringAfter(":") // "block:ns:path" -> "ns:path"
             if (raw.contains(":")) allRawIds.add(raw)
@@ -251,6 +252,20 @@ object DynamicContentResourcePack : PackResources {
                                         .toByteArray(StandardCharsets.UTF_8)
                             }
                             if (pngBytes != null) files["assets/$ns/textures/block/$path.png"] = pngBytes
+                        }
+                    }
+                }
+
+                // ── МНОЖЕСТВЕННЫЕ ТЕКСТУРЫ (для кастомных моделей Blockbench) ──
+                val multiTextures = DynamicContent.multiTextureData[rawId]
+                if (multiTextures != null && multiTextures.isNotEmpty()) {
+                    for ((key, texBytes) in multiTextures) {
+                        // Сохраняем текстуры в textures/block/<path>_<key>.png и textures/item/<path>_<key>.png
+                        if (treatAsBlock) {
+                            files["assets/$ns/textures/block/${path}_$key.png"] = texBytes
+                        }
+                        if (treatAsItem) {
+                            files["assets/$ns/textures/item/${path}_$key.png"] = texBytes
                         }
                     }
                 }
@@ -430,6 +445,7 @@ object DynamicContentResourcePack : PackResources {
                 all.addAll(DynamicContent.textureData.keys)
                 all.addAll(DynamicContent.modelOverrides.keys)
                 all.addAll(DynamicContent.modelData.keys)
+                all.addAll(DynamicContent.multiTextureData.keys)
                 all.addAll(DynamicContent.getKnownIds().mapNotNull {
                     try { it.substringAfter(":").let { r -> Identifier.parse(r).namespace } } catch (_: Exception) { null }
                 })
