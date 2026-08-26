@@ -16,17 +16,31 @@ import org.luaj.vm2.lib.VarArgFunction
  * Библиотека динамической регистрации предметов и блоков.
  * Подключается через require("content") и доступна в общих
  * автостарт-скриптах (neoscripts/autostart).
+ * Документация по свойствам блока: https://docs.fabricmc.net/develop/blocks/first-block
  *
  * API:
- *  content.createSettings({ name=..., texture=..., maxStackSize=..., ... })
+ *  content.createSettings({ name=..., texture=..., model=..., maxStackSize=..., sound=..., mapColor=...,
+ *                           hardness=..., resistance=..., luminance=..., friction=...,
+ *                           noCollision=..., noOcclusion=..., instabreak=..., requiresTool=..., offsetType=..., copyFrom=... })
  *  content.registerItem("ns:id" [, settings])                  -> string
- *  content.registerBlock("ns:id" [, settings])                 -> LuaBlockState
+ *  content.registerBlock("ns:id" [, settings])                 -> LuaBlockState  // куб, см. first-block
+ *  content.registerSlab("ns:id" [, settings])                  -> LuaBlockState  // SlabBlock, модель slab/slab_top
+ *  content.registerStairs("ns:id", baseBlockIdOrState [, settings]) -> LuaBlockState // StairBlock, base = текстура/состояние опоры
+ *  content.registerDoor("ns:id" [, settings [, blockSetType]]) -> LuaBlockState // DoorBlock, blockSetType ="oak"/"iron"/"stone"/"copper"/...
+ *  content.registerTrapdoor("ns:id" [, settings [, blockSetType]]) -> LuaBlockState
+ *  content.registerFence("ns:id" [, settings])                 -> LuaBlockState
  *  content.registerBlockItem("ns:id", blockState [, settings]) -> string
  *  content.registerFood("ns:id" [, settings [, foodTable]])    -> string
  *  content.registerDrink("ns:id" [, settings [, foodTable]])   -> string
+ *  content.registerTool/Paxel("ns:id" [, settings [, toolTable]]) -> string
  *  content.getItemTexture("ns:id")                             -> string | nil
  *
+ *  settings.model: "minecraft:block/cube_all" | "minecraft:diamond_block" | "tinker_construct:block/cast" |
+ *                  "config/neoscripts/models/my_model.json" (путь к JSON-файлу)
+ *  settings.sound: "stone","wood","grass","metal","glass" и т.д. (SoundType)
+ *  settings.copyFrom: "minecraft:stone" — скопировать свойства блока
  *  foodTable: { nutrition=4, saturation=0.6, alwaysEdible=false }
+ *  toolTable: { type="pickaxe|axe|shovel|hoe|sword|paxel", material="diamond|iron|...", damage=1, speed=-2.8 }
  */
 class ContentLib : LuaValue() {
     override fun typename(): String = "content_lib"
@@ -39,6 +53,11 @@ class ContentLib : LuaValue() {
             "createSettings", "contentSettings", "itemSettings", "blockSettings" -> CreateContentSettings()
             "registerItem" -> RegisterItem()
             "registerBlock" -> RegisterBlock()
+            "registerSlab" -> RegisterSlab()
+            "registerStairs", "registerStair" -> RegisterStairs()
+            "registerDoor" -> RegisterDoor()
+            "registerTrapdoor", "registerTrapDoor" -> RegisterTrapdoor()
+            "registerFence" -> RegisterFence()
             "registerBlockItem" -> RegisterBlockItem()
             "registerFood" -> RegisterFood()
             "registerDrink" -> RegisterDrink()
@@ -143,6 +162,76 @@ class ContentLib : LuaValue() {
             val food = DynamicContent.parseFoodTable(foodTable)
             val item = DynamicContent.registerDrink(args.arg1().tojstring(), settings, food) ?: return NIL
             return valueOf(BuiltInRegistries.ITEM.getKey(item).toString())
+        }
+    }
+
+    class RegisterSlab : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (!args.arg(1).isstring()) return NIL
+            val settings = if (args.narg() >= 2) args.arg(2).toContentSettings() else null
+            val block = DynamicContent.registerSlab(args.arg1().tojstring(), settings) ?: return NIL
+            return LuaBlockState(block.defaultBlockState())
+        }
+    }
+
+    class RegisterStairs : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (!args.arg(1).isstring()) return NIL
+            val rawId = args.arg1().tojstring()
+            var baseId: String? = null
+            var settings: LuaContentSettings? = null
+            for (i in 2..args.narg()) {
+                val arg = args.arg(i)
+                when {
+                    arg.isBlock() && baseId == null -> {
+                        // LuaBlockState -> block id
+                        try { baseId = arg.toBlock().let { BuiltInRegistries.BLOCK.getKey(it).toString() } } catch (_: Exception) {}
+                    }
+                    arg.isstring() && baseId == null -> baseId = arg.tojstring()
+                    arg.toContentSettings() != null && settings == null -> settings = arg.toContentSettings()
+                }
+            }
+            val block = DynamicContent.registerStairs(rawId, baseId, settings) ?: return NIL
+            return LuaBlockState(block.defaultBlockState())
+        }
+    }
+
+    class RegisterDoor : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (!args.arg(1).isstring()) return NIL
+            var settings: LuaContentSettings? = null
+            var setType: String? = null
+            for (i in 2..args.narg()) {
+                val arg = args.arg(i)
+                if (arg.toContentSettings() != null && settings == null) settings = arg.toContentSettings()
+                else if (arg.isstring() && setType == null) setType = arg.tojstring()
+            }
+            val block = DynamicContent.registerDoor(args.arg1().tojstring(), setType, settings) ?: return NIL
+            return LuaBlockState(block.defaultBlockState())
+        }
+    }
+
+    class RegisterTrapdoor : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (!args.arg(1).isstring()) return NIL
+            var settings: LuaContentSettings? = null
+            var setType: String? = null
+            for (i in 2..args.narg()) {
+                val arg = args.arg(i)
+                if (arg.toContentSettings() != null && settings == null) settings = arg.toContentSettings()
+                else if (arg.isstring() && setType == null) setType = arg.tojstring()
+            }
+            val block = DynamicContent.registerTrapdoor(args.arg1().tojstring(), setType, settings) ?: return NIL
+            return LuaBlockState(block.defaultBlockState())
+        }
+    }
+
+    class RegisterFence : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (!args.arg(1).isstring()) return NIL
+            val settings = if (args.narg() >= 2) args.arg(2).toContentSettings() else null
+            val block = DynamicContent.registerFence(args.arg1().tojstring(), settings) ?: return NIL
+            return LuaBlockState(block.defaultBlockState())
         }
     }
 

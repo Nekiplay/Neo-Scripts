@@ -95,6 +95,30 @@ object DynamicContentResourcePack : PackResources {
         return if (isBlock) "minecraft:block/$parent" else "minecraft:item/$parent"
     }
 
+    private fun buildStairsBlockstate(ns: String, path: String): String {
+        val m = "$ns:block/$path"
+        val mi = "$ns:block/${path}_inner"
+        val mo = "$ns:block/${path}_outer"
+        return """{"variants":{"facing=east,half=bottom,shape=straight":{"model":"$m"},"facing=west,half=bottom,shape=straight":{"model":"$m","y":180,"uvlock":true},"facing=south,half=bottom,shape=straight":{"model":"$m","y":90,"uvlock":true},"facing=north,half=bottom,shape=straight":{"model":"$m","y":270,"uvlock":true},"facing=east,half=bottom,shape=inner_left":{"model":"$mi"},"facing=west,half=bottom,shape=inner_left":{"model":"$mi","y":180,"uvlock":true},"facing=south,half=bottom,shape=inner_left":{"model":"$mi","y":90,"uvlock":true},"facing=north,half=bottom,shape=inner_left":{"model":"$mi","y":270,"uvlock":true},"facing=east,half=bottom,shape=inner_right":{"model":"$mo"},"facing=west,half=bottom,shape=inner_right":{"model":"$mo","y":180,"uvlock":true},"facing=south,half=bottom,shape=inner_right":{"model":"$mo","y":90,"uvlock":true},"facing=north,half=bottom,shape=inner_right":{"model":"$mo","y":270,"uvlock":true},"facing=east,half=bottom,shape=outer_left":{"model":"$mo"},"facing=west,half=bottom,shape=outer_left":{"model":"$mo","y":180,"uvlock":true},"facing=south,half=bottom,shape=outer_left":{"model":"$mo","y":90,"uvlock":true},"facing=north,half=bottom,shape=outer_left":{"model":"$mo","y":270,"uvlock":true},"facing=east,half=bottom,shape=outer_right":{"model":"$mi"},"facing=west,half=bottom,shape=outer_right":{"model":"$mi","y":180,"uvlock":true},"facing=south,half=bottom,shape=outer_right":{"model":"$mi","y":90,"uvlock":true},"facing=north,half=bottom,shape=outer_right":{"model":"$mi","y":270,"uvlock":true},"facing=east,half=top,shape=straight":{"model":"$m","x":180,"uvlock":true},"facing=west,half=top,shape=straight":{"model":"$m","x":180,"y":180,"uvlock":true},"facing=south,half=top,shape=straight":{"model":"$m","x":180,"y":90,"uvlock":true},"facing=north,half=top,shape=straight":{"model":"$m","x":180,"y":270,"uvlock":true}}}"""
+    }
+
+    private fun buildDoorBlockstate(ns: String, path: String): String {
+        val b = "$ns:block/${path}_bottom"
+        val t = "$ns:block/${path}_top"
+        return """{"variants":{"facing=east,half=lower,hinge=left,open=false":{"model":"$b"},"facing=south,half=lower,hinge=left,open=false":{"model":"$b","y":90},"facing=west,half=lower,hinge=left,open=false":{"model":"$b","y":180},"facing=north,half=lower,hinge=left,open=false":{"model":"$b","y":270},"facing=east,half=lower,hinge=left,open=true":{"model":"$b","y":90},"facing=south,half=lower,hinge=left,open=true":{"model":"$b","y":180},"facing=west,half=lower,hinge=left,open=true":{"model":"$b","y":270},"facing=north,half=lower,hinge=left,open=true":{"model":"$b"},"facing=east,half=upper,hinge=left,open=false":{"model":"$t"},"facing=south,half=upper,hinge=left,open=false":{"model":"$t","y":90},"facing=west,half=upper,hinge=left,open=false":{"model":"$t","y":180},"facing=north,half=upper,hinge=left,open=false":{"model":"$t","y":270}}}"""
+    }
+
+    private fun buildTrapdoorBlockstate(ns: String, path: String): String {
+        val m = "$ns:block/$path"
+        return """{"variants":{"facing=north,half=bottom,open=false":{"model":"$m"},"facing=south,half=bottom,open=false":{"model":"$m","y":180},"facing=east,half=bottom,open=false":{"model":"$m","y":90},"facing=west,half=bottom,open=false":{"model":"$m","y":270},"facing=north,half=top,open=false":{"model":"$m","x":180},"facing=north,half=bottom,open=true":{"model":"$m","x":90}}}"""
+    }
+
+    private fun buildFenceBlockstate(ns: String, path: String): String {
+        // Упрощённый multipart-подобный через variants (не идеален, но работает для дефолта)
+        val m = "$ns:block/$path"
+        return """{"multipart":[{"when":{"north":"true"},"apply":{"model":"$ns:block/${path}_side","uvlock":true}},{"when":{"east":"true"},"apply":{"model":"$ns:block/${path}_side","y":90,"uvlock":true}},{"when":{"south":"true"},"apply":{"model":"$ns:block/${path}_side","y":180,"uvlock":true}},{"when":{"west":"true"},"apply":{"model":"$ns:block/${path}_side","y":270,"uvlock":true}},{"apply":{"model":"$m"}}]}"""
+    }
+
     private fun buildFiles(): ConcurrentHashMap<String, ByteArray> {
         val files = ConcurrentHashMap<String, ByteArray>()
 
@@ -125,32 +149,109 @@ object DynamicContentResourcePack : PackResources {
 
                 // ── БЛОК ──
                 if (treatAsBlock) {
-                    // blockstates
-                    files["assets/$ns/blockstates/$path.json"] =
-                        """{"variants":{"":{"model":"$ns:block/$path"}}}"""
-                            .toByteArray(StandardCharsets.UTF_8)
-
-                    // block model
+                    val blockType = DynamicContent.getBlockType(rawId) ?: "cube"
+                    val tex = "$ns:block/$path"
                     val blockModelBytes = DynamicContent.modelData[rawId]
-                    if (blockModelBytes != null) {
-                        files["assets/$ns/models/block/$path.json"] = blockModelBytes
-                    } else {
-                        val rawParent = DynamicContent.modelOverrides[rawId]
-                        val parent = if (rawParent != null) expandModel(rawParent, isBlock = true) else "minecraft:block/cube_all"
-                        // текстура для блока — ns:block/path
-                        val tex = "$ns:block/$path"
-                        // Если parent = cross (растение), то нужен текстурный ключ "cross"
-                        val texturesJson = when {
-                            parent.endsWith("/cross") || parent == "minecraft:block/cross" -> """"cross":"$tex""""
-                            else -> """"all":"$tex","particle":"$tex""""
-                        }
-                        files["assets/$ns/models/block/$path.json"] =
-                            """{"parent":"$parent","textures":{$texturesJson}}"""
-                                .toByteArray(StandardCharsets.UTF_8)
-                    }
+                    val rawParent = DynamicContent.modelOverrides[rawId]
 
-                    if (pngBytes != null) {
-                        files["assets/$ns/textures/block/$path.png"] = pngBytes
+                    when (blockType) {
+                        "slab" -> {
+                            // blockstates для slab
+                            files["assets/$ns/blockstates/$path.json"] =
+                                """{"variants":{"type=bottom":{"model":"$ns:block/$path"},"type=top":{"model":"$ns:block/${path}_top"},"type=double":{"model":"$ns:block/$path"}}}"""
+                                    .toByteArray(StandardCharsets.UTF_8)
+                            if (blockModelBytes != null) {
+                                files["assets/$ns/models/block/$path.json"] = blockModelBytes
+                                files["assets/$ns/models/block/${path}_top.json"] = blockModelBytes
+                            } else {
+                                val parent = if (rawParent != null) expandModel(rawParent, true) else "minecraft:block/slab"
+                                // если parent уже slab/cube — ок
+                                files["assets/$ns/models/block/$path.json"] =
+                                    """{"parent":"$parent","textures":{"bottom":"$tex","top":"$tex","side":"$tex"}}"""
+                                        .toByteArray(StandardCharsets.UTF_8)
+                                files["assets/$ns/models/block/${path}_top.json"] =
+                                    """{"parent":"minecraft:block/slab_top","textures":{"bottom":"$tex","top":"$tex","side":"$tex"}}"""
+                                        .toByteArray(StandardCharsets.UTF_8)
+                            }
+                            if (pngBytes != null) files["assets/$ns/textures/block/$path.png"] = pngBytes
+                        }
+                        "stairs" -> {
+                            files["assets/$ns/blockstates/$path.json"] = buildStairsBlockstate(ns, path).toByteArray(StandardCharsets.UTF_8)
+                            if (blockModelBytes != null) {
+                                files["assets/$ns/models/block/$path.json"] = blockModelBytes
+                            } else {
+                                val parent = if (rawParent != null) expandModel(rawParent, true) else "minecraft:block/stairs"
+                                files["assets/$ns/models/block/$path.json"] =
+                                    """{"parent":"$parent","textures":{"bottom":"$tex","top":"$tex","side":"$tex"}}"""
+                                        .toByteArray(StandardCharsets.UTF_8)
+                                files["assets/$ns/models/block/${path}_inner.json"] =
+                                    """{"parent":"minecraft:block/inner_stairs","textures":{"bottom":"$tex","top":"$tex","side":"$tex"}}"""
+                                        .toByteArray(StandardCharsets.UTF_8)
+                                files["assets/$ns/models/block/${path}_outer.json"] =
+                                    """{"parent":"minecraft:block/outer_stairs","textures":{"bottom":"$tex","top":"$tex","side":"$tex"}}"""
+                                        .toByteArray(StandardCharsets.UTF_8)
+                            }
+                            if (pngBytes != null) files["assets/$ns/textures/block/$path.png"] = pngBytes
+                        }
+                        "door" -> {
+                            files["assets/$ns/blockstates/$path.json"] = buildDoorBlockstate(ns, path).toByteArray(StandardCharsets.UTF_8)
+                            if (blockModelBytes != null) {
+                                files["assets/$ns/models/block/${path}_bottom.json"] = blockModelBytes
+                                files["assets/$ns/models/block/${path}_top.json"] = blockModelBytes
+                            } else {
+                                files["assets/$ns/models/block/${path}_bottom.json"] =
+                                    """{"parent":"minecraft:block/door_bottom","textures":{"bottom":"$tex","top":"$tex"}}"""
+                                        .toByteArray(StandardCharsets.UTF_8)
+                                files["assets/$ns/models/block/${path}_top.json"] =
+                                    """{"parent":"minecraft:block/door_top","textures":{"bottom":"$tex","top":"$tex"}}"""
+                                        .toByteArray(StandardCharsets.UTF_8)
+                            }
+                            if (pngBytes != null) files["assets/$ns/textures/block/$path.png"] = pngBytes
+                        }
+                        "trapdoor" -> {
+                            files["assets/$ns/blockstates/$path.json"] = buildTrapdoorBlockstate(ns, path).toByteArray(StandardCharsets.UTF_8)
+                            if (blockModelBytes != null) {
+                                files["assets/$ns/models/block/$path.json"] = blockModelBytes
+                            } else {
+                                files["assets/$ns/models/block/$path.json"] =
+                                    """{"parent":"minecraft:block/trapdoor","textures":{"texture":"$tex"}}"""
+                                        .toByteArray(StandardCharsets.UTF_8)
+                            }
+                            if (pngBytes != null) files["assets/$ns/textures/block/$path.png"] = pngBytes
+                        }
+                        "fence" -> {
+                            files["assets/$ns/blockstates/$path.json"] = buildFenceBlockstate(ns, path).toByteArray(StandardCharsets.UTF_8)
+                            if (blockModelBytes != null) {
+                                files["assets/$ns/models/block/$path.json"] = blockModelBytes
+                            } else {
+                                files["assets/$ns/models/block/$path.json"] =
+                                    """{"parent":"minecraft:block/fence_post","textures":{"texture":"$tex"}}"""
+                                        .toByteArray(StandardCharsets.UTF_8)
+                                files["assets/$ns/models/block/${path}_side.json"] =
+                                    """{"parent":"minecraft:block/fence_side","textures":{"texture":"$tex"}}"""
+                                        .toByteArray(StandardCharsets.UTF_8)
+                            }
+                            if (pngBytes != null) files["assets/$ns/textures/block/$path.png"] = pngBytes
+                        }
+                        else -> {
+                            // обычный куб
+                            files["assets/$ns/blockstates/$path.json"] =
+                                """{"variants":{"":{"model":"$ns:block/$path"}}}"""
+                                    .toByteArray(StandardCharsets.UTF_8)
+                            if (blockModelBytes != null) {
+                                files["assets/$ns/models/block/$path.json"] = blockModelBytes
+                            } else {
+                                val parent = if (rawParent != null) expandModel(rawParent, true) else "minecraft:block/cube_all"
+                                val texturesJson = when {
+                                    parent.endsWith("/cross") || parent == "minecraft:block/cross" -> """"cross":"$tex""""
+                                    else -> """"all":"$tex","particle":"$tex""""
+                                }
+                                files["assets/$ns/models/block/$path.json"] =
+                                    """{"parent":"$parent","textures":{$texturesJson}}"""
+                                        .toByteArray(StandardCharsets.UTF_8)
+                            }
+                            if (pngBytes != null) files["assets/$ns/textures/block/$path.png"] = pngBytes
+                        }
                     }
                 }
 

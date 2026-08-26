@@ -16,7 +16,13 @@ import net.minecraft.world.item.ToolMaterial
 import net.minecraft.world.item.component.Consumables
 import net.minecraft.world.item.component.Tool
 import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.DoorBlock
+import net.minecraft.world.level.block.FenceBlock
+import net.minecraft.world.level.block.SlabBlock
+import net.minecraft.world.level.block.StairBlock
+import net.minecraft.world.level.block.TrapDoorBlock
 import net.minecraft.world.level.block.state.BlockBehaviour
+import net.minecraft.world.level.block.state.properties.BlockSetType
 import net.fabricmc.loader.api.FabricLoader
 import java.io.File
 import java.lang.reflect.Modifier
@@ -57,8 +63,14 @@ object DynamicContent {
     val modelData = ConcurrentHashMap<String, ByteArray>()
     val modelFilePath = ConcurrentHashMap<String, String>()
 
+    // Тип блока-варианта: "slab","stairs","door","trapdoor","fence"
+    val blockTypes = ConcurrentHashMap<String, String>()
+    val stairsBase = ConcurrentHashMap<String, String>() // stairs rawId -> base block rawId
+    val doorBlockSetType = ConcurrentHashMap<String, String>()
+
     fun getTextureOverride(rawId: String): String? = textureOverrides[rawId]
     fun getModelOverride(rawId: String): String? = modelOverrides[rawId]
+    fun getBlockType(rawId: String): String? = blockTypes[rawId]
 
     /**
      * Сохраняет путь и читает содержимое файла текстуры для ресурспака.
@@ -241,6 +253,173 @@ object DynamicContent {
             block
         } catch (e: Exception) {
             ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic block $rawId", e)
+            null
+        }
+    }
+
+    // ═══ Вариант-блоки: slab / stairs / door / trapdoor / fence ═══
+
+    fun parseBlockSetType(name: String?): BlockSetType {
+        if (name == null) return BlockSetType.STONE
+        return try {
+            BlockSetType::class.java.getField(name.uppercase()).get(null) as BlockSetType
+        } catch (_: Exception) {
+            when (name.lowercase()) {
+                "oak", "wood", "wooden" -> BlockSetType.OAK
+                "spruce" -> try { BlockSetType::class.java.getField("SPRUCE").get(null) as BlockSetType } catch (_: Exception) { BlockSetType.OAK }
+                "birch" -> try { BlockSetType::class.java.getField("BIRCH").get(null) as BlockSetType } catch (_: Exception) { BlockSetType.OAK }
+                "jungle" -> try { BlockSetType::class.java.getField("JUNGLE").get(null) as BlockSetType } catch (_: Exception) { BlockSetType.OAK }
+                "acacia" -> try { BlockSetType::class.java.getField("ACACIA").get(null) as BlockSetType } catch (_: Exception) { BlockSetType.OAK }
+                "dark_oak", "darkoak" -> try { BlockSetType::class.java.getField("DARK_OAK").get(null) as BlockSetType } catch (_: Exception) { BlockSetType.OAK }
+                "iron", "metal" -> BlockSetType.IRON
+                "stone" -> BlockSetType.STONE
+                "copper" -> try { BlockSetType::class.java.getField("COPPER").get(null) as BlockSetType } catch (_: Exception) { BlockSetType.STONE }
+                else -> BlockSetType.STONE
+            }
+        }
+    }
+
+    fun registerSlab(rawId: String, settings: LuaContentSettings? = null): Block? {
+        return try {
+            val id = Identifier.parse(rawId)
+            if (knownIds.contains("block:$rawId")) {
+                val existing = BuiltInRegistries.BLOCK.get(id)
+                if (existing.isPresent) return existing.get().value()
+            }
+            settings?.texture?.let { storeTexture(rawId, it) }
+            settings?.model?.let { storeModel(rawId, it) }
+            val key = ResourceKey.create(Registries.BLOCK, id)
+            val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
+            val customName = settings?.displayName()
+            val block: Block = if (customName != null) {
+                object : SlabBlock(props) { override fun getName() = customName }
+            } else SlabBlock(props)
+            registerWithFreezeFallback(BuiltInRegistries.BLOCK as Registry<Block>) { Registry.register(BuiltInRegistries.BLOCK, key, block) }
+            knownIds.add("block:$rawId")
+            blockTypes[rawId] = "slab"
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic slab $rawId")
+            block
+        } catch (e: Exception) {
+            ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic slab $rawId", e)
+            null
+        }
+    }
+
+    fun registerStairs(rawId: String, baseBlockId: String?, settings: LuaContentSettings? = null): Block? {
+        return try {
+            val id = Identifier.parse(rawId)
+            if (knownIds.contains("block:$rawId")) {
+                val existing = BuiltInRegistries.BLOCK.get(id)
+                if (existing.isPresent) return existing.get().value()
+            }
+            settings?.texture?.let { storeTexture(rawId, it) }
+            settings?.model?.let { storeModel(rawId, it) }
+
+            // База для stairs — состояние блока
+            val baseIdStr = baseBlockId ?: "minecraft:stone"
+            val baseBlock = try {
+                val bid = Identifier.parse(baseIdStr)
+                BuiltInRegistries.BLOCK.get(bid).orElse(null)?.value() ?: net.minecraft.world.level.block.Blocks.STONE
+            } catch (_: Exception) { net.minecraft.world.level.block.Blocks.STONE }
+            val baseState = baseBlock.defaultBlockState()
+
+            val key = ResourceKey.create(Registries.BLOCK, id)
+            val props = settings?.applyTo(BlockBehaviour.Properties.ofFullCopy(baseBlock))?.setId(key)
+                ?: BlockBehaviour.Properties.ofFullCopy(baseBlock).setId(key)
+            val customName = settings?.displayName()
+            val block: Block = if (customName != null) {
+                object : StairBlock(baseState, props) { override fun getName() = customName }
+            } else StairBlock(baseState, props)
+            registerWithFreezeFallback(BuiltInRegistries.BLOCK as Registry<Block>) { Registry.register(BuiltInRegistries.BLOCK, key, block) }
+            knownIds.add("block:$rawId")
+            blockTypes[rawId] = "stairs"
+            stairsBase[rawId] = baseIdStr
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic stairs $rawId base=$baseIdStr")
+            block
+        } catch (e: Exception) {
+            ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic stairs $rawId", e)
+            null
+        }
+    }
+
+    fun registerDoor(rawId: String, blockSetTypeName: String?, settings: LuaContentSettings? = null): Block? {
+        return try {
+            val id = Identifier.parse(rawId)
+            if (knownIds.contains("block:$rawId")) {
+                val existing = BuiltInRegistries.BLOCK.get(id)
+                if (existing.isPresent) return existing.get().value()
+            }
+            settings?.texture?.let { storeTexture(rawId, it) }
+            settings?.model?.let { storeModel(rawId, it) }
+            val key = ResourceKey.create(Registries.BLOCK, id)
+            val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
+            val setType = parseBlockSetType(blockSetTypeName)
+            val customName = settings?.displayName()
+            val block: Block = if (customName != null) {
+                object : DoorBlock(setType, props) { override fun getName() = customName }
+            } else DoorBlock(setType, props)
+            registerWithFreezeFallback(BuiltInRegistries.BLOCK as Registry<Block>) { Registry.register(BuiltInRegistries.BLOCK, key, block) }
+            knownIds.add("block:$rawId")
+            blockTypes[rawId] = "door"
+            if (blockSetTypeName != null) doorBlockSetType[rawId] = blockSetTypeName
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic door $rawId set=$blockSetTypeName")
+            block
+        } catch (e: Exception) {
+            ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic door $rawId", e)
+            null
+        }
+    }
+
+    fun registerTrapdoor(rawId: String, blockSetTypeName: String?, settings: LuaContentSettings? = null): Block? {
+        return try {
+            val id = Identifier.parse(rawId)
+            if (knownIds.contains("block:$rawId")) {
+                val existing = BuiltInRegistries.BLOCK.get(id)
+                if (existing.isPresent) return existing.get().value()
+            }
+            settings?.texture?.let { storeTexture(rawId, it) }
+            settings?.model?.let { storeModel(rawId, it) }
+            val key = ResourceKey.create(Registries.BLOCK, id)
+            val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
+            val setType = parseBlockSetType(blockSetTypeName)
+            val customName = settings?.displayName()
+            val block: Block = if (customName != null) {
+                object : TrapDoorBlock(setType, props) { override fun getName() = customName }
+            } else TrapDoorBlock(setType, props)
+            registerWithFreezeFallback(BuiltInRegistries.BLOCK as Registry<Block>) { Registry.register(BuiltInRegistries.BLOCK, key, block) }
+            knownIds.add("block:$rawId")
+            blockTypes[rawId] = "trapdoor"
+            if (blockSetTypeName != null) doorBlockSetType[rawId] = blockSetTypeName
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic trapdoor $rawId set=$blockSetTypeName")
+            block
+        } catch (e: Exception) {
+            ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic trapdoor $rawId", e)
+            null
+        }
+    }
+
+    fun registerFence(rawId: String, settings: LuaContentSettings? = null): Block? {
+        return try {
+            val id = Identifier.parse(rawId)
+            if (knownIds.contains("block:$rawId")) {
+                val existing = BuiltInRegistries.BLOCK.get(id)
+                if (existing.isPresent) return existing.get().value()
+            }
+            settings?.texture?.let { storeTexture(rawId, it) }
+            settings?.model?.let { storeModel(rawId, it) }
+            val key = ResourceKey.create(Registries.BLOCK, id)
+            val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
+            val customName = settings?.displayName()
+            val block: Block = if (customName != null) {
+                object : FenceBlock(props) { override fun getName() = customName }
+            } else FenceBlock(props)
+            registerWithFreezeFallback(BuiltInRegistries.BLOCK as Registry<Block>) { Registry.register(BuiltInRegistries.BLOCK, key, block) }
+            knownIds.add("block:$rawId")
+            blockTypes[rawId] = "fence"
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic fence $rawId")
+            block
+        } catch (e: Exception) {
+            ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic fence $rawId", e)
             null
         }
     }
