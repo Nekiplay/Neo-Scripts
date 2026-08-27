@@ -7,10 +7,10 @@ import net.minecraft.server.level.ServerPlayer
  * Client sets [clientSender] during ClientMain init, server side uses direct ServerPlayNetworking.
  */
 object NeoPacketSenders {
-    // Set only on physical client via ClientMain
-    var clientSender: ((NeoLuaPacketPayload) -> Boolean)? = null
+    // Set only on physical client via ClientMain – uses NeoLuaC2SPayload (client -> server)
+    var clientSender: ((NeoLuaC2SPayload) -> Boolean)? = null
 
-    fun sendToServer(payload: NeoLuaPacketPayload): Boolean {
+    fun sendToServer(payload: NeoLuaC2SPayload): Boolean {
         val sender = clientSender ?: return false
         return try {
             sender(payload)

@@ -132,7 +132,7 @@ object ClientMain : ClientModInitializer {
 
         EventBus.init(classes)
 
-        // Packets: client -> server via mixin-free sender (no reflection)
+        // Packets: client -> server via mixin-free sender (no reflection) — uses C2S payload
         NeoPacketSenders.clientSender = { payload ->
             ClientPlayNetworking.send(payload)
             true

@@ -6,7 +6,8 @@ import com.nekiplay.neoscripts.server.features.lua.objects.ServerWorldObject
 import com.nekiplay.neoscripts.server.features.modules.ServerModule
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent
-import com.nekiplay.neoscripts.common.network.NeoLuaPacketPayload
+import com.nekiplay.neoscripts.common.network.NeoLuaC2SPayload
+import com.nekiplay.neoscripts.common.network.NeoLuaS2CPayload
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
@@ -410,19 +411,30 @@ object LuaEvents : ServerModule() {
         }
     }
 
+    @Volatile private var packetEventsRegistered = false
     private fun registerPacketEvents() {
+        if (packetEventsRegistered) return
+        packetEventsRegistered = true
+        // Register both directions so server can receive C2S and send S2C (needed for integrated server on physical client)
         try {
-            PayloadTypeRegistry.clientboundPlay().register(NeoLuaPacketPayload.TYPE, NeoLuaPacketPayload.CODEC)
+            PayloadTypeRegistry.clientboundPlay().register(NeoLuaS2CPayload.TYPE, NeoLuaS2CPayload.CODEC)
         } catch (_: Exception) {}
         try {
-            PayloadTypeRegistry.serverboundPlay().register(NeoLuaPacketPayload.TYPE, NeoLuaPacketPayload.CODEC)
+            PayloadTypeRegistry.serverboundPlay().register(NeoLuaC2SPayload.TYPE, NeoLuaC2SPayload.CODEC)
+        } catch (_: Exception) {}
+        // Also register legacy for compat if some client still uses old ID (optional)
+        try {
+            PayloadTypeRegistry.clientboundPlay().register(com.nekiplay.neoscripts.common.network.NeoLuaPacketPayload.TYPE, com.nekiplay.neoscripts.common.network.NeoLuaPacketPayload.CODEC)
         } catch (_: Exception) {}
         try {
-            ServerPlayNetworking.registerGlobalReceiver(NeoLuaPacketPayload.TYPE) { payload, context ->
+            PayloadTypeRegistry.serverboundPlay().register(com.nekiplay.neoscripts.common.network.NeoLuaPacketPayload.TYPE, com.nekiplay.neoscripts.common.network.NeoLuaPacketPayload.CODEC)
+        } catch (_: Exception) {}
+        try {
+            ServerPlayNetworking.registerGlobalReceiver(NeoLuaC2SPayload.TYPE) { payload, context ->
                 val channel = payload.channel
                 val json = payload.json
                 val player = context.player()
-                // dispatch on server thread
+                // dispatch on server thread — only logical server handles C2S
                 context.server().execute {
                     ServerMain.LUA_MANAGER?.scripts?.values?.forEach { script ->
                         if (script is LuaServerScript && script.hasCustomPacketCallbacks) {

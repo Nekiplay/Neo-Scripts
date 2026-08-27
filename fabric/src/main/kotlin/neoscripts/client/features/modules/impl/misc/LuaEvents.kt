@@ -19,14 +19,13 @@ import com.nekiplay.neoscripts.client.utils.render.LevelRenderExtractionCallback
 import com.nekiplay.neoscripts.client.utils.render.primitive.PrimitiveCollector
 import com.nekiplay.neoscripts.client.utils.scheduler.MessageScheduler
 import com.nekiplay.neoscripts.client.utils.scheduler.Scheduler
-import com.nekiplay.neoscripts.common.network.NeoLuaPacketPayload
+import com.nekiplay.neoscripts.common.network.NeoLuaS2CPayload
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLevelEvents
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
@@ -271,7 +270,10 @@ object LuaEvents : ClientModule() {
 
 
     override fun init() {
-        registerPacketEvents()
+        // PayloadTypeRegistry для S2C/C2S регистрируется только в server/.../LuaEvents.kt
+        // (ServerMain как ModInitializer выполняется и на физическом клиенте, и на интегрированном сервере,
+        // поэтому его регистрация покрывает обе стороны — дубль в Client не нужен и давал 4x вызовов в одиночке)
+        registerPacketReceiver()
         ClientTickEvents.END_CLIENT_TICK.register { _ ->
                 LUA_MANAGER?.scripts?.values?.forEach { script ->
                     try {
@@ -528,15 +530,14 @@ object LuaEvents : ClientModule() {
         }
     }
 
-    private fun registerPacketEvents() {
+    @Volatile private var packetReceiverRegistered = false
+    private fun registerPacketReceiver() {
+        if (packetReceiverRegistered) return
+        packetReceiverRegistered = true
+        // Только receiver S2C — PayloadTypeRegistry уже зарегистрирован в server/.../LuaEvents.kt
+        // (выполняется и на физическом клиенте, поэтому дубль давал 4 вызова в одиночном мире)
         try {
-            PayloadTypeRegistry.clientboundPlay().register(NeoLuaPacketPayload.TYPE, NeoLuaPacketPayload.CODEC)
-        } catch (_: Exception) {}
-        try {
-            PayloadTypeRegistry.serverboundPlay().register(NeoLuaPacketPayload.TYPE, NeoLuaPacketPayload.CODEC)
-        } catch (_: Exception) {}
-        try {
-            ClientPlayNetworking.registerGlobalReceiver(NeoLuaPacketPayload.TYPE) { payload, context ->
+            ClientPlayNetworking.registerGlobalReceiver(NeoLuaS2CPayload.TYPE) { payload, context ->
                 val channel = payload.channel
                 val json = payload.json
                 context.client().execute {

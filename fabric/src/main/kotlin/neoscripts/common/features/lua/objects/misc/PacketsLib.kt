@@ -3,7 +3,8 @@ package com.nekiplay.neoscripts.common.features.lua.objects.misc
 import com.google.gson.GsonBuilder
 import com.nekiplay.neoscripts.ServerMain
 import com.nekiplay.neoscripts.common.mixins.minecraft.ServerPlayerAccessor
-import com.nekiplay.neoscripts.common.network.NeoLuaPacketPayload
+import com.nekiplay.neoscripts.common.network.NeoLuaC2SPayload
+import com.nekiplay.neoscripts.common.network.NeoLuaS2CPayload
 import com.nekiplay.neoscripts.common.network.NeoPacketSenders
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
 import net.minecraft.server.level.ServerPlayer
@@ -156,7 +157,7 @@ class PacketsLib : LuaValue() {
     private fun doSendToServer(channel: String, data: LuaValue): LuaValue {
         return try {
             val json = luaToJson(data)
-            val payload = NeoLuaPacketPayload(channel, json)
+            val payload = NeoLuaC2SPayload(channel, json)
             val ok = NeoPacketSenders.sendToServer(payload)
             if (ok) TRUE else FALSE
         } catch (e: Exception) {
@@ -167,7 +168,7 @@ class PacketsLib : LuaValue() {
     private fun doSendToClient(playerArg: LuaValue?, channel: String, data: LuaValue): LuaValue {
         return try {
             val json = luaToJson(data)
-            val payload = NeoLuaPacketPayload(channel, json)
+            val payload = NeoLuaS2CPayload(channel, json)
 
             if (playerArg != null && !playerArg.isnil() && !playerArg.isstring()) {
                 val serverPlayer = extractServerPlayer(playerArg)
