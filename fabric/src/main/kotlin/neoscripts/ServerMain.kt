@@ -41,7 +41,9 @@ object ServerMain : ModInitializer {
     @JvmField
     val LOGGER: Logger? = LoggerFactory.getLogger(MOD_ID)
     @JvmField
-    var LUA_MANAGER: LuaManager? = null
+    var LUA_MANAGER: LuaManager? = null /* For server side scripts*/
+    @JvmField
+    var LUA_MANAGER_COMMON: LuaManager? = null /* For server and client side scripts*/
     @JvmField
     val CONFIG_DIR: Path = FabricLoader.getInstance().configDir.resolve(MOD_ID)
 
@@ -59,6 +61,9 @@ object ServerMain : ModInitializer {
 
     fun saveConfig(){
         LUA_MANAGER?.getLoadedScripts()?.forEach { script ->
+            LUA_MANAGER?.unloadScript(script.scriptName)
+        }
+        LUA_MANAGER_COMMON?.getLoadedScripts()?.forEach { script ->
             LUA_MANAGER?.unloadScript(script.scriptName)
         }
     }
@@ -103,20 +108,13 @@ object ServerMain : ModInitializer {
         }
         registerInbuilt()
 
-        // Менеджер создается уже в onInitialize, чтобы скрипты из
-        // neoscripts/autostart выполнялись до заморозки реестров —
-        // тогда регистрация предметов/блоков работает как в Fabric API.
-        val gameScriptsDir = FabricLoader.getInstance().gameDir.resolve(MOD_ID).resolve("scripts").toFile()
-        Files.createDirectories(gameScriptsDir.toPath())
-        LUA_MANAGER = LuaManager(gameScriptsDir)
-
         // Общие скрипты автозапуска сервера и клиента:
         // <папка игры>/neoscripts/autostart/*.lua — выполняются как
         // CommonLuaScript (только общие библиотеки), до заморозки реестров,
         // поэтому могут регистрировать предметы/блоки как обычный Fabric-мод.
         val autostartDir = FabricLoader.getInstance().gameDir.resolve(MOD_ID).resolve("autostart")
         Files.createDirectories(autostartDir)
-        LUA_MANAGER?.runAutostartScripts(autostartDir.toFile())
+        LUA_MANAGER_COMMON?.runAutostartScripts(autostartDir.toFile())
 
         // Креативная вкладка "Neo Scripts" — создается ПОСЛЕ всех Autoload-скриптов,
         // чтобы иконка и displayItems сразу видели все зарегистрированные предметы.
@@ -155,14 +153,15 @@ object ServerMain : ModInitializer {
             val scriptsDir2 = neuDir.resolve("scripts")
             Files.createDirectories(scriptsDir2)
             scriptsDir = scriptsDir2.toFile()
+            LUA_MANAGER = LuaManager(scriptsDir)
 
             val libsDir = scriptsDir2.resolve("libs")
             Files.createDirectories(libsDir)
 
-            // Менеджер уже создан в onInitialize — только добавляем пути поиска
-            // скриптов мира и откладываем устаревшую автозагрузку до первого тика
+
             LUA_MANAGER?.addSearchPath(worldRoot.toString())
             LUA_MANAGER?.addSearchPath(neuDir.toString())
+            LUA_MANAGER?.addSearchPath(scriptsDir.toString())
 
             autoloadPending = true
         })
@@ -175,13 +174,12 @@ object ServerMain : ModInitializer {
         })
 
         ServerLifecycleEvents.SERVER_STOPPED.register(ServerStopped { server: MinecraftServer? ->
-            // Менеджер НЕ очищается: он создан в onInitialize и содержит общие
-            // скрипты из neoscripts/autostart, а также нужен для повторного входа
-            // в мир (интегрированный сервер). autoloadPending=true гарантирует,
-            // что скрипты autoload.lua / startup.lua / init.lua из папки мира
-            // выполнится заново при следующем запуске мира.
+            LUA_MANAGER?.getLoadedScripts()?.forEach { script ->
+                LUA_MANAGER?.unloadScript(script.scriptName)
+            }
             autoloadPending = true
             SERVER = null
+            LUA_MANAGER = null
         })
     }
 }
