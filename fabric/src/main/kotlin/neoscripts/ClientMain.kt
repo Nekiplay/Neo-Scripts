@@ -14,7 +14,9 @@ import com.nekiplay.neoscripts.client.utils.render.RenderHelper
 import com.nekiplay.neoscripts.client.utils.scheduler.Scheduler
 import io.github.classgraph.ClassGraph
 import net.fabricmc.api.ClientModInitializer
+import com.nekiplay.neoscripts.common.network.NeoPacketSenders
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry
 import net.fabricmc.fabric.api.client.rendering.v1.InvalidateRenderStateCallback
@@ -129,6 +131,12 @@ object ClientMain : ClientModInitializer {
             }
 
         EventBus.init(classes)
+
+        // Packets: client -> server via mixin-free sender (no reflection)
+        NeoPacketSenders.clientSender = { payload ->
+            ClientPlayNetworking.send(payload)
+            true
+        }
 
         HudElementRegistry.addLast(
             Identifier.fromNamespaceAndPath("neoscripts", "lua_hud_layer"),

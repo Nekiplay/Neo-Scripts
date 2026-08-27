@@ -2,8 +2,10 @@ package com.nekiplay.neoscripts.common.features.lua.objects.misc
 
 import com.google.gson.GsonBuilder
 import com.nekiplay.neoscripts.ServerMain
+import com.nekiplay.neoscripts.common.mixins.minecraft.ServerPlayerAccessor
 import com.nekiplay.neoscripts.common.network.NeoLuaPacketPayload
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload
+import com.nekiplay.neoscripts.common.network.NeoPacketSenders
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
 import net.minecraft.server.level.ServerPlayer
 import org.luaj.vm2.*
 import org.luaj.vm2.lib.VarArgFunction
@@ -155,22 +157,8 @@ class PacketsLib : LuaValue() {
         return try {
             val json = luaToJson(data)
             val payload = NeoLuaPacketPayload(channel, json)
-            // Try reflection first to avoid hard dependency crash on dedicated server
-            try {
-                val clientNetworking = Class.forName("net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking")
-                val send = clientNetworking.methods.firstOrNull { it.name == "send" && it.parameterCount == 1 }
-                    ?: clientNetworking.getMethod("send", CustomPacketPayload::class.java)
-                send.invoke(null, payload)
-                TRUE
-            } catch (e: Throwable) {
-                // fallback direct (will only work on client physical)
-                try {
-                    net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(payload)
-                    TRUE
-                } catch (t: Throwable) {
-                    FALSE
-                }
-            }
+            val ok = NeoPacketSenders.sendToServer(payload)
+            if (ok) TRUE else FALSE
         } catch (e: Exception) {
             FALSE
         }
@@ -180,30 +168,23 @@ class PacketsLib : LuaValue() {
         return try {
             val json = luaToJson(data)
             val payload = NeoLuaPacketPayload(channel, json)
-            val server = ServerMain.SERVER
 
             if (playerArg != null && !playerArg.isnil() && !playerArg.isstring()) {
                 val serverPlayer = extractServerPlayer(playerArg)
                 if (serverPlayer != null) {
-                    try {
-                        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(serverPlayer, payload)
-                    } catch (e: Throwable) {
-                        // reflection fallback
-                        val cls = Class.forName("net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking")
-                        val m = cls.getMethod("send", ServerPlayer::class.java, CustomPacketPayload::class.java)
-                        m.invoke(null, serverPlayer, payload)
-                    }
+                    ServerPlayNetworking.send(serverPlayer, payload)
                     return TRUE
                 } else {
                     return FALSE
                 }
             } else {
-                // broadcast to all players on the integrated/dedicated server
+                // broadcast to all players
+                val server = ServerMain.SERVER
                 if (server == null) return FALSE
                 var sent = false
                 for (p in server.playerList.players) {
                     try {
-                        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p, payload)
+                        ServerPlayNetworking.send(p, payload)
                         sent = true
                     } catch (_: Throwable) {}
                 }
@@ -213,6 +194,9 @@ class PacketsLib : LuaValue() {
             FALSE
         }
     }
+
+    // Mixin accessor example: obtain MinecraftServer from ServerPlayer without reflection
+    private fun getServerViaMixin(player: ServerPlayer) = (player as ServerPlayerAccessor).getServerField()
 
     private fun extractServerPlayer(arg: LuaValue): ServerPlayer? {
         return when (arg) {
