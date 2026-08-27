@@ -114,6 +114,7 @@ object ServerMain : ModInitializer {
         // поэтому могут регистрировать предметы/блоки как обычный Fabric-мод.
         val autostartDir = FabricLoader.getInstance().gameDir.resolve(MOD_ID).resolve("autostart")
         Files.createDirectories(autostartDir)
+        LUA_MANAGER_COMMON = LuaManager(autostartDir.toFile())
         LUA_MANAGER_COMMON?.runAutostartScripts(autostartDir.toFile())
 
         // Креативная вкладка "Neo Scripts" — создается ПОСЛЕ всех Autoload-скриптов,
