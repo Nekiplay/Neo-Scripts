@@ -118,6 +118,9 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
 
     private val clientSidePlayerSetPositionCallbacks = ArrayList<LuaValue>()
 
+    // Custom packets (server -> client) dispatched by client LuaEvents via NeoLuaPacketPayload
+    private val customPacketCallbacks = ConcurrentHashMap<String, MutableList<LuaValue>>()
+
     // Command events
     val commandCallbacks = ConcurrentHashMap<String, LuaValue>()
     val commandSuggestionsCallbacks = ConcurrentHashMap<String, LuaValue>()
@@ -488,6 +491,26 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
                 }
             }
         })
+
+        // Custom packets (server -> client): registerPacket("channel", callback)
+        val packetReg = object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                if (args.narg() < 2) return FALSE
+                val channel = args.arg(1).checkjstring()
+                val cb = args.arg(2)
+                if (!cb.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    val list = customPacketCallbacks.getOrPut(channel) { mutableListOf() }
+                    list.add(cb)
+                }
+                return TRUE
+            }
+        }
+        scriptGlobals.set("registerPacket", packetReg)
+        scriptGlobals.set("registerCustomPacket", packetReg)
+        scriptGlobals.set("onPacket", packetReg)
+        scriptGlobals.set("registerClientPacket", packetReg)
+        scriptGlobals.set("registerServerPacket", packetReg)
     }
 
     private fun registerEventUnregistrationFunctions() {
@@ -784,6 +807,23 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
                 }
             }
         })
+
+        val packetUnreg = object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                if (args.narg() < 2) return FALSE
+                val channel = args.arg(1).checkjstring()
+                val cb = args.arg(2)
+                if (!cb.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    val list = customPacketCallbacks[channel] ?: return FALSE
+                    return valueOf(list.remove(cb))
+                }
+            }
+        }
+        scriptGlobals.set("unregisterPacket", packetUnreg)
+        scriptGlobals.set("unregisterCustomPacket", packetUnreg)
+        scriptGlobals.set("unregisterClientPacket", packetUnreg)
+        scriptGlobals.set("unregisterServerPacket", packetUnreg)
     }
 
     private fun registerRequireFunction() {
@@ -1607,6 +1647,27 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
         }
     }
 
+    val hasCustomPacketCallbacks: Boolean get() = synchronized(callbacksLock) { customPacketCallbacks.isNotEmpty() }
+
+    fun onCustomPacket(channel: String, json: String) {
+        val list = synchronized(callbacksLock) {
+            val exact = customPacketCallbacks[channel]?.toTypedArray()
+            val wildcard = customPacketCallbacks["*"]?.toTypedArray()
+            Pair(exact, wildcard)
+        }
+        val luaData = try { com.nekiplay.neoscripts.common.features.lua.objects.misc.PacketsLib.jsonToLua(json) } catch (_: Exception) { LuaValue.valueOf(json) }
+        list.first?.forEach { cb ->
+            try { cb.call(luaData) } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in packet callback [$channel] in $scriptName", e)
+            }
+        }
+        list.second?.forEach { cb ->
+            try { cb.call(LuaValue.valueOf(channel), luaData) } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in wildcard packet callback in $scriptName", e)
+            }
+        }
+    }
+
     private fun getSystemModule(name: String): LuaValue? {
         systemModuleCache[name.lowercase()]?.let { return it }
 
@@ -1702,6 +1763,9 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
                 else {
                     error("Baritone not found")
                 }
+            }
+            "packets", "packet", "net", "network" -> {
+                com.nekiplay.neoscripts.common.features.lua.objects.misc.PacketsLib()
             }
             else -> return null
         }
@@ -1895,6 +1959,7 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
             chunkLoadCallbacks.clear()
             chunkUnLoadCallbacks.clear()
             levelChangeCallbacks.clear()
+            customPacketCallbacks.clear()
         }
         imguiLib?.queue?.clear()
         imguiLib?.cleanup()

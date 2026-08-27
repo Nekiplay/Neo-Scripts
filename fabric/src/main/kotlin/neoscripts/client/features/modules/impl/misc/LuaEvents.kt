@@ -19,11 +19,14 @@ import com.nekiplay.neoscripts.client.utils.render.LevelRenderExtractionCallback
 import com.nekiplay.neoscripts.client.utils.render.primitive.PrimitiveCollector
 import com.nekiplay.neoscripts.client.utils.scheduler.MessageScheduler
 import com.nekiplay.neoscripts.client.utils.scheduler.Scheduler
+import com.nekiplay.neoscripts.common.network.NeoLuaPacketPayload
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLevelEvents
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
@@ -268,6 +271,7 @@ object LuaEvents : ClientModule() {
 
 
     override fun init() {
+        registerPacketEvents()
         ClientTickEvents.END_CLIENT_TICK.register { _ ->
                 LUA_MANAGER?.scripts?.values?.forEach { script ->
                     try {
@@ -522,6 +526,28 @@ object LuaEvents : ClientModule() {
                 }
             }
         }
+    }
+
+    private fun registerPacketEvents() {
+        try {
+            PayloadTypeRegistry.clientboundPlay().register(NeoLuaPacketPayload.TYPE, NeoLuaPacketPayload.CODEC)
+        } catch (_: Exception) {}
+        try {
+            PayloadTypeRegistry.serverboundPlay().register(NeoLuaPacketPayload.TYPE, NeoLuaPacketPayload.CODEC)
+        } catch (_: Exception) {}
+        try {
+            ClientPlayNetworking.registerGlobalReceiver(NeoLuaPacketPayload.TYPE) { payload, context ->
+                val channel = payload.channel
+                val json = payload.json
+                context.client().execute {
+                    LUA_MANAGER?.scripts?.values?.forEach { script ->
+                        if (script is LuaClientScript && script.hasCustomPacketCallbacks) {
+                            try { script.onCustomPacket(channel, json) } catch (_: Exception) {}
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
     }
 
     override fun get_name(): String {

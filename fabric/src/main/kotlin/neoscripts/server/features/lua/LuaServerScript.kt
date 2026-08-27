@@ -115,6 +115,9 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
     private val gameMessageCallbacks = ArrayList<LuaValue>()
     private val commandMessageCallbacks = ArrayList<LuaValue>()
 
+    // Custom packets (client -> server) dispatched by server LuaEvents via NeoLuaPacketPayload
+    private val customPacketCallbacks = ConcurrentHashMap<String, MutableList<LuaValue>>()
+
     // Script-specific libraries
     private var tcpLib: TCPLib? = null
     private var udpLib: UDPLib? = null
@@ -285,6 +288,26 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
         registerMessageEventFunction("registerChatMessageCallback", chatMessageCallbacks)
         registerMessageEventFunction("registerGameMessageCallback", gameMessageCallbacks)
         registerMessageEventFunction("registerCommandMessageCallback", commandMessageCallbacks)
+
+        // Custom packets
+        val packetReg = object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                if (args.narg() < 2) return FALSE
+                val channel = args.arg(1).checkjstring()
+                val cb = args.arg(2)
+                if (!cb.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    val list = customPacketCallbacks.getOrPut(channel) { mutableListOf() }
+                    list.add(cb)
+                }
+                return TRUE
+            }
+        }
+        scriptGlobals.set("registerPacket", packetReg)
+        scriptGlobals.set("registerCustomPacket", packetReg)
+        scriptGlobals.set("onPacket", packetReg)
+        scriptGlobals.set("registerClientPacket", packetReg)
+        scriptGlobals.set("registerServerPacket", packetReg)
     }
 
     private fun registerMessageEventFunction(name: String, list: ArrayList<LuaValue>) {
@@ -342,6 +365,28 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
     val hasChatMessageCallbacks: Boolean get() = synchronized(callbacksLock) { chatMessageCallbacks.isNotEmpty() }
     val hasGameMessageCallbacks: Boolean get() = synchronized(callbacksLock) { gameMessageCallbacks.isNotEmpty() }
     val hasCommandMessageCallbacks: Boolean get() = synchronized(callbacksLock) { commandMessageCallbacks.isNotEmpty() }
+
+    val hasCustomPacketCallbacks: Boolean get() = synchronized(callbacksLock) { customPacketCallbacks.isNotEmpty() }
+
+    fun onCustomPacket(channel: String, json: String, player: ServerPlayer) {
+        val list = synchronized(callbacksLock) {
+            val exact = customPacketCallbacks[channel]?.toTypedArray()
+            val wildcard = customPacketCallbacks["*"]?.toTypedArray()
+            Pair(exact, wildcard)
+        }
+        val luaData = try { com.nekiplay.neoscripts.common.features.lua.objects.misc.PacketsLib.jsonToLua(json) } catch (_: Exception) { LuaValue.valueOf(json) }
+        val luaPlayer = LuaEntity(player)
+        list.first?.forEach { cb ->
+            try { cb.call(luaPlayer, luaData) } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in packet callback [$channel] in $scriptName", e)
+            }
+        }
+        list.second?.forEach { cb ->
+            try { cb.call(luaPlayer, LuaValue.valueOf(channel), luaData) } catch (e: Exception) {
+                ClientMain.LOGGER?.error("${ClientMain.LOG_PREFIX}Error in wildcard packet callback in $scriptName", e)
+            }
+        }
+    }
 
     val hasServerStoppingCallbacks: Boolean get() = synchronized(callbacksLock) { serverStoppingCallbacks.isNotEmpty() }
     val hasServerStartedCallbacks: Boolean get() = synchronized(callbacksLock) { serverStartedCallbacks.isNotEmpty() }
@@ -480,6 +525,23 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
         unregisterMessageEventFunction("unregisterChatMessageCallback", chatMessageCallbacks)
         unregisterMessageEventFunction("unregisterGameMessageCallback", gameMessageCallbacks)
         unregisterMessageEventFunction("unregisterCommandMessageCallback", commandMessageCallbacks)
+
+        val packetUnreg = object : VarArgFunction() {
+            override fun invoke(args: Varargs): Varargs {
+                if (args.narg() < 2) return FALSE
+                val channel = args.arg(1).checkjstring()
+                val cb = args.arg(2)
+                if (!cb.isfunction()) return FALSE
+                synchronized(callbacksLock) {
+                    val list = customPacketCallbacks[channel] ?: return FALSE
+                    return valueOf(list.remove(cb))
+                }
+            }
+        }
+        scriptGlobals.set("unregisterPacket", packetUnreg)
+        scriptGlobals.set("unregisterCustomPacket", packetUnreg)
+        scriptGlobals.set("unregisterClientPacket", packetUnreg)
+        scriptGlobals.set("unregisterServerPacket", packetUnreg)
     }
 
     private fun unregisterMessageEventFunction(name: String, list: ArrayList<LuaValue>) {
@@ -605,6 +667,9 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
             "text_builder", "textbuilder", "text-builder",
             "component_builder", "componentbuilder", "component-builder" -> {
                 LuaComponentBuilder.createLibrary()
+            }
+            "packets", "packet", "net", "network" -> {
+                com.nekiplay.neoscripts.common.features.lua.objects.misc.PacketsLib()
             }
             else -> return null
         }
@@ -1173,6 +1238,7 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
             chatMessageCallbacks.clear()
             gameMessageCallbacks.clear()
             commandMessageCallbacks.clear()
+            customPacketCallbacks.clear()
         }
 
         scriptGlobals = null

@@ -6,6 +6,9 @@ import com.nekiplay.neoscripts.server.features.lua.objects.ServerWorldObject
 import com.nekiplay.neoscripts.server.features.modules.ServerModule
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent
+import com.nekiplay.neoscripts.common.network.NeoLuaPacketPayload
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback
@@ -37,6 +40,7 @@ object LuaEvents : ServerModule() {
         registerLifecycleEvents()
         registerInteractionEvents()
         registerMessageEvents()
+        registerPacketEvents()
     }
 
     private fun registerTickEvents() {
@@ -404,6 +408,30 @@ object LuaEvents : ServerModule() {
                 }
             }
         }
+    }
+
+    private fun registerPacketEvents() {
+        try {
+            PayloadTypeRegistry.clientboundPlay().register(NeoLuaPacketPayload.TYPE, NeoLuaPacketPayload.CODEC)
+        } catch (_: Exception) {}
+        try {
+            PayloadTypeRegistry.serverboundPlay().register(NeoLuaPacketPayload.TYPE, NeoLuaPacketPayload.CODEC)
+        } catch (_: Exception) {}
+        try {
+            ServerPlayNetworking.registerGlobalReceiver(NeoLuaPacketPayload.TYPE) { payload, context ->
+                val channel = payload.channel
+                val json = payload.json
+                val player = context.player()
+                // dispatch on server thread
+                context.server().execute {
+                    ServerMain.LUA_MANAGER?.scripts?.values?.forEach { script ->
+                        if (script is LuaServerScript && script.hasCustomPacketCallbacks) {
+                            try { script.onCustomPacket(channel, json, player) } catch (_: Exception) {}
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
     }
 
 
