@@ -254,7 +254,7 @@ object DynamicContent {
             val placedKey = ResourceKey.create(Registries.PLACED_FEATURE, Identifier.parse(fid))
             val selector = when (cfg.biomes.lowercase()) {
                 "overworld", "overworlds", "is_overworld" -> net.fabricmc.fabric.api.biome.v1.BiomeSelectors.foundInOverworld()
-                "nether", "is_nether", "foundInNether" -> net.fabricmc.fabric.api.biome.v1.BiomeSelectors.foundInNether()
+                "nether", "is_nether", "foundInNether", "foundInTheNether" -> net.fabricmc.fabric.api.biome.v1.BiomeSelectors.foundInTheNether()
                 "end", "is_end", "foundInTheEnd" -> net.fabricmc.fabric.api.biome.v1.BiomeSelectors.foundInTheEnd()
                 else -> if (cfg.biomes.startsWith("#")) {
                     val tagId = Identifier.parse(cfg.biomes.removePrefix("#"))
