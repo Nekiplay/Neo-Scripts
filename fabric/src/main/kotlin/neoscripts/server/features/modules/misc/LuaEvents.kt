@@ -6,6 +6,8 @@ import com.nekiplay.neoscripts.server.features.lua.objects.ServerWorldObject
 import com.nekiplay.neoscripts.server.features.modules.ServerModule
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.LuaEntity
 import com.nekiplay.neoscripts.common.features.lua.objects.datatypes.text.LuaComponent
+import com.nekiplay.neoscripts.common.mixins.entity.EntityAccessor
+import com.nekiplay.neoscripts.common.mixins.entity.ServerPlayerAccessor
 import com.nekiplay.neoscripts.common.network.NeoLuaC2SPayload
 import com.nekiplay.neoscripts.common.network.NeoLuaS2CPayload
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
@@ -32,7 +34,6 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.item.ItemStack
-import java.util.concurrent.CompletableFuture
 
 object LuaEvents : ServerModule() {
 
@@ -434,11 +435,16 @@ object LuaEvents : ServerModule() {
                 val channel = payload.channel
                 val json = payload.json
                 val player = context.player()
-                // dispatch on server thread — only logical server handles C2S
-                context.server().execute {
-                    ServerMain.LUA_MANAGER?.scripts?.values?.forEach { script ->
-                        if (script is LuaServerScript && script.hasCustomPacketCallbacks) {
-                            try { script.onCustomPacket(channel, json, player) } catch (_: Exception) {}
+                val accessed = player as EntityAccessor
+                if (!accessed.levelField.isClientSide) {
+                    context.server().execute {
+                        ServerMain.LUA_MANAGER?.scripts?.values?.forEach { script ->
+                            if (script is LuaServerScript && script.hasCustomPacketCallbacks) {
+                                try {
+                                    script.onCustomPacket(channel, json, player)
+                                } catch (_: Exception) {
+                                }
+                            }
                         }
                     }
                 }

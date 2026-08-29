@@ -2,7 +2,7 @@ package com.nekiplay.neoscripts.common.features.lua.objects.misc
 
 import com.google.gson.GsonBuilder
 import com.nekiplay.neoscripts.ServerMain
-import com.nekiplay.neoscripts.common.mixins.minecraft.ServerPlayerAccessor
+import com.nekiplay.neoscripts.common.mixins.entity.ServerPlayerAccessor
 import com.nekiplay.neoscripts.common.network.NeoLuaC2SPayload
 import com.nekiplay.neoscripts.common.network.NeoLuaS2CPayload
 import com.nekiplay.neoscripts.common.network.NeoPacketSenders
