@@ -80,6 +80,9 @@ object DynamicContent {
     // Теги добычи: инструмент и уровень (для requiresCorrectToolForDrops)
     val blockMineableTool = ConcurrentHashMap<String, String>() // rawId -> "pickaxe"|"axe"|...
     val blockMiningTier = ConcurrentHashMap<String, String>() // rawId -> "stone"|"iron"|"diamond"|...
+    // Лут блока: какие предметы выпадают (https://docs.fabricmc.net/develop/blocks/first-block#adding-block-drops)
+    // nil = не задано (дефолт дроп себя), пустой список = ничего, иначе список DropEntry
+    val blockDrops = ConcurrentHashMap<String, MutableList<LuaContentSettings.DropEntry>>()
 
     private fun normalizeTool(name: String?): String? {
         if (name == null) return null
@@ -109,6 +112,58 @@ object DynamicContent {
         val tier = normalizeTier(settings?.miningTier)
         if (tool != null) blockMineableTool[rawId] = tool else blockMineableTool.remove(rawId)
         if (tier != null) blockMiningTier[rawId] = tier else blockMiningTier.remove(rawId)
+    }
+
+    private fun storeDrops(rawId: String, settings: LuaContentSettings?) {
+        val drops = settings?.drops
+        if (drops != null) {
+            // явная настройка (включая пустой список = ничего не дропает)
+            blockDrops[rawId] = drops.toMutableList()
+        } else {
+            // дефолт: блок дропает себя (как в Fabric доке: loot_table с name=self)
+            blockDrops[rawId] = mutableListOf(LuaContentSettings.DropEntry(rawId))
+        }
+    }
+
+    fun getBlockDrops(rawId: String): List<LuaContentSettings.DropEntry>? = blockDrops[rawId]
+
+    /**
+     * Позволяет изменить дроп уже зарегистрированного блока в рантайме (для Lua API).
+     * Если drops==null -> сбросить к дефолту (себя), пустой список -> ничего.
+     */
+    fun setBlockDrops(rawId: String, drops: List<LuaContentSettings.DropEntry>?) {
+        if (drops == null) {
+            blockDrops[rawId] = mutableListOf(LuaContentSettings.DropEntry(rawId))
+        } else {
+            blockDrops[rawId] = drops.toMutableList()
+        }
+    }
+
+    fun buildBlockLootJson(rawId: String): String {
+        val drops = blockDrops[rawId] ?: listOf(LuaContentSettings.DropEntry(rawId))
+        if (drops.isEmpty()) return """{"type":"minecraft:block","pools":[]}"""
+        fun entryJson(d: LuaContentSettings.DropEntry): String {
+            val func = when {
+                d.countMin != null && d.countMax != null -> """{"function":"minecraft:set_count","count":{"min":${d.countMin}.0,"max":${d.countMax}.0,"type":"minecraft:uniform"}}"""
+                d.count != 1 -> """{"function":"minecraft:set_count","count":${d.count}}"""
+                else -> null
+            }
+            val funcStr = if (func != null) ""","functions":[$func]""" else ""
+            val weightStr = d.weight?.let { ""","weight":$it""" } ?: ""
+            return """{"type":"minecraft:item","name":"${d.id}"$weightStr$funcStr}"""
+        }
+        // если хотя бы у одного указан weight — делаем один pool со взвешенным выбором (minecraft.wiki/w/Loot_table#weight)
+        // иначе каждый дроп — отдельный pool (все выпадают гарантированно, как в Fabric доке)
+        val hasWeight = drops.any { it.weight != null }
+        return if (hasWeight) {
+            val entries = drops.joinToString(",") { entryJson(it) }
+            """{"type":"minecraft:block","pools":[{"rolls":1,"entries":[$entries]}]}"""
+        } else {
+            val pools = drops.joinToString(",") { d ->
+                """{"rolls":1,"entries":[${entryJson(d)}]}"""
+            }
+            """{"type":"minecraft:block","pools":[$pools]}"""
+        }
     }
 
     fun getTextureOverride(rawId: String): String? = textureOverrides[rawId]
@@ -351,6 +406,7 @@ object DynamicContent {
             settings?.model?.let { storeModel(rawId, it) }
             settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
+            storeDrops(rawId, settings)
 
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key)
@@ -415,6 +471,7 @@ object DynamicContent {
             settings?.model?.let { storeModel(rawId, it) }
             settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
+            storeDrops(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
             val customName = settings?.displayName()
@@ -443,6 +500,7 @@ object DynamicContent {
             settings?.model?.let { storeModel(rawId, it) }
             settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
+            storeDrops(rawId, settings)
 
             // База для stairs — состояние блока
             val baseIdStr = baseBlockId ?: "minecraft:stone"
@@ -482,6 +540,7 @@ object DynamicContent {
             settings?.model?.let { storeModel(rawId, it) }
             settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
+            storeDrops(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
             val setType = parseBlockSetType(blockSetTypeName)
@@ -512,6 +571,7 @@ object DynamicContent {
             settings?.model?.let { storeModel(rawId, it) }
             settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
+            storeDrops(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
             val setType = parseBlockSetType(blockSetTypeName)
@@ -542,6 +602,7 @@ object DynamicContent {
             settings?.model?.let { storeModel(rawId, it) }
             settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
+            storeDrops(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
             val customName = settings?.displayName()

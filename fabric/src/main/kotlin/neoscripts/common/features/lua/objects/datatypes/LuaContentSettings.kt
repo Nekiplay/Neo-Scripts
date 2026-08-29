@@ -60,6 +60,11 @@ import org.luaj.vm2.LuaValue
  *  tool / mineableTool / harvestTool — требуемый инструмент: "pickaxe","axe","shovel","hoe" (data/.../mineable/<tool>.json)
  *  tier / miningTier / level — уровень добычи: "wood","stone","iron","diamond","netherite" (data/.../needs_<tier>_tool.json), требует requiresTool=true
  *  shape / boxes / collisionShape — кастомная коллизия: {from={0,0,0},to={16,32,16}} или {0,0,0,16,32,16}, 32=2 блока высоты
+ *  drops / drop / loot — лут блока (Fabric loot_table): nil=дроп себя, false/{}=ничего, "minecraft:diamond"=1 предмет,
+ *                   {"minecraft:diamond","minecraft:stick"} — несколько предметов (каждый свой pool, все выпадут),
+ *                   {{id="minecraft:diamond", count=3}, {id="minecraft:emerald", min=1, max=3}} — с количеством,
+ *                   {{id="minecraft:diamond", weight=10}, {id="minecraft:emerald", weight=1}} — взвешенный случайный выбор (один pool, weight как на minecraft.wiki/w/Loot_table),
+ *                   "minecraft:apple" и т.д. Генерируется data/<ns>/loot_table/blocks/<path>.json (см. https://docs.fabricmc.net/develop/blocks/first-block#adding-block-drops)
  */
 class LuaContentSettings(
     var name: String? = null,
@@ -93,8 +98,18 @@ class LuaContentSettings(
     // Кастомная коллизия: список боксов [x1,y1,z1,x2,y2,z2] в координатах 0..32 (16=1 блок, 32=2 блока высоты)
     // Задается через shape / collisionShape / boxes : { {from={0,0,0},to={16,32,16}}, {0,0,0,16,16,16}, ... }
     var shapeBoxes: MutableList<DoubleArray>? = null,
-    var textures: MutableMap<String, String>? = null
+    var textures: MutableMap<String, String>? = null,
+    // Лут блока: nil = дроп себя (дефолт), пустой список = ничего не дропает, иначе список DropEntry
+    var drops: MutableList<DropEntry>? = null
 ) : LuaUserdata(this) {
+
+    data class DropEntry(
+        val id: String,
+        val count: Int = 1,
+        val countMin: Int? = null,
+        val countMax: Int? = null,
+        val weight: Int? = null // null=гарантированный дроп (отдельный pool), число=взвешенный выбор в одном pool (см. minecraft.wiki/w/Loot_table#weight)
+    )
 
     override fun typename(): String = "content_settings"
 
@@ -109,6 +124,7 @@ class LuaContentSettings(
             (if (noCollision) ", noCollision" else "") +
             (if (noOcclusion) ", noOcclusion" else "") +
             (shapeBoxes?.let { ", shapeBoxes=${it.size}" } ?: "") +
+            (drops?.let { ", drops=${it.size}" } ?: "") +
             (offsetType?.let { ", offset=$it" } ?: "") + "}"
 
     override fun get(key: LuaValue): LuaValue = when (key.tojstring()) {
@@ -140,6 +156,7 @@ class LuaContentSettings(
         "tool", "mineableTool", "mineable_tool", "harvestTool", "harvest_tool" -> mineableTool?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
         "tier", "miningTier", "mining_tier", "miningLevel", "mining_level", "needsTier", "needs_tier" -> miningTier?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
         "textures", "textureMap", "texture_map" -> textures?.let { mapToLua(it) } ?: LuaValue.NIL
+        "drops", "drop", "loot", "lootTable", "loot_table", "loot_table_blocks", "dropsList", "drops_list" -> drops?.let { dropsToLua(it) } ?: LuaValue.NIL
         else -> super.get(key)
     }
 
@@ -195,6 +212,11 @@ class LuaContentSettings(
                     }
                     textures = map
                 }
+            }
+            "drops", "drop", "loot", "lootTable", "loot_table", "loot_table_blocks", "dropsList", "drops_list" -> {
+                if (value.isnil()) drops = null
+                else if (value.isboolean() && !value.toboolean()) drops = mutableListOf()
+                else drops = parseDropsValue(value)
             }
             else -> super.set(key, value)
         }
@@ -429,6 +451,113 @@ class LuaContentSettings(
             return tbl
         }
 
+        // ── drops helpers ──
+        fun parseDropEntry(v: LuaValue): DropEntry? {
+            if (v.isstring()) {
+                val id = v.tojstring().trim()
+                if (id.isEmpty() || id.equals("none", true) || id.equals("empty", true)) return null
+                return try { Identifier.parse(id); DropEntry(id) } catch (_: Exception) { null }
+            }
+            if (!v.istable()) return null
+            // id может быть в "id"/"name"/"item"/"key"
+            var id: String? = null
+            for (k in arrayOf("id", "name", "item", "key", "value")) {
+                val vv = v.get(k)
+                if (!vv.isnil() && vv.isstring()) { id = vv.tojstring().trim(); break }
+            }
+            if (id == null) {
+                // поддержка короткой записи { "minecraft:diamond", count=2 } где id хранится в [1]
+                val first = v.get(1)
+                if (first.isstring()) id = first.tojstring().trim()
+            }
+            if (id == null || id.isEmpty()) return null
+            try { Identifier.parse(id) } catch (_: Exception) { return null }
+            // count / amount
+            var count = 1
+            var countMin: Int? = null
+            var countMax: Int? = null
+            for (k in arrayOf("count", "amount", "quantity", "number")) {
+                val cv = v.get(k)
+                if (cv.isnumber()) { count = cv.toint().coerceIn(1, 64); break }
+            }
+            // min / max для диапазона
+            for (k in arrayOf("min", "minCount", "min_count", "minimum")) {
+                val mv = v.get(k)
+                if (mv.isnumber()) { countMin = mv.toint().coerceIn(1, 64); break }
+            }
+            for (k in arrayOf("max", "maxCount", "max_count", "maximum")) {
+                val mv = v.get(k)
+                if (mv.isnumber()) { countMax = mv.toint().coerceIn(1, 64); break }
+            }
+            if (countMin != null && countMax != null && countMin > countMax) {
+                val t = countMin; countMin = countMax; countMax = t
+            }
+            var weight: Int? = null
+            for (k in arrayOf("weight", "w", "chance_weight")) {
+                val wv = v.get(k)
+                if (wv.isnumber()) { weight = wv.toint().coerceIn(1, 1_000_000); break }
+            }
+            return DropEntry(id, count, countMin, countMax, weight)
+        }
+
+        fun parseDropsValue(v: LuaValue?): MutableList<DropEntry>? {
+            if (v == null || v.isnil()) return null
+            if (v.isboolean() && !v.toboolean()) return mutableListOf()
+            if (v.isstring()) {
+                val s = v.tojstring().trim()
+                if (s.isEmpty() || s.equals("none", true) || s.equals("empty", true)) return mutableListOf()
+                return try { Identifier.parse(s); mutableListOf(DropEntry(s)) } catch (_: Exception) { null }
+            }
+            if (!v.istable()) return null
+            // если таблица — одиночный объект с id
+            val hasId = !v.get("id").isnil() || !v.get("name").isnil() || !v.get("item").isnil()
+            if (hasId && v.length() == 0) {
+                val e = parseDropEntry(v) ?: return mutableListOf()
+                return mutableListOf(e)
+            }
+            val out = mutableListOf<DropEntry>()
+            val n = v.length()
+            if (n > 0) {
+                for (i in 1..n) {
+                    val e = v.get(i)
+                    if (e.isnil()) continue
+                    if (e.isstring()) {
+                        val id = e.tojstring().trim()
+                        if (id.isEmpty()) continue
+                        try { Identifier.parse(id); out.add(DropEntry(id)) } catch (_: Exception) {}
+                    } else if (e.istable()) {
+                        parseDropEntry(e)?.let { out.add(it) }
+                    }
+                }
+                // если передали {id="...", count=2} но с length>0 — уже обработано выше как одиночный? fallback
+                if (out.isEmpty() && hasId) parseDropEntry(v)?.let { out.add(it) }
+                return out
+            } else {
+                // таблица без числовых ключей, но возможно пустая -> считаем пустым дропом
+                if (v.get(1).isnil() && hasId) {
+                    parseDropEntry(v)?.let { return mutableListOf(it) }
+                }
+                return mutableListOf()
+            }
+        }
+
+        fun dropsToLua(drops: List<DropEntry>): LuaValue {
+            val tbl = LuaValue.tableOf()
+            for ((idx, d) in drops.withIndex()) {
+                val e = LuaValue.tableOf()
+                e.set("id", LuaValue.valueOf(d.id))
+                if (d.countMin != null && d.countMax != null) {
+                    e.set("min", LuaValue.valueOf(d.countMin))
+                    e.set("max", LuaValue.valueOf(d.countMax))
+                } else if (d.count != 1) {
+                    e.set("count", LuaValue.valueOf(d.count))
+                }
+                d.weight?.let { e.set("weight", LuaValue.valueOf(it)) }
+                tbl.set(idx + 1, e)
+            }
+            return tbl
+        }
+
         /**
           * Собирает настройки из Lua-таблицы. Допустимые ключи (snake_case или camelCase):
           * name, texture, model/parent, maxStackSize / max_stack_size, fireResistant / fire_resistant,
@@ -523,6 +652,16 @@ class LuaContentSettings(
                     settings.miningTier = lower
                     settings.requiresCorrectTool = true
                 }
+            }
+            // drops / loot
+            var dropsVal: LuaValue? = null
+            for (k in arrayOf("drops", "drop", "loot", "lootTable", "loot_table", "dropsList", "drops_list")) {
+                val v = table.get(k)
+                if (!v.isnil()) { dropsVal = v; break }
+            }
+            if (dropsVal != null) {
+                if (dropsVal.isboolean() && !dropsVal.toboolean()) settings.drops = mutableListOf()
+                else settings.drops = parseDropsValue(dropsVal)
             }
             return settings
         }

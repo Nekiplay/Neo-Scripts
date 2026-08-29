@@ -12,36 +12,6 @@ import org.luaj.vm2.Varargs
 import org.luaj.vm2.lib.OneArgFunction
 import org.luaj.vm2.lib.VarArgFunction
 
-/**
- * Библиотека динамической регистрации предметов и блоков.
- * Подключается через require("content") и доступна в общих
- * автостарт-скриптах (neoscripts/autostart).
- * Документация по свойствам блока: https://docs.fabricmc.net/develop/blocks/first-block
- *
- * API:
- *  content.createSettings({ name=..., texture=..., model=..., maxStackSize=..., sound=..., mapColor=...,
- *                           hardness=..., resistance=..., luminance=..., friction=...,
- *                           noCollision=..., noOcclusion=..., instabreak=..., requiresTool=..., offsetType=..., copyFrom=... })
- *  content.registerItem("ns:id" [, settings])                  -> string
- *  content.registerBlock("ns:id" [, settings])                 -> LuaBlockState  // куб, см. first-block
- *  content.registerSlab("ns:id" [, settings])                  -> LuaBlockState  // SlabBlock, модель slab/slab_top
- *  content.registerStairs("ns:id", baseBlockIdOrState [, settings]) -> LuaBlockState // StairBlock, base = текстура/состояние опоры
- *  content.registerDoor("ns:id" [, settings [, blockSetType]]) -> LuaBlockState // DoorBlock, blockSetType ="oak"/"iron"/"stone"/"copper"/...
- *  content.registerTrapdoor("ns:id" [, settings [, blockSetType]]) -> LuaBlockState
- *  content.registerFence("ns:id" [, settings])                 -> LuaBlockState
- *  content.registerBlockItem("ns:id", blockState [, settings]) -> string
- *  content.registerFood("ns:id" [, settings [, foodTable]])    -> string
- *  content.registerDrink("ns:id" [, settings [, foodTable]])   -> string
- *  content.registerTool/Paxel("ns:id" [, settings [, toolTable]]) -> string
- *  content.getItemTexture("ns:id")                             -> string | nil
- *
- *  settings.model: "minecraft:block/cube_all" | "minecraft:diamond_block" | "tinker_construct:block/cast" |
- *                  "config/neoscripts/models/my_model.json" (путь к JSON-файлу)
- *  settings.sound: "stone","wood","grass","metal","glass" и т.д. (SoundType)
- *  settings.copyFrom: "minecraft:stone" — скопировать свойства блока
- *  foodTable: { nutrition=4, saturation=0.6, alwaysEdible=false }
- *  toolTable: { type="pickaxe|axe|shovel|hoe|sword|paxel", material="diamond|iron|...", damage=1, speed=-2.8 }
- */
 class ContentLib : LuaValue() {
     override fun typename(): String = "content_lib"
     override fun tojstring(): String = "ContentLib"
@@ -64,6 +34,8 @@ class ContentLib : LuaValue() {
             "registerTool" -> RegisterTool()
             "registerPaxel" -> RegisterTool()
             "getItemTexture" -> GetItemTexture()
+            "setDrops", "setDrop", "setLoot", "setBlockDrops", "setLootTable" -> SetBlockDrops()
+            "getDrops", "getDrop", "getLoot", "getBlockDrops", "getLootTable" -> GetBlockDrops()
             else -> super.get(key)
         }
     }
@@ -267,6 +239,43 @@ class ContentLib : LuaValue() {
                 }
             }
             return NIL
+        }
+    }
+
+    /**
+     * content.setDrops("ns:block", drops) — задает лут блока (рантайм, потребует /reload для применения на сервере).
+     * drops: nil/false/{} = ничего, "minecraft:diamond", {"minecraft:diamond","minecraft:stick"},
+     *        {{id="minecraft:diamond", count=3}, {id="minecraft:emerald", min=1, max=3}}
+     * Возвращает true если блок найден.
+     */
+    class SetBlockDrops : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (!args.arg(1).isstring()) return NIL
+            val rawId = args.arg1().tojstring()
+            if (!DynamicContent.isBlockRegistered(rawId)) return valueOf(false)
+            val dropsArg = if (args.narg() >= 2) args.arg(2) else NIL
+            val drops: List<LuaContentSettings.DropEntry>? = when {
+                dropsArg.isnil() -> null // сброс к дефолту (себя)
+                dropsArg.isboolean() && !dropsArg.toboolean() -> emptyList()
+                dropsArg.isstring() && (dropsArg.tojstring().equals("none", true) || dropsArg.tojstring().equals("empty", true)) -> emptyList()
+                else -> LuaContentSettings.parseDropsValue(dropsArg)
+            }
+            // parseDropsValue возвращает null только если isnil — уже обработано; если вернул null из-за ошибки -> считаем пустым?
+            val final = drops ?: if (dropsArg.isnil()) null else emptyList()
+            DynamicContent.setBlockDrops(rawId, final)
+            return valueOf(true)
+        }
+    }
+
+    /**
+     * content.getDrops("ns:block") — возвращает таблицу дропа блока как {{id=..., count=...}, ...} или nil.
+     */
+    class GetBlockDrops : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            if (!arg.isstring()) return NIL
+            val rawId = arg.tojstring()
+            val drops = DynamicContent.getBlockDrops(rawId) ?: return NIL
+            return LuaContentSettings.dropsToLua(drops)
         }
     }
 }

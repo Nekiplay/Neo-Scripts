@@ -45,7 +45,7 @@ class LuaBlockEntity(var blockEntity: BlockEntity) : LuaUserdata(blockEntity) {
             "x" -> valueOf(blockEntity.blockPos.x)
             "y" -> valueOf(blockEntity.blockPos.y)
             "z" -> valueOf(blockEntity.blockPos.z)
-            "pos" -> LuaBlockPos(blockEntity.blockPos)
+            "pos", "blockpos", "blockPos" -> LuaBlockPos(blockEntity.blockPos)
             "type", "identifier", "entity_type" ->
                 valueOf(BuiltInRegistries.BLOCK_ENTITY_TYPE.wrapAsHolder(blockEntity.type).registeredName)
             "is_container", "has_inventory" -> valueOf(c != null)

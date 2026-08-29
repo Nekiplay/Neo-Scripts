@@ -336,7 +336,7 @@ object DynamicContentResourcePack : PackResources {
         return files
     }
 
-    // ── SERVER DATA: теги добычи ──
+    // ── SERVER DATA: теги добычи + loot_table ──
     private fun buildServerFiles(): ConcurrentHashMap<String, ByteArray> {
         val files = ConcurrentHashMap<String, ByteArray>()
         // Группируем по инструменту
@@ -373,6 +373,29 @@ object DynamicContentResourcePack : PackResources {
                 append("]}")
             }
             files["data/minecraft/tags/block/${tag}.json"] = json.toByteArray(StandardCharsets.UTF_8)
+        }
+        // Loot tables для каждого динамического блока (https://docs.fabricmc.net/develop/blocks/first-block#adding-block-drops)
+        // Генерируем как loot_table (1.21.5+/26.2, singular) и loot_tables (legacy, plural) для совместимости
+        val allBlockRawIds = mutableSetOf<String>()
+        for (entry in DynamicContent.getKnownIds()) {
+            if (entry.startsWith("block:")) {
+                val raw = entry.substringAfter("block:")
+                if (raw.contains(":")) allBlockRawIds.add(raw)
+            }
+        }
+        // также блоки, у которых явно заданы drops, даже если knownIds еще не содержит (на всякий)
+        allBlockRawIds.addAll(DynamicContent.blockDrops.keys)
+        for (rawId in allBlockRawIds) {
+            if (!DynamicContent.isBlockRegistered(rawId) && !DynamicContent.blockDrops.containsKey(rawId)) continue
+            try {
+                val id = Identifier.parse(rawId)
+                val ns = id.namespace
+                val path = id.path
+                val json = DynamicContent.buildBlockLootJson(rawId)
+                val bytes = json.toByteArray(StandardCharsets.UTF_8)
+                files["data/$ns/loot_table/blocks/$path.json"] = bytes
+                files["data/$ns/loot_tables/blocks/$path.json"] = bytes
+            } catch (_: Exception) {}
         }
         return files
     }
@@ -454,7 +477,18 @@ object DynamicContentResourcePack : PackResources {
                 }.toSet()
             }
             PackType.SERVER_DATA -> {
-                if (DynamicContent.blockMineableTool.isNotEmpty() || DynamicContent.blockMiningTier.isNotEmpty()) setOf("minecraft") else emptySet()
+                val namespaces = mutableSetOf<String>()
+                if (DynamicContent.blockMineableTool.isNotEmpty() || DynamicContent.blockMiningTier.isNotEmpty()) namespaces.add("minecraft")
+                // loot tables namespaces
+                for (rawId in DynamicContent.blockDrops.keys) {
+                    try { namespaces.add(Identifier.parse(rawId).namespace) } catch (_: Exception) {}
+                }
+                for (entry in DynamicContent.getKnownIds()) {
+                    if (entry.startsWith("block:")) {
+                        try { namespaces.add(Identifier.parse(entry.substringAfter("block:")).namespace) } catch (_: Exception) {}
+                    }
+                }
+                namespaces
             }
             else -> emptySet()
         }

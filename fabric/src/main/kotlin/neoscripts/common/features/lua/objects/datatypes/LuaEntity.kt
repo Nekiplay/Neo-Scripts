@@ -102,7 +102,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 valueOf(pos.z)
             }
             "pos", "position" -> LuaVector3d(entity.getPosition(1f))
-            "blockpos" -> LuaBlockPos(entity.blockPosition())
+            "blockpos", "blockPos" -> LuaBlockPos(entity.blockPosition())
 
             "box" -> LuaBox(entity.boundingBox)
 
@@ -163,14 +163,6 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 t
             }
             "age" -> valueOf(entity.tickCount)
-            "distance_to_player" -> {
-                val player = mc.player
-                if (player != null) {
-                    valueOf(entity.distanceToSqr(player))
-                } else {
-                    valueOf(0.0)
-                }
-            }
 
             // Специфичные для ItemFrameEntity
             "item" -> {
@@ -212,7 +204,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     NIL
                 }
             }
-            "is_blocking" -> {
+            "is_blocking", "isBlocking" -> {
                 if (entity is LivingEntity) {
                     valueOf(entity.isBlocking)
                 } else {
@@ -226,28 +218,28 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     NIL
                 }
             }
-            "max_health" -> {
+            "max_health", "maxHealth" -> {
                 if (entity is LivingEntity) {
                     valueOf(entity.maxHealth.toDouble())
                 } else {
                     NIL
                 }
             }
-            "is_alive" -> {
+            "is_alive", "isAlive" -> {
                 if (entity is LivingEntity) {
                     valueOf(entity.isAlive)
                 } else {
                     NIL
                 }
             }
-            "is_child", "is_baby" -> {
+            "is_child", "is_baby", "isChild", "isBaby" -> {
                 if (entity is LivingEntity) {
                     valueOf(entity.isBaby)
                 } else {
                     NIL
                 }
             }
-            "main_hand" -> {
+            "main_hand", "mainHand" -> {
                 if (entity is LivingEntity) {
                     val mainHandStack = entity.mainHandItem
                     if (!mainHandStack.isEmpty) {
@@ -259,7 +251,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     NIL
                 }
             }
-            "off_hand" -> {
+            "off_hand", "offHand" -> {
                 if (entity is LivingEntity) {
                     val offHandStack = entity.offhandItem
                     if (!offHandStack.isEmpty) {
@@ -319,7 +311,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     NIL
                 }
             }
-            "active_effects" -> {
+            "active_effects", "activeEffects" -> {
                 if (entity is LivingEntity) {
                     val effectsTable = tableOf()
                     var effectIndex = 1
@@ -347,72 +339,72 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 else { NIL }
             }
 
-            "add_effect" -> AddEffectFunction()
-            "remove_effect" -> RemoveEffectFunction()
+            "add_effect", "addEffect" -> AddEffectFunction()
+            "remove_effect", "removeEffect" -> RemoveEffectFunction()
 
             // Специфичные для ArmorStand
-            "is_invisible", "invisible" -> valueOf(entity.isInvisible)
+            "is_invisible", "invisible", "isInvisible" -> valueOf(entity.isInvisible)
             "small" -> {
                 if (entity is ArmorStand) valueOf(entity.isSmall) else NIL
             }
             "marker" -> {
                 if (entity is ArmorStand) valueOf(entity.isMarker) else NIL
             }
-            "show_arms" -> {
+            "show_arms", "showArms" -> {
                 if (entity is ArmorStand) valueOf(entity.showArms()) else NIL
             }
-            "no_base_plate", "no_baseplate" -> {
+            "no_base_plate", "no_baseplate", "noBasePlate", "noBaseplate" -> {
                 if (entity is ArmorStand) valueOf(!entity.showBasePlate()) else NIL
             }
-            "head_pose" -> {
+            "head_pose", "headPose" -> {
                 if (entity is ArmorStand) rotationsToTable(entity.headPose) else NIL
             }
-            "body_pose" -> {
+            "body_pose", "bodyPose" -> {
                 if (entity is ArmorStand) rotationsToTable(entity.bodyPose) else NIL
             }
-            "left_arm_pose" -> {
+            "left_arm_pose", "leftArmPose" -> {
                 if (entity is ArmorStand) rotationsToTable(entity.leftArmPose) else NIL
             }
-            "right_arm_pose" -> {
+            "right_arm_pose", "rightArmPose" -> {
                 if (entity is ArmorStand) rotationsToTable(entity.rightArmPose) else NIL
             }
-            "left_leg_pose" -> {
+            "left_leg_pose", "leftLegPose" -> {
                 if (entity is ArmorStand) rotationsToTable(entity.leftLegPose) else NIL
             }
-            "right_leg_pose" -> {
+            "right_leg_pose", "rightLegPose" -> {
                 if (entity is ArmorStand) rotationsToTable(entity.rightLegPose) else NIL
             }
 
             // Специфичные для Display (text_display, item_display, block_display)
-            "billboard", "billboard_mode" -> {
+            "billboard", "billboard_mode", "billboardMode" -> {
                 if (entity is Display) {
                     valueOf((entity as DisplayAccessor).nsGetBillboardConstraints().getSerializedName())
                 } else {
                     NIL
                 }
             }
-            "view_range" -> {
+            "view_range", "viewRange" -> {
                 if (entity is Display) {
                     valueOf((entity as DisplayAccessor).nsGetViewRange().toDouble())
                 } else {
                     NIL
                 }
             }
-            "shadow_radius" -> {
+            "shadow_radius", "shadowRadius" -> {
                 if (entity is Display) {
                     valueOf((entity as DisplayAccessor).nsGetShadowRadius().toDouble())
                 } else {
                     NIL
                 }
             }
-            "shadow_strength" -> {
+            "shadow_strength", "shadowStrength" -> {
                 if (entity is Display) {
                     valueOf((entity as DisplayAccessor).nsGetShadowStrength().toDouble())
                 } else {
                     NIL
                 }
             }
-            "brightness_override" -> {
+            "brightness_override", "brightnessOverride" -> {
                 if (entity is Display) {
                     valueOf((entity as DisplayAccessor).nsGetPackedBrightnessOverride())
                 } else {
@@ -428,14 +420,14 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     NIL
                 }
             }
-            "line_width" -> {
+            "line_width", "lineWidth" -> {
                 if (entity is Display.TextDisplay) {
                     valueOf((entity as TextDisplayAccessor).nsGetLineWidth())
                 } else {
                     NIL
                 }
             }
-            "text_opacity" -> {
+            "text_opacity", "textOpacity" -> {
                 if (entity is Display.TextDisplay) {
                     val opacity = (entity as TextDisplayAccessor).nsGetTextOpacity().toInt() and 0xFF
                     valueOf(opacity)
@@ -443,14 +435,14 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     NIL
                 }
             }
-            "background_color" -> {
+            "background_color", "backgroundColor" -> {
                 if (entity is Display.TextDisplay) {
                     valueOf((entity as TextDisplayAccessor).nsGetBackgroundColor())
                 } else {
                     NIL
                 }
             }
-            "text_shadow", "has_text_shadow" -> {
+            "text_shadow", "has_text_shadow", "textShadow", "hasTextShadow" -> {
                 if (entity is Display.TextDisplay) {
                     val flags = (entity as TextDisplayAccessor).nsGetFlags().toInt()
                     valueOf(flags and Display.TextDisplay.FLAG_SHADOW.toInt() != 0)
@@ -458,7 +450,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     NIL
                 }
             }
-            "see_through" -> {
+            "see_through", "seeThrough" -> {
                 if (entity is Display.TextDisplay) {
                     val flags = (entity as TextDisplayAccessor).nsGetFlags().toInt()
                     valueOf(flags and Display.TextDisplay.FLAG_SEE_THROUGH.toInt() != 0)
@@ -466,7 +458,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     NIL
                 }
             }
-            "use_default_background", "default_background" -> {
+            "use_default_background", "default_background", "useDefaultBackground", "defaultBackground" -> {
                 if (entity is Display.TextDisplay) {
                     val flags = (entity as TextDisplayAccessor).nsGetFlags().toInt()
                     valueOf(flags and Display.TextDisplay.FLAG_USE_DEFAULT_BACKGROUND.toInt() != 0)
@@ -474,7 +466,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     NIL
                 }
             }
-            "text_align", "text_alignment" -> {
+            "text_align", "text_alignment", "textAlign", "textAlignment" -> {
                 if (entity is Display.TextDisplay) {
                     val flags = (entity as TextDisplayAccessor).nsGetFlags().toInt()
                     when {
@@ -488,7 +480,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
 
             // Специфичные для ItemDisplay
-            "display_item", "displayed_item" -> {
+            "display_item", "displayed_item", "displayItem", "displayedItem" -> {
                 if (entity is Display.ItemDisplay) {
                     val stack = (entity as ItemDisplayAccessor).nsGetItemStack()
                     if (!stack.isEmpty) LuaItemStack(stack) else NIL
@@ -498,7 +490,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
 
             // Специфичные для BlockDisplay
-            "display_block", "displayed_block" -> {
+            "display_block", "displayed_block", "displayBlock", "displayedBlock" -> {
                 if (entity is Display.BlockDisplay) {
                     LuaBlockState((entity as BlockDisplayAccessor).nsGetBlockState())
                 } else {
@@ -507,14 +499,14 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             }
 
             // Специфичные для Interaction
-            "interaction_width" -> {
+            "interaction_width", "interactionWidth" -> {
                 if (entity is Interaction) {
                     valueOf((entity as InteractionAccessor).nsGetWidth().toDouble())
                 } else {
                     NIL
                 }
             }
-            "interaction_height" -> {
+            "interaction_height", "interactionHeight" -> {
                 if (entity is Interaction) {
                     valueOf((entity as InteractionAccessor).nsGetHeight().toDouble())
                 } else {
@@ -536,7 +528,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
 
             // Табло игрока (уровня). Клиент: локальные изменения; сервер: синхронизация клиентам
             "scoreboard" -> {
-                if (entity is Player) LuaScoreboard(entity.level().getScoreboard()) else NIL
+                if (entity is Player) LuaScoreboard(entity.level().scoreboard) else NIL
             }
             "teleport" -> TeleportFunction()
             "add_passenger", "addPassenger" -> AddPassengerFunction()

@@ -435,8 +435,7 @@ object LuaEvents : ServerModule() {
                 val channel = payload.channel
                 val json = payload.json
                 val player = context.player()
-                val accessed = player as EntityAccessor
-                if (!accessed.levelField.isClientSide) {
+                if (!player.level().isClientSide) {
                     context.server().execute {
                         ServerMain.LUA_MANAGER?.scripts?.values?.forEach { script ->
                             if (script is LuaServerScript && script.hasCustomPacketCallbacks) {

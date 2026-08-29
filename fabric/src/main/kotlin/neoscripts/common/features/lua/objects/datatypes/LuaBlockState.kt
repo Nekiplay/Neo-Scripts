@@ -34,10 +34,10 @@ class LuaBlockState(var blockState: BlockState) : LuaUserdata(blockState) {
             "name" -> valueOf(blockState.block.name.getFormattedString())
             "type" -> valueOf(blockState.toString())
             "hardness" -> valueOf(blockState.block.friction.toDouble())
-            "blast_resistance" -> valueOf(blockState.block.explosionResistance.toDouble())
-            "is_solid" -> valueOf(blockState.isSolid)
-            "is_liquid" -> valueOf(blockState.liquid())
-            "is_air" -> valueOf(blockState.isAir)
+            "blast_resistance", "blastResistance" -> valueOf(blockState.block.explosionResistance.toDouble())
+            "is_solid", "isSolid" -> valueOf(blockState.isSolid)
+            "is_liquid", "isLiquid" -> valueOf(blockState.liquid())
+            "is_air", "isAir" -> valueOf(blockState.isAir)
             "age" -> {
                 val age = blockState.getOptionalValue(CropBlock.AGE)
                 if (age.isPresent) {
@@ -128,7 +128,7 @@ class LuaBlockState(var blockState: BlockState) : LuaUserdata(blockState) {
                     NIL
                 }
             }
-            "is_still" -> {
+            "is_still", "isStill" -> {
                 valueOf(blockState.fluidState.isSource)
             }
             "properties" -> {
