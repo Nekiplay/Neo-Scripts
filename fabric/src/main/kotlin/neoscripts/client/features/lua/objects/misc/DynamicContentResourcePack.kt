@@ -258,7 +258,7 @@ object DynamicContentResourcePack : PackResources {
 
                 // ── МНОЖЕСТВЕННЫЕ ТЕКСТУРЫ (для кастомных моделей Blockbench) ──
                 val multiTextures = DynamicContent.multiTextureData[rawId]
-                if (multiTextures != null && multiTextures.isNotEmpty()) {
+                if (!multiTextures.isNullOrEmpty()) {
                     for ((key, texBytes) in multiTextures) {
                         // Сохраняем текстуры в textures/block/<path>_<key>.png и textures/item/<path>_<key>.png
                         if (treatAsBlock) {
@@ -397,6 +397,58 @@ object DynamicContentResourcePack : PackResources {
                 files["data/$ns/loot_tables/blocks/$path.json"] = bytes
             } catch (_: Exception) {}
         }
+        // Worldgen для руд (https://wiki.fabricmc.net/tutorial:ores)
+        for ((fid, _) in DynamicContent.oreGens) {
+            try {
+                val fidId = Identifier.parse(fid)
+                val ns = fidId.namespace
+                val path = fidId.path
+                val cfgJson = DynamicContent.buildOreConfiguredJson(fid)
+                val plcJson = DynamicContent.buildOrePlacedJson(fid)
+                files["data/$ns/worldgen/configured_feature/$path.json"] = cfgJson.toByteArray(StandardCharsets.UTF_8)
+                files["data/$ns/worldgen/placed_feature/$path.json"] = plcJson.toByteArray(StandardCharsets.UTF_8)
+            } catch (_: Exception) {}
+        }
+        // Теги предметов/блоков для рецептов (https://docs.fabricmc.net/develop/data-generation/tags)
+        for ((tagId, ids) in DynamicContent.itemTags) {
+            if (ids.isEmpty()) continue
+            try {
+                val tid = Identifier.parse(tagId)
+                val ns = tid.namespace
+                val path = tid.path
+                val json = buildString {
+                    append("{\"replace\":false,\"values\":[")
+                    append(ids.joinToString(",") { "\"$it\"" })
+                    append("]}")
+                }
+                files["data/$ns/tags/item/$path.json"] = json.toByteArray(StandardCharsets.UTF_8)
+            } catch (_: Exception) {}
+        }
+        for ((tagId, ids) in DynamicContent.blockTags) {
+            if (ids.isEmpty()) continue
+            try {
+                val tid = Identifier.parse(tagId)
+                val ns = tid.namespace
+                val path = tid.path
+                val json = buildString {
+                    append("{\"replace\":false,\"values\":[")
+                    append(ids.joinToString(",") { "\"$it\"" })
+                    append("]}")
+                }
+                files["data/$ns/tags/block/$path.json"] = json.toByteArray(StandardCharsets.UTF_8)
+            } catch (_: Exception) {}
+        }
+        // Рецепты (https://wiki.fabricmc.net/tutorial:recipes)
+        for ((rid, json) in DynamicContent.recipes) {
+            try {
+                val ridId = Identifier.parse(rid)
+                val ns = ridId.namespace
+                val path = ridId.path
+                val bytes = json.toByteArray(StandardCharsets.UTF_8)
+                files["data/$ns/recipe/$path.json"] = bytes
+                files["data/$ns/recipes/$path.json"] = bytes
+            } catch (_: Exception) {}
+        }
         return files
     }
 
@@ -488,7 +540,21 @@ object DynamicContentResourcePack : PackResources {
                         try { namespaces.add(Identifier.parse(entry.substringAfter("block:")).namespace) } catch (_: Exception) {}
                     }
                 }
-                namespaces
+                // ore worldgen
+                for (fid in DynamicContent.oreGens.keys) {
+                    try { namespaces.add(Identifier.parse(fid).namespace) } catch (_: Exception) {}
+                }
+                // tags
+                for (tagId in DynamicContent.itemTags.keys) {
+                    try { namespaces.add(Identifier.parse(tagId).namespace) } catch (_: Exception) {}
+                }
+                for (tagId in DynamicContent.blockTags.keys) {
+                    try { namespaces.add(Identifier.parse(tagId).namespace) } catch (_: Exception) {}
+                }
+                for (rid in DynamicContent.recipes.keys) {
+                    try { namespaces.add(Identifier.parse(rid).namespace) } catch (_: Exception) {}
+                }
+                namespaces.ifEmpty { setOf("minecraft") }
             }
             else -> emptySet()
         }

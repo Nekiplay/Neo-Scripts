@@ -25,19 +25,19 @@ class LuaInventory(val container: Container) : LuaUserdata(container) {
         return when (val field = key.tojstring()) {
             "javaClass", "class" -> JavaInstance(container)
             "size" -> valueOf(container.containerSize)
-            "is_empty" -> valueOf(container.isEmpty)
+            "is_empty","isEmpty" -> valueOf(container.isEmpty)
 
             // Список предметов
-            "get_items", "items", "inventory_items" -> GetItemsFunction()
+            "get_items", "getItems", "items", "inventory_items", "inventoryItems" -> GetItemsFunction()
 
             // Выдача предметов
-            "give_item", "add_item" -> GiveItemFunction()
+            "give_item", "add_item", "giveItem", "addItem" -> GiveItemFunction()
 
             // Убирание предметов
-            "take_item", "remove_item" -> RemoveItemFunction()
+            "take_item", "remove_item", "takeItem", "removeItem" -> RemoveItemFunction()
 
             // Установка предмета в слот
-            "set_item" -> SetItemFunction()
+            "set_item", "setItem" -> SetItemFunction()
 
             else -> super.get(key)
         }

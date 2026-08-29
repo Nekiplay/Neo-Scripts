@@ -1,6 +1,8 @@
 package com.nekiplay.neoscripts.common.features.lua.objects.datatypes
 
 import com.mojang.math.Transformation
+import com.nekiplay.neoscripts.client.sugar.isVector
+import com.nekiplay.neoscripts.client.sugar.toVector
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import org.luaj.vm2.LuaUserdata
@@ -54,7 +56,7 @@ class LuaTransform(
         return when (val field = key.tojstring()) {
             "translation", "offset" -> vectorToTable(translation)
             "scale" -> vectorToTable(scale)
-            "rotation", "rotation_degrees" -> vectorToTable(rotationDegrees)
+            "rotation", "rotation_degrees", "rotationDegrees" -> vectorToTable(rotationDegrees)
             "matrix" -> matrixToTable()
             else -> super.get(key)
         }
@@ -80,7 +82,7 @@ class LuaTransform(
         when (val field = key.tojstring()) {
             "translation", "offset" -> parseVector(value)?.let { translation = it }
             "scale" -> parseVector(value)?.let { scale = it }
-            "rotation", "rotation_degrees" -> parseVector(value)?.let { rotationDegrees = it }
+            "rotation", "rotation_degrees", "rotationDegrees" -> parseVector(value)?.let { rotationDegrees = it }
             else -> super.set(key, value)
         }
     }
@@ -94,7 +96,14 @@ class LuaTransform(
     }
 
     private fun parseVector(value: LuaValue?): Vector3f? {
-        if (value == null || !value.istable()) return null
+        if (value == null) return null
+        if (value.isVector()) {
+            val vec = value.toVector()
+            if (vec != null) {
+                return Vector3f(vec.x.toFloat(), vec.y.toFloat(), vec.z.toFloat())
+            }
+        }
+        if (!value.istable()) return null
         val x = value.get("x")
         val y = value.get("y")
         val z = value.get("z")

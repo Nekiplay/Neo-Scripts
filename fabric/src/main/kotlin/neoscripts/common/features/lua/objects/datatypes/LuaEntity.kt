@@ -102,7 +102,7 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 valueOf(pos.z)
             }
             "pos", "position" -> LuaVector3d(entity.getPosition(1f))
-            "blockpos", "blockPos" -> LuaBlockPos(entity.blockPosition())
+            "blockpos", "block_pos", "blockPos" -> LuaBlockPos(entity.blockPosition())
 
             "box" -> LuaBox(entity.boundingBox)
 
@@ -116,16 +116,16 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                 }
             }
 
-            "velocity_x" -> valueOf(entity.deltaMovement.x)
-            "velocity_y" -> valueOf(entity.deltaMovement.y)
-            "velocity_z" -> valueOf(entity.deltaMovement.z)
+            "velocity_x", "velocityX" -> valueOf(entity.deltaMovement.x)
+            "velocity_y", "velocityY" -> valueOf(entity.deltaMovement.y)
+            "velocity_z", "velocityZ" -> valueOf(entity.deltaMovement.z)
             "velocity" -> LuaVector3d(entity.deltaMovement)
 
             "gravity" -> valueOf(entity.gravity)
-            "horizontal_collision" -> valueOf(entity.horizontalCollision)
-            "vertical_collision" -> valueOf(entity.verticalCollision)
-            "hurt_marked" -> valueOf(entity.hurtMarked)
-            "controlled_venicle" -> {
+            "horizontal_collision", "horizontalCollision" -> valueOf(entity.horizontalCollision)
+            "vertical_collision", "verticalCollision" -> valueOf(entity.verticalCollision)
+            "hurt_marked", "hurtMarked" -> valueOf(entity.hurtMarked)
+            "controlled_venicle", "controlledVenicle" -> {
                 val venicle = entity.controlledVehicle
                 if (venicle != null) {
                     LuaEntity(venicle)
@@ -134,9 +134,9 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
                     NIL
                 }
             }
-            "nearest_view_direction" -> LuaDirection(entity.nearestViewDirection)
+            "nearest_view_direction", "nearestViewDirection" -> LuaDirection(entity.nearestViewDirection)
             "direction" -> LuaDirection(entity.direction)
-            "touching_unloaded_chunk" -> valueOf(entity.touchingUnloadedChunk())
+            "touching_unloaded_chunk", "touchingUnloadedChunk" -> valueOf(entity.touchingUnloadedChunk())
 
             // Размеры и вращение
             "width" -> valueOf(entity.bbWidth.toDouble())
@@ -145,14 +145,14 @@ class LuaEntity(val entity: Entity): LuaUserdata(entity) {
             "pitch" -> valueOf(entity.yRot.toDouble())
 
             // Состояния
-            "is_swimming" -> valueOf(entity.isSwimming)
-            "is_on_ground" -> valueOf(entity.onGround())
-            "is_touching_water" -> valueOf(entity.isInWater)
-            "is_in_lava" -> valueOf(entity.isInLava)
-            "is_sneaking" -> valueOf(entity.isShiftKeyDown)
-            "is_sprinting" -> valueOf(entity.isSprinting)
-            "is_in_powder_snow" -> valueOf(entity.isInPowderSnow)
-            "is_crouching" -> valueOf(entity.isCrouching)
+            "is_swimming", "isSwimming" -> valueOf(entity.isSwimming)
+            "is_on_ground", "is_OnGround" -> valueOf(entity.onGround())
+            "is_touching_water", "isTouchingWater" -> valueOf(entity.isInWater)
+            "is_in_lava", "isInLava" -> valueOf(entity.isInLava)
+            "is_sneaking", "isSneaking" -> valueOf(entity.isShiftKeyDown)
+            "is_sprinting", "isSprinting" -> valueOf(entity.isSprinting)
+            "is_in_powder_snow", "isInPowderSnow" -> valueOf(entity.isInPowderSnow)
+            "is_crouching", "isCrouching" -> valueOf(entity.isCrouching)
 
             // Дополнительные свойства
             "passengers" -> {

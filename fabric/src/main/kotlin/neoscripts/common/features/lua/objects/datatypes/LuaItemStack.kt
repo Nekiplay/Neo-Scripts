@@ -69,56 +69,56 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
             "name" -> valueOf(stack.item.getName(stack).getFormattedString())
             "id" -> valueOf(BuiltInRegistries.ITEM.getId(stack.item))
             "identifier" -> valueOf(stack.item.toString())
-            "translation_id" -> valueOf(stack.item.descriptionId)
+            "translation_id", "translationId" -> valueOf(stack.item.descriptionId)
             "display_name" -> valueOf(stack.displayName.getFormattedString())
-            "is_empty" -> valueOf(stack.isEmpty)
+            "is_empty", "isEmpty" -> valueOf(stack.isEmpty)
             "head_texture" -> valueOf(stack.getHeadTexture())
-            "skyblock_id" -> valueOf(stack.getItemId())
-            "neu_id" -> valueOf(stack.getNeuId())
-            "reforge_modifier" -> valueOf(stack.getReforgeModifier())
-            "is_stackable" -> valueOf(stack.isStackable)
-            "is_recombobulated" -> valueOf(stack.isRecombobulated())
-            "is_museum_donated" -> valueOf(stack.isMuseumDonated())
-            "is_enchanted" -> valueOf(stack.isEnchanted)
+            "skyblock_id", "skyblockId" -> valueOf(stack.getItemId())
+            "neu_id", "neuId" -> valueOf(stack.getNeuId())
+            "reforge_modifier", "reforgeModifier" -> valueOf(stack.getReforgeModifier())
+            "is_stackable", "isStackable" -> valueOf(stack.isStackable)
+            "is_recombobulated", "isRecombobulated" -> valueOf(stack.isRecombobulated())
+            "is_museum_donated", "isMuseumDonated" -> valueOf(stack.isMuseumDonated())
+            "is_enchanted", "isEnchanted" -> valueOf(stack.isEnchanted)
             "uuid" -> valueOf(stack.getItemUuid())
-            "is_correct_tool" -> isCorrectToolForDrops()
-            "is_sword" -> {
+            "is_correct_tool", "isCorrectTool" -> isCorrectToolForDrops()
+            "is_sword", "isSword" -> {
                 valueOf(stack.`is`(ItemTags.SWORDS))
             }
-            "is_pickaxe" -> {
+            "is_pickaxe", "isPickaxe" -> {
                 valueOf(stack.`is`(ItemTags.PICKAXES))
             }
-            "is_axe" -> {
+            "is_axe", "isAxe" -> {
                 valueOf(stack.`is`(ItemTags.AXES))
             }
-            "is_hoe" -> {
+            "is_hoe", "isHoe" -> {
                 valueOf(stack.`is`(ItemTags.HOES))
             }
-            "is_shovel" -> {
+            "is_shovel", "isShovel" -> {
                 valueOf(stack.`is`(ItemTags.SHOVELS))
             }
-            "is_map" -> {
+            "is_map", "isMap" -> {
                 valueOf(stack.item is MapItem)
             }
-            "is_trident" -> {
+            "is_trident", "isTrident" -> {
                 valueOf(stack.item is TridentItem)
             }
-            "is_instrument" -> {
+            "is_instrument", "isInstrument" -> {
                 valueOf(stack.item is InstrumentItem)
             }
-            "is_shield" -> {
+            "is_shield", "isShield" -> {
                 valueOf(stack.item is ShieldItem)
             }
-            "is_shears" -> {
+            "is_shears", "isShears" -> {
                 valueOf(stack.item is ShearsItem)
             }
-            "is_mace" -> {
+            "is_mace", "isMace" -> {
                 valueOf(stack.item is MaceItem)
             }
-            "is_fishing_rod" -> {
+            "is_fishing_rod", "isFishingRod" -> {
                 valueOf(stack.item is FishingRodItem)
             }
-            "is_block" -> {
+            "is_block", "isBlock" -> {
                 valueOf(stack.item is BlockItem)
             }
 
@@ -132,7 +132,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                 }
                 NIL
             }
-            "blockstate" -> {
+            "blockstate", "block_state", "blockState" -> {
                 val block = Block.byItem(stack.item)
                 return if (block != null) {
                     LuaBlockState(block.defaultBlockState())
@@ -148,7 +148,7 @@ class LuaItemStack(val stack: ItemStack) : LuaUserdata(stack) {
                 loreList.forEachIndexed { index, line -> loreTable.set(index + 1, line.getFormattedString()) }
                 loreTable
             }
-            "hypixel_enchantments", "hypixel_ench" -> {
+            "hypixel_enchantments", "hypixelEnchantments", "hypixel_ench", "hypixelEnch" -> {
                 val enchantsTable = tableOf()
                 val enchantmentsList = ItemUtils.getHypixelEnchantments(stack)
                 var index = 1

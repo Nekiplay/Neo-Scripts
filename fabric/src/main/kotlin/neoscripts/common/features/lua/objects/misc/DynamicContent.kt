@@ -83,6 +83,14 @@ object DynamicContent {
     // Лут блока: какие предметы выпадают (https://docs.fabricmc.net/develop/blocks/first-block#adding-block-drops)
     // nil = не задано (дефолт дроп себя), пустой список = ничего, иначе список DropEntry
     val blockDrops = ConcurrentHashMap<String, MutableList<LuaContentSettings.DropEntry>>()
+    // Генерация руды (https://wiki.fabricmc.net/tutorial:ores)
+    val oreGens = ConcurrentHashMap<String, LuaContentSettings.OreConfig>() // featureId -> config (+ хранит blockId внутри)
+    val oreBlockToFeature = ConcurrentHashMap<String, String>() // block rawId -> featureId
+    // Теги предметов/блоков для рецептов (https://docs.fabricmc.net/develop/data-generation/tags)
+    val itemTags = ConcurrentHashMap<String, MutableSet<String>>() // tagId -> set of item rawIds
+    val blockTags = ConcurrentHashMap<String, MutableSet<String>>() // tagId -> set of block rawIds
+    // Рецепты (https://wiki.fabricmc.net/tutorial:recipes)
+    val recipes = ConcurrentHashMap<String, String>() // recipeId -> json
 
     private fun normalizeTool(name: String?): String? {
         if (name == null) return null
@@ -167,6 +175,162 @@ object DynamicContent {
                 """{"rolls":1,"entries":[${entryJson(d)}]}"""
             }
             """{"type":"minecraft:block","pools":[$pools]}"""
+        }
+    }
+
+    // ── tags (https://docs.fabricmc.net/develop/data-generation/tags) ──
+    private fun storeItemTags(rawId: String, settings: LuaContentSettings?) {
+        // сначала очистим старые записи этого предмета
+        itemTags.values.forEach { it.remove(rawId) }
+        val list = settings?.tags ?: return
+        for (tag in list) {
+            try { Identifier.parse(tag); itemTags.getOrPut(tag) { ConcurrentHashMap.newKeySet() }.add(rawId) } catch (_: Exception) {}
+        }
+    }
+    private fun storeBlockTags(rawId: String, settings: LuaContentSettings?) {
+        blockTags.values.forEach { it.remove(rawId) }
+        // blockTags явно или fallback tags для блоков
+        val list = settings?.blockTags ?: settings?.tags
+        if (list == null) return
+        for (tag in list) {
+            try { Identifier.parse(tag); blockTags.getOrPut(tag) { ConcurrentHashMap.newKeySet() }.add(rawId) } catch (_: Exception) {}
+        }
+    }
+
+    // ── recipes (https://wiki.fabricmc.net/tutorial:recipes) ──
+    fun registerRecipe(rawId: String, json: String): Boolean {
+        return try {
+            Identifier.parse(rawId)
+            if (json.isBlank()) return false
+            // базовая валидация json
+            if (!json.trim().startsWith("{")) return false
+            recipes[rawId] = json
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered recipe $rawId")
+            true
+        } catch (e: Exception) {
+            ClientMain.LOGGER?.error("[Neo Scripts] Failed to register recipe $rawId", e)
+            false
+        }
+    }
+    fun getRecipe(rawId: String): String? = recipes[rawId]
+    fun removeRecipe(rawId: String): Boolean = recipes.remove(rawId) != null
+
+    // ── ore generation (https://wiki.fabricmc.net/tutorial:ores) ──
+    private fun storeOre(rawId: String, settings: LuaContentSettings?) {
+        val ore = settings?.ore ?: return
+        // featureId по умолчанию = rawId
+        val fid = ore.featureId?.takeIf { it.contains(":") } ?: rawId
+        // обновляем ore.featureId для консистентности
+        ore.featureId = fid
+        registerOreInternal(rawId, ore)
+    }
+
+    fun getOre(rawId: String): LuaContentSettings.OreConfig? {
+        val fid = oreBlockToFeature[rawId] ?: rawId
+        return oreGens[fid] ?: oreGens[rawId]
+    }
+
+    fun registerOre(rawId: String, cfg: LuaContentSettings.OreConfig): Boolean {
+        return try {
+            val fid = cfg.featureId?.takeIf { it.contains(":") } ?: rawId
+            cfg.featureId = fid
+            registerOreInternal(rawId, cfg)
+            true
+        } catch (e: Exception) {
+            ClientMain.LOGGER?.error("[Neo Scripts] Failed to register ore $rawId", e)
+            false
+        }
+    }
+
+    private fun registerOreInternal(rawId: String, cfg: LuaContentSettings.OreConfig) {
+        // валидация blockId
+        Identifier.parse(rawId)
+        val fid = cfg.featureId ?: rawId
+        Identifier.parse(fid)
+        oreGens[fid] = cfg.copy(featureId = fid)
+        oreBlockToFeature[rawId] = fid
+        // BiomeModifications — вызовется в onInitialize и позже; если уже инициализирован — пробуем сразу
+        try {
+            val placedKey = ResourceKey.create(Registries.PLACED_FEATURE, Identifier.parse(fid))
+            val selector = when (cfg.biomes.lowercase()) {
+                "overworld", "overworlds", "is_overworld" -> net.fabricmc.fabric.api.biome.v1.BiomeSelectors.foundInOverworld()
+                "nether", "is_nether", "foundInNether" -> net.fabricmc.fabric.api.biome.v1.BiomeSelectors.foundInNether()
+                "end", "is_end", "foundInTheEnd" -> net.fabricmc.fabric.api.biome.v1.BiomeSelectors.foundInTheEnd()
+                else -> if (cfg.biomes.startsWith("#")) {
+                    val tagId = Identifier.parse(cfg.biomes.removePrefix("#"))
+                    val tag = net.minecraft.tags.TagKey.create(Registries.BIOME, tagId)
+                    net.fabricmc.fabric.api.biome.v1.BiomeSelectors.tag(tag)
+                } else {
+                    net.fabricmc.fabric.api.biome.v1.BiomeSelectors.foundInOverworld()
+                }
+            }
+            net.fabricmc.fabric.api.biome.v1.BiomeModifications.addFeature(
+                selector, net.minecraft.world.level.levelgen.GenerationStep.Decoration.UNDERGROUND_ORES, placedKey
+            )
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered ore $rawId feature=$fid biomes=${cfg.biomes} count=${cfg.count} size=${cfg.size} y=${cfg.minY}..${cfg.maxY}")
+        } catch (e: Exception) {
+            // если Biome API еще не готов (ранний вызов) — просто логируем, JSON уже сгенерит feature; повторная регистрация произойдет при следующем вызове
+            ClientMain.LOGGER?.warn("[Neo Scripts] BiomeModifications addFeature deferred for $fid: ${e.message}")
+        }
+    }
+
+    fun buildOreConfiguredJson(featureId: String): String {
+        val cfg = oreGens[featureId] ?: return """{"type":"minecraft:ore","config":{"size":9,"discard_chance_on_air_exposure":0.0,"targets":[]}}"""
+        val blockId = oreBlockToFeature.entries.find { it.value == featureId }?.key ?: featureId
+        // targets по replace
+        val targetsJson = buildOreTargets(blockId, cfg.replace, cfg.biomes)
+        return """{"type":"minecraft:ore","config":{"discard_chance_on_air_exposure":${cfg.discardChance},"size":${cfg.size},"targets":[$targetsJson]}}"""
+    }
+
+    fun buildOrePlacedJson(featureId: String): String {
+        val cfg = oreGens[featureId] ?: return """{"feature":"$featureId","placement":[]}"""
+        val heightType = if (cfg.heightType == "uniform") "minecraft:uniform" else "minecraft:trapezoid"
+        val heightJson = """{"type":"minecraft:height_range","height":{"type":"$heightType","min_inclusive":{"absolute":${cfg.minY}},"max_inclusive":{"absolute":${cfg.maxY}}}}"""
+        val placement = mutableListOf<String>()
+        placement.add("""{"type":"minecraft:count","count":${cfg.count}}""")
+        placement.add("""{"type":"minecraft:in_square"}""")
+        placement.add(heightJson)
+        placement.add("""{"type":"minecraft:biome"}""")
+        return """{"feature":"$featureId","placement":[${placement.joinToString(",")}]}"""
+    }
+
+    private fun buildOreTargets(blockId: String, replace: String?, biomes: String): String {
+        val state = """{"Name":"$blockId"}"""
+        fun tagTarget(tag: String) = """{"state":$state,"target":{"predicate_type":"minecraft:tag_match","tag":"$tag"}}"""
+        fun blockTarget(block: String) = """{"state":$state,"target":{"predicate_type":"minecraft:block_match","block":"$block"}}"""
+        if (replace != null && replace.isNotBlank()) {
+            val r = replace.trim()
+            // если указано несколько через запятую — генерим несколько таргетов
+            if (r.contains(",")) {
+                return r.split(",").joinToString(",") { part ->
+                    val p = part.trim()
+                    if (p.startsWith("minecraft:") && (p.endsWith("_ore_replaceables") || p.startsWith("#"))) {
+                        val tag = p.removePrefix("#")
+                        tagTarget(tag)
+                    } else if (p.contains(":")) {
+                        blockTarget(p)
+                    } else {
+                        tagTarget("minecraft:${p}")
+                    }
+                }
+            }
+            if (r.equals("stone", true) || r.equals("stone_ore_replaceables", true) || r == "minecraft:stone_ore_replaceables" || r == "#minecraft:stone_ore_replaceables") return tagTarget("minecraft:stone_ore_replaceables")
+            if (r.equals("deepslate", true) || r.equals("deepslate_ore_replaceables", true) || r == "minecraft:deepslate_ore_replaceables") return tagTarget("minecraft:deepslate_ore_replaceables")
+            if (r.equals("netherrack", true) || r == "minecraft:netherrack") return blockTarget("minecraft:netherrack")
+            if (r.equals("end_stone", true) || r == "minecraft:end_stone") return blockTarget("minecraft:end_stone")
+            if (r.startsWith("#")) return tagTarget(r.removePrefix("#"))
+            if (r.contains(":")) {
+                // считаем tag если содержит ore_replaceables иначе block
+                return if (r.contains("ore_replaceables")) tagTarget(r) else blockTarget(r)
+            }
+            // короткое имя — считаем tag
+            return tagTarget("minecraft:$r")
+        }
+        // дефолт по biomes
+        return when (biomes.lowercase()) {
+            "nether" -> blockTarget("minecraft:netherrack")
+            "end" -> blockTarget("minecraft:end_stone")
+            else -> "${tagTarget("minecraft:stone_ore_replaceables")},${tagTarget("minecraft:deepslate_ore_replaceables")}"
         }
     }
 
@@ -371,6 +535,7 @@ object DynamicContent {
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
             settings?.textures?.let { storeTextures(rawId, it) }
+            storeItemTags(rawId, settings)
 
             val key = ResourceKey.create(Registries.ITEM, id)
             val props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
@@ -411,6 +576,9 @@ object DynamicContent {
             settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
             storeDrops(rawId, settings)
+            storeOre(rawId, settings)
+            storeBlockTags(rawId, settings)
+            storeItemTags(rawId, settings)
 
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key)
@@ -476,6 +644,9 @@ object DynamicContent {
             settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
             storeDrops(rawId, settings)
+            storeOre(rawId, settings)
+            storeBlockTags(rawId, settings)
+            storeItemTags(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
             val customName = settings?.displayName()
@@ -505,6 +676,9 @@ object DynamicContent {
             settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
             storeDrops(rawId, settings)
+            storeOre(rawId, settings)
+            storeBlockTags(rawId, settings)
+            storeItemTags(rawId, settings)
 
             // База для stairs — состояние блока
             val baseIdStr = baseBlockId ?: "minecraft:stone"
@@ -545,6 +719,9 @@ object DynamicContent {
             settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
             storeDrops(rawId, settings)
+            storeOre(rawId, settings)
+            storeBlockTags(rawId, settings)
+            storeItemTags(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
             val setType = parseBlockSetType(blockSetTypeName)
@@ -576,6 +753,9 @@ object DynamicContent {
             settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
             storeDrops(rawId, settings)
+            storeOre(rawId, settings)
+            storeBlockTags(rawId, settings)
+            storeItemTags(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
             val setType = parseBlockSetType(blockSetTypeName)
@@ -607,6 +787,9 @@ object DynamicContent {
             settings?.textures?.let { storeTextures(rawId, it) }
             storeToolTier(rawId, settings)
             storeDrops(rawId, settings)
+            storeOre(rawId, settings)
+            storeBlockTags(rawId, settings)
+            storeItemTags(rawId, settings)
             val key = ResourceKey.create(Registries.BLOCK, id)
             val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
             val customName = settings?.displayName()
@@ -653,6 +836,7 @@ object DynamicContent {
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
             settings?.textures?.let { storeTextures(rawId, it) }
+            storeItemTags(rawId, settings)
             val key = ResourceKey.create(Registries.ITEM, id)
             var props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
             if (food != null) props = props.food(food)
@@ -687,6 +871,7 @@ object DynamicContent {
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
             settings?.textures?.let { storeTextures(rawId, it) }
+            storeItemTags(rawId, settings)
             val key = ResourceKey.create(Registries.ITEM, id)
             var props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
             if (food != null) props = props.food(food, Consumables.DEFAULT_DRINK)
@@ -723,6 +908,7 @@ object DynamicContent {
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
             settings?.textures?.let { storeTextures(rawId, it) }
+            storeItemTags(rawId, settings)
 
             val key = ResourceKey.create(Registries.ITEM, id)
             val props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
@@ -767,6 +953,7 @@ object DynamicContent {
             settings?.texture?.let { storeTexture(rawId, it) }
             settings?.model?.let { storeModel(rawId, it) }
             settings?.textures?.let { storeTextures(rawId, it) }
+            storeItemTags(rawId, settings)
             val key = ResourceKey.create(Registries.ITEM, id)
             var props = settings?.applyTo(Item.Properties())?.setId(key) ?: Item.Properties().setId(key)
             val type = toolTable?.get("type")?.tojstring()?.lowercase() ?: "pickaxe"

@@ -38,7 +38,7 @@ class LuaScoreboard(val scoreboard: Scoreboard) : LuaUserdata(scoreboard) {
             }
 
             // Доступные имена слотов отображения ("list", "sidebar", "below_name", "sidebar.team.gold", ...)
-            "display_slots" -> {
+            "display_slots", "displaySlots" -> {
                 val table = tableOf()
                 DisplaySlot.values().forEachIndexed { index, slot ->
                     table.set(index + 1, valueOf(slot.getSerializedName()))
@@ -47,17 +47,17 @@ class LuaScoreboard(val scoreboard: Scoreboard) : LuaUserdata(scoreboard) {
             }
 
             "get_objective", "getObjective" -> GetObjectiveFunction()
-            "create_objective", "add_objective" -> CreateObjectiveFunction()
-            "remove_objective", "delete_objective" -> RemoveObjectiveFunction()
+            "create_objective", "add_objective", "createObjective", "addObjective" -> CreateObjectiveFunction()
+            "remove_objective", "delete_objective", "removeObjective", "deleteObjective" -> RemoveObjectiveFunction()
 
-            "get_score" -> GetScoreFunction()
-            "set_score" -> SetScoreFunction()
-            "add_score" -> AddScoreFunction()
-            "reset_score", "remove_score" -> ResetScoreFunction()
-            "list_scores" -> ListScoresFunction()
+            "get_score", "getScore" -> GetScoreFunction()
+            "set_score", "setScore" -> SetScoreFunction()
+            "add_score", "addScore" -> AddScoreFunction()
+            "reset_score", "remove_score", "resetScore", "removeScore" -> ResetScoreFunction()
+            "list_scores", "listScores" -> ListScoresFunction()
 
-            "get_display" -> GetDisplayFunction()
-            "set_display" -> SetDisplayFunction()
+            "get_display", "getDisplay" -> GetDisplayFunction()
+            "set_display", "setDisplay" -> SetDisplayFunction()
 
             else -> super.get(key)
         }
@@ -78,14 +78,14 @@ class LuaScoreboard(val scoreboard: Scoreboard) : LuaUserdata(scoreboard) {
         if (arg.isnumber() && arg.isint()) {
             val id = arg.toint()
             if (id >= 0 && id < DisplaySlot.values().size) {
-                return DisplaySlot.values()[id]
+                return DisplaySlot.entries[id]
             }
             return null
         }
         if (!arg.isstring()) return null
         val name = arg.tojstring()
-        for (slot in DisplaySlot.values()) {
-            if (slot.getSerializedName().equals(name, ignoreCase = true) ||
+        for (slot in DisplaySlot.entries) {
+            if (slot.serializedName.equals(name, ignoreCase = true) ||
                 slot.name.equals(name, ignoreCase = true)
             ) {
                 return slot
@@ -286,12 +286,12 @@ class LuaObjective(val scoreboard: Scoreboard, val objective: Objective) : LuaUs
             "criteria" -> valueOf(objective.criteria.getName())
             "render_type" -> valueOf(objective.renderType.getId())
 
-            "get_score" -> GetScoreFunction()
-            "set_score" -> SetScoreFunction()
-            "add_score" -> AddScoreFunction()
-            "increment_score" -> IncrementScoreFunction()
-            "reset_score", "remove_score" -> ResetScoreFunction()
-            "list_scores" -> ListScoresFunction()
+            "get_score", "getScore" -> GetScoreFunction()
+            "set_score", "setScore" -> SetScoreFunction()
+            "add_score", "addScore" -> AddScoreFunction()
+            "increment_score", "incrementScore" -> IncrementScoreFunction()
+            "reset_score", "remove_score", "resetScore", "removeScore" -> ResetScoreFunction()
+            "list_scores", "listScores" -> ListScoresFunction()
 
             else -> super.get(key)
         }
@@ -299,14 +299,14 @@ class LuaObjective(val scoreboard: Scoreboard, val objective: Objective) : LuaUs
 
     override fun set(key: LuaValue, value: LuaValue) {
         when (key.tojstring()) {
-            "display_name" -> when {
-                value.isstring() -> objective.setDisplayName(Component.literal(value.tojstring()))
-                value is LuaComponent -> objective.setDisplayName(value.component.copy())
-                value is LuaComponentBuilder -> objective.setDisplayName(value.buildComponent())
+            "display_name", "displayName" -> when {
+                value.isstring() -> objective.displayName = Component.literal(value.tojstring())
+                value is LuaComponent -> objective.displayName = value.component.copy()
+                value is LuaComponentBuilder -> objective.displayName = value.buildComponent()
             }
-            "render_type" -> {
+            "render_type", "renderType" -> {
                 if (value.isstring()) {
-                    objective.setRenderType(ObjectiveCriteria.RenderType.byId(value.tojstring()))
+                    objective.renderType = ObjectiveCriteria.RenderType.byId(value.tojstring())
                 }
             }
         }

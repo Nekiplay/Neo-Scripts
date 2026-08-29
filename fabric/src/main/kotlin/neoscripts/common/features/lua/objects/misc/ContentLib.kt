@@ -36,6 +36,10 @@ class ContentLib : LuaValue() {
             "getItemTexture" -> GetItemTexture()
             "setDrops", "setDrop", "setLoot", "setBlockDrops", "setLootTable" -> SetBlockDrops()
             "getDrops", "getDrop", "getLoot", "getBlockDrops", "getLootTable" -> GetBlockDrops()
+            "getWorldGeneration", "getWorldGen", "getOre", "getOreGeneration" -> GetOre()
+            "registerRecipe", "addRecipe", "createRecipe" -> RegisterRecipe()
+            "getRecipe" -> GetRecipe()
+            "removeRecipe", "deleteRecipe" -> RemoveRecipe()
             else -> super.get(key)
         }
     }
@@ -276,6 +280,63 @@ class ContentLib : LuaValue() {
             val rawId = arg.tojstring()
             val drops = DynamicContent.getBlockDrops(rawId) ?: return NIL
             return LuaContentSettings.dropsToLua(drops)
+        }
+    }
+
+    class GetOre : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            if (!arg.isstring()) return NIL
+            val cfg = DynamicContent.getOre(arg.tojstring()) ?: return NIL
+            return LuaContentSettings.oreToLua(cfg)
+        }
+    }
+
+    /**
+     * content.registerRecipe(id, recipeTable) — создает рецепт (https://wiki.fabricmc.net/tutorial:recipes).
+     * recipeTable — Lua таблица JSON рецепта, конвертируется via luaValueToJson.
+     * Поддерживает id как первый аргумент или поле id в таблице.
+     * Возвращает true/false. Генерирует data/<ns>/recipe/<path>.json (+ recipes legacy).
+     */
+    class RegisterRecipe : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            var rawId: String? = null
+            var table: LuaValue? = null
+            if (args.narg() >= 1 && args.arg(1).isstring() && args.narg() >= 2 && args.arg(2).istable()) {
+                rawId = args.arg1().tojstring()
+                table = args.arg(2)
+            } else if (args.narg() >= 1 && args.arg(1).istable()) {
+                val t = args.arg(1)
+                val idVal = t.get("id").takeIf { !it.isnil() && it.isstring() } ?: t.get("recipeId").takeIf { !it.isnil() && it.isstring() } ?: t.get("name").takeIf { !it.isnil() && it.isstring() }
+                if (idVal != null) rawId = idVal.tojstring()
+                table = t
+            }
+            if (rawId == null || table == null) return valueOf(false)
+            return try {
+                Identifier.parse(rawId)
+                // если таблица содержит поле id дублирующее rawId — оставим как есть, но лучше убрать чтобы не дублировать id в json? оставим, игра игнорирует
+                var json = LuaContentSettings.luaValueToJson(table)
+                // если json не содержит "type" — добавим дефолт shaped? оставим как есть, пусть пользователь укажет
+                val ok = DynamicContent.registerRecipe(rawId, json)
+                valueOf(ok)
+            } catch (e: Exception) {
+                valueOf(false)
+            }
+        }
+    }
+
+    class GetRecipe : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            if (!arg.isstring()) return NIL
+            val json = DynamicContent.getRecipe(arg.tojstring()) ?: return NIL
+            return valueOf(json)
+        }
+    }
+
+    class RemoveRecipe : OneArgFunction() {
+        override fun call(arg: LuaValue): LuaValue {
+            if (!arg.isstring()) return NIL
+            val ok = DynamicContent.removeRecipe(arg.tojstring())
+            return valueOf(ok)
         }
     }
 }

@@ -66,6 +66,13 @@ import org.luaj.vm2.LuaValue
  *                   {{id="minecraft:diamond", weight=10}, {id="minecraft:emerald", weight=1}} — взвешенный случайный выбор (один pool, weight как на minecraft.wiki/w/Loot_table),
  *                   {{id="minecraft:diamond", conditions={{condition="minecraft:random_chance", chance=0.1}}}, {id="minecraft:stick", condition={condition="minecraft:survives_explosion"}}} — кастомные conditions/predicate (см. https://minecraft.wiki/w/Predicate),
  *                   "minecraft:apple" и т.д. Генерируется data/<ns>/loot_table/blocks/<path>.json (см. https://docs.fabricmc.net/develop/blocks/first-block#adding-block-drops)
+ *  ore / oreGen / generation — генерация руды (https://wiki.fabricmc.net/tutorial:ores):
+ *                   true/false или таблица { size=9, count=20, minY=-24, maxY=64, height="trapezoid", replace="stone_ore_replaceables", biomes="overworld" }
+ *                   Генерирует data/<ns>/worldgen/configured_feature и placed_feature + BiomeModifications
+ *  tags / tag / itemTags — теги предмета для рецептов (https://docs.fabricmc.net/develop/data-generation/tags):
+ *                   "c:tin_ingots" или {"c:tin_ingots","c:ingots/tin"} или {{tag="c:tin_ingots"}}
+ *                   Генерирует data/<tagNs>/tags/item/<tagPath>.json (и block/tags если блок)
+ *  blockTags / block_tags — теги блока (аналогично, data/.../tags/block)
  */
 class LuaContentSettings(
     var name: String? = null,
@@ -101,8 +108,25 @@ class LuaContentSettings(
     var shapeBoxes: MutableList<DoubleArray>? = null,
     var textures: MutableMap<String, String>? = null,
     // Лут блока: nil = дроп себя (дефолт), пустой список = ничего не дропает, иначе список DropEntry
-    var drops: MutableList<DropEntry>? = null
+    var drops: MutableList<DropEntry>? = null,
+    // Генерация руды: nil = без генерации, иначе настройки
+    var ore: OreConfig? = null,
+    // Теги для рецептов (см. https://docs.fabricmc.net/develop/data-generation/tags)
+    var tags: MutableList<String>? = null, // item tags: data/<tagNs>/tags/item/<path>.json
+    var blockTags: MutableList<String>? = null // block tags: data/<ns>/tags/block/<path>.json
 ) : LuaUserdata(this) {
+
+    data class OreConfig(
+        var size: Int = 9,
+        var discardChance: Float = 0.0f,
+        var count: Int = 10,
+        var minY: Int = -64,
+        var maxY: Int = 64,
+        var heightType: String = "trapezoid", // trapezoid | uniform
+        var replace: String? = null, // "stone_ore_replaceables" | "deepslate_ore_replaceables" | "netherrack" | "end_stone" | tag/block id
+        var biomes: String = "overworld", // overworld | nether | end | tag like "#minecraft:is_overworld"
+        var featureId: String? = null // если nil — используется id блока
+    )
 
     data class DropEntry(
         val id: String,
@@ -127,6 +151,8 @@ class LuaContentSettings(
             (if (noOcclusion) ", noOcclusion" else "") +
             (shapeBoxes?.let { ", shapeBoxes=${it.size}" } ?: "") +
             (drops?.let { ", drops=${it.size}" } ?: "") +
+            (tags?.let { ", tags=${it.size}" } ?: "") +
+            (blockTags?.let { ", blockTags=${it.size}" } ?: "") +
             (offsetType?.let { ", offset=$it" } ?: "") + "}"
 
     override fun get(key: LuaValue): LuaValue = when (key.tojstring()) {
@@ -159,6 +185,9 @@ class LuaContentSettings(
         "tier", "miningTier", "mining_tier", "miningLevel", "mining_level", "needsTier", "needs_tier" -> miningTier?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
         "textures", "textureMap", "texture_map" -> textures?.let { mapToLua(it) } ?: LuaValue.NIL
         "drops", "drop", "loot", "lootTable", "loot_table", "loot_table_blocks", "dropsList", "drops_list" -> drops?.let { dropsToLua(it) } ?: LuaValue.NIL
+        "ore", "oreGen", "ore_gen", "generation", "worldgen", "worldGen", "vein" -> ore?.let { oreToLua(it) } ?: LuaValue.NIL
+        "tags", "tag", "itemTags", "item_tags", "item_tag" -> tags?.let { tagsToLua(it) } ?: LuaValue.NIL
+        "blockTags", "block_tags", "block_tag", "blockTag" -> blockTags?.let { tagsToLua(it) } ?: LuaValue.NIL
         else -> super.get(key)
     }
 
@@ -219,6 +248,20 @@ class LuaContentSettings(
                 if (value.isnil()) drops = null
                 else if (value.isboolean() && !value.toboolean()) drops = mutableListOf()
                 else drops = parseDropsValue(value)
+            }
+            "ore", "oreGen", "ore_gen", "generation", "worldgen", "worldGen", "vein" -> {
+                if (value.isnil()) ore = null
+                else if (value.isboolean()) ore = if (value.toboolean()) OreConfig() else null
+                else if (value.istable()) ore = parseOreValue(value)
+                else if (value.isstring() && value.tojstring().equals("true", true)) ore = OreConfig()
+            }
+            "tags", "tag", "itemTags", "item_tags", "item_tag" -> {
+                if (value.isnil()) tags = null
+                else tags = parseTagsValue(value)
+            }
+            "blockTags", "block_tags", "block_tag", "blockTag" -> {
+                if (value.isnil()) blockTags = null
+                else blockTags = parseTagsValue(value)
             }
             else -> super.set(key, value)
         }
@@ -654,6 +697,99 @@ class LuaContentSettings(
             return tbl
         }
 
+        // ── ore helpers ──
+        fun parseOreValue(v: LuaValue): OreConfig? {
+            if (v.isboolean()) return if (v.toboolean()) OreConfig() else null
+            if (!v.istable()) return null
+            val cfg = OreConfig()
+            fun num(vararg keys: String): Double? {
+                for (k in keys) { val vv = v.get(k); if (vv.isnumber()) return vv.todouble() }
+                return null
+            }
+            fun str(vararg keys: String): String? {
+                for (k in keys) { val vv = v.get(k); if (!vv.isnil() && vv.isstring()) return vv.tojstring() }
+                return null
+            }
+            num("size", "veinSize", "vein_size")?.let { cfg.size = it.toInt().coerceIn(1, 64) }
+            num("count", "veinsPerChunk", "veins_per_chunk", "veins")?.let { cfg.count = it.toInt().coerceIn(1, 128) }
+            num("minY", "min_y", "min", "yMin")?.let { cfg.minY = it.toInt().coerceIn(-64, 320) }
+            num("maxY", "max_y", "max", "yMax")?.let { cfg.maxY = it.toInt().coerceIn(-64, 320) }
+            str("height", "heightType", "height_type")?.let { cfg.heightType = it.lowercase() }
+            str("replace", "target", "replaceable", "replaceTag", "replace_tag")?.let { cfg.replace = it }
+            str("biomes", "biome", "dimension", "dim")?.let { cfg.biomes = it.lowercase() }
+            str("feature", "featureId", "feature_id", "id")?.let { cfg.featureId = it }
+            num("discardChance", "discard_chance", "discardChanceOnAirExposure", "discard_chance_on_air_exposure")?.let { cfg.discardChance = it.toFloat().coerceIn(0f, 1f) }
+            if (cfg.minY > cfg.maxY) { val t = cfg.minY; cfg.minY = cfg.maxY; cfg.maxY = t }
+            return cfg
+        }
+
+        fun oreToLua(cfg: OreConfig): LuaValue {
+            val t = LuaValue.tableOf()
+            t.set("size", LuaValue.valueOf(cfg.size))
+            t.set("count", LuaValue.valueOf(cfg.count))
+            t.set("minY", LuaValue.valueOf(cfg.minY))
+            t.set("maxY", LuaValue.valueOf(cfg.maxY))
+            t.set("height", LuaValue.valueOf(cfg.heightType))
+            t.set("biomes", LuaValue.valueOf(cfg.biomes))
+            t.set("discardChance", LuaValue.valueOf(cfg.discardChance.toDouble()))
+            cfg.replace?.let { t.set("replace", LuaValue.valueOf(it)) }
+            cfg.featureId?.let { t.set("featureId", LuaValue.valueOf(it)) }
+            return t
+        }
+
+        // ── tags helpers ──
+        fun parseTagsValue(v: LuaValue?): MutableList<String>? {
+            if (v == null || v.isnil()) return null
+            if (v.isstring()) {
+                val s = v.tojstring().trim()
+                if (s.isEmpty()) return mutableListOf()
+                return try { Identifier.parse(s); mutableListOf(s) } catch (_: Exception) { null }
+            }
+            if (v.isboolean()) return if (v.toboolean()) mutableListOf() else null
+            if (!v.istable()) return null
+            // одиночный объект {tag="c:tin_ingots"} ?
+            for (k in arrayOf("tag", "id", "name", "value")) {
+                val vv = v.get(k)
+                if (!vv.isnil() && vv.isstring()) {
+                    val s = vv.tojstring().trim()
+                    return try { Identifier.parse(s); mutableListOf(s) } catch (_: Exception) { null }
+                }
+            }
+            val out = mutableListOf<String>()
+            val n = v.length()
+            if (n > 0) {
+                for (i in 1..n) {
+                    val e = v.get(i)
+                    if (e.isnil()) continue
+                    if (e.isstring()) {
+                        val s = e.tojstring().trim()
+                        try { Identifier.parse(s); out.add(s) } catch (_: Exception) {}
+                    } else if (e.istable()) {
+                        for (k in arrayOf("tag", "id", "name", "value")) {
+                            val vv = e.get(k)
+                            if (!vv.isnil() && vv.isstring()) {
+                                val s = vv.tojstring().trim()
+                                try { Identifier.parse(s); out.add(s); break } catch (_: Exception) {}
+                            }
+                        }
+                        if (e.get(1).isstring() && out.size < i) {
+                            val s = e.get(1).tojstring().trim()
+                            try { Identifier.parse(s); out.add(s) } catch (_: Exception) {}
+                        }
+                    }
+                }
+                return out
+            }
+            // пустая таблица -> пустой список
+            return mutableListOf()
+        }
+
+        fun tagsToLua(list: List<String>): LuaValue {
+            val t = LuaValue.tableOf()
+            for ((i, s) in list.withIndex()) t.set(i + 1, LuaValue.valueOf(s))
+            return t
+        }
+
         /**
           * Собирает настройки из Lua-таблицы. Допустимые ключи (snake_case или camelCase):
           * name, texture, model/parent, maxStackSize / max_stack_size, fireResistant / fire_resistant,
@@ -759,6 +895,29 @@ class LuaContentSettings(
                 if (dropsVal.isboolean() && !dropsVal.toboolean()) settings.drops = mutableListOf()
                 else settings.drops = parseDropsValue(dropsVal)
             }
+            // ore
+            var oreVal: LuaValue? = null
+            for (k in arrayOf("ore", "oreGen", "ore_gen", "generation", "worldgen", "worldGen", "vein")) {
+                val v = table.get(k)
+                if (!v.isnil()) { oreVal = v; break }
+            }
+            if (oreVal != null) {
+                if (oreVal.isboolean()) settings.ore = if (oreVal.toboolean()) OreConfig() else null
+                else if (oreVal.istable()) settings.ore = parseOreValue(oreVal)
+            }
+            // tags
+            var tagsVal: LuaValue? = null
+            for (k in arrayOf("tags", "tag", "itemTags", "item_tags", "item_tag")) {
+                val v = table.get(k)
+                if (!v.isnil()) { tagsVal = v; break }
+            }
+            if (tagsVal != null) settings.tags = parseTagsValue(tagsVal)
+            var blockTagsVal: LuaValue? = null
+            for (k in arrayOf("blockTags", "block_tags", "block_tag", "blockTag")) {
+                val v = table.get(k)
+                if (!v.isnil()) { blockTagsVal = v; break }
+            }
+            if (blockTagsVal != null) settings.blockTags = parseTagsValue(blockTagsVal)
             return settings
         }
     }
