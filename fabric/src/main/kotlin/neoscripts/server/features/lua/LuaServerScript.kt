@@ -289,7 +289,7 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
         registerMessageEventFunction("registerGameMessageCallback", gameMessageCallbacks)
         registerMessageEventFunction("registerCommandMessageCallback", commandMessageCallbacks)
 
-        // Custom packets
+        // Custom packets (dedup: same function ref not added twice -> fixes double fire when module required via "assets/atm" vs "assets.atm")
         val packetReg = object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 if (args.narg() < 2) return FALSE
@@ -298,6 +298,7 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
                 if (!cb.isfunction()) return FALSE
                 synchronized(callbacksLock) {
                     val list = customPacketCallbacks.getOrPut(channel) { mutableListOf() }
+                    if (list.any { it === cb }) return TRUE
                     list.add(cb)
                 }
                 return TRUE
@@ -555,6 +556,17 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
         })
     }
 
+    private fun normalizeRequireKey(raw: String): String {
+        var n = raw.replace('\\', '/').lowercase()
+        if (n.endsWith(".lua")) n = n.removeSuffix(".lua")
+        else if (n.endsWith(".luac")) n = n.removeSuffix(".luac")
+        // unify '.' and '/' separators
+        n = n.replace('.', '/')
+        // collapse duplicate slashes and trim
+        n = n.replace("//", "/").trim('/')
+        return n
+    }
+
     private fun registerRequireFunction() {
         scriptGlobals.set("require", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
@@ -567,12 +579,15 @@ class LuaServerScript(val name: String, mgr: LuaManager, val server: MinecraftSe
                     Collections.synchronizedSet(LinkedHashSet<String>())
                 }.add(moduleName)
 
-                if (requireCache.containsKey(moduleName) && cache) {
-                    return requireCache.getOrDefault(moduleName, NIL)
+                val cacheKey = normalizeRequireKey(moduleName)
+                if (cache && requireCache.containsKey(cacheKey)) {
+                    return requireCache.getOrDefault(cacheKey, NIL)
                 }
 
                 val value = requireModule(moduleName)
                 if (cache) {
+                    requireCache[cacheKey] = value
+                    // keep raw key as well for backward compat / debug
                     requireCache[moduleName] = value
                 }
                 return value

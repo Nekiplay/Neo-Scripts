@@ -423,13 +423,6 @@ object LuaEvents : ServerModule() {
         try {
             PayloadTypeRegistry.serverboundPlay().register(NeoLuaC2SPayload.TYPE, NeoLuaC2SPayload.CODEC)
         } catch (_: Exception) {}
-        // Also register legacy for compat if some client still uses old ID (optional)
-        try {
-            PayloadTypeRegistry.clientboundPlay().register(com.nekiplay.neoscripts.common.network.NeoLuaPacketPayload.TYPE, com.nekiplay.neoscripts.common.network.NeoLuaPacketPayload.CODEC)
-        } catch (_: Exception) {}
-        try {
-            PayloadTypeRegistry.serverboundPlay().register(com.nekiplay.neoscripts.common.network.NeoLuaPacketPayload.TYPE, com.nekiplay.neoscripts.common.network.NeoLuaPacketPayload.CODEC)
-        } catch (_: Exception) {}
         try {
             ServerPlayNetworking.registerGlobalReceiver(NeoLuaC2SPayload.TYPE) { payload, context ->
                 val channel = payload.channel

@@ -93,6 +93,15 @@ open class CommonLuaScript(scriptName: String, manager: LuaManager) : Script(scr
      */
     protected open fun initializeScript() {}
 
+    private fun normalizeRequireKey(raw: String): String {
+        var n = raw.replace('\\', '/').lowercase()
+        if (n.endsWith(".lua")) n = n.removeSuffix(".lua")
+        else if (n.endsWith(".luac")) n = n.removeSuffix(".luac")
+        n = n.replace('.', '/')
+        n = n.replace("//", "/").trim('/')
+        return n
+    }
+
     private fun registerRequireFunction() {
         scriptGlobals.set("require", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
@@ -107,13 +116,14 @@ open class CommonLuaScript(scriptName: String, manager: LuaManager) : Script(scr
                     java.util.Collections.synchronizedSet(LinkedHashSet<String>())
                 }.add(moduleName)
 
-                // 3. Загружаем и выполняем (без кэша)
-                if (requireCache.containsKey(moduleName) && cache) {
-                    return requireCache.getOrDefault(moduleName, NIL)
+                val cacheKey = normalizeRequireKey(moduleName)
+                if (cache && requireCache.containsKey(cacheKey)) {
+                    return requireCache.getOrDefault(cacheKey, NIL)
                 }
 
                 val value = requireModule(moduleName)
                 if (cache) {
+                    requireCache[cacheKey] = value
                     requireCache[moduleName] = value
                 }
                 return value

@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.Difficulty
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.level.gamerules.GameRule
+import net.minecraft.world.level.storage.LevelResource
 import net.minecraft.world.phys.Vec3
 import org.luaj.vm2.LuaValue
 import org.luaj.vm2.Varargs
@@ -57,9 +58,17 @@ class LuaServer(val server: MinecraftServer?) : LuaValue() {
             "getMspt", "getMSPT" -> GetMspt()
             "gameRule", "gamerule", "getGameRule", "setGameRule" -> GameRuleFunction()
             "difficulty", "getDifficulty", "setDifficulty" -> DifficultyFunction()
+            "getRootLevelPath" -> GetRootLevelPath()
             "saveAll" -> SaveAll()
             "stop" -> Stop()
             else -> super.get(key)
+        }
+    }
+
+    inner class GetRootLevelPath : ZeroArgFunction() {
+        override fun call(): LuaValue {
+            val worldRoot = server?.getWorldPath(LevelResource.ROOT)
+            return valueOf(worldRoot.toString())
         }
     }
 

@@ -492,7 +492,7 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
             }
         })
 
-        // Custom packets (server -> client): registerPacket("channel", callback)
+        // Custom packets (server -> client): registerPacket("channel", callback) - dedup
         val packetReg = object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
                 if (args.narg() < 2) return FALSE
@@ -501,6 +501,7 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
                 if (!cb.isfunction()) return FALSE
                 synchronized(callbacksLock) {
                     val list = customPacketCallbacks.getOrPut(channel) { mutableListOf() }
+                    if (list.any { it === cb }) return TRUE
                     list.add(cb)
                 }
                 return TRUE
@@ -826,6 +827,15 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
         scriptGlobals.set("unregisterServerPacket", packetUnreg)
     }
 
+    private fun normalizeRequireKey(raw: String): String {
+        var n = raw.replace('\\', '/').lowercase()
+        if (n.endsWith(".lua")) n = n.removeSuffix(".lua")
+        else if (n.endsWith(".luac")) n = n.removeSuffix(".luac")
+        n = n.replace('.', '/')
+        n = n.replace("//", "/").trim('/')
+        return n
+    }
+
     private fun registerRequireFunction() {
         scriptGlobals.set("require", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs {
@@ -840,13 +850,14 @@ class LuaClientScript(val name: String, val mgr: LuaManager): Script(name, mgr) 
                     Collections.synchronizedSet(LinkedHashSet<String>())
                 }.add(moduleName)
 
-                // 3. Загружаем и выполняем (без кэша)
-                if (requireCache.containsKey(moduleName) && cache) {
-                    return requireCache.getOrDefault(moduleName, NIL)
+                val cacheKey = normalizeRequireKey(moduleName)
+                if (cache && requireCache.containsKey(cacheKey)) {
+                    return requireCache.getOrDefault(cacheKey, NIL)
                 }
 
                 val value = requireModule(moduleName)
                 if (cache) {
+                    requireCache[cacheKey] = value
                     requireCache[moduleName] = value
                 }
                 return value
