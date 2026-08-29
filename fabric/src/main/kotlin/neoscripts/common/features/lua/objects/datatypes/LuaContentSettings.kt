@@ -64,6 +64,7 @@ import org.luaj.vm2.LuaValue
  *                   {"minecraft:diamond","minecraft:stick"} — несколько предметов (каждый свой pool, все выпадут),
  *                   {{id="minecraft:diamond", count=3}, {id="minecraft:emerald", min=1, max=3}} — с количеством,
  *                   {{id="minecraft:diamond", weight=10}, {id="minecraft:emerald", weight=1}} — взвешенный случайный выбор (один pool, weight как на minecraft.wiki/w/Loot_table),
+ *                   {{id="minecraft:diamond", conditions={{condition="minecraft:random_chance", chance=0.1}}}, {id="minecraft:stick", condition={condition="minecraft:survives_explosion"}}} — кастомные conditions/predicate (см. https://minecraft.wiki/w/Predicate),
  *                   "minecraft:apple" и т.д. Генерируется data/<ns>/loot_table/blocks/<path>.json (см. https://docs.fabricmc.net/develop/blocks/first-block#adding-block-drops)
  */
 class LuaContentSettings(
@@ -108,7 +109,8 @@ class LuaContentSettings(
         val count: Int = 1,
         val countMin: Int? = null,
         val countMax: Int? = null,
-        val weight: Int? = null // null=гарантированный дроп (отдельный pool), число=взвешенный выбор в одном pool (см. minecraft.wiki/w/Loot_table#weight)
+        val weight: Int? = null, // null=гарантированный дроп (отдельный pool), число=взвешенный выбор в одном pool (см. minecraft.wiki/w/Loot_table#weight)
+        val conditions: List<String>? = null // raw JSON объектов условий/predicate (см. https://minecraft.wiki/w/Predicate), добавляются в entry.conditions
     )
 
     override fun typename(): String = "content_settings"
@@ -451,6 +453,90 @@ class LuaContentSettings(
             return tbl
         }
 
+        // ── json helpers для conditions/predicate ──
+        private fun escapeJson(s: String): String = s
+            .replace("\\", "\\\\").replace("\"", "\\\"")
+            .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+
+        fun luaValueToJson(v: LuaValue): String {
+            if (v.isnil()) return "null"
+            if (v.isboolean()) return if (v.toboolean()) "true" else "false"
+            if (v.isnumber()) {
+                val d = v.todouble()
+                return if (d % 1.0 == 0.0) v.toint().toString() else d.toString()
+            }
+            if (v.isstring()) return "\"${escapeJson(v.tojstring())}\""
+            if (v.istable()) {
+                val n = v.length()
+                val tbl = v.checktable()
+                // если есть числовые последовательные ключи и нет именованных — массив
+                val hasNamed = run {
+                    for (kObj in tbl.keys()) {
+                        val k = kObj as? LuaValue ?: LuaValue.valueOf(kObj.toString())
+                        val ks = k.tojstring()
+                        if (ks.toIntOrNull() == null) return@run true
+                        val iv = ks.toIntOrNull() ?: -1
+                        if (iv < 1 || iv > n) return@run true
+                    }
+                    false
+                }
+                if (n > 0 && !hasNamed) {
+                    val arr = (1..n).joinToString(",") { luaValueToJson(v.get(it)) }
+                    return "[$arr]"
+                }
+                // объект
+                val parts = mutableListOf<String>()
+                for (kObj in tbl.keys()) {
+                    val k = kObj as? LuaValue ?: LuaValue.valueOf(kObj.toString())
+                    val ks = k.tojstring()
+                    if (ks.toIntOrNull() != null && n > 0) continue
+                    val vv = tbl.get(k)
+                    if (vv.isnil()) continue
+                    parts.add("\"${escapeJson(ks)}\":${luaValueToJson(vv)}")
+                }
+                return "{${parts.joinToString(",")}}"
+            }
+            return "\"${escapeJson(v.tojstring())}\""
+        }
+
+        fun parseConditions(v: LuaValue, rawTable: LuaValue): List<String>? {
+            // ищет condition(s)/predicate(s)/when в таблице дропа
+            var src: LuaValue? = null
+            for (k in arrayOf("conditions", "condition", "predicates", "predicate", "when", "requires", "if")) {
+                val cv = rawTable.get(k)
+                if (!cv.isnil()) { src = cv; break }
+            }
+            if (src == null) return null
+            if (src.isstring()) {
+                val s = src.tojstring().trim()
+                if (s.isEmpty()) return null
+                // если строка уже JSON — вернем как есть, иначе считаем id условия
+                return if (s.startsWith("{")) listOf(s) else listOf("\"${escapeJson(s)}\"")
+            }
+            if (!src.istable()) return null
+            // один объект с полем condition?
+            if (!src.get("condition").isnil() || !src.get("predicate").isnil()) {
+                return listOf(luaValueToJson(src))
+            }
+            val n = src.length()
+            if (n > 0) {
+                val out = mutableListOf<String>()
+                for (i in 1..n) {
+                    val e = src.get(i)
+                    if (e.isnil()) continue
+                    if (e.isstring()) {
+                        val s = e.tojstring().trim()
+                        out.add(if (s.startsWith("{")) s else "\"${escapeJson(s)}\"")
+                    } else {
+                        out.add(luaValueToJson(e))
+                    }
+                }
+                return if (out.isEmpty()) null else out
+            }
+            // таблица без length но с ключами — один объект
+            return listOf(luaValueToJson(src))
+        }
+
         // ── drops helpers ──
         fun parseDropEntry(v: LuaValue): DropEntry? {
             if (v.isstring()) {
@@ -497,7 +583,8 @@ class LuaContentSettings(
                 val wv = v.get(k)
                 if (wv.isnumber()) { weight = wv.toint().coerceIn(1, 1_000_000); break }
             }
-            return DropEntry(id, count, countMin, countMax, weight)
+            val conditions = parseConditions(v, v)
+            return DropEntry(id, count, countMin, countMax, weight, conditions)
         }
 
         fun parseDropsValue(v: LuaValue?): MutableList<DropEntry>? {
@@ -553,6 +640,15 @@ class LuaContentSettings(
                     e.set("count", LuaValue.valueOf(d.count))
                 }
                 d.weight?.let { e.set("weight", LuaValue.valueOf(it)) }
+                d.conditions?.let { conds ->
+                    val arr = LuaValue.tableOf()
+                    for ((ci, cjson) in conds.withIndex()) {
+                        // храним как строку JSON — при желании можно распарсить в Lua через json.decode
+                        arr.set(ci + 1, LuaValue.valueOf(cjson))
+                    }
+                    e.set("conditions", arr)
+                    if (conds.size == 1) e.set("condition", LuaValue.valueOf(conds[0]))
+                }
                 tbl.set(idx + 1, e)
             }
             return tbl

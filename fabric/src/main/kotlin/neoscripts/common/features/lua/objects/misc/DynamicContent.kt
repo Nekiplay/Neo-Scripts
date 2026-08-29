@@ -150,7 +150,11 @@ object DynamicContent {
             }
             val funcStr = if (func != null) ""","functions":[$func]""" else ""
             val weightStr = d.weight?.let { ""","weight":$it""" } ?: ""
-            return """{"type":"minecraft:item","name":"${d.id}"$weightStr$funcStr}"""
+            val condStr = d.conditions?.takeIf { it.isNotEmpty() }?.let { conds ->
+                val joined = conds.joinToString(",")
+                ""","conditions":[$joined]"""
+            } ?: ""
+            return """{"type":"minecraft:item","name":"${d.id}"$weightStr$funcStr$condStr}"""
         }
         // если хотя бы у одного указан weight — делаем один pool со взвешенным выбором (minecraft.wiki/w/Loot_table#weight)
         // иначе каждый дроп — отдельный pool (все выпадают гарантированно, как в Fabric доке)
