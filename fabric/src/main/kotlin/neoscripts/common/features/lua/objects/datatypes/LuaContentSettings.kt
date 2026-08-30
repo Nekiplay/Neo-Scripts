@@ -113,7 +113,15 @@ class LuaContentSettings(
     var ore: OreConfig? = null,
     // Теги для рецептов (см. https://docs.fabricmc.net/develop/data-generation/tags)
     var tags: MutableList<String>? = null, // item tags: data/<tagNs>/tags/item/<path>.json
-    var blockTags: MutableList<String>? = null // block tags: data/<ns>/tags/block/<path>.json
+    var blockTags: MutableList<String>? = null, // block tags: data/<ns>/tags/block/<path>.json
+    // Контейнер для блока (https://docs.fabricmc.net/develop/blocks/block-containers + container-menus)
+    // containerSize: 1..54, 9 = 1 ряд, 27 = сундук, 54 = двойной сундук; nil = обычный блок
+    var containerSize: Int? = null,
+    var containerTitle: String? = null,
+    // Кастомные слоты: список {x,y} на каждый слот (1..size). Если nil — сетка 9xN с 8,18
+    var containerSlots: MutableList<IntArray>? = null,
+    // Текстура GUI: Identifier "minecraft:textures/gui/container/generic_54.png" или путь к файлу
+    var containerTexture: String? = null
 ) : LuaUserdata(this) {
 
     data class OreConfig(
@@ -188,6 +196,10 @@ class LuaContentSettings(
         "ore", "oreGen", "ore_gen", "generation", "worldgen", "worldGen", "vein" -> ore?.let { oreToLua(it) } ?: LuaValue.NIL
         "tags", "tag", "itemTags", "item_tags", "item_tag" -> tags?.let { tagsToLua(it) } ?: LuaValue.NIL
         "blockTags", "block_tags", "block_tag", "blockTag" -> blockTags?.let { tagsToLua(it) } ?: LuaValue.NIL
+        "containerSize", "container_size", "size", "inventorySize", "inventory_size", "slotCount", "slot_count" -> containerSize?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
+        "containerTitle", "container_title", "title", "menuTitle", "menu_title", "containerName" -> containerTitle?.let { LuaValue.valueOf(it) } ?: name?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
+        "containerSlots", "container_slots", "slots", "slotPositions", "slot_positions" -> containerSlots?.let { slotsToLua(it) } ?: LuaValue.NIL
+        "containerTexture", "container_texture", "guiTexture", "gui_texture", "menuTexture", "menu_texture" -> containerTexture?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
         else -> super.get(key)
     }
 
@@ -262,6 +274,18 @@ class LuaContentSettings(
             "blockTags", "block_tags", "block_tag", "blockTag" -> {
                 if (value.isnil()) blockTags = null
                 else blockTags = parseTagsValue(value)
+            }
+            "containerSize", "container_size", "size", "inventorySize", "inventory_size", "slotCount", "slot_count" -> {
+                if (value.isnil()) containerSize = null else containerSize = value.checkint().coerceIn(1, 54)
+            }
+            "containerTitle", "container_title", "title", "menuTitle", "menu_title", "containerName", "container_name" -> {
+                if (value.isnil()) containerTitle = null else containerTitle = readableString(value)
+            }
+            "containerSlots", "container_slots", "slots", "slotPositions", "slot_positions" -> {
+                if (value.isnil()) containerSlots = null else containerSlots = parseSlotsValue(value)
+            }
+            "containerTexture", "container_texture", "guiTexture", "gui_texture", "menuTexture", "menu_texture" -> {
+                if (value.isnil()) containerTexture = null else containerTexture = value.tojstring()
             }
             else -> super.set(key, value)
         }
@@ -790,6 +814,60 @@ class LuaContentSettings(
             return t
         }
 
+        // ── container helpers ──
+        fun parseSlotsValue(v: LuaValue?): MutableList<IntArray>? {
+            if (v == null || v.isnil()) return null
+            if (!v.istable()) return null
+            val out = mutableListOf<IntArray>()
+            val n = v.length()
+            if (n > 0) {
+                for (i in 1..n) {
+                    val e = v.get(i)
+                    if (e.isnil()) continue
+                    if (e.istable()) {
+                        // supports {x,y} or {x=.., y=..} or {1=x,2=y}
+                        val x = e.get(1).takeIf { it.isnumber() }?.toint()
+                            ?: e.get("x").takeIf { it.isnumber() }?.toint()
+                            ?: e.get("1").takeIf { it.isnumber() }?.toint()
+                        val y = e.get(2).takeIf { it.isnumber() }?.toint()
+                            ?: e.get("y").takeIf { it.isnumber() }?.toint()
+                            ?: e.get("2").takeIf { it.isnumber() }?.toint()
+                        if (x != null && y != null) out.add(intArrayOf(x, y))
+                    } else if (e.isnumber()) {
+                        // flat array {x1,y1,x2,y2,...} pairs?
+                        // handled outside, skip
+                    }
+                }
+                // also handle flat {x1,y1,x2,y2} as pairs if no nested tables succeeded
+                if (out.isEmpty() && n % 2 == 0) {
+                    var ok = true
+                    for (j in 1..n step 2) { if (!v.get(j).isnumber() || !v.get(j+1).isnumber()) { ok=false; break } }
+                    if (ok) {
+                        for (j in 1..n step 2) out.add(intArrayOf(v.get(j).toint(), v.get(j+1).toint()))
+                    }
+                }
+            } else {
+                // single {x,y}
+                val x = v.get(1).takeIf { it.isnumber() }?.toint() ?: v.get("x").takeIf { it.isnumber() }?.toint()
+                val y = v.get(2).takeIf { it.isnumber() }?.toint() ?: v.get("y").takeIf { it.isnumber() }?.toint()
+                if (x != null && y != null) out.add(intArrayOf(x, y))
+            }
+            return if (out.isEmpty()) null else out
+        }
+
+        fun slotsToLua(list: List<IntArray>): LuaValue {
+            val t = LuaValue.tableOf()
+            for ((i, arr) in list.withIndex()) {
+                val e = LuaValue.tableOf()
+                e.set(1, LuaValue.valueOf(arr[0]))
+                e.set(2, LuaValue.valueOf(arr[1]))
+                e.set("x", LuaValue.valueOf(arr[0]))
+                e.set("y", LuaValue.valueOf(arr[1]))
+                t.set(i+1, e)
+            }
+            return t
+        }
+
         /**
           * Собирает настройки из Lua-таблицы. Допустимые ключи (snake_case или camelCase):
           * name, texture, model/parent, maxStackSize / max_stack_size, fireResistant / fire_resistant,
@@ -918,6 +996,23 @@ class LuaContentSettings(
                 if (!v.isnil()) { blockTagsVal = v; break }
             }
             if (blockTagsVal != null) settings.blockTags = parseTagsValue(blockTagsVal)
+            // container
+            for (k in arrayOf("containerSize", "container_size", "size", "inventorySize", "inventory_size", "slotCount", "slot_count")) {
+                val v = table.get(k)
+                if (!v.isnil() && v.isnumber()) { settings.containerSize = v.toint().coerceIn(1,54); break }
+            }
+            for (k in arrayOf("containerTitle", "container_title", "title", "menuTitle", "menu_title", "containerName", "container_name")) {
+                val v = table.get(k)
+                if (!v.isnil() && v.isstring()) { settings.containerTitle = readableString(v); break }
+            }
+            for (k in arrayOf("containerSlots", "container_slots", "slots", "slotPositions", "slot_positions")) {
+                val v = table.get(k)
+                if (!v.isnil()) { parseSlotsValue(v)?.let { settings.containerSlots = it; break } }
+            }
+            for (k in arrayOf("containerTexture", "container_texture", "guiTexture", "gui_texture", "menuTexture", "menu_texture")) {
+                val v = table.get(k)
+                if (!v.isnil() && v.isstring()) { settings.containerTexture = v.tojstring(); break }
+            }
             return settings
         }
     }

@@ -23,6 +23,7 @@ class ContentLib : LuaValue() {
             "createSettings", "contentSettings", "itemSettings", "blockSettings" -> CreateContentSettings()
             "registerItem" -> RegisterItem()
             "registerBlock" -> RegisterBlock()
+            "registerContainer", "registerContainerBlock", "registerChest", "registerBlockWithContainer", "registerBlockEntity" -> RegisterContainer()
             "registerSlab" -> RegisterSlab()
             "registerStairs", "registerStair" -> RegisterStairs()
             "registerDoor" -> RegisterDoor()
@@ -337,6 +338,47 @@ class ContentLib : LuaValue() {
             if (!arg.isstring()) return NIL
             val ok = DynamicContent.removeRecipe(arg.tojstring())
             return valueOf(ok)
+        }
+    }
+
+    /**
+     * content.registerContainer("ns:block" [, sizeOrSettings] [, settings])
+     * Поддерживает:
+     *  registerContainer("ns:block", {name="Chest", containerSize=27})
+     *  registerContainer("ns:block", 27)
+     *  registerContainer("ns:block", 27, settings)
+     * Возвращает LuaBlockState как registerBlock.
+     * https://docs.fabricmc.net/develop/blocks/block-containers
+     * https://docs.fabricmc.net/develop/blocks/container-menus
+     */
+    class RegisterContainer : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (!args.arg(1).isstring()) return NIL
+            val rawId = args.arg1().tojstring()
+            var size: Int? = null
+            var settings: LuaContentSettings? = null
+            for (i in 2..args.narg()) {
+                val a = args.arg(i)
+                when {
+                    a.isnumber() && size == null -> size = a.toint()
+                    a.toContentSettings() != null && settings == null -> settings = a.toContentSettings()
+                    a.istable() && settings == null -> {
+                        // table may be settings or contain containerSize inside
+                        val s = a.toContentSettings()
+                        if (s != null) settings = s
+                    }
+                }
+            }
+            // if size not given directly, try settings.containerSize
+            val finalSize = size ?: settings?.containerSize ?: 27
+            val finalSettings = settings ?: LuaContentSettings()
+            // ensure containerSize/title propagated
+            if (finalSettings.containerSize == null) finalSettings.containerSize = finalSize
+            // title fallback to name
+            if (finalSettings.containerTitle == null && finalSettings.name != null) finalSettings.containerTitle = finalSettings.name
+
+            val block = DynamicContent.registerContainerBlock(rawId, finalSize, finalSettings.containerTitle, finalSettings) ?: return NIL
+            return LuaBlockState(block.defaultBlockState())
         }
     }
 }

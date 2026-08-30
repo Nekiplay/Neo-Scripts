@@ -29,6 +29,13 @@ import net.minecraft.world.level.block.state.properties.BlockSetType
 import net.minecraft.world.phys.shapes.CollisionContext
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
+import com.nekiplay.neoscripts.common.container.DynamicContainerBlock
+import com.nekiplay.neoscripts.common.container.DynamicContainerBlockEntity
+import com.nekiplay.neoscripts.common.container.DynamicContainerMenu
+import com.nekiplay.neoscripts.common.container.DynamicContainers
+import net.minecraft.world.flag.FeatureFlagSet
+import net.minecraft.world.inventory.MenuType
+import net.minecraft.world.level.block.entity.BlockEntityType
 import net.fabricmc.loader.api.FabricLoader
 import java.io.File
 import java.lang.reflect.Modifier
@@ -480,7 +487,7 @@ object DynamicContent {
     }
 
     private fun setFrozen(frozen: Boolean) {
-        val registries = listOf(BuiltInRegistries.BLOCK, BuiltInRegistries.ITEM)
+        val registries = listOf(BuiltInRegistries.BLOCK, BuiltInRegistries.ITEM, BuiltInRegistries.BLOCK_ENTITY_TYPE, BuiltInRegistries.MENU)
         for (registry in registries) {
             try {
                 var cls: Class<*>? = registry.javaClass
@@ -606,6 +613,86 @@ object DynamicContent {
             block
         } catch (e: Exception) {
             ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic block $rawId", e)
+            null
+        }
+    }
+
+    // ═══ Контейнер-блок (block entity + menu) https://docs.fabricmc.net/develop/blocks/block-containers + https://docs.fabricmc.net/develop/blocks/container-menus ═══
+
+    /**
+     * Регистрирует блок-контейнер с инвентарем.
+     * settings.containerSize = 1..54 (по умолчанию 27), containerTitle = заголовок меню.
+     * Автоматически создает BlockEntityType и MenuType с Screen, открывает меню по ПКМ.
+     * Возвращает Block или null. Требует вызова registerBlockItem для предмета блока.
+     * Lua: content.registerContainer("ns:block", settings) или content.registerContainer("ns:block", 27)
+     */
+    fun registerContainerBlock(rawId: String, settings: LuaContentSettings? = null): Block? {
+        // если размер не задан — берем из settings или дефолт 27
+        val size = (settings?.containerSize ?: 27).coerceIn(1, 54)
+        val title = settings?.containerTitle ?: settings?.name ?: rawId
+        return registerContainerBlock(rawId, size, title, settings)
+    }
+
+    fun registerContainerBlock(rawId: String, size: Int, settings: LuaContentSettings? = null): Block? {
+        val title = settings?.containerTitle ?: settings?.name ?: rawId
+        return registerContainerBlock(rawId, size.coerceIn(1,54), title, settings)
+    }
+
+    fun registerContainerBlock(rawId: String, size: Int, title: String?, settings: LuaContentSettings? = null): Block? {
+        return try {
+            val id = Identifier.parse(rawId)
+            if (knownIds.contains("block:$rawId") || DynamicContainers.isContainerRawId(rawId)) {
+                val existing = BuiltInRegistries.BLOCK.get(id)
+                if (existing.isPresent) return existing.get().value()
+            }
+            val cSize = size.coerceIn(1, 54)
+            val cTitle = title ?: rawId
+            val cSlots = settings?.containerSlots
+            val cTexture = settings?.containerTexture
+
+            settings?.texture?.let { storeTexture(rawId, it) }
+            settings?.model?.let { storeModel(rawId, it) }
+            settings?.textures?.let { storeTextures(rawId, it) }
+            storeToolTier(rawId, settings)
+            storeDrops(rawId, settings)
+            storeOre(rawId, settings)
+            storeBlockTags(rawId, settings)
+            storeItemTags(rawId, settings)
+
+            val key = ResourceKey.create(Registries.BLOCK, id)
+            val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
+
+            val block = DynamicContainerBlock(props, rawId)
+
+            registerWithFreezeFallback(BuiltInRegistries.BLOCK as Registry<Block>) { Registry.register(BuiltInRegistries.BLOCK, key, block) }
+            knownIds.add("block:$rawId")
+
+            // BlockEntityType (26.2: direct constructor, no Builder)
+            val beType: BlockEntityType<DynamicContainerBlockEntity> = BlockEntityType({ pos, state -> DynamicContainerBlockEntity(pos, state) }, setOf(block))
+            val beKey = ResourceKey.create(Registries.BLOCK_ENTITY_TYPE, id)
+            registerWithFreezeFallback(BuiltInRegistries.BLOCK_ENTITY_TYPE as Registry<BlockEntityType<*>>) { Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE, beKey, beType) }
+
+            // MenuType — per blockId
+            val menuType = MenuType({ syncId, inv -> DynamicContainerMenu.clientFactory(rawId)(syncId, inv) }, FeatureFlagSet.of())
+            val menuKey = ResourceKey.create(Registries.MENU, id)
+            registerWithFreezeFallback(BuiltInRegistries.MENU as Registry<MenuType<*>>) { Registry.register(BuiltInRegistries.MENU, menuKey, menuType) }
+
+            DynamicContainers.register(rawId, cSize, cTitle, cSlots, cTexture, block, beType, menuType)
+
+            // Client screen registration (guard: only on client)
+            try {
+                if (FabricLoader.getInstance().environmentType == net.fabricmc.api.EnvType.CLIENT) {
+                    // Use reflection to avoid server ClassNotFound for MenuScreens
+                    Class.forName("com.nekiplay.neoscripts.client.container.ContainerScreenRegistry").getMethod("register", MenuType::class.java).invoke(null, menuType)
+                }
+            } catch (_: Exception) {
+                // screen will be registered lazily on next client init if needed
+            }
+
+            com.nekiplay.neoscripts.ServerMain.LOGGER?.info("[Neo Scripts] Registered container block $rawId size=$cSize title=$cTitle slots=${cSlots?.size ?: "default"} texture=${cTexture ?: "default"}")
+            block
+        } catch (e: Exception) {
+            com.nekiplay.neoscripts.ServerMain.LOGGER?.error("[Neo Scripts] Failed to register container block $rawId", e)
             null
         }
     }
