@@ -127,7 +127,9 @@ class LuaContentSettings(
     var workstation: Boolean = false,
     var workstationType: String? = null, // "crafting" по умолчанию
     // Топливо для предмета (печка): burnTime в тиках, 200 = 1 предмет, 1600 = 8 и т.д.
-    var fuelTime: Int? = null
+    var fuelTime: Int? = null,
+    // Компостирование: шанс повышения уровня компостера (0.0f..1.0f), nil = не компостируется
+    var compostChance: Float? = null
 ) : LuaUserdata(this) {
 
     data class OreConfig(
@@ -209,6 +211,7 @@ class LuaContentSettings(
         "workstation", "isWorkstation", "is_workstation", "crafting" -> LuaValue.valueOf(workstation)
         "workstationType", "workstation_type", "craftingType" -> workstationType?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
         "fuel", "fuelTime", "fuel_time", "burnTime", "burn_time", "burnDuration", "burn_duration" -> fuelTime?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
+        "compostChance", "compost_chance", "compost", "compostingChance", "composting_chance" -> compostChance?.let { LuaValue.valueOf(it.toDouble()) } ?: LuaValue.NIL
         else -> super.get(key)
     }
 

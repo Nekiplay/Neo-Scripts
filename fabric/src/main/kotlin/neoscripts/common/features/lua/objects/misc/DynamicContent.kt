@@ -36,6 +36,7 @@ import com.nekiplay.neoscripts.common.container.DynamicContainers
 import com.nekiplay.neoscripts.common.workstation.DynamicWorkstationBlock
 import com.nekiplay.neoscripts.common.workstation.DynamicWorkstationMenu
 import com.nekiplay.neoscripts.common.workstation.DynamicWorkstations
+import net.fabricmc.fabric.api.registry.CompostableRegistry
 import net.fabricmc.fabric.api.registry.FuelValueEvents
 import net.minecraft.world.flag.FeatureFlagSet
 import net.minecraft.world.inventory.MenuType
@@ -155,6 +156,15 @@ object DynamicContent {
             // Только autoload через BUILD, динамика не нужна
         } else {
             fuelBurnTimes.remove(rawId)
+        }
+    }
+
+    private fun storeCompostable(rawId: String, settings: LuaContentSettings?, item: Item) {
+        val chance = settings?.compostChance
+        if (chance != null) {
+            try {
+                CompostableRegistry.INSTANCE.add(item, chance.coerceIn(0.0f, 1.0f))
+            } catch (_: Exception) {}
         }
     }
 
@@ -588,7 +598,8 @@ object DynamicContent {
             registerWithFreezeFallback(BuiltInRegistries.ITEM as Registry<Item>) { Registry.register(BuiltInRegistries.ITEM, key, item) }
             knownIds.add("item:$rawId")
             storeFuel(rawId, settings)
-            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic item $rawId${settings?.fuelTime?.let { " fuel=$it" } ?: ""}")
+            storeCompostable(rawId, settings, item)
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic item $rawId${settings?.fuelTime?.let { " fuel=$it" } ?: ""}${settings?.compostChance?.let { " compost=$it" } ?: ""}")
             item
         } catch (e: Exception) {
             ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic item $rawId", e)
