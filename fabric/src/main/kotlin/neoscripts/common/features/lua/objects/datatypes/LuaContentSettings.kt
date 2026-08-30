@@ -121,7 +121,13 @@ class LuaContentSettings(
     // Кастомные слоты: список {x,y} на каждый слот (1..size). Если nil — сетка 9xN с 8,18
     var containerSlots: MutableList<IntArray>? = null,
     // Текстура GUI: Identifier "minecraft:textures/gui/container/generic_54.png" или путь к файлу
-    var containerTexture: String? = null
+    var containerTexture: String? = null,
+    // Воркстейшн (https://docs.fabricmc.net/develop/blocks/workstations) — crafting table-like
+    // workstation=true включает крафт 3x3+1, использует RecipeType.CRAFTING
+    var workstation: Boolean = false,
+    var workstationType: String? = null, // "crafting" по умолчанию
+    // Топливо для предмета (печка): burnTime в тиках, 200 = 1 предмет, 1600 = 8 и т.д.
+    var fuelTime: Int? = null
 ) : LuaUserdata(this) {
 
     data class OreConfig(
@@ -198,8 +204,11 @@ class LuaContentSettings(
         "blockTags", "block_tags", "block_tag", "blockTag" -> blockTags?.let { tagsToLua(it) } ?: LuaValue.NIL
         "containerSize", "container_size", "size", "inventorySize", "inventory_size", "slotCount", "slot_count" -> containerSize?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
         "containerTitle", "container_title", "title", "menuTitle", "menu_title", "containerName" -> containerTitle?.let { LuaValue.valueOf(it) } ?: name?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
-        "containerSlots", "container_slots", "slots", "slotPositions", "slot_positions" -> containerSlots?.let { slotsToLua(it) } ?: LuaValue.NIL
-        "containerTexture", "container_texture", "guiTexture", "gui_texture", "menuTexture", "menu_texture" -> containerTexture?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
+        "containerSlots", "container_slots", "slots", "slotPositions", "slot_positions", "workstationSlots", "workstation_slots" -> containerSlots?.let { slotsToLua(it) } ?: LuaValue.NIL
+        "containerTexture", "container_texture", "guiTexture", "gui_texture", "menuTexture", "menu_texture", "workstationTexture", "workstation_texture" -> containerTexture?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
+        "workstation", "isWorkstation", "is_workstation", "crafting" -> LuaValue.valueOf(workstation)
+        "workstationType", "workstation_type", "craftingType" -> workstationType?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
+        "fuel", "fuelTime", "fuel_time", "burnTime", "burn_time", "burnDuration", "burn_duration" -> fuelTime?.let { LuaValue.valueOf(it) } ?: LuaValue.NIL
         else -> super.get(key)
     }
 
@@ -281,11 +290,22 @@ class LuaContentSettings(
             "containerTitle", "container_title", "title", "menuTitle", "menu_title", "containerName", "container_name" -> {
                 if (value.isnil()) containerTitle = null else containerTitle = readableString(value)
             }
-            "containerSlots", "container_slots", "slots", "slotPositions", "slot_positions" -> {
+            "containerSlots", "container_slots", "slots", "slotPositions", "slot_positions", "workstationSlots", "workstation_slots" -> {
                 if (value.isnil()) containerSlots = null else containerSlots = parseSlotsValue(value)
             }
-            "containerTexture", "container_texture", "guiTexture", "gui_texture", "menuTexture", "menu_texture" -> {
+            "containerTexture", "container_texture", "guiTexture", "gui_texture", "menuTexture", "menu_texture", "workstationTexture", "workstation_texture" -> {
                 if (value.isnil()) containerTexture = null else containerTexture = value.tojstring()
+            }
+            "workstation", "isWorkstation", "is_workstation", "crafting", "isCrafting" -> workstation = value.toboolean()
+            "workstationType", "workstation_type", "craftingType", "crafting_type" -> workstationType = if (value.isnil()) null else value.tojstring()
+            "fuel", "fuelTime", "fuel_time", "burnTime", "burn_time", "burnDuration", "burn_duration" -> {
+                when {
+                    value.isnil() -> fuelTime = null
+                    value.isboolean() -> fuelTime = if (value.toboolean()) 200 else null
+                    value.isnumber() -> fuelTime = value.toint().coerceIn(1, 32767)
+                    value.isstring() && value.tojstring().equals("true", true) -> fuelTime = 200
+                    else -> fuelTime = null
+                }
             }
             else -> super.set(key, value)
         }
@@ -1005,13 +1025,31 @@ class LuaContentSettings(
                 val v = table.get(k)
                 if (!v.isnil() && v.isstring()) { settings.containerTitle = readableString(v); break }
             }
-            for (k in arrayOf("containerSlots", "container_slots", "slots", "slotPositions", "slot_positions")) {
+            for (k in arrayOf("containerSlots", "container_slots", "slots", "slotPositions", "slot_positions", "workstationSlots", "workstation_slots")) {
                 val v = table.get(k)
                 if (!v.isnil()) { parseSlotsValue(v)?.let { settings.containerSlots = it; break } }
             }
-            for (k in arrayOf("containerTexture", "container_texture", "guiTexture", "gui_texture", "menuTexture", "menu_texture")) {
+            for (k in arrayOf("containerTexture", "container_texture", "guiTexture", "gui_texture", "menuTexture", "menu_texture", "workstationTexture", "workstation_texture")) {
                 val v = table.get(k)
                 if (!v.isnil() && v.isstring()) { settings.containerTexture = v.tojstring(); break }
+            }
+            for (k in arrayOf("workstation", "isWorkstation", "is_workstation", "crafting", "isCrafting")) {
+                val v = table.get(k)
+                if (!v.isnil()) { settings.workstation = v.toboolean(); break }
+            }
+            for (k in arrayOf("workstationType", "workstation_type", "craftingType", "crafting_type")) {
+                val v = table.get(k)
+                if (!v.isnil() && v.isstring()) { settings.workstationType = v.tojstring(); break }
+            }
+            for (k in arrayOf("fuel", "fuelTime", "fuel_time", "burnTime", "burn_time", "burnDuration", "burn_duration")) {
+                val v = table.get(k)
+                if (!v.isnil()) {
+                    when {
+                        v.isboolean() -> { settings.fuelTime = if (v.toboolean()) 200 else null; break }
+                        v.isnumber() -> { settings.fuelTime = v.toint().coerceIn(1,32767); break }
+                        v.isstring() && v.tojstring().equals("true", true) -> { settings.fuelTime = 200; break }
+                    }
+                }
             }
             return settings
         }

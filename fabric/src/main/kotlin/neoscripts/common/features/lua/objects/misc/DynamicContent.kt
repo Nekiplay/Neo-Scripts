@@ -33,6 +33,10 @@ import com.nekiplay.neoscripts.common.container.DynamicContainerBlock
 import com.nekiplay.neoscripts.common.container.DynamicContainerBlockEntity
 import com.nekiplay.neoscripts.common.container.DynamicContainerMenu
 import com.nekiplay.neoscripts.common.container.DynamicContainers
+import com.nekiplay.neoscripts.common.workstation.DynamicWorkstationBlock
+import com.nekiplay.neoscripts.common.workstation.DynamicWorkstationMenu
+import com.nekiplay.neoscripts.common.workstation.DynamicWorkstations
+import net.fabricmc.fabric.api.registry.FuelValueEvents
 import net.minecraft.world.flag.FeatureFlagSet
 import net.minecraft.world.inventory.MenuType
 import net.minecraft.world.level.block.entity.BlockEntityType
@@ -87,6 +91,9 @@ object DynamicContent {
     // Теги добычи: инструмент и уровень (для requiresCorrectToolForDrops)
     val blockMineableTool = ConcurrentHashMap<String, String>() // rawId -> "pickaxe"|"axe"|...
     val blockMiningTier = ConcurrentHashMap<String, String>() // rawId -> "stone"|"iron"|"diamond"|...
+    // Топливо для предметов (печка): rawId -> burnTime ticks (200=1 item, 300 default)
+    val fuelBurnTimes = ConcurrentHashMap<String, Int>()
+
     // Лут блока: какие предметы выпадают (https://docs.fabricmc.net/develop/blocks/first-block#adding-block-drops)
     // nil = не задано (дефолт дроп себя), пустой список = ничего, иначе список DropEntry
     val blockDrops = ConcurrentHashMap<String, MutableList<LuaContentSettings.DropEntry>>()
@@ -127,6 +134,28 @@ object DynamicContent {
         val tier = normalizeTier(settings?.miningTier)
         if (tool != null) blockMineableTool[rawId] = tool else blockMineableTool.remove(rawId)
         if (tier != null) blockMiningTier[rawId] = tier else blockMiningTier.remove(rawId)
+    }
+
+    init {
+        // Топливо только из autoload (динамика не нужна)
+        FuelValueEvents.BUILD.register { builder, _ ->
+            for ((rawId, burn) in fuelBurnTimes) {
+                try {
+                    val holder = BuiltInRegistries.ITEM.get(Identifier.parse(rawId))
+                    if (holder.isPresent) builder.add(holder.get().value(), burn)
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
+    private fun storeFuel(rawId: String, settings: LuaContentSettings?) {
+        val burn = settings?.fuelTime
+        if (burn != null && burn > 0) {
+            fuelBurnTimes[rawId] = burn.coerceIn(1, 32767)
+            // Только autoload через BUILD, динамика не нужна
+        } else {
+            fuelBurnTimes.remove(rawId)
+        }
     }
 
     private fun storeDrops(rawId: String, settings: LuaContentSettings?) {
@@ -558,7 +587,8 @@ object DynamicContent {
 
             registerWithFreezeFallback(BuiltInRegistries.ITEM as Registry<Item>) { Registry.register(BuiltInRegistries.ITEM, key, item) }
             knownIds.add("item:$rawId")
-            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic item $rawId")
+            storeFuel(rawId, settings)
+            ClientMain.LOGGER?.info("[Neo Scripts] Registered dynamic item $rawId${settings?.fuelTime?.let { " fuel=$it" } ?: ""}")
             item
         } catch (e: Exception) {
             ClientMain.LOGGER?.error("[Neo Scripts] Failed to register dynamic item $rawId", e)
@@ -627,6 +657,9 @@ object DynamicContent {
      * Lua: content.registerContainer("ns:block", settings) или content.registerContainer("ns:block", 27)
      */
     fun registerContainerBlock(rawId: String, settings: LuaContentSettings? = null): Block? {
+        if (settings?.workstation == true) {
+            return registerWorkstation(rawId, settings)
+        }
         // если размер не задан — берем из settings или дефолт 27
         val size = (settings?.containerSize ?: 27).coerceIn(1, 54)
         val title = settings?.containerTitle ?: settings?.name ?: rawId
@@ -693,6 +726,59 @@ object DynamicContent {
             block
         } catch (e: Exception) {
             com.nekiplay.neoscripts.ServerMain.LOGGER?.error("[Neo Scripts] Failed to register container block $rawId", e)
+            null
+        }
+    }
+
+    // ═══ Воркстейшн (crafting table) https://docs.fabricmc.net/develop/blocks/workstations ═══
+
+    fun registerWorkstation(rawId: String, settings: LuaContentSettings? = null): Block? {
+        val title = settings?.workstationType?.let { settings.containerTitle ?: settings.name } ?: settings?.containerTitle ?: settings?.name ?: rawId
+        val texture = settings?.containerTexture
+        return registerWorkstation(rawId, title, texture, settings)
+    }
+
+    fun registerWorkstation(rawId: String, title: String?, texture: String?, settings: LuaContentSettings? = null): Block? {
+        return try {
+            val id = Identifier.parse(rawId)
+            if (knownIds.contains("block:$rawId") || DynamicWorkstations.rawIdToBlock.containsKey(rawId) || DynamicContainers.isContainerRawId(rawId)) {
+                val existing = BuiltInRegistries.BLOCK.get(id)
+                if (existing.isPresent) return existing.get().value()
+            }
+            settings?.texture?.let { storeTexture(rawId, it) }
+            settings?.model?.let { storeModel(rawId, it) }
+            settings?.textures?.let { storeTextures(rawId, it) }
+            storeToolTier(rawId, settings)
+            storeDrops(rawId, settings)
+            storeOre(rawId, settings)
+            storeBlockTags(rawId, settings)
+            storeItemTags(rawId, settings)
+
+            val key = ResourceKey.create(Registries.BLOCK, id)
+            val props = settings?.applyTo(BlockBehaviour.Properties.of())?.setId(key) ?: BlockBehaviour.Properties.of().setId(key)
+            val block = DynamicWorkstationBlock(props, rawId)
+
+            registerWithFreezeFallback(BuiltInRegistries.BLOCK as Registry<Block>) { Registry.register(BuiltInRegistries.BLOCK, key, block) }
+            knownIds.add("block:$rawId")
+
+            val wType = settings?.workstationType ?: "crafting"
+            val wSlots = settings?.containerSlots // reuse containerSlots for workstation custom positions
+            val menuType: MenuType<*> = MenuType({ syncId, inv -> DynamicWorkstationMenu.clientFactory(rawId)(syncId, inv) }, FeatureFlagSet.of())
+            val menuKey = ResourceKey.create(Registries.MENU, id)
+            registerWithFreezeFallback(BuiltInRegistries.MENU as Registry<MenuType<*>>) { Registry.register(BuiltInRegistries.MENU, menuKey, menuType) }
+
+            DynamicWorkstations.register(rawId, title, texture, wType, wSlots, block, menuType)
+
+            try {
+                if (FabricLoader.getInstance().environmentType == net.fabricmc.api.EnvType.CLIENT) {
+                    Class.forName("com.nekiplay.neoscripts.client.workstation.WorkstationScreenRegistry").getMethod("register", MenuType::class.java).invoke(null, menuType)
+                }
+            } catch (_: Exception) {}
+
+            com.nekiplay.neoscripts.ServerMain.LOGGER?.info("[Neo Scripts] Registered workstation $rawId title=${title ?: rawId} texture=${texture ?: "crafting_table"}")
+            block
+        } catch (e: Exception) {
+            com.nekiplay.neoscripts.ServerMain.LOGGER?.error("[Neo Scripts] Failed to register workstation $rawId", e)
             null
         }
     }

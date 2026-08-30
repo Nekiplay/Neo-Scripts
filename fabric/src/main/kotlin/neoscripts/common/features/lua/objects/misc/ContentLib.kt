@@ -24,6 +24,7 @@ class ContentLib : LuaValue() {
             "registerItem" -> RegisterItem()
             "registerBlock" -> RegisterBlock()
             "registerContainer", "registerContainerBlock", "registerChest", "registerBlockWithContainer", "registerBlockEntity" -> RegisterContainer()
+            "registerWorkstation", "registerWorkbench", "registerCraftingTable", "registerWorkStation" -> RegisterWorkstation()
             "registerSlab" -> RegisterSlab()
             "registerStairs", "registerStair" -> RegisterStairs()
             "registerDoor" -> RegisterDoor()
@@ -378,6 +379,29 @@ class ContentLib : LuaValue() {
             if (finalSettings.containerTitle == null && finalSettings.name != null) finalSettings.containerTitle = finalSettings.name
 
             val block = DynamicContent.registerContainerBlock(rawId, finalSize, finalSettings.containerTitle, finalSettings) ?: return NIL
+            return LuaBlockState(block.defaultBlockState())
+        }
+    }
+
+    /**
+     * content.registerWorkstation("ns:block" [, settings])
+     * Workstation = блок-верстак 3x3 + результат, рецепты ванильные (RecipeType.CRAFTING)
+     * https://docs.fabricmc.net/develop/blocks/workstations
+     * settings: name, texture, model, hardness, workstationType="crafting", containerTexture (GUI)
+     */
+    class RegisterWorkstation : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            if (!args.arg(1).isstring()) return NIL
+            val rawId = args.arg1().tojstring()
+            var settings: LuaContentSettings? = null
+            for (i in 2..args.narg()) {
+                val a = args.arg(i)
+                if (a.toContentSettings() != null && settings == null) settings = a.toContentSettings()
+                else if (a.istable() && settings == null) settings = a.toContentSettings()
+            }
+            val finalSettings = settings ?: LuaContentSettings()
+            finalSettings.workstation = true
+            val block = DynamicContent.registerWorkstation(rawId, finalSettings) ?: return NIL
             return LuaBlockState(block.defaultBlockState())
         }
     }
